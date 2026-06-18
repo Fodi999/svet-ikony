@@ -1,0 +1,410 @@
+/* Unified museum-style surface */
+body {
+  background: #050505;
+}
+
+body:has(.calendar-shell) .site-header,
+body:has(.calendar-shell) .site-footer {
+  display: none;
+}
+
+.month-switch {
+  gap: clamp(14px, 2vw, 30px);
+}
+
+.month-switch button,
+.view-switch button,
+.filter-toggle {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #151515;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.month-switch button {
+  padding: 0;
+  white-space: nowrap;
+}
+
+.month-switch button:hover,
+.view-switch button:hover,
+.filter-toggle:hover {
+  color: #666;
+}
+
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+  border: 1px solid #d8d8d8;
+  padding: 0 12px 0 14px;
+  background: #f4f4f4;
+  color: #151515;
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.filter-toggle span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.filter-toggle i {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  color: #151515;
+  font-size: 13px;
+  font-style: normal;
+  line-height: 1;
+  transition: transform .16s ease;
+}
+
+.filter-toggle[aria-expanded="true"] i {
+  transform: rotate(180deg);
+}
+
+.calendar-filter {
+  z-index: 8;
+}
+
+.filter-menu {
+  left: auto;
+  right: 0;
+  width: 250px;
+  padding: 6px;
+}
+
+.filter-menu button {
+  min-height: 38px;
+  border: 0;
+  padding: 0 10px;
+}
+
+.filter-menu button + button {
+  border-top: 1px solid #dadada;
+}
+
+.view-switch {
+  gap: 8px;
+}
+
+.view-switch button.active {
+  color: #050505;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.calendar-toolbar {
+  border-top: 2px solid #d8d8d8;
+  padding-top: 8px;
+}
+
+.calendar-toolbar {
+  position: relative;
+  z-index: 40;
+  overflow: visible;
+}
+
+.calendar-filter {
+  position: relative;
+  z-index: 70;
+}
+
+.filter-toggle {
+  outline: none;
+}
+
+.filter-toggle:focus,
+.filter-toggle:focus-visible {
+  border-color: #050505;
+  box-shadow: none;
+}
+
+.filter-menu {
+  z-index: 90;
+  border: 1px solid #050505;
+  background: #f4f4f4;
+  box-shadow: 0 24px 58px rgba(0, 0, 0, .28);
+}
+
+.filter-menu button {
+  background: #f4f4f4;
+  outline: none;
+}
+
+.today-card {
+  z-index: 1;
+}
+
+.calendar-page,
+.page,
+.read-page,
+.detail-page,
+.list-page {
+  background: #f4f4f4;
+  color: #050505;
+}
+
+body:not(:has(.calendar-shell)) .page,
+body:not(:has(.calendar-shell)) .read-page,
+body:not(:has(.calendar-shell)) .detail-page,
+body:not(:has(.calendar-shell)) .list-page {
+  width: min(100%, 1780px);
+  margin: clamp(18px, 3vw, 54px) auto;
+  min-height: calc(100vh - 220px);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: clamp(18px, 2.4vw, 36px);
+  padding: clamp(24px, 4vw, 72px);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .46);
+}
+
+.page,
+.read-page {
+  background-image: none;
+}
+
+.page-hero,
+.read-hero {
+  padding: 0 0 clamp(34px, 5vw, 80px);
+  border-bottom: 2px solid #d8d8d8;
+}
+
+.page-hero h1,
+.read-hero h1,
+.sacred-hero-copy h1,
+.detail-page h1 {
+  color: #050505;
+  font-family: Impact, "Arial Black", sans-serif;
+  font-size: clamp(58px, 9vw, 158px);
+  line-height: .82;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.page-hero p,
+.read-hero p,
+.sacred-hero-copy .detail-lead,
+.detail-lead {
+  color: #5d5752;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.eyebrow,
+.sacred-panel > span,
+.content-feature-grid span,
+.card-category,
+.detail-meta {
+  color: #b8842b;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.filter-row,
+.lead-form {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.filter-row {
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 280px);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid #d8d8d8;
+  border-radius: 0;
+  padding: 14px 16px;
+  background: #f9f9f9;
+  color: #050505;
+}
+
+textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+button,
+.primary-link,
+.secondary-link,
+.primary-button,
+.secondary-button,
+.header-action {
+  border-radius: 0;
+}
+
+.lead-form button,
+.primary-link,
+.primary-button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #050505;
+  padding: 0 18px;
+  background: #050505;
+  color: #f4f4f4;
+  font-weight: 900;
+}
+
+.secondary-link,
+.secondary-button {
+  min-height: 48px;
+  border: 1px solid #050505;
+  background: transparent;
+  color: #050505;
+}
+
+.icon-grid,
+.feature-grid,
+.church-grid,
+.list-grid,
+.content-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 28px);
+  margin-top: clamp(28px, 4vw, 58px);
+}
+
+.icon-card,
+.feature-card,
+.church-card,
+.list-grid a,
+.content-feature-grid article,
+.faq details,
+.sacred-panel,
+.content-panel {
+  border: 1px solid #d8d8d8;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: clamp(18px, 2vw, 30px);
+}
+
+.list-grid a {
+  display: grid;
+  gap: 10px;
+}
+
+.list-grid span {
+  color: #b8842b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.list-grid strong,
+.icon-card h3,
+.feature-card h3,
+.church-card h3,
+.sacred-panel h2,
+.content-feature-grid h3 {
+  color: #050505;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 900;
+}
+
+.list-grid p,
+.icon-card p,
+.feature-card p,
+.church-card p,
+.content-feature-grid p,
+.seo-text p,
+.faq p {
+  color: #5d5752;
+}
+
+.sacred-detail-hero,
+.icon-detail {
+  align-items: start;
+}
+
+.sacred-image-frame,
+.icon-detail > img,
+.detail-image {
+  border: 1px solid #d8d8d8;
+  border-radius: 0;
+  background: #f9f9f9;
+  box-shadow: none;
+}
+
+.sacred-image-frame img,
+.icon-detail > img,
+.detail-image img {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  aspect-ratio: auto;
+  object-fit: contain;
+  object-position: center;
+}
+
+.sacred-image-frame {
+  display: grid;
+  place-items: center;
+}
+
+.soft-note {
+  border-left: 4px solid #b8842b;
+  background: transparent;
+}
+
+.sacred-content-grid,
+.related-section,
+.seo-text,
+.faq {
+  border-top: 2px solid #d8d8d8;
+  padding-top: clamp(22px, 3vw, 42px);
+}
+
+.mini-grid {
+  border-color: #d8d8d8;
+}
+
+.mini-grid a {
+  border-color: #d8d8d8;
+}
+
+@media (max-width: 900px) {
+  body:not(:has(.calendar-shell)) .page,
+  body:not(:has(.calendar-shell)) .read-page,
+  body:not(:has(.calendar-shell)) .detail-page,
+  body:not(:has(.calendar-shell)) .list-page {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .filter-row,
+  .icon-grid,
+  .feature-grid,
+  .church-grid,
+  .list-grid,
+  .content-feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-toolbar {
+    align-items: start;
+  }
+
+  .filter-menu {
+    right: auto;
+    left: 0;
+  }
+}
+

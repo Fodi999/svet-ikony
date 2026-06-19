@@ -28,29 +28,7 @@ a { color: inherit; text-decoration: none; }
 img { max-width: 100%; display: block; }
 button, input, textarea, select { font: inherit; }
 
-.site-header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  min-height: 84px;
-  display: grid;
-  grid-template-columns: minmax(190px, 260px) 1fr auto;
-  align-items: center;
-  gap: 24px;
-  padding: 16px clamp(18px, 5vw, 72px);
-  border-bottom: 1px solid rgba(255, 255, 255, .12);
-  background: rgba(35, 24, 20, .94);
-  color: var(--paper);
-  box-shadow: 0 14px 36px rgba(28, 18, 12, .18);
-  backdrop-filter: blur(14px);
-}
-
-.brand { display: grid; gap: 2px; font-family: Impact, "Arial Black", sans-serif; font-weight: 900; letter-spacing: 0; text-transform: uppercase; }
-.brand span { font-size: 24px; }
-.brand small { color: var(--gold-soft); font-size: 12px; letter-spacing: .14em; }
-.site-header nav { display: flex; justify-content: center; gap: clamp(14px, 3vw, 36px); color: rgba(255, 250, 242, .7); font-size: 15px; }
-.site-header nav a:hover, .header-action:hover { color: #fff; }
-.header-action, .primary-button, .secondary-button, .card-link {
+.primary-button, .secondary-button, .card-link {
   min-height: 42px;
   display: inline-flex;
   align-items: center;
@@ -61,11 +39,6 @@ button, input, textarea, select { font: inherit; }
   background: var(--ink);
   color: #fffaf0;
   font-weight: 700;
-}
-.header-action {
-  border-color: rgba(237, 215, 168, .42);
-  background: rgba(237, 215, 168, .12);
-  color: var(--paper);
 }
 .secondary-button, .card-link { background: transparent; color: var(--ink); }
 
@@ -431,4 +404,3 @@ main { min-height: 70vh; }
 .site-footer { padding: 46px clamp(18px, 5vw, 72px); border-top: 1px solid rgba(255,255,255,.14); display: flex; justify-content: space-between; gap: 24px; color: #b8b8b8; background: #050505; }
 .site-footer strong, .site-footer a { color: #f7f7f7; }
 .site-footer div:last-child { display: flex; flex-wrap: wrap; gap: 18px; }
-

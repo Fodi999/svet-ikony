@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Header } from '@/components/site/Header';
 import { Footer } from '@/components/site/Footer';
+import { LanguageProvider } from '@/components/site/LanguageProvider';
 
 export const metadata: Metadata = {
   title: 'ikona.link | Молитва у иконы',
@@ -10,11 +11,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru">
+    <html lang="uk">
       <body>
-        <Header />
-        {children}
-        <Footer />
+        <LanguageProvider>
+          <Header />
+          {children}
+          <Footer />
+        </LanguageProvider>
       </body>
     </html>
   );

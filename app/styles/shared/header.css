@@ -1,0 +1,141 @@
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: minmax(148px, 220px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(16px, 3vw, 34px);
+  padding: 12px clamp(18px, 5vw, 72px);
+  border-bottom: 1px solid rgba(237, 215, 168, .16);
+  background: rgba(19, 13, 10, .92);
+  color: var(--paper);
+  box-shadow: 0 14px 36px rgba(28, 18, 12, .2);
+  backdrop-filter: blur(16px);
+}
+
+.brand {
+  width: max-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--paper);
+  font-family: Impact, "Arial Black", sans-serif;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.brand span {
+  color: var(--gold-soft);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.brand small {
+  color: var(--paper);
+  font-size: 13px;
+  letter-spacing: .08em;
+}
+
+.site-header nav {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 3vw, 36px);
+  color: rgba(255, 250, 242, .72);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.site-header nav a,
+.header-action {
+  transition: color .16s ease, border-color .16s ease, background .16s ease;
+}
+
+.site-header nav a:hover,
+.header-action:hover {
+  color: #fff;
+}
+
+.header-tools {
+  display: inline-flex;
+  align-items: center;
+  justify-content: end;
+  gap: 12px;
+}
+
+.language-switch {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(237, 215, 168, .26);
+  background: rgba(5, 5, 5, .34);
+}
+
+.language-switch button {
+  min-width: 42px;
+  height: 38px;
+  border: 0;
+  border-right: 1px solid rgba(237, 215, 168, .18);
+  padding: 0 10px;
+  background: transparent;
+  color: rgba(255, 250, 242, .64);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.language-switch button:last-child {
+  border-right: 0;
+}
+
+.language-switch button.active {
+  background: var(--paper);
+  color: #050505;
+}
+
+.language-switch button:hover {
+  color: #fff;
+}
+
+.language-switch button.active:hover {
+  color: #050505;
+}
+
+.header-action {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(237, 215, 168, .42);
+  padding: 0 16px;
+  background: rgba(237, 215, 168, .1);
+  color: var(--paper);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .site-header {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 12px;
+  }
+
+  .site-header nav {
+    width: 100%;
+    justify-content: start;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .header-tools {
+    justify-content: start;
+    flex-wrap: wrap;
+  }
+}

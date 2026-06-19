@@ -5,5 +5,21 @@ export const metadata = pageMetadata({ title: 'Евангелие дня', descr
 
 export default async function GospelPage() {
   const gospel = await publicApi.gospelToday();
-  return <main className="read-page"><p className="eyebrow">{gospel.date}</p><h1>{gospel.title}</h1><h2>{gospel.reference}</h2><article>{gospel.text}</article><p>{gospel.explanation}</p></main>;
+  return (
+    <main className="read-page sacred-read-page">
+      <section className="read-hero">
+        <p className="eyebrow">{gospel.date}</p>
+        <h1>{gospel.title}</h1>
+        <p>{gospel.reference}</p>
+      </section>
+      <article className="sacred-panel prayer-panel">
+        <span>Евангелие дня</span>
+        <div className="reader-text"><p>{gospel.text}</p></div>
+      </article>
+      <article className="sacred-panel">
+        <span>Объяснение</span>
+        <div className="reader-text"><p>{gospel.explanation}</p></div>
+      </article>
+    </main>
+  );
 }

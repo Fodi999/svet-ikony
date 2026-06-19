@@ -1,4 +1,5 @@
 import { IconGrid } from '@/components/site/IconGrid';
+import { T } from '@/components/site/TranslatedText';
 import { publicApi } from '@/lib/api';
 import { pageMetadata } from '@/lib/seo';
 
@@ -9,10 +10,10 @@ export default async function IconsPage() {
   const categories = Array.from(new Set(icons.map((icon) => icon.category)));
   return (
     <main className="page">
-      <section className="page-hero"><p className="eyebrow">Каталог</p><h1>Православные иконы</h1><p>Поиск, категории и страницы, готовые для QR-кодов физических икон.</p></section>
-      <div className="filter-row"><input placeholder="Поиск по иконе или святому" /><select>{categories.map((category) => <option key={category}>{category}</option>)}</select></div>
+      <section className="page-hero"><p className="eyebrow"><T k="catalog" /></p><h1><T k="iconsPageTitle" /></h1><p><T k="iconsPageLead" /></p></section>
+      <div className="filter-row"><input placeholder="Пошук за іконою або святим" /><select>{categories.map((category) => <option key={category}>{category}</option>)}</select></div>
       <IconGrid icons={icons} />
-      <section className="seo-text"><h2>Иконы с QR-кодом</h2><p>Каждая опубликованная страница может быть связана с физической иконой, чтобы человек мог спокойно открыть молитву, историю образа и духовные материалы.</p></section>
+      <section className="seo-text"><h2><T k="iconsSeoTitle" /></h2><p><T k="iconsSeoText" /></p></section>
     </main>
   );
 }

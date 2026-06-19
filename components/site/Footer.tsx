@@ -1,17 +1,22 @@
+'use client';
+
 import Link from 'next/link';
+import { useI18n } from './LanguageProvider';
 
 export function Footer() {
+  const { t } = useI18n();
+
   return (
     <footer className="site-footer">
       <div>
         <strong>☦</strong>
-        <small>Молитва у иконы</small>
-        <p>Православные QR-страницы для молитвенного чтения, истории икон и духовных материалов.</p>
+        <small>{t('brand')}</small>
+        <p>{t('footerText')}</p>
       </div>
       <div>
-        <Link href="/icons">Иконы</Link>
-        <Link href="/p/pravoslavnaya-ikona-s-qr-kodom">SEO-страница</Link>
-        <Link href="/qr/home-001">Пример QR</Link>
+        <Link href="/icons">{t('navIcons')}</Link>
+        <Link href="/p/pravoslavnaya-ikona-s-qr-kodom">{t('seoPage')}</Link>
+        <Link href="/qr/home-001">{t('qrExample')}</Link>
       </div>
     </footer>
   );

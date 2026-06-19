@@ -3,25 +3,29 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { CalendarContent, GospelReading, Icon, Prayer, SeoPage } from '@/lib/types';
+import { LanguageSwitch, useI18n } from './LanguageProvider';
+import type { TranslationKey } from '@/lib/i18n';
 
 type DayKind = 'feast' | 'fast' | 'gospel' | 'prayer' | 'quiet';
 type FilterKind = 'all' | DayKind;
 type ViewMode = 'calendar' | 'list';
 
 const months = [
-  { title: 'Январь', days: 31 },
-  { title: 'Февраль', days: 28 },
-  { title: 'Март', days: 31 },
-  { title: 'Апрель', days: 30 },
-  { title: 'Май', days: 31 },
-  { title: 'Июнь', days: 30 },
-  { title: 'Июль', days: 31 },
-  { title: 'Август', days: 31 },
-  { title: 'Сентябрь', days: 30 },
-  { title: 'Октябрь', days: 31 },
-  { title: 'Ноябрь', days: 30 },
-  { title: 'Декабрь', days: 31 }
-];
+  { key: 'monthJanuary', ruTitle: 'Январь', days: 31 },
+  { key: 'monthFebruary', ruTitle: 'Февраль', days: 28 },
+  { key: 'monthMarch', ruTitle: 'Март', days: 31 },
+  { key: 'monthApril', ruTitle: 'Апрель', days: 30 },
+  { key: 'monthMay', ruTitle: 'Май', days: 31 },
+  { key: 'monthJune', ruTitle: 'Июнь', days: 30 },
+  { key: 'monthJuly', ruTitle: 'Июль', days: 31 },
+  { key: 'monthAugust', ruTitle: 'Август', days: 31 },
+  { key: 'monthSeptember', ruTitle: 'Сентябрь', days: 30 },
+  { key: 'monthOctober', ruTitle: 'Октябрь', days: 31 },
+  { key: 'monthNovember', ruTitle: 'Ноябрь', days: 30 },
+  { key: 'monthDecember', ruTitle: 'Декабрь', days: 31 }
+] as const satisfies Array<{ key: TranslationKey; ruTitle: string; days: number }>;
+
+const weekdayKeys: TranslationKey[] = ['weekdayMon', 'weekdayTue', 'weekdayWed', 'weekdayThu', 'weekdayFri', 'weekdaySat', 'weekdaySun'];
 
 type CalendarDay = {
   day: string;
@@ -37,19 +41,21 @@ type CalendarDay = {
   feast?: boolean;
   textOnly?: boolean;
   description?: string;
+  outOfMonth?: boolean;
+  monthKey?: TranslationKey;
 };
 
-const filterLabels: Record<FilterKind, string> = {
-  all: 'Все дни',
-  feast: 'Праздники / иконы',
-  fast: 'Пост / особые дни',
-  gospel: 'Евангелие',
-  prayer: 'Молитвы',
-  quiet: 'Тихие дни'
+const filterLabelKeys: Record<FilterKind, TranslationKey> = {
+  all: 'allDays',
+  feast: 'feastIcons',
+  fast: 'fastSpecial',
+  gospel: 'gospel',
+  prayer: 'prayers',
+  quiet: 'quietDays'
 };
 
 function normalizeLookup(value?: string) {
-  return (value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').trim();
+  return (value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-яіїєґ0-9]+/gi, ' ').trim();
 }
 
 function findCalendarIcon(icons: Icon[], day: CalendarContent['days'][number]) {
@@ -141,26 +147,75 @@ function createQuietMonth(totalDays: number): CalendarDay[] {
   return fillMonthDays([], totalDays);
 }
 
+function getMondayStartOffset(year: number, monthIndex: number) {
+  return (new Date(year, monthIndex, 1).getDay() + 6) % 7;
+}
+
+function createCalendarGridDays(days: CalendarDay[], monthIndex: number, year: number): CalendarDay[] {
+  const offset = getMondayStartOffset(year, monthIndex);
+  const previousMonthIndex = (monthIndex + 11) % 12;
+  const nextMonthIndex = (monthIndex + 1) % 12;
+  const previousMonth = months[previousMonthIndex];
+  const nextMonth = months[nextMonthIndex];
+  const leading = Array.from({ length: offset }, (_, index) => {
+    const day = String(previousMonth.days - offset + index + 1).padStart(2, '0');
+    return { day, label: '', note: '', kind: 'quiet' as DayKind, textOnly: true, outOfMonth: true, monthKey: previousMonth.key };
+  });
+  const current = days.map((day) => ({ ...day, outOfMonth: false, monthKey: months[monthIndex].key }));
+  const trailingCount = (7 - ((leading.length + current.length) % 7)) % 7;
+  const trailing = Array.from({ length: trailingCount }, (_, index) => {
+    const day = String(index + 1).padStart(2, '0');
+    return { day, label: '', note: '', kind: 'quiet' as DayKind, textOnly: true, outOfMonth: true, monthKey: nextMonth.key };
+  });
+
+  return [...leading, ...current, ...trailing];
+}
+
 function monthIndexFromTitle(title?: string) {
   const normalized = normalizeLookup(title);
-  const index = months.findIndex((month) => normalized.includes(normalizeLookup(month.title)));
+  const index = months.findIndex((month) => normalized.includes(normalizeLookup(month.ruTitle)));
   return index >= 0 ? index : 0;
 }
 
+function localizedHeroTitle(title: string | undefined, t: (key: TranslationKey) => string) {
+  const normalized = normalizeLookup(title);
+  if (!normalized || normalized === normalizeLookup('Свет Иконы') || normalized === normalizeLookup('Світ Ікони')) return t('svetIkony');
+  return title;
+}
+
+function localizedHeroText(value: string | undefined, fallbackKey: TranslationKey, t: (key: TranslationKey) => string) {
+  const normalized = normalizeLookup(value);
+  const known: Array<[TranslationKey, string[]]> = [
+    ['saintVasily', ['Святитель Василий Великий', 'Святитель Василій Великий']],
+    ['saintMemory', ['Память святого', 'Пам’ять святого', 'Память святого']],
+    ['jan14Old', ['14 января (ст. ст.)', '14 січня (ст. ст.)']],
+    ['jan14', ['14 января 2026', '14 січня 2026']],
+    ['saintNicholasIcon', ['Икона святителя Николая Чудотворца', 'Ікона святителя Миколая Чудотворця']],
+    ['currentFeast', ['Сегодняшний праздник', 'Сьогоднішнє свято']],
+    ['importantDay', ['Важный день', 'Важливий день']]
+  ];
+  const match = known.find(([, variants]) => variants.some((item) => normalizeLookup(item) === normalized));
+  if (match) return t(match[0]);
+  return value || t(fallbackKey);
+}
+
 export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: { icons: Icon[]; prayers: Prayer[]; gospel: GospelReading; pages?: SeoPage[]; calendar?: CalendarContent }) {
+  const { t } = useI18n();
   const [filterOpen, setFilterOpen] = useState(false);
   const [filter, setFilter] = useState<FilterKind>('all');
   const [view, setView] = useState<ViewMode>('calendar');
+  const [expandedDay, setExpandedDay] = useState('monthJanuary-14');
   const hero = calendar?.hero;
   const year = hero?.year ?? '2026';
   const [monthIndex, setMonthIndex] = useState(() => monthIndexFromTitle(hero?.monthTitle));
   const januaryDays = useMemo(() => createMonthDays(icons, prayers, gospel, calendar), [icons, prayers, gospel, calendar]);
   const days = useMemo(() => monthIndex === 0 ? januaryDays : createQuietMonth(months[monthIndex].days), [januaryDays, monthIndex]);
-  const visibleDays = filter === 'all' ? days : days.filter((day) => day.kind === filter);
+  const calendarGridDays = useMemo(() => createCalendarGridDays(days, monthIndex, Number(year) || 2026), [days, monthIndex, year]);
+  const visibleDays = filter === 'all' ? (view === 'calendar' ? calendarGridDays : days) : days.filter((day) => day.kind === filter);
   const today = days.find((day) => day.day === '14') ?? days.find((day) => day.current) ?? days[0];
   const prevMonth = months[(monthIndex + 11) % 12];
   const nextMonth = months[(monthIndex + 1) % 12];
-  const monthTitle = `${months[monthIndex].title} ${year}`;
+  const monthTitle = `${t(months[monthIndex].key)} ${year}`;
   const iconOfDay = icons.find((icon) => icon.slug === hero?.iconDayIconSlug) ?? icons[1] ?? icons[0];
   const prayerOfDay = prayers.find((prayer) => prayer.slug === hero?.iconDayPrayerSlug) ?? prayers[0];
   const services = calendar?.services?.length ? calendar.services : [
@@ -175,51 +230,58 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
       <div className="calendar-topline">
         <Link className="calendar-logo" href="/">
           <span className="orthodox-cross">☦</span>
-          <span><strong>Молитва у иконы</strong><small>Православный портал</small></span>
+          <span><strong>{t('brand')}</strong><small>{t('portal')}</small></span>
         </Link>
-        <span>Главная <b>/</b> Календарь</span>
+        <div className="calendar-top-actions">
+          <LanguageSwitch />
+          <nav className="calendar-breadcrumbs" aria-label={`${t('home')} / ${t('calendar')}`}>
+            <Link href="/">{t('home')}</Link>
+            <b>/</b>
+            <a href="#calendar-grid">{t('calendar')}</a>
+          </nav>
+        </div>
       </div>
 
       <section className="calendar-hero">
         <div>
           <span className="calendar-year">{hero?.year ?? '2026'}</span>
-          <h1>{hero?.title ?? 'Свет Иконы'}</h1>
+          <h1>{localizedHeroTitle(hero?.title, t)}</h1>
         </div>
         <aside className="calendar-feature">
-          <p>Праздник дня</p>
-          <strong><span className="gold-cross">☦</span> {hero?.featureTitle ?? 'Святитель Василий Великий'}</strong>
-          <span>{hero?.featureNote ?? 'Память святого'}<br />{hero?.featureDate ?? '14 января (ст. ст.)'}</span>
-          <Link href={hero?.featureHref || '/saints/nikolay-chudotvorets'}>О празднике →</Link>
+          <p>{t('todayFeast')}</p>
+          <strong><span className="gold-cross">☦</span> {localizedHeroText(hero?.featureTitle, 'saintVasily', t)}</strong>
+          <span>{localizedHeroText(hero?.featureNote, 'saintMemory', t)}<br />{localizedHeroText(hero?.featureDate, 'jan14Old', t)}</span>
+          <Link href={hero?.featureHref || '/saints/nikolay-chudotvorets'}>{t('aboutFeast')} →</Link>
         </aside>
         <aside className="calendar-icon-day">
           {iconOfDay ? <img src={iconOfDay.imageUrl} alt={iconOfDay.title} /> : null}
           <div>
-            <p>Икона дня</p>
-            <strong>{hero?.iconDayTitle || iconOfDay?.title || 'Икона дня'}</strong>
-            <span>{hero?.iconDayDate ?? '14 января 2026'}</span>
-            <Link href={prayerOfDay ? `/prayers/${prayerOfDay.slug}` : '/prayers'}>Открыть молитву →</Link>
+            <p>{t('todayIcon')}</p>
+            <strong>{localizedHeroText(hero?.iconDayTitle || iconOfDay?.title, 'iconOfDay', t)}</strong>
+            <span>{localizedHeroText(hero?.iconDayDate, 'jan14', t)}</span>
+            <Link href={prayerOfDay ? `/prayers/${prayerOfDay.slug}` : '/prayers'}>{t('openPrayer')} →</Link>
           </div>
         </aside>
         <aside className="calendar-info">
-          <p>Информация</p>
-          <span><i /> {hero?.infoPrimary ?? 'Сегодняшний праздник'}</span>
-          <span><i className="red" /> {hero?.infoSecondary ?? 'Важный день'}</span>
+          <p>{t('information')}</p>
+          <span><i /> {localizedHeroText(hero?.infoPrimary, 'currentFeast', t)}</span>
+          <span><i className="red" /> {localizedHeroText(hero?.infoSecondary, 'importantDay', t)}</span>
         </aside>
       </section>
 
       <div className="calendar-toolbar">
         <div className="month-switch">
-          <button type="button" onClick={() => setMonthIndex((index) => (index + 11) % 12)}>← {prevMonth.title}</button>
+          <button type="button" onClick={() => setMonthIndex((index) => (index + 11) % 12)}>← {t(prevMonth.key)}</button>
           <strong>{monthTitle}</strong>
-          <button type="button" onClick={() => setMonthIndex((index) => (index + 1) % 12)}>{nextMonth.title} →</button>
+          <button type="button" onClick={() => setMonthIndex((index) => (index + 1) % 12)}>{t(nextMonth.key)} →</button>
         </div>
         <div className="calendar-filter">
           <button className="filter-toggle" type="button" aria-expanded={filterOpen} onClick={() => setFilterOpen((open) => !open)}>
-            <span>Фильтр: {filterLabels[filter]}</span><i aria-hidden="true">⌄</i>
+            <span>{t('filter')}: {t(filterLabelKeys[filter])}</span><i aria-hidden="true">⌄</i>
           </button>
           {filterOpen ? (
             <div className="filter-menu">
-              {(Object.keys(filterLabels) as FilterKind[]).map((kind) => (
+              {(Object.keys(filterLabelKeys) as FilterKind[]).map((kind) => (
                 <button
                   key={kind}
                   className={filter === kind ? 'active' : ''}
@@ -229,70 +291,124 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
                     setFilterOpen(false);
                   }}
                 >
-                  {filterLabels[kind]}
+                  {t(filterLabelKeys[kind])}
                 </button>
               ))}
             </div>
           ) : null}
         </div>
-        <div className="view-switch" role="group" aria-label="Вид календаря">
-          <button className={view === 'calendar' ? 'active' : ''} type="button" onClick={() => setView('calendar')}>Календарь</button>
+        <div className="view-switch" role="group" aria-label={t('calendarViewLabel')}>
+          <button className={view === 'calendar' ? 'active' : ''} type="button" onClick={() => setView('calendar')}>{t('calendar')}</button>
           <span>|</span>
-          <button className={view === 'list' ? 'active' : ''} type="button" onClick={() => setView('list')}>Список</button>
+          <button className={view === 'list' ? 'active' : ''} type="button" onClick={() => setView('list')}>{t('list')}</button>
         </div>
       </div>
 
       <div className="calendar-main">
-        <section className="month-block">
-          <h2>{months[monthIndex].title}</h2>
+        <section id="calendar-grid" className="month-block">
+          <h2>{t(months[monthIndex].key)}</h2>
           {visibleDays.length ? (
             <div className={view === 'list' ? 'calendar-list' : 'calendar-grid'}>
-              {visibleDays.map((item) => {
+              {view === 'list' ? visibleDays.map((item) => {
+                const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
+                const detailHref = pageHrefForDay(item, pages);
+                const itemKey = `${months[monthIndex].key}-${item.day}`;
+                const isExpanded = expandedDay === itemKey;
+                const hasContent = Boolean(item.label);
+
+                return (
+                  <article key={itemKey} className={'list-accordion-item' + (isExpanded ? ' open' : '') + (item.day === today.day ? ' today' : '')}>
+                    <button
+                      className="list-accordion-trigger"
+                      type="button"
+                      aria-expanded={isExpanded}
+                      onClick={() => setExpandedDay((current) => current === itemKey ? '' : itemKey)}
+                    >
+                      <span className="list-day-number">{item.day}{item.current ? <i /> : null}{item.feast || item.kind === 'fast' ? <i className="red" /> : null}</span>
+                      <span className="list-day-heading">
+                        <strong>{hasContent ? item.label : t('quietDays')}</strong>
+                        <small>{hasContent ? item.note : monthTitle}</small>
+                      </span>
+                      <span className="list-accordion-mark" aria-hidden="true">{isExpanded ? '−' : '+'}</span>
+                    </button>
+                    {isExpanded ? (
+                      <div className="list-accordion-panel">
+                        {imageUrl ? (
+                          <Link className="list-image-link" href={detailHref} aria-label={`${t('openDay')} ${item.label || t('iconOfDay')}`}>
+                            <img src={imageUrl} alt={item.icon?.title || item.label || t('iconOfDay')} />
+                          </Link>
+                        ) : null}
+                        <div className="list-panel-copy">
+                          <p>{hasContent ? item.note : t('quietDays')}</p>
+                          <h3>{hasContent ? item.label : `${item.day} ${t(months[monthIndex].key)}`}</h3>
+                          {item.description ? <span>{item.description}</span> : <span>{monthTitle}</span>}
+                          {hasContent ? (
+                            <nav className="list-panel-links" aria-label={`${t('dayLinks')} ${item.day} ${t('januaryGenitive')}`}>
+                              <Link href={item.prayerSlug ? `/prayers/${item.prayerSlug}` : '/prayers'}>{t('prayers')}</Link>
+                              <Link href={item.gospelSlug && item.gospelSlug !== 'today' ? `/gospel/${item.gospelSlug}` : '/gospel'}>{t('gospel')}</Link>
+                              <Link href={detailHref}>{t('more')}</Link>
+                            </nav>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              }) : (
+                <>
+                  {weekdayKeys.map((key) => <div className="weekday-cell" key={key}>{t(key)}</div>)}
+                  {visibleDays.map((item) => {
                 const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
                 const detailHref = pageHrefForDay(item, pages);
 
                 return (
-                  <article key={item.day} className={'calendar-day' + (item.textOnly ? ' text-only' : '') + (item.day === today.day ? ' today' : '')}>
-                    <div className="day-number">{item.day}{item.current ? <i /> : null}{item.feast || item.kind === 'fast' ? <i className="red" /> : null}</div>
-                    {item.day === today.day ? <span className="today-badge">Сегодня</span> : null}
-                    {imageUrl && view === 'calendar' ? (
-                      <Link className="day-image-link" href={detailHref} aria-label={`Открыть ${item.label || 'икону дня'}`}>
-                        <img src={imageUrl} alt={item.icon?.title || item.label || 'Икона дня'} />
-                      </Link>
+                  <article key={`${item.monthKey || months[monthIndex].key}-${item.day}`} className={'calendar-day' + (item.textOnly ? ' text-only' : '') + (!item.outOfMonth && item.day === today.day ? ' today' : '') + (item.outOfMonth ? ' out-of-month' : '')}>
+                    <div className="day-number">{item.day}{item.outOfMonth && item.monthKey ? <small>{t(item.monthKey)}</small> : null}{item.current ? <i /> : null}{item.feast || item.kind === 'fast' ? <i className="red" /> : null}</div>
+                    {!item.outOfMonth && item.day === today.day ? <span className="today-badge">{t('today')}</span> : null}
+                    {item.label ? (
+                      <div className="day-event">
+                        {!item.outOfMonth && imageUrl && view === 'calendar' ? (
+                          <Link className="day-image-link" href={detailHref} aria-label={`${t('openDay')} ${item.label || t('iconOfDay')}`}>
+                            <img src={imageUrl} alt={item.icon?.title || item.label || t('iconOfDay')} />
+                          </Link>
+                        ) : null}
+                        <div className="day-copy">
+                          <Link className="day-title-link" href={detailHref}>{item.label}</Link>
+                          <span>{item.note}</span>
+                          {item.description ? <em>{item.description}</em> : null}
+                        </div>
+                        {!item.outOfMonth ? (
+                          <nav className="day-links" aria-label={`${t('dayLinks')} ${item.day} ${t('januaryGenitive')}`}>
+                            <Link href={item.prayerSlug ? `/prayers/${item.prayerSlug}` : '/prayers'}>{t('prayers')}</Link>
+                            <Link href={item.gospelSlug && item.gospelSlug !== 'today' ? `/gospel/${item.gospelSlug}` : '/gospel'}>{t('gospel')}</Link>
+                            <Link href={detailHref}>{t('more')}</Link>
+                          </nav>
+                        ) : null}
+                      </div>
                     ) : null}
-                    <div className="day-copy">
-                      {item.label ? <Link className="day-title-link" href={detailHref}>{item.label}</Link> : <strong>{item.label}</strong>}
-                      <span>{item.note}</span>
-                      {item.description ? <em>{item.description}</em> : null}
-                      {item.label ? (
-                        <nav className="day-links" aria-label={`Ссылки на ${item.day} января`}>
-                          <Link href={item.prayerSlug ? `/prayers/${item.prayerSlug}` : '/prayers'}>Молитва</Link>
-                          <Link href={item.gospelSlug && item.gospelSlug !== 'today' ? `/gospel/${item.gospelSlug}` : '/gospel'}>Евангелие</Link>
-                          <Link href={detailHref}>Подробнее</Link>
-                        </nav>
-                      ) : null}
-                    </div>
                   </article>
                 );
               })}
+                </>
+              )}
             </div>
           ) : (
-            <p className="calendar-empty">Нет дней по выбранному фильтру.</p>
+            <p className="calendar-empty">{t('noDays')}</p>
           )}
         </section>
 
         <aside className="today-card">
-          <p>Сегодня</p>
-          <strong>{hero?.todayDate ?? '14 января 2026'}</strong>
+          <p>{t('today')}</p>
+          <strong>{hero?.todayDate ?? t('jan14')}</strong>
           <dl>
-            <dt>Праздник дня</dt>
+            <dt>{t('todayFeast')}</dt>
             <dd>{today?.label}</dd>
-            <dt>Евангелие дня</dt>
+            <dt>{t('gospelDay')}</dt>
             <dd>{hero?.todayGospel || gospel.reference}</dd>
-            <dt>Молитва дня</dt>
+            <dt>{t('prayerDay')}</dt>
             <dd>{hero?.todayPrayerTitle || prayerOfDay?.title}</dd>
           </dl>
-          <Link href={hero?.todayHref || '/gospel'}>Читать</Link>
+          <Link href={hero?.todayHref || '/gospel'}>{t('read')}</Link>
         </aside>
       </div>
 

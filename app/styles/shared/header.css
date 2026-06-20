@@ -122,20 +122,69 @@
 
 @media (max-width: 900px) {
   .site-header {
-    grid-template-columns: 1fr;
-    align-items: start;
-    gap: 12px;
+    min-height: auto;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 10px 14px;
+    padding: 10px 14px;
+  }
+
+  .brand {
+    min-width: 0;
+  }
+
+  .brand small {
+    max-width: 180px;
+    overflow: hidden;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .site-header nav {
+    grid-column: 1 / -1;
     width: 100%;
     justify-content: start;
     overflow-x: auto;
     padding-bottom: 4px;
+    gap: 18px;
+    scrollbar-width: none;
+  }
+
+  .site-header nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-header nav a {
+    flex: 0 0 auto;
   }
 
   .header-tools {
-    justify-content: start;
-    flex-wrap: wrap;
+    justify-content: end;
+    gap: 8px;
+  }
+
+  .header-action {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .site-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .brand span {
+    font-size: 24px;
+  }
+
+  .brand small {
+    max-width: 145px;
+    font-size: 11px;
+  }
+
+  .language-switch button {
+    min-width: 38px;
+    padding: 0 8px;
   }
 }

@@ -554,6 +554,61 @@ button,
   margin-top: 0;
 }
 
+.prayer-reader-panel {
+  max-width: 1180px;
+  margin-inline: auto;
+  border-color: #d4c7b4;
+  padding: clamp(22px, 4vw, 70px);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(248, 244, 236, .92)),
+    #fbf8f1;
+}
+
+.prayer-reader-panel > span {
+  width: max-content;
+  border: 1px solid #d8d1c7;
+  padding: 8px 12px;
+  background: #f4f0e8;
+}
+
+.prayer-reader {
+  max-width: 860px;
+  margin-inline: auto;
+  color: #2b2520;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(20px, 2vw, 31px);
+  line-height: 1.72;
+}
+
+.prayer-reader h3 {
+  margin: clamp(26px, 4vw, 54px) 0 clamp(14px, 2vw, 26px);
+  border-top: 1px solid #ded4c5;
+  padding-top: clamp(18px, 2.4vw, 32px);
+  color: #b8842b;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(16px, 1.45vw, 22px);
+  font-weight: 900;
+  letter-spacing: .08em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.prayer-reader h3:first-child {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.prayer-reader p {
+  margin: 0 0 clamp(18px, 2vw, 30px);
+}
+
+.prayer-reader-panel audio {
+  width: min(100%, 860px);
+  margin: clamp(22px, 3vw, 42px) auto 0;
+  display: block;
+}
+
 .lead-form {
   max-width: 980px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -614,6 +669,8 @@ button,
     margin: 0;
     border: 0;
     border-radius: 0;
+    min-height: calc(100vh - 112px);
+    padding: 28px 16px 46px;
   }
 
   .filter-row,
@@ -634,13 +691,109 @@ button,
     grid-column: auto;
   }
 
+  .page-hero,
+  .read-hero {
+    gap: 12px;
+    padding-bottom: 30px;
+  }
+
+  .page-hero h1,
+  .read-hero h1,
+  .sacred-hero-copy h1,
+  .detail-page h1 {
+    max-width: 100%;
+    font-size: clamp(42px, 16vw, 76px);
+    line-height: .9;
+    overflow-wrap: anywhere;
+  }
+
+  .page-hero p,
+  .read-hero p,
+  .sacred-hero-copy .detail-lead,
+  .detail-lead,
+  .icon-detail > div > p:not(.eyebrow) {
+    font-size: 18px;
+    line-height: 1.45;
+  }
+
+  .filter-row {
+    gap: 10px;
+    margin: 18px 0;
+  }
+
+  input,
+  select,
+  textarea {
+    min-height: 48px;
+    padding: 12px 14px;
+    font-size: 16px;
+  }
+
+  .icon-grid,
+  .feature-grid,
+  .church-grid,
+  .list-grid,
+  .content-feature-grid {
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .icon-card,
+  .feature-card,
+  .church-card,
+  .feature-grid > article,
+  .church-grid > article,
+  .list-grid a,
+  .content-feature-grid article,
+  .faq details,
+  .sacred-panel,
+  .content-panel {
+    padding: 16px;
+  }
+
+  .sacred-image-frame {
+    position: static;
+  }
+
+  .sacred-content-grid,
+  .related-section,
+  .seo-text,
+  .faq {
+    margin-top: 28px;
+    padding-top: 22px;
+  }
+
   .site-footer {
     align-items: start;
     flex-direction: column;
+    padding: 34px 16px;
   }
 
   .site-footer div:last-child {
     justify-content: start;
+  }
+
+  .detail-actions,
+  .hero-actions,
+  .list-panel-links {
+    width: 100%;
+  }
+
+  .primary-link,
+  .secondary-link,
+  .primary-button,
+  .secondary-button,
+  .lead-form button {
+    width: 100%;
+  }
+
+  .prayer-reader-panel {
+    padding: 22px 18px;
+  }
+
+  .prayer-reader {
+    font-size: clamp(19px, 5.4vw, 23px);
+    line-height: 1.62;
   }
 
   .calendar-toolbar {
@@ -655,5 +808,45 @@ button,
   .calendar-top-actions {
     justify-content: start;
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 520px) {
+  body:not(:has(.calendar-shell)) .page,
+  body:not(:has(.calendar-shell)) .read-page,
+  body:not(:has(.calendar-shell)) .detail-page,
+  body:not(:has(.calendar-shell)) .list-page {
+    padding: 24px 14px 40px;
+  }
+
+  .page-hero h1,
+  .read-hero h1,
+  .sacred-hero-copy h1,
+  .detail-page h1 {
+    font-size: clamp(38px, 18vw, 64px);
+  }
+
+  .eyebrow,
+  .sacred-panel > span,
+  .content-feature-grid span,
+  .card-category,
+  .detail-meta {
+    letter-spacing: .12em;
+  }
+
+  .list-grid strong,
+  .icon-card h3,
+  .feature-card h3,
+  .church-card h3,
+  .feature-grid > article h3,
+  .church-grid > article h3,
+  .sacred-panel h2,
+  .content-feature-grid h3 {
+    font-size: clamp(22px, 7vw, 34px);
+    line-height: 1.05;
+  }
+
+  .mini-grid a {
+    min-height: 108px;
   }
 }

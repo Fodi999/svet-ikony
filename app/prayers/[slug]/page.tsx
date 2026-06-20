@@ -7,9 +7,13 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 function Paragraphs({ text }: { text?: string }) {
+  const parts = (text || '').split(/\n{2,}|\n/).map((part) => part.trim()).filter(Boolean);
   return (
     <>
-      {(text || '').split(/\n{2,}|\n/).map((part) => part.trim()).filter(Boolean).map((part) => <p key={part}>{part}</p>)}
+      {parts.map((part) => {
+        const heading = part.match(/^\*\*(.+)\*\*$/);
+        return heading ? <h3 key={part}>{heading[1]}</h3> : <p key={part}>{part}</p>;
+      })}
     </>
   );
 }
@@ -31,9 +35,9 @@ export default async function PrayerPage({ params }: Props) {
         <h1>{prayer.title}</h1>
         <p>Текст для внимательного чтения перед иконой, дома или в храме.</p>
       </section>
-      <article className="sacred-panel prayer-panel">
+      <article className="sacred-panel prayer-panel prayer-reader-panel">
         <span>Молитва</span>
-        <div className="reader-text"><Paragraphs text={prayer.text} /></div>
+        <div className="reader-text prayer-reader"><Paragraphs text={prayer.text} /></div>
         {prayer.audioUrl ? <audio controls src={prayer.audioUrl} /> : null}
       </article>
     </main>

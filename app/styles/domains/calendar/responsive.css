@@ -32,25 +32,74 @@
 
 @media (max-width: 900px) {
   .calendar-page {
-    padding: 18px;
+    padding: 22px 14px 42px;
   }
 
   .calendar-hero {
     grid-template-columns: 1fr;
+    gap: 14px;
+    padding-bottom: 22px;
   }
 
   .calendar-hero h1 {
-    font-size: clamp(58px, 24vw, 112px);
+    max-width: 100%;
+    font-size: clamp(58px, 23vw, 104px);
+    overflow-wrap: anywhere;
   }
 
   .calendar-toolbar {
     grid-template-columns: 1fr;
     align-items: start;
+    gap: 12px;
+  }
+
+  .month-switch {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .month-switch::-webkit-scrollbar {
+    display: none;
+  }
+
+  .calendar-filter,
+  .filter-toggle,
+  .view-switch {
+    width: 100%;
+  }
+
+  .filter-toggle {
+    justify-content: space-between;
+  }
+
+  .view-switch {
+    justify-content: start;
+  }
+
+  .filter-menu {
+    right: auto;
+    left: 0;
+    width: min(290px, calc(100vw - 28px));
   }
 
   .calendar-grid {
-    min-width: 1260px;
+    min-width: 1120px;
     grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .calendar-feature,
+  .calendar-info,
+  .calendar-icon-day {
+    min-height: auto;
+    padding: 16px;
+  }
+
+  .calendar-icon-day {
+    min-height: 280px;
   }
 
   .calendar-service-grid {
@@ -79,5 +128,62 @@
 
   .list-panel-copy h3 {
     font-size: clamp(28px, 12vw, 52px);
+  }
+}
+
+@media (max-width: 520px) {
+  .calendar-page {
+    padding: 18px 12px 36px;
+  }
+
+  .calendar-hero h1 {
+    font-size: clamp(52px, 24vw, 88px);
+  }
+
+  .calendar-year {
+    font-size: 14px;
+  }
+
+  .calendar-feature strong,
+  .calendar-icon-day strong {
+    font-size: clamp(20px, 7vw, 34px);
+  }
+
+  .calendar-info p,
+  .calendar-feature p,
+  .calendar-icon-day p {
+    margin-bottom: 6px;
+  }
+
+  .month-block h2 {
+    font-size: clamp(52px, 22vw, 84px);
+    margin-top: 36px;
+  }
+
+  .calendar-grid {
+    min-width: 980px;
+  }
+
+  .calendar-day,
+  .calendar-day.text-only {
+    min-height: 210px;
+    padding: 12px;
+  }
+
+  .calendar-grid .calendar-day:has(.day-image-link) {
+    min-height: 300px;
+  }
+
+  .list-accordion-trigger {
+    grid-template-columns: 56px minmax(0, 1fr) 34px;
+    padding: 14px 0;
+  }
+
+  .list-day-number {
+    font-size: 30px;
+  }
+
+  .list-day-heading strong {
+    font-size: 18px;
   }
 }

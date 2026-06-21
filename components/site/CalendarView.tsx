@@ -179,7 +179,12 @@ function monthIndexFromTitle(title?: string) {
 
 function localizedHeroTitle(title: string | undefined, t: (key: TranslationKey) => string) {
   const normalized = normalizeLookup(title);
-  if (!normalized || normalized === normalizeLookup('Свет Иконы') || normalized === normalizeLookup('Світ Ікони')) return t('svetIkony');
+  if (
+    !normalized ||
+    normalized === normalizeLookup('СВЕТ ИКОН') ||
+    normalized === normalizeLookup('Свет Иконы') ||
+    normalized === normalizeLookup('Світ Ікони')
+  ) return t('svetIkony');
   return title;
 }
 

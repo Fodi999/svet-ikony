@@ -57,7 +57,7 @@ export const dictionary = {
     weekdayFri: 'ПТ',
     weekdaySat: 'СБ',
     weekdaySun: 'ВС',
-    svetIkony: 'Свет Иконы',
+    svetIkony: 'СВЕТ ИКОН',
     saintVasily: 'Святитель Василий Великий',
     saintMemory: 'Память святого',
     saintNicholasIcon: 'Икона святителя Николая Чудотворца',

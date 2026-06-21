@@ -16,6 +16,10 @@ function Paragraphs({ text }: { text?: string }) {
   );
 }
 
+function uniqueImages(images: Array<string | undefined | null>) {
+  return Array.from(new Set(images.map((url) => (url || '').trim()).filter(Boolean)));
+}
+
 function CalendarFallbackPage({ day, page }: { day?: CalendarDay; page?: SeoPage }) {
   const title = page?.h1 || day?.label || 'Материал календаря';
   const description = page?.seoDescription || day?.description || day?.note || '';
@@ -73,6 +77,9 @@ export default async function IconPage({ params }: Props) {
     return <main className="page"><h1>Страница не найдена</h1></main>;
   }
   const related = allIcons.filter((item) => item.slug !== icon.slug).slice(0, 3);
+  const galleryImages = uniqueImages([icon.imageUrl, ...(icon.imageUrls ?? [])]);
+  const galleryLabels = ['Оригинал иконы', 'Gemini макет', 'QR-код'];
+
   return (
     <main className="detail-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('IconPage', { headline: icon.title, description: icon.shortDescription, image: icon.imageUrl })) }} />
@@ -95,6 +102,25 @@ export default async function IconPage({ params }: Props) {
           </div>
         </div>
       </section>
+      {galleryImages.length > 1 ? (
+        <section className="icon-photo-catalog">
+          <div className="section-head">
+            <p className="eyebrow">Фото и QR</p>
+            <h2>Каталог изображений</h2>
+          </div>
+          <div className="icon-photo-grid">
+            {galleryImages.slice(0, 3).map((image, index) => (
+              <figure className={index === 2 ? 'is-qr' : ''} key={`${image}-${index}`}>
+                <img src={image} alt={`${galleryLabels[index] || 'Фото'}: ${icon.title}`} />
+                <figcaption>
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <strong>{galleryLabels[index] || 'Фото'}</strong>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <section className="sacred-content-grid">
         <article id="prayer" className="sacred-panel prayer-panel">
           <span>01</span>

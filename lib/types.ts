@@ -7,6 +7,7 @@ export type Icon = {
   shortDescription: string;
   fullDescription: string;
   imageUrl: string;
+  imageUrls?: string[];
   qrCodeUrl: string;
   category: string;
   saintName: string;

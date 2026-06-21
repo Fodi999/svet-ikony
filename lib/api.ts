@@ -27,6 +27,7 @@ function normalizeIcon(item: Partial<Icon>, index: number): Icon {
     shortDescription: normalizeString(item.shortDescription) || normalizeString(item.seoDescription) || normalizeString(item.fullDescription).slice(0, 220),
     fullDescription: normalizeString(item.fullDescription) || normalizeString(item.shortDescription),
     imageUrl: normalizeString(item.imageUrl) || '/images/kazan-icon.svg',
+    imageUrls: normalizeStringArray(item.imageUrls),
     qrCodeUrl: normalizeString(item.qrCodeUrl) || '/images/qr-code.svg',
     category: normalizeString(item.category) || 'Православная икона',
     saintName: normalizeString(item.saintName),

@@ -20,6 +20,10 @@ function uniqueImages(images: Array<string | undefined | null>) {
   return Array.from(new Set(images.map((url) => (url || '').trim()).filter(Boolean)));
 }
 
+function isQrImage(url: string) {
+  return url.toLowerCase().includes('qr');
+}
+
 function CalendarFallbackPage({ day, page }: { day?: CalendarDay; page?: SeoPage }) {
   const title = page?.h1 || day?.label || 'Материал календаря';
   const description = page?.seoDescription || day?.description || day?.note || '';
@@ -78,7 +82,11 @@ export default async function IconPage({ params }: Props) {
   }
   const related = allIcons.filter((item) => item.slug !== icon.slug).slice(0, 3);
   const galleryImages = uniqueImages([icon.imageUrl, ...(icon.imageUrls ?? [])]);
-  const galleryLabels = ['Оригинал иконы', 'Gemini макет', 'QR-код'];
+  const qrImage = galleryImages.find((image, index) => index > 0 && isQrImage(image)) || galleryImages[2];
+  const publicGalleryImages = [
+    { image: galleryImages[0], label: 'Оригинал иконы', isQr: false },
+    qrImage ? { image: qrImage, label: 'QR-код', isQr: true } : null
+  ].filter((item): item is { image: string; label: string; isQr: boolean } => Boolean(item?.image));
 
   return (
     <main className="detail-page">
@@ -102,19 +110,19 @@ export default async function IconPage({ params }: Props) {
           </div>
         </div>
       </section>
-      {galleryImages.length > 1 ? (
+      {publicGalleryImages.length > 1 ? (
         <section className="icon-photo-catalog">
           <div className="section-head">
             <p className="eyebrow">Фото и QR</p>
             <h2>Каталог изображений</h2>
           </div>
           <div className="icon-photo-grid">
-            {galleryImages.slice(0, 3).map((image, index) => (
-              <figure className={index === 2 ? 'is-qr' : ''} key={`${image}-${index}`}>
-                <img src={image} alt={`${galleryLabels[index] || 'Фото'}: ${icon.title}`} />
+            {publicGalleryImages.map((item, index) => (
+              <figure className={item.isQr ? 'is-qr' : ''} key={`${item.image}-${index}`}>
+                <img src={item.image} alt={`${item.label}: ${icon.title}`} />
                 <figcaption>
                   <span>{String(index + 1).padStart(2, '0')}</span>
-                  <strong>{galleryLabels[index] || 'Фото'}</strong>
+                  <strong>{item.label}</strong>
                 </figcaption>
               </figure>
             ))}

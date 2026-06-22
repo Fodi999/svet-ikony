@@ -26,8 +26,12 @@ function isQrImage(url: string) {
   return url.toLowerCase().includes('qr');
 }
 
+function displayText(value?: string) {
+  return (value || '').replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+}
+
 function CalendarFallbackPage({ day, page }: { day?: CalendarDay; page?: SeoPage }) {
-  const title = page?.h1 || day?.label || 'Материал календаря';
+  const title = displayText(page?.h1 || day?.label || 'Материал календаря');
   const description = page?.seoDescription || day?.description || day?.note || '';
   const imageUrl = page?.imageUrl || day?.imageUrl || '';
   const content = page?.content || day?.description || day?.note || '';
@@ -86,10 +90,14 @@ export default async function IconPage({ params }: Props) {
   const galleryImages = uniqueImages([icon.imageUrl, ...(icon.imageUrls ?? [])]);
   const qrImage = galleryImages.find((image, index) => index > 0 && isQrImage(image)) || galleryImages[2];
   const photoImages = galleryImages.filter((image) => image && image !== qrImage && !isQrImage(image));
+  const iconTitle = displayText(icon.title);
+  const iconLead = displayText(icon.shortDescription || icon.fullDescription);
+  const iconFullDescription = displayText(icon.fullDescription);
+  const prayerImage = photoImages[1] || icon.imageUrl;
   const publicGalleryImages = [
     ...photoImages.map((image, index) => ({
       image,
-      label: index === 0 ? 'Оригинал иконы' : `Фото ${index + 1}`,
+      label: index === 0 ? 'Оригинал иконы' : index === 1 ? 'Фото молитвы' : `Фото ${index + 1}`,
       kind: index === 0 ? 'original' : 'product'
     } satisfies IconPhotoCatalogItem)),
     qrImage ? { image: qrImage, label: 'QR-код', kind: 'qr' } satisfies IconPhotoCatalogItem : null
@@ -98,20 +106,20 @@ export default async function IconPage({ params }: Props) {
 
   return (
     <main className="detail-page">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('IconPage', { headline: icon.title, description: icon.shortDescription, image: icon.imageUrl })) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('IconPage', { headline: iconTitle, description: icon.shortDescription, image: icon.imageUrl })) }} />
       <section className="sacred-detail-hero">
         <figure className="sacred-image-frame">
-          <img src={icon.imageUrl} alt={icon.title} />
+          <img src={icon.imageUrl} alt={iconTitle} />
         </figure>
         <div className="sacred-hero-copy">
           <p className="eyebrow">{icon.category}</p>
-          <h1>{icon.title}</h1>
-          <p className="detail-lead">{icon.shortDescription || icon.fullDescription}</p>
+          <h1>{iconTitle}</h1>
+          <p className="detail-lead">{iconLead}</p>
           <div className="sacred-meta">
             {icon.saintName ? <span>{icon.saintName}</span> : null}
             {icon.status === 'published' ? <span>Опубликовано</span> : <span>Черновик</span>}
           </div>
-          <div className="soft-note">{icon.fullDescription}</div>
+          <div className="soft-note">{iconFullDescription}</div>
           <div className="detail-actions">
             <Link className="primary-link" href="#prayer">Читать молитву</Link>
             <Link className="secondary-link" href="/churches">Для храмов</Link>
@@ -124,14 +132,14 @@ export default async function IconPage({ params }: Props) {
             <p className="eyebrow">Фото и QR</p>
             <h2>Каталог изображений</h2>
           </div>
-          <IconPhotoCatalog title={icon.title} iconUrl={iconPageUrl} items={publicGalleryImages} />
+          <IconPhotoCatalog title={iconTitle} iconUrl={iconPageUrl} items={publicGalleryImages} />
         </section>
       ) : null}
       <section className="sacred-content-grid">
         <article id="prayer" className="sacred-panel prayer-panel">
           <div className="prayer-panel-layout">
             <figure className="prayer-panel-image">
-              <img src={icon.imageUrl} alt={icon.title} />
+              <img src={prayerImage} alt={`Молитва: ${iconTitle}`} />
             </figure>
             <div className="prayer-panel-copy">
               <span>01</span>
@@ -160,7 +168,7 @@ export default async function IconPage({ params }: Props) {
       {related.length ? (
         <section className="related-section">
           <div className="section-head"><p className="eyebrow">Похожие иконы</p><h2>Для дальнейшего чтения</h2></div>
-          <div className="mini-grid">{related.map((item) => <Link key={item.id} href={`/icons/${item.slug}`}>{item.title}<small>{item.category}</small></Link>)}</div>
+          <div className="mini-grid">{related.map((item) => <Link key={item.id} href={`/icons/${item.slug}`}>{displayText(item.title)}<small>{item.category}</small></Link>)}</div>
         </section>
       ) : null}
     </main>

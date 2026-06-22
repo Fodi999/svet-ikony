@@ -550,7 +550,7 @@ button,
 
 .icon-photo-grid {
   display: grid;
-  grid-template-columns: 1.15fr 1.15fr .8fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 14px;
 }
 
@@ -560,7 +560,15 @@ button,
   border: 1px solid #d8d8d8;
   background: #f9f9f9;
   display: grid;
-  grid-template-rows: minmax(360px, 34vw) auto;
+  grid-template-rows: minmax(300px, 28vw) auto;
+}
+
+.icon-photo-card.is-original {
+  grid-row: span 2;
+}
+
+.icon-photo-card.is-original .icon-photo-open {
+  min-height: clamp(460px, 52vw, 820px);
 }
 
 .icon-photo-open {
@@ -799,6 +807,40 @@ button,
   margin-top: 0;
 }
 
+.prayer-panel-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, .38fr) minmax(0, 1fr);
+  gap: clamp(22px, 4vw, 58px);
+  align-items: start;
+}
+
+.prayer-panel-image {
+  margin: 0;
+  border: 1px solid #d8d8d8;
+  background: #f9f9f9;
+}
+
+.prayer-panel-image img {
+  display: block;
+  width: 100%;
+  max-height: 620px;
+  padding: 12px;
+  object-fit: contain;
+}
+
+.prayer-panel-copy {
+  min-width: 0;
+}
+
+.prayer-panel-copy > span {
+  color: #b8842b;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
 .prayer-reader-panel {
   max-width: 1180px;
   margin-inline: auto;
@@ -935,6 +977,14 @@ button,
 
   .prayer-panel {
     grid-column: auto;
+  }
+
+  .prayer-panel-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .prayer-panel-image img {
+    max-height: 72vh;
   }
 
   .page-hero,

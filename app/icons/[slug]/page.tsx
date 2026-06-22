@@ -85,11 +85,14 @@ export default async function IconPage({ params }: Props) {
   const related = allIcons.filter((item) => item.slug !== icon.slug).slice(0, 3);
   const galleryImages = uniqueImages([icon.imageUrl, ...(icon.imageUrls ?? [])]);
   const qrImage = galleryImages.find((image, index) => index > 0 && isQrImage(image)) || galleryImages[2];
-  const productImage = galleryImages.find((image, index) => index > 0 && image !== qrImage && !isQrImage(image));
+  const photoImages = galleryImages.filter((image) => image && image !== qrImage && !isQrImage(image));
   const publicGalleryImages = [
-    { image: galleryImages[0], label: 'Оригинал иконы', kind: 'original' },
-    productImage ? { image: productImage, label: 'Фото в киоте', kind: 'product' } : null,
-    qrImage ? { image: qrImage, label: 'QR-код', kind: 'qr' } : null
+    ...photoImages.map((image, index) => ({
+      image,
+      label: index === 0 ? 'Оригинал иконы' : `Фото ${index + 1}`,
+      kind: index === 0 ? 'original' : 'product'
+    } satisfies IconPhotoCatalogItem)),
+    qrImage ? { image: qrImage, label: 'QR-код', kind: 'qr' } satisfies IconPhotoCatalogItem : null
   ].filter((item): item is IconPhotoCatalogItem => Boolean(item?.image));
   const iconPageUrl = absoluteSiteUrl(`/icons/${icon.slug}`);
 
@@ -126,10 +129,17 @@ export default async function IconPage({ params }: Props) {
       ) : null}
       <section className="sacred-content-grid">
         <article id="prayer" className="sacred-panel prayer-panel">
-          <span>01</span>
-          <h2>Молитва</h2>
-          <div className="reader-text"><Paragraphs text={icon.prayerText} /></div>
-          {icon.audioUrl ? <audio controls src={icon.audioUrl} /> : null}
+          <div className="prayer-panel-layout">
+            <figure className="prayer-panel-image">
+              <img src={icon.imageUrl} alt={icon.title} />
+            </figure>
+            <div className="prayer-panel-copy">
+              <span>01</span>
+              <h2>Молитва</h2>
+              <div className="reader-text"><Paragraphs text={icon.prayerText} /></div>
+              {icon.audioUrl ? <audio controls src={icon.audioUrl} /> : null}
+            </div>
+          </div>
         </article>
         <article className="sacred-panel">
           <span>02</span>

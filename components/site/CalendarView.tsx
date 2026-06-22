@@ -108,7 +108,7 @@ function createMonthDays(icons: Icon[], prayers: Prayer[], gospel: GospelReading
         label: day.label,
         note: day.note,
         kind: day.kind,
-        imageUrl: day.imageUrl || icon?.imageUrl,
+        imageUrl: icon?.imageUrl || day.imageUrl,
         icon,
         prayerSlug: day.prayerSlug,
         gospelSlug: day.gospelSlug,
@@ -122,7 +122,7 @@ function createMonthDays(icons: Icon[], prayers: Prayer[], gospel: GospelReading
   }
 
   return fillMonthDays([
-    { day: '01', label: 'Обрезание Господне', note: 'Праздник', kind: 'feast', icon: icons[0], current: true, description: 'Память события и начало годового молитвенного круга.' },
+    { day: '01', label: '', note: '', kind: 'quiet', textOnly: true },
     { day: '02', label: '', note: '', kind: 'quiet', textOnly: true },
     { day: '03', label: 'Икона Божией Матери «Казанская»', note: 'Праздничная икона', kind: 'feast', icon: icons[0], feast: true, description: 'Молитва о семье, мире и укреплении в вере.' },
     { day: '04', label: 'Святитель Николай Чудотворец', note: 'Память святого', kind: 'feast', icon: icons[1], description: 'Почитание святого, помощника в пути и нужде.' },
@@ -135,7 +135,7 @@ function createMonthDays(icons: Icon[], prayers: Prayer[], gospel: GospelReading
     { day: '11', label: 'Великомученик Пантелеимон', note: 'Память святого', kind: 'prayer', icon: icons[2], description: 'Молитвенное обращение о болящих.' },
     { day: '12', label: '', note: '', kind: 'quiet', textOnly: true },
     { day: '13', label: 'Собор Предтечи и Крестителя Господня Иоанна', note: 'Память святого', kind: 'feast', icon: icons[1], description: 'День молитвенного почитания Предтечи.' },
-    { day: '14', label: 'Святитель Василий Великий', note: 'Память святого', kind: 'feast', icon: icons[1], current: true, description: 'Память святителя и учителя Церкви.' },
+    { day: '14', label: 'Обрезание Господне', note: 'Господский праздник', kind: 'feast', icon: icons.find((icon) => icon.slug === 'obrezanie-gospodne') ?? icons[0], current: true, feast: true, description: 'Праздник Обрезания Господня: 1 января по церковному юлианскому календарю, 14 января по гражданскому календарю.' },
     { day: '15', label: '', note: '', kind: 'quiet', textOnly: true },
     { day: '16', label: 'Икона Божией Матери «Умиление»', note: 'Праздничная икона', kind: 'feast', icon: icons[0], description: 'Молитва о мире сердца и покаянии.' },
     { day: '17', label: '', note: '', kind: 'quiet', textOnly: true },

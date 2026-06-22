@@ -83,8 +83,10 @@ export default async function IconPage({ params }: Props) {
   const related = allIcons.filter((item) => item.slug !== icon.slug).slice(0, 3);
   const galleryImages = uniqueImages([icon.imageUrl, ...(icon.imageUrls ?? [])]);
   const qrImage = galleryImages.find((image, index) => index > 0 && isQrImage(image)) || galleryImages[2];
+  const productImage = galleryImages.find((image, index) => index > 0 && image !== qrImage && !isQrImage(image));
   const publicGalleryImages = [
     { image: galleryImages[0], label: 'Оригинал иконы', isQr: false },
+    productImage ? { image: productImage, label: 'Фото в киоте', isQr: false } : null,
     qrImage ? { image: qrImage, label: 'QR-код', isQr: true } : null
   ].filter((item): item is { image: string; label: string; isQr: boolean } => Boolean(item?.image));
 

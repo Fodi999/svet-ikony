@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import { IconPhotoCatalog, type IconPhotoCatalogItem } from '@/components/site/IconPhotoCatalog';
 import { publicApi } from '@/lib/api';
 import { jsonLd, pageMetadata } from '@/lib/seo';
+import { absoluteSiteUrl } from '@/lib/site';
 import type { CalendarDay, SeoPage } from '@/lib/types';
 
 type Props = { params: Promise<{ slug: string }> };
@@ -85,10 +87,11 @@ export default async function IconPage({ params }: Props) {
   const qrImage = galleryImages.find((image, index) => index > 0 && isQrImage(image)) || galleryImages[2];
   const productImage = galleryImages.find((image, index) => index > 0 && image !== qrImage && !isQrImage(image));
   const publicGalleryImages = [
-    { image: galleryImages[0], label: 'Оригинал иконы', isQr: false },
-    productImage ? { image: productImage, label: 'Фото в киоте', isQr: false } : null,
-    qrImage ? { image: qrImage, label: 'QR-код', isQr: true } : null
-  ].filter((item): item is { image: string; label: string; isQr: boolean } => Boolean(item?.image));
+    { image: galleryImages[0], label: 'Оригинал иконы', kind: 'original' },
+    productImage ? { image: productImage, label: 'Фото в киоте', kind: 'product' } : null,
+    qrImage ? { image: qrImage, label: 'QR-код', kind: 'qr' } : null
+  ].filter((item): item is IconPhotoCatalogItem => Boolean(item?.image));
+  const iconPageUrl = absoluteSiteUrl(`/icons/${icon.slug}`);
 
   return (
     <main className="detail-page">
@@ -118,17 +121,7 @@ export default async function IconPage({ params }: Props) {
             <p className="eyebrow">Фото и QR</p>
             <h2>Каталог изображений</h2>
           </div>
-          <div className="icon-photo-grid">
-            {publicGalleryImages.map((item, index) => (
-              <figure className={item.isQr ? 'is-qr' : ''} key={`${item.image}-${index}`}>
-                <img src={item.image} alt={`${item.label}: ${icon.title}`} />
-                <figcaption>
-                  <span>{String(index + 1).padStart(2, '0')}</span>
-                  <strong>{item.label}</strong>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
+          <IconPhotoCatalog title={icon.title} iconUrl={iconPageUrl} items={publicGalleryImages} />
         </section>
       ) : null}
       <section className="sacred-content-grid">

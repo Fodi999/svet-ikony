@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://ikona.link').replace(/\/+$/, '');
+import { siteUrl } from './site';
 
 export function pageMetadata(input: {
   title?: string;

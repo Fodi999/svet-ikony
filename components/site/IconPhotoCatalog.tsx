@@ -47,7 +47,15 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const active = activeIndex === null ? null : items[activeIndex] || null;
-  const qrFileName = `qr-${title.toLowerCase().replace(/[^a-z0-9а-яё]+/gi, '-').replace(/^-|-$/g, '') || 'icon'}.svg`;
+  const fileBaseName = title.toLowerCase().replace(/[^a-z0-9а-яё]+/gi, '-').replace(/^-|-$/g, '') || 'icon';
+  const qrFileName = `qr-${fileBaseName}.svg`;
+
+  function imageFileName(item: IconPhotoCatalogItem, index: number) {
+    const extension = item.image.split('?')[0]?.split('.').pop()?.toLowerCase();
+    const safeExtension = extension && extension.length <= 5 ? extension : 'jpg';
+    if (item.kind === 'qr') return qrFileName;
+    return `${fileBaseName}-${String(index + 1).padStart(2, '0')}.${safeExtension}`;
+  }
 
   async function copyIconUrl() {
     await navigator.clipboard.writeText(iconUrl);
@@ -65,20 +73,27 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
               <span><ZoomIcon />Увеличить</span>
             </button>
             <figcaption>
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <strong>{item.label}</strong>
+              <div className="icon-photo-meta">
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <strong>{item.label}</strong>
+              </div>
               {item.kind === 'qr' ? (
                 <div className="icon-qr-actions">
                   <button className="icon-copy-link" type="button" onClick={() => void copyIconUrl()} aria-label="Скопировать ссылку на страницу иконы">
                     <CopyIcon />
                     {copied ? 'Скопировано' : 'Скопировать'}
                   </button>
-                  <a className="icon-copy-link" href={item.image} download={qrFileName} aria-label="Скачать QR-код для печати">
+                  <a className="icon-copy-link" href={item.image} download={imageFileName(item, index)} aria-label="Скачать QR-код для печати">
                     <DownloadIcon />
                     Скачать QR
                   </a>
                 </div>
-              ) : null}
+              ) : (
+                <a className="icon-copy-link" href={item.image} download={imageFileName(item, index)} aria-label={`Скачать ${item.label}`}>
+                  <DownloadIcon />
+                  Скачать
+                </a>
+              )}
             </figcaption>
           </figure>
         ))}

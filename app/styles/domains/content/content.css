@@ -663,7 +663,6 @@ button,
 }
 
 .icon-copy-link {
-  margin-left: auto;
   min-width: 40px;
   min-height: 36px;
   border: 1px solid #d8d8d8;
@@ -678,6 +677,7 @@ button,
   font-weight: 900;
   text-transform: uppercase;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .icon-copy-link:hover,
@@ -686,13 +686,21 @@ button,
   color: #b8842b;
 }
 
+.icon-qr-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 8px;
+}
+
 .icon-lightbox {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 2000;
   display: grid;
   place-items: center;
-  padding: clamp(18px, 4vw, 44px);
+  padding: clamp(28px, 4vw, 56px);
 }
 
 .icon-lightbox-backdrop {
@@ -704,7 +712,7 @@ button,
 
 .icon-lightbox-panel {
   width: min(1180px, 96vw);
-  max-height: 92vh;
+  max-height: min(90vh, calc(100vh - 56px));
   position: relative;
   z-index: 1;
   border: 1px solid rgba(255,255,255,.22);
@@ -715,7 +723,7 @@ button,
 
 .icon-lightbox-panel img {
   width: 100%;
-  max-height: calc(92vh - 64px);
+  max-height: calc(90vh - 92px);
   object-fit: contain;
   display: block;
 }
@@ -756,6 +764,14 @@ button,
 
 .icon-lightbox-caption a {
   color: #e0b25f;
+}
+
+.icon-lightbox-actions {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  flex-wrap: wrap;
+  gap: 14px;
 }
 
 .sacred-content-grid,
@@ -997,6 +1013,24 @@ button,
   .icon-copy-link {
     width: 100%;
     margin-left: 0;
+  }
+
+  .icon-qr-actions,
+  .icon-lightbox-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .icon-qr-actions {
+    flex-direction: column;
+  }
+
+  .icon-lightbox {
+    padding: 16px;
+  }
+
+  .icon-lightbox-panel img {
+    max-height: calc(100vh - 132px);
   }
 
   .sacred-content-grid,

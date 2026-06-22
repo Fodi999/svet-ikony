@@ -23,6 +23,16 @@ function CopyIcon() {
   );
 }
 
+function DownloadIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 4v10" />
+      <path d="m7.5 10 4.5 4.5L16.5 10" />
+      <path d="M5 20h14" />
+    </svg>
+  );
+}
+
 function ZoomIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -37,6 +47,7 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const active = activeIndex === null ? null : items[activeIndex] || null;
+  const qrFileName = `qr-${title.toLowerCase().replace(/[^a-z0-9а-яё]+/gi, '-').replace(/^-|-$/g, '') || 'icon'}.svg`;
 
   async function copyIconUrl() {
     await navigator.clipboard.writeText(iconUrl);
@@ -57,10 +68,16 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
               <span>{String(index + 1).padStart(2, '0')}</span>
               <strong>{item.label}</strong>
               {item.kind === 'qr' ? (
-                <button className="icon-copy-link" type="button" onClick={() => void copyIconUrl()} aria-label="Скопировать ссылку на страницу иконы">
-                  <CopyIcon />
-                  {copied ? 'Скопировано' : 'Скопировать'}
-                </button>
+                <div className="icon-qr-actions">
+                  <button className="icon-copy-link" type="button" onClick={() => void copyIconUrl()} aria-label="Скопировать ссылку на страницу иконы">
+                    <CopyIcon />
+                    {copied ? 'Скопировано' : 'Скопировать'}
+                  </button>
+                  <a className="icon-copy-link" href={item.image} download={qrFileName} aria-label="Скачать QR-код для печати">
+                    <DownloadIcon />
+                    Скачать QR
+                  </a>
+                </div>
               ) : null}
             </figcaption>
           </figure>
@@ -75,7 +92,12 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
             <img src={active.image} alt={`${active.label}: ${title}`} />
             <div className="icon-lightbox-caption">
               <strong>{active.label}</strong>
-              {active.kind === 'qr' ? <a href={iconUrl}>Открыть страницу иконы</a> : null}
+              {active.kind === 'qr' ? (
+                <div className="icon-lightbox-actions">
+                  <a href={active.image} download={qrFileName}>Скачать QR</a>
+                  <a href={iconUrl}>Открыть страницу иконы</a>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

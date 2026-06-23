@@ -147,6 +147,9 @@ export type CalendarHero = {
 export type CalendarDay = {
   id: string;
   day: string;
+  gregorianDate?: string;
+  julianDay?: string;
+  julianDate?: string;
   label: string;
   note: string;
   kind: CalendarDayKind;

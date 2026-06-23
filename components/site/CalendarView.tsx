@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { CalendarContent, GospelReading, Icon, Prayer, SeoPage } from '@/lib/types';
 import { LanguageSwitch, useI18n } from './LanguageProvider';
@@ -26,9 +26,14 @@ const months = [
 ] as const satisfies Array<{ key: TranslationKey; ruTitle: string; days: number }>;
 
 const weekdayKeys: TranslationKey[] = ['weekdayMon', 'weekdayTue', 'weekdayWed', 'weekdayThu', 'weekdayFri', 'weekdaySat', 'weekdaySun'];
+const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://ministerial-yetta-fodi999-c58d8823.koyeb.app').replace(/\/+$/, '');
+const publicPrefix = apiUrl.endsWith('/public') ? '' : '/public';
 
 type CalendarDay = {
   day: string;
+  gregorianDate?: string;
+  julianDay?: string;
+  julianDate?: string;
   label: string;
   note: string;
   kind: DayKind;
@@ -98,17 +103,24 @@ function fillMonthDays(days: CalendarDay[], totalDays: number) {
   return filled.sort((left, right) => Number(left.day) - Number(right.day));
 }
 
-function createMonthDays(icons: Icon[], prayers: Prayer[], gospel: GospelReading, calendar?: CalendarContent): CalendarDay[] {
+function getDaysInMonth(year: number, monthIndex: number) {
+  return new Date(year, monthIndex + 1, 0).getDate();
+}
+
+function createMonthDays(icons: Icon[], prayers: Prayer[], gospel: GospelReading, calendar: CalendarContent | undefined, totalDays: number): CalendarDay[] {
   if (calendar?.days?.length) {
     return fillMonthDays(calendar.days.map((day) => {
       const icon = findCalendarIcon(icons, day);
 
       return {
         day: day.day,
+        gregorianDate: day.gregorianDate,
+        julianDay: day.julianDay,
+        julianDate: day.julianDate,
         label: day.label,
         note: day.note,
         kind: day.kind,
-        imageUrl: icon?.imageUrl || day.imageUrl,
+        imageUrl: day.imageUrl || icon?.imageUrl,
         icon,
         prayerSlug: day.prayerSlug,
         gospelSlug: day.gospelSlug,
@@ -118,7 +130,7 @@ function createMonthDays(icons: Icon[], prayers: Prayer[], gospel: GospelReading
         textOnly: day.textOnly,
         description: day.description
       };
-    }), 31);
+    }), totalDays);
   }
 
   return fillMonthDays([
@@ -140,7 +152,7 @@ function createMonthDays(icons: Icon[], prayers: Prayer[], gospel: GospelReading
     { day: '16', label: 'Икона Божией Матери «Умиление»', note: 'Праздничная икона', kind: 'feast', icon: icons[0], description: 'Молитва о мире сердца и покаянии.' },
     { day: '17', label: '', note: '', kind: 'quiet', textOnly: true },
     { day: '18', label: gospel.reference ? 'Неделя 32-я по Пятидесятнице' : 'Евангельское чтение', note: 'Евангельское чтение', kind: 'gospel', icon: icons[0], description: gospel.text }
-  ], 31);
+  ], totalDays);
 }
 
 function createQuietMonth(totalDays: number): CalendarDay[] {
@@ -155,10 +167,12 @@ function createCalendarGridDays(days: CalendarDay[], monthIndex: number, year: n
   const offset = getMondayStartOffset(year, monthIndex);
   const previousMonthIndex = (monthIndex + 11) % 12;
   const nextMonthIndex = (monthIndex + 1) % 12;
+  const previousMonthYear = monthIndex === 0 ? year - 1 : year;
   const previousMonth = months[previousMonthIndex];
   const nextMonth = months[nextMonthIndex];
+  const previousMonthDays = getDaysInMonth(previousMonthYear, previousMonthIndex);
   const leading = Array.from({ length: offset }, (_, index) => {
-    const day = String(previousMonth.days - offset + index + 1).padStart(2, '0');
+    const day = String(previousMonthDays - offset + index + 1).padStart(2, '0');
     return { day, label: '', note: '', kind: 'quiet' as DayKind, textOnly: true, outOfMonth: true, monthKey: previousMonth.key };
   });
   const current = days.map((day) => ({ ...day, outOfMonth: false, monthKey: months[monthIndex].key }));
@@ -175,6 +189,22 @@ function monthIndexFromTitle(title?: string) {
   const normalized = normalizeLookup(title);
   const index = months.findIndex((month) => normalized.includes(normalizeLookup(month.ruTitle)));
   return index >= 0 ? index : 0;
+}
+
+function dayDateLabel(item: CalendarDay) {
+  if (item.gregorianDate && item.julianDate) return `${item.gregorianDate} / ${item.julianDate} ст. ст.`;
+  if (item.julianDate) return `${item.julianDate} ст. ст.`;
+  return '';
+}
+
+async function fetchCalendarContent(year: number, monthIndex: number, signal: AbortSignal) {
+  const response = await fetch(`${apiUrl}${publicPrefix}/api/content?year=${year}&month=${monthIndex + 1}`, {
+    cache: 'no-store',
+    signal
+  });
+  if (!response.ok) throw new Error('Calendar content is not available');
+  const content = await response.json() as { calendar?: CalendarContent };
+  return content.calendar;
 }
 
 function localizedHeroTitle(title: string | undefined, t: (key: TranslationKey) => string) {
@@ -210,25 +240,55 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
   const [filter, setFilter] = useState<FilterKind>('all');
   const [view, setView] = useState<ViewMode>('calendar');
   const [expandedDay, setExpandedDay] = useState('monthJanuary-14');
-  const hero = calendar?.hero;
-  const year = hero?.year ?? '2026';
-  const [monthIndex, setMonthIndex] = useState(() => monthIndexFromTitle(hero?.monthTitle));
-  const januaryDays = useMemo(() => createMonthDays(icons, prayers, gospel, calendar), [icons, prayers, gospel, calendar]);
-  const days = useMemo(() => monthIndex === 0 ? januaryDays : createQuietMonth(months[monthIndex].days), [januaryDays, monthIndex]);
-  const calendarGridDays = useMemo(() => createCalendarGridDays(days, monthIndex, Number(year) || 2026), [days, monthIndex, year]);
+  const [activeCalendar, setActiveCalendar] = useState(calendar);
+  const initialYear = Number(calendar?.hero?.year) || new Date().getFullYear();
+  const [year, setYear] = useState(initialYear);
+  const [monthIndex, setMonthIndex] = useState(() => monthIndexFromTitle(calendar?.hero?.monthTitle));
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const activeCalendarYear = Number(activeCalendar?.hero?.year) || 0;
+  const activeCalendarMonth = monthIndexFromTitle(activeCalendar?.hero?.monthTitle);
+  const selectedCalendar = activeCalendarYear === year && activeCalendarMonth === monthIndex ? activeCalendar : undefined;
+  const hero = selectedCalendar?.hero;
+  const monthDaysTotal = getDaysInMonth(year, monthIndex);
+  const days = useMemo(() => createMonthDays(icons, prayers, gospel, selectedCalendar, monthDaysTotal), [icons, prayers, gospel, selectedCalendar, monthDaysTotal]);
+  const calendarGridDays = useMemo(() => createCalendarGridDays(days, monthIndex, year), [days, monthIndex, year]);
   const visibleDays = filter === 'all' ? (view === 'calendar' ? calendarGridDays : days) : days.filter((day) => day.kind === filter);
-  const today = days.find((day) => day.day === '14') ?? days.find((day) => day.current) ?? days[0];
+  const now = new Date();
+  const today = days.find((day) => day.current)
+    ?? (now.getFullYear() === year && now.getMonth() === monthIndex ? days.find((day) => day.day === String(now.getDate()).padStart(2, '0')) : undefined)
+    ?? days.find((day) => day.label)
+    ?? days[0];
   const prevMonth = months[(monthIndex + 11) % 12];
   const nextMonth = months[(monthIndex + 1) % 12];
   const monthTitle = `${t(months[monthIndex].key)} ${year}`;
   const iconOfDay = icons.find((icon) => icon.slug === hero?.iconDayIconSlug) ?? icons[1] ?? icons[0];
   const prayerOfDay = prayers.find((prayer) => prayer.slug === hero?.iconDayPrayerSlug) ?? prayers[0];
-  const services = calendar?.services?.length ? calendar.services : [
+  const services = selectedCalendar?.services?.length ? selectedCalendar.services : [
     { id: 'service-prayers', index: '01', title: 'Молитвы на каждый день', description: 'Краткое правило и молитвы перед иконой.', href: '/prayers' },
     { id: 'service-gospel', index: '02', title: 'Евангелие дня', description: 'Чтение, ссылка и спокойное объяснение.', href: '/gospel' },
     { id: 'service-feasts', index: '03', title: 'Праздники и посты', description: 'Церковные даты, важные дни и отметки.', href: '/p/pravoslavnaya-ikona-s-qr-kodom' },
     { id: 'service-icons', index: '04', title: 'Иконы святых', description: 'История образов, жития и QR-страницы.', href: '/icons' }
   ];
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setCalendarLoading(true);
+    fetchCalendarContent(year, monthIndex, controller.signal)
+      .then((nextCalendar) => {
+        if (nextCalendar) setActiveCalendar(nextCalendar);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!controller.signal.aborted) setCalendarLoading(false);
+      });
+    return () => controller.abort();
+  }, [year, monthIndex]);
+
+  function moveMonth(delta: number) {
+    const absoluteMonth = year * 12 + monthIndex + delta;
+    setYear(Math.floor(absoluteMonth / 12));
+    setMonthIndex(((absoluteMonth % 12) + 12) % 12);
+  }
 
   return (
     <section className="calendar-page">
@@ -276,9 +336,9 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
 
       <div className="calendar-toolbar">
         <div className="month-switch">
-          <button type="button" onClick={() => setMonthIndex((index) => (index + 11) % 12)}>← {t(prevMonth.key)}</button>
-          <strong>{monthTitle}</strong>
-          <button type="button" onClick={() => setMonthIndex((index) => (index + 1) % 12)}>{t(nextMonth.key)} →</button>
+          <button type="button" onClick={() => moveMonth(-1)}>← {t(prevMonth.key)}</button>
+          <strong>{monthTitle}{calendarLoading ? ' · загрузка' : ''}</strong>
+          <button type="button" onClick={() => moveMonth(1)}>{t(nextMonth.key)} →</button>
         </div>
         <div className="calendar-filter">
           <button className="filter-toggle" type="button" aria-expanded={filterOpen} onClick={() => setFilterOpen((open) => !open)}>
@@ -346,6 +406,7 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
                         <div className="list-panel-copy">
                           <p>{hasContent ? item.note : t('quietDays')}</p>
                           <h3>{hasContent ? item.label : `${item.day} ${t(months[monthIndex].key)}`}</h3>
+                          {dayDateLabel(item) ? <small>{dayDateLabel(item)}</small> : null}
                           {item.description ? <span>{item.description}</span> : <span>{monthTitle}</span>}
                           {hasContent ? (
                             <nav className="list-panel-links" aria-label={`${t('dayLinks')} ${item.day} ${t('januaryGenitive')}`}>
@@ -380,6 +441,7 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
                         <div className="day-copy">
                           <Link className="day-title-link" href={detailHref}>{item.label}</Link>
                           <span>{item.note}</span>
+                          {dayDateLabel(item) ? <span className="day-date-note">{dayDateLabel(item)}</span> : null}
                           {item.description ? <em>{item.description}</em> : null}
                         </div>
                         {!item.outOfMonth ? (

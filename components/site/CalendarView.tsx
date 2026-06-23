@@ -340,6 +340,23 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
           <strong>{monthTitle}{calendarLoading ? ' · загрузка' : ''}</strong>
           <button type="button" onClick={() => moveMonth(1)}>{t(nextMonth.key)} →</button>
         </div>
+        <div className="year-switch" aria-label="Вибір року">
+          <button type="button" onClick={() => setYear((value) => value - 1)}>−</button>
+          <label>
+            <span>Рік</span>
+            <input
+              type="number"
+              min="1900"
+              max="2100"
+              value={year}
+              onChange={(event) => {
+                const nextYear = Number(event.target.value);
+                if (Number.isFinite(nextYear)) setYear(nextYear);
+              }}
+            />
+          </label>
+          <button type="button" onClick={() => setYear((value) => value + 1)}>+</button>
+        </div>
         <div className="calendar-filter">
           <button className="filter-toggle" type="button" aria-expanded={filterOpen} onClick={() => setFilterOpen((open) => !open)}>
             <span>{t('filter')}: {t(filterLabelKeys[filter])}</span><i aria-hidden="true">⌄</i>
@@ -373,8 +390,14 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
         <section id="calendar-grid" className="month-block">
           <h2>{t(months[monthIndex].key)}</h2>
           {visibleDays.length ? (
-            <div className={view === 'list' ? 'calendar-list' : 'calendar-grid'}>
-              {view === 'list' ? visibleDays.map((item) => {
+            <>
+              {view === 'calendar' ? (
+                <div className="weekday-strip" aria-label="Дні тижня">
+                  {weekdayKeys.map((key) => <span key={key}>{t(key)}</span>)}
+                </div>
+              ) : null}
+              <div className={view === 'list' ? 'calendar-list' : 'calendar-grid'}>
+                {view === 'list' ? visibleDays.map((item) => {
                 const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
                 const detailHref = pageHrefForDay(item, pages);
                 const itemKey = `${months[monthIndex].key}-${item.day}`;
@@ -422,7 +445,6 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
                 );
               }) : (
                 <>
-                  {weekdayKeys.map((key) => <div className="weekday-cell" key={key}>{t(key)}</div>)}
                   {visibleDays.map((item) => {
                 const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
                 const detailHref = pageHrefForDay(item, pages);
@@ -458,7 +480,8 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
               })}
                 </>
               )}
-            </div>
+              </div>
+            </>
           ) : (
             <p className="calendar-empty">{t('noDays')}</p>
           )}

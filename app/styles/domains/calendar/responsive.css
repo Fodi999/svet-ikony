@@ -66,8 +66,13 @@
 
   .calendar-filter,
   .filter-toggle,
-  .view-switch {
+  .view-switch,
+  .year-switch {
     width: 100%;
+  }
+
+  .year-switch {
+    justify-content: flex-start;
   }
 
   .filter-toggle {
@@ -159,6 +164,16 @@
 
   .calendar-grid {
     column-count: 1;
+  }
+
+  .weekday-strip {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .weekday-strip span {
+    font-size: 10px;
+    letter-spacing: .02em;
   }
 
   .calendar-day,

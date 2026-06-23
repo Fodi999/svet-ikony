@@ -269,7 +269,7 @@ body:has(.calendar-shell) .site-footer {
   position: relative;
   z-index: 40;
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   gap: 18px;
   align-items: center;
   border-top: 2px solid #d8d8d8;
@@ -284,6 +284,8 @@ body:has(.calendar-shell) .site-footer {
 }
 
 .month-switch button,
+.year-switch button,
+.year-switch input,
 .view-switch button,
 .filter-toggle {
   appearance: none;
@@ -297,6 +299,49 @@ body:has(.calendar-shell) .site-footer {
 .month-switch button {
   padding: 0;
   white-space: nowrap;
+}
+
+.year-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.year-switch button {
+  width: 34px;
+  height: 38px;
+  border: 1px solid #d8d8d8;
+  background: #f4f4f4;
+  font-size: 18px;
+}
+
+.year-switch label {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d8d8d8;
+  background: #fff;
+  padding: 0 10px;
+}
+
+.year-switch span {
+  color: #8e8a84;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.year-switch input {
+  width: 72px;
+  border: 0;
+  background: transparent;
+  color: #151515;
+  font-size: 15px;
+  font-weight: 900;
+  outline: 0;
 }
 
 .month-switch strong {

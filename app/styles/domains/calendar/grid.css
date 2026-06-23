@@ -65,7 +65,7 @@
   height: 58%;
   pointer-events: none;
   background: linear-gradient(180deg, transparent 0%, rgba(25, 14, 7, .56) 45%, rgba(15, 9, 5, .92) 100%);
-  opacity: .94;
+  opacity: 0;
   transition: opacity .18s ease;
 }
 
@@ -230,16 +230,19 @@
   z-index: 2;
   align-self: auto;
   color: #fff;
-  opacity: 1;
-  transform: none;
+  opacity: 0;
+  transform: translateY(12px);
   padding: 0;
   text-shadow: 0 2px 16px rgba(0, 0, 0, .72);
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
 }
 
 .calendar-grid .calendar-day:has(.day-image-link):hover .day-copy,
 .calendar-grid .calendar-day:has(.day-image-link):focus-within .day-copy {
   opacity: 1;
   transform: none;
+  pointer-events: auto;
 }
 
 .day-title-link {
@@ -298,15 +301,17 @@
   z-index: 2;
   margin: 0;
   border-top-color: rgba(241, 195, 108, .32);
-  opacity: 1;
-  transform: none;
-  transition: none;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
 }
 
 .calendar-grid .calendar-day:has(.day-image-link):hover .day-links,
 .calendar-grid .calendar-day:has(.day-image-link):focus-within .day-links {
   opacity: 1;
   transform: none;
+  pointer-events: auto;
 }
 
 .day-links a {

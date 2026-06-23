@@ -1,18 +1,16 @@
 @media (min-width: 1281px) {
   .calendar-grid {
-    min-width: 0;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    column-count: 7;
   }
 }
 
 @media (max-width: 1280px) {
   .month-block {
-    overflow-x: auto;
+    overflow: visible;
   }
 
   .calendar-grid {
-    min-width: 1330px;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    column-count: 4;
   }
 
   .calendar-hero {
@@ -87,8 +85,7 @@
   }
 
   .calendar-grid {
-    min-width: 1120px;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    column-count: 3;
   }
 
   .calendar-feature,
@@ -161,17 +158,18 @@
   }
 
   .calendar-grid {
-    min-width: 980px;
+    column-count: 1;
   }
 
   .calendar-day,
   .calendar-day.text-only {
-    min-height: 210px;
+    min-height: 0;
     padding: 12px;
   }
 
   .calendar-grid .calendar-day:has(.day-image-link) {
-    min-height: 300px;
+    min-height: 0;
+    padding: 0;
   }
 
   .list-accordion-trigger {

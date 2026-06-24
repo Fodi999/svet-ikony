@@ -351,9 +351,15 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
 
       <div className="calendar-toolbar">
         <div className="month-switch">
-          <button type="button" onClick={() => moveMonth(-1)}>← {t(prevMonth.key)}</button>
+          <button className="month-step" type="button" onClick={() => moveMonth(-1)} aria-label={`${t(prevMonth.key)}`}>
+            <span>←</span>
+            <small>{t(prevMonth.key)}</small>
+          </button>
           <strong>{monthTitle}{calendarLoading ? ' · загрузка' : ''}</strong>
-          <button type="button" onClick={() => moveMonth(1)}>{t(nextMonth.key)} →</button>
+          <button className="month-step" type="button" onClick={() => moveMonth(1)} aria-label={`${t(nextMonth.key)}`}>
+            <small>{t(nextMonth.key)}</small>
+            <span>→</span>
+          </button>
         </div>
         <div className="year-switch" aria-label="Вибір року">
           <button type="button" onClick={() => setYear((value) => value - 1)}>−</button>
@@ -374,7 +380,9 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
         </div>
         <div className="calendar-filter">
           <button className="filter-toggle" type="button" aria-expanded={filterOpen} onClick={() => setFilterOpen((open) => !open)}>
-            <span>{t('filter')}: {t(filterLabelKeys[filter])}</span><i aria-hidden="true">⌄</i>
+            <span>{t('filter')}</span>
+            <strong>{t(filterLabelKeys[filter])}</strong>
+            <i aria-hidden="true">⌄</i>
           </button>
           {filterOpen ? (
             <div className="filter-menu">

@@ -269,8 +269,8 @@ body:has(.calendar-shell) .site-footer {
   position: relative;
   z-index: 40;
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  gap: 18px;
+  grid-template-columns: minmax(360px, 1fr) auto auto auto;
+  gap: 12px;
   align-items: center;
   border-top: 2px solid #d8d8d8;
   padding: 10px 0 14px;
@@ -280,7 +280,7 @@ body:has(.calendar-shell) .site-footer {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: clamp(14px, 2vw, 30px);
+  gap: 10px;
 }
 
 .month-switch button,
@@ -299,6 +299,33 @@ body:has(.calendar-shell) .site-footer {
 .month-switch button {
   padding: 0;
   white-space: nowrap;
+}
+
+.month-step {
+  min-width: 116px;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #d8d8d8 !important;
+  padding: 0 12px !important;
+  background: #fff !important;
+}
+
+.month-step span {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.month-step small {
+  min-width: 0;
+  overflow: hidden;
+  color: #151515;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  text-overflow: ellipsis;
 }
 
 .year-switch {
@@ -323,7 +350,7 @@ body:has(.calendar-shell) .site-footer {
   gap: 8px;
   border: 1px solid #d8d8d8;
   background: #fff;
-  padding: 0 10px;
+  padding: 0 12px;
 }
 
 .year-switch span {
@@ -335,18 +362,23 @@ body:has(.calendar-shell) .site-footer {
 }
 
 .year-switch input {
-  width: 72px;
+  width: 92px;
+  min-width: 92px;
   border: 0;
   background: transparent;
   color: #151515;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
   outline: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .month-switch strong {
+  min-width: 136px;
   color: #050505;
-  font-size: clamp(15px, 1vw, 18px);
+  font-size: clamp(16px, 1vw, 19px);
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -360,7 +392,7 @@ body:has(.calendar-shell) .site-footer {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid #d8d8d8;
   padding: 0 12px 0 14px;
   background: #f4f4f4;
@@ -368,6 +400,11 @@ body:has(.calendar-shell) .site-footer {
   line-height: 1;
   white-space: nowrap;
   outline: none;
+}
+
+.filter-toggle strong {
+  color: #050505;
+  font-size: 14px;
 }
 
 .filter-toggle i {

@@ -38,6 +38,10 @@ function firstTextLine(value: string, fallback: string) {
   return value.split(/\n{2,}|\n/).map((line) => line.trim()).find(Boolean) || fallback;
 }
 
+function prayerImageFromIcon(icon: Icon) {
+  return icon.imageUrls?.[0] || icon.imageUrl;
+}
+
 function normalizeIcon(item: Partial<Icon>, index: number): Icon {
   const title = normalizeString(item.title) || `Икона ${index + 1}`;
   const slug = normalizeString(item.slug) || title.toLowerCase().replace(/[^a-zа-я0-9]+/gi, '-').replace(/^-+|-+$/g, '') || `icon-${index + 1}`;
@@ -96,7 +100,7 @@ function prayersFromIcons(items: Icon[]): Prayer[] {
       title: icon.title.toLowerCase().includes('молит') ? icon.title : `Молитва: ${icon.title}`,
       text: icon.prayerText,
       category: icon.category || 'Молитвы перед иконой',
-      imageUrl: icon.imageUrl,
+      imageUrl: prayerImageFromIcon(icon),
       relatedIcon: icon.slug,
       audioUrl: '',
       seoTitle: `Молитва перед ${icon.title}`,
@@ -173,7 +177,7 @@ function normalizeSiteContent(value: unknown): SiteContent {
   const publicIcons = hasIcons ? published(normalizedIcons) : icons;
   const normalizedPublicPrayers = hasPrayers ? published(normalizedPrayers).map((prayer) => {
     const icon = publicIcons.find((item) => item.slug === prayer.relatedIcon || item.slug === prayer.slug);
-    return icon && !prayer.imageUrl ? { ...prayer, imageUrl: icon.imageUrl, relatedIcon: prayer.relatedIcon || icon.slug } : prayer;
+    return icon && !prayer.imageUrl ? { ...prayer, imageUrl: prayerImageFromIcon(icon), relatedIcon: prayer.relatedIcon || icon.slug } : prayer;
   }) : prayers;
   const normalizedGospel = hasGospel ? (source.gospel as GospelReading[]).filter((item) => item.status === 'published') : [gospelToday];
   const normalizedSaints = hasSaints ? (source.saints as Saint[]).filter((item) => item.status === 'published') : saints;

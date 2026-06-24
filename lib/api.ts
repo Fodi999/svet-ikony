@@ -16,6 +16,10 @@ function normalizeStatus(value: unknown) {
   return value === 'draft' ? 'draft' : 'published';
 }
 
+function published<T extends { status?: string }>(items: T[]) {
+  return items.filter((item) => item.status === 'published');
+}
+
 function normalizeIcon(item: Partial<Icon>, index: number): Icon {
   const title = normalizeString(item.title) || `Икона ${index + 1}`;
   const slug = normalizeString(item.slug) || title.toLowerCase().replace(/[^a-zа-я0-9]+/gi, '-').replace(/^-+|-+$/g, '') || `icon-${index + 1}`;
@@ -75,19 +79,24 @@ function normalizeSiteContent(value: unknown): SiteContent {
   const hasChurches = Array.isArray(source.churches);
   const normalizedIcons = hasIcons ? source.icons!.map(normalizeIcon).filter((item) => item.slug && item.title) : icons;
   const normalizedPrayers = hasPrayers ? source.prayers!.map(normalizePrayer).filter((item) => item.slug && item.title) : prayers;
+  const normalizedGospel = hasGospel ? (source.gospel as GospelReading[]).filter((item) => item.status === 'published') : [gospelToday];
+  const normalizedSaints = hasSaints ? (source.saints as Saint[]).filter((item) => item.status === 'published') : saints;
+  const normalizedPages = hasPages ? (source.pages!.map((item) => ({
+    ...item,
+    blocks: normalizeStringArray(item.blocks),
+    faq: Array.isArray(item.faq) ? item.faq : []
+  })) as SeoPage[]).filter((item) => item.status === 'published') : seoPages;
+  const normalizedQrPages = hasQrPages ? (source.qrPages as QrPage[]).filter((item) => item.active) : qrPages;
+  const normalizedChurches = hasChurches ? (source.churches as Church[]).filter((item) => item.status === 'published') : churches;
 
   return {
-    icons: hasIcons ? normalizedIcons : icons,
-    prayers: hasPrayers ? normalizedPrayers : prayers,
-    gospel: hasGospel ? source.gospel as GospelReading[] : [gospelToday],
-    saints: hasSaints ? source.saints as Saint[] : saints,
-    pages: hasPages ? source.pages!.map((item) => ({
-      ...item,
-      blocks: normalizeStringArray(item.blocks),
-      faq: Array.isArray(item.faq) ? item.faq : []
-    })) as SeoPage[] : seoPages,
-    qrPages: hasQrPages ? source.qrPages as QrPage[] : qrPages,
-    churches: hasChurches ? source.churches as Church[] : churches,
+    icons: hasIcons ? published(normalizedIcons) : icons,
+    prayers: hasPrayers ? published(normalizedPrayers) : prayers,
+    gospel: normalizedGospel.length ? normalizedGospel : [gospelToday],
+    saints: normalizedSaints,
+    pages: normalizedPages,
+    qrPages: normalizedQrPages,
+    churches: normalizedChurches,
     calendar: source.calendar,
     dashboard: source.dashboard || dashboard
   };
@@ -132,8 +141,8 @@ export const publicApi = {
   saint: async (slug: string) => (await publicApi.saints()).find((item) => item.slug === slug) || null,
   prayers: async () => (await publicApi.content()).prayers,
   prayer: async (slug: string) => (await publicApi.prayers()).find((item) => item.slug === slug) || null,
-  gospelToday: () => apiGet<GospelReading>('/api/gospel/today', gospelToday),
-  gospelByDate: (date: string) => apiGet<GospelReading>(`/api/gospel/${date}`, { ...gospelToday, date }),
+  gospelToday: async () => (await publicApi.content()).gospel[0] ?? gospelToday,
+  gospelByDate: async (date: string) => (await publicApi.content()).gospel.find((item) => item.date === date) ?? { ...gospelToday, date },
   seoPage: async (slug: string) => (await publicApi.content()).pages.find((item) => item.slug === slug) || null,
   qrPage: async (qrId: string) => (await publicApi.content()).qrPages.find((item) => item.qrId === qrId) || null,
   scanQr: (qrId: string) => apiSend(`/api/qr/${qrId}/scan`, 'POST', undefined, { ok: true }),

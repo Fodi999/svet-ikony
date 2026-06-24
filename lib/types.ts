@@ -21,6 +21,7 @@ export type Icon = {
   seoDescription?: string;
   seoKeywords?: string;
   canonicalUrl?: string;
+  calendarDate?: string;
   createdAt: string;
   updatedAt: string;
 };

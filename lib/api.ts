@@ -42,6 +42,10 @@ function prayerImageFromIcon(icon: Icon) {
   return icon.imageUrls?.[0] || icon.imageUrl;
 }
 
+function gospelReferenceFromText(value: string) {
+  return value.match(/\(([^()]*?(?:Мф|Мк|Лк|Ин|Деян|Рим|Кор|Гал|Еф|Флп|Кол|Фес|Тим|Тит|Евр|Пет|Иак|Иуд|Отк)[^()]*)\)/i)?.[1]?.trim() || 'Чтение дня';
+}
+
 function normalizeIcon(item: Partial<Icon>, index: number): Icon {
   const title = normalizeString(item.title) || `Икона ${index + 1}`;
   const slug = normalizeString(item.slug) || title.toLowerCase().replace(/[^a-zа-я0-9]+/gi, '-').replace(/^-+|-+$/g, '') || `icon-${index + 1}`;
@@ -67,6 +71,7 @@ function normalizeIcon(item: Partial<Icon>, index: number): Icon {
     seoDescription: normalizeString(item.seoDescription) || normalizeString(item.shortDescription),
     seoKeywords: normalizeString(item.seoKeywords),
     canonicalUrl: normalizeString(item.canonicalUrl),
+    calendarDate: normalizeString(item.calendarDate) || undefined,
     createdAt: normalizeString(item.createdAt) || now,
     updatedAt: normalizeString(item.updatedAt) || now
   };
@@ -129,19 +134,19 @@ function saintsFromIcons(items: Icon[]): Saint[] {
 }
 
 function gospelFromIcons(items: Icon[]): GospelReading[] {
-  const icon = items.find((item) => item.gospelText.trim());
-  if (!icon) return [];
-  return [{
-    id: `gospel-${icon.slug}`,
-    date: new Date().toISOString().slice(0, 10),
-    title: 'Евангелие дня',
-    reference: 'Чтение дня',
-    text: icon.gospelText,
-    explanation: icon.shortDescription || 'Чтение дня помогает соединить молитву перед образом с внимательным словом Евангелия.',
-    seoTitle: 'Евангелие дня',
-    seoDescription: compactText(icon.gospelText, 180),
-    status: 'published'
-  }];
+  return items
+    .filter((icon) => icon.gospelText.trim())
+    .map((icon) => ({
+      id: `gospel-${icon.slug}`,
+      date: icon.calendarDate || new Date().toISOString().slice(0, 10),
+      title: `Евангелие: ${icon.title}`,
+      reference: gospelReferenceFromText(icon.gospelText),
+      text: icon.gospelText,
+      explanation: icon.shortDescription || icon.fullDescription || 'Чтение дня помогает соединить молитву перед образом с внимательным словом Евангелия.',
+      seoTitle: `Евангелие дня: ${icon.title}`,
+      seoDescription: compactText(icon.gospelText, 180),
+      status: 'published'
+    }));
 }
 
 function churchesFromIcons(items: Icon[]): Church[] {
@@ -180,6 +185,7 @@ function normalizeSiteContent(value: unknown): SiteContent {
     return icon && !prayer.imageUrl ? { ...prayer, imageUrl: prayerImageFromIcon(icon), relatedIcon: prayer.relatedIcon || icon.slug } : prayer;
   }) : prayers;
   const normalizedGospel = hasGospel ? (source.gospel as GospelReading[]).filter((item) => item.status === 'published') : [gospelToday];
+  const derivedGospel = gospelFromIcons(publicIcons);
   const normalizedSaints = hasSaints ? (source.saints as Saint[]).filter((item) => item.status === 'published') : saints;
   const normalizedPages = hasPages ? (source.pages!.map((item) => ({
     ...item,
@@ -192,7 +198,7 @@ function normalizeSiteContent(value: unknown): SiteContent {
   return {
     icons: publicIcons,
     prayers: hasPrayers ? mergeBySlug(normalizedPublicPrayers, prayersFromIcons(publicIcons)) : prayers,
-    gospel: normalizedGospel.length ? normalizedGospel : (gospelFromIcons(publicIcons)[0] ? gospelFromIcons(publicIcons) : [gospelToday]),
+    gospel: derivedGospel.length ? derivedGospel : (normalizedGospel.length ? normalizedGospel : [gospelToday]),
     saints: mergeBySlug(normalizedSaints, saintsFromIcons(publicIcons)),
     pages: normalizedPages,
     qrPages: normalizedQrPages,

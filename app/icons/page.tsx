@@ -1,4 +1,4 @@
-import { IconGrid } from '@/components/site/IconGrid';
+import { LocalizedIconGrid } from '@/components/site/LocalizedContent';
 import { T } from '@/components/site/TranslatedText';
 import { publicApi } from '@/lib/api';
 import { pageMetadata } from '@/lib/seo';
@@ -12,7 +12,7 @@ export default async function IconsPage() {
     <main className="page">
       <section className="page-hero"><p className="eyebrow"><T k="catalog" /></p><h1><T k="iconsPageTitle" /></h1><p><T k="iconsPageLead" /></p></section>
       <div className="filter-row"><input placeholder="Пошук за іконою або святим" /><select>{categories.map((category) => <option key={category}>{category}</option>)}</select></div>
-      <IconGrid icons={icons} />
+      <LocalizedIconGrid icons={icons} />
       <section className="seo-text"><h2><T k="iconsSeoTitle" /></h2><p><T k="iconsSeoText" /></p></section>
     </main>
   );

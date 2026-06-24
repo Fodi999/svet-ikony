@@ -1,4 +1,20 @@
 export type Status = 'draft' | 'published';
+export type SiteLocale = 'uk' | 'ru' | 'en';
+
+export type IconTranslation = {
+  title?: string;
+  shortDescription?: string;
+  fullDescription?: string;
+  category?: string;
+  saintName?: string;
+  prayerText?: string;
+  gospelText?: string;
+  lifeText?: string;
+  historyText?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string;
+};
 
 export type Icon = {
   id: string;
@@ -22,6 +38,7 @@ export type Icon = {
   seoKeywords?: string;
   canonicalUrl?: string;
   calendarDate?: string;
+  translations?: Partial<Record<SiteLocale, IconTranslation>>;
   createdAt: string;
   updatedAt: string;
 };
@@ -114,6 +131,11 @@ export type Church = {
   description: string;
   schedule: string;
   donationUrl?: string;
+  mapsUrl?: string;
+  phoneOrSite?: string;
+  dedication?: string;
+  shrines?: string;
+  imageUrl?: string;
   relatedIcons: string[];
   seoTitle?: string;
   seoDescription?: string;

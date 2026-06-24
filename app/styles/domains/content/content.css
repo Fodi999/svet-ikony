@@ -1227,3 +1227,128 @@ button,
     min-height: 108px;
   }
 }
+
+
+/* Localized structured content from admin icon editor */
+.structured-blocks {
+  display: grid;
+  gap: clamp(14px, 1.6vw, 22px);
+}
+
+.structured-block {
+  border-left: 3px solid #b8842b;
+  padding-left: clamp(14px, 1.6vw, 20px);
+}
+
+.structured-block h3 {
+  margin: 0 0 8px;
+  color: #b8842b;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.structured-block p:last-child,
+.church-directory-card p:last-child,
+.church-facts dd:last-child {
+  margin-bottom: 0;
+}
+
+.church-directory {
+  display: grid;
+  gap: clamp(18px, 2.4vw, 34px);
+  margin-top: clamp(28px, 4vw, 58px);
+}
+
+.church-directory-card {
+  border: 1px solid #d8d8d8;
+  background: rgba(255, 255, 255, .32);
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) minmax(0, 1fr);
+  min-height: 320px;
+  overflow: hidden;
+}
+
+.church-directory-card > img {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  object-fit: cover;
+  border-right: 1px solid #d8d8d8;
+}
+
+.church-directory-copy {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: clamp(20px, 3vw, 42px);
+}
+
+.church-directory-copy > span,
+.church-dedication {
+  color: #b8842b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.church-directory-copy h2 {
+  margin: 0;
+  color: #050505;
+  font-family: Impact, "Arial Black", sans-serif;
+  font-size: clamp(34px, 4.2vw, 72px);
+  line-height: .9;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.church-facts {
+  display: grid;
+  grid-template-columns: minmax(110px, 170px) minmax(0, 1fr);
+  gap: 0;
+  border-top: 1px solid #d8d8d8;
+  border-left: 1px solid #d8d8d8;
+}
+
+.church-facts dt,
+.church-facts dd {
+  min-width: 0;
+  margin: 0;
+  border-right: 1px solid #d8d8d8;
+  border-bottom: 1px solid #d8d8d8;
+  padding: 11px 12px;
+}
+
+.church-facts dt {
+  color: #b8842b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.church-facts dd {
+  color: #2e2924;
+  line-height: 1.45;
+}
+
+@media (max-width: 820px) {
+  .church-directory-card {
+    grid-template-columns: 1fr;
+  }
+
+  .church-directory-card > img {
+    min-height: 260px;
+    max-height: 420px;
+    border-right: 0;
+    border-bottom: 1px solid #d8d8d8;
+  }
+
+  .church-facts {
+    grid-template-columns: 1fr;
+  }
+}

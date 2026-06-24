@@ -1,5 +1,6 @@
 import { churches, dashboard, gospelToday, icons, prayers, qrPages, saints, seoPages } from './fallbackData';
-import type { Church, Dashboard, GospelReading, Icon, Prayer, QrPage, Saint, SeoPage, SiteContent } from './types';
+import { churchFromIcon, imageForPrayer } from './iconContent';
+import type { Church, Dashboard, GospelReading, Icon, IconTranslation, Prayer, QrPage, Saint, SeoPage, SiteContent } from './types';
 
 const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://ministerial-yetta-fodi999-c58d8823.koyeb.app').replace(/\/+$/, '');
 const publicPrefix = apiUrl.endsWith('/public') ? '' : '/public';
@@ -14,6 +15,33 @@ function normalizeStringArray(value: unknown) {
 
 function normalizeStatus(value: unknown) {
   return value === 'draft' ? 'draft' : 'published';
+}
+
+function normalizeTranslation(value: unknown): IconTranslation {
+  const source = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  return {
+    title: normalizeString(source.title),
+    shortDescription: normalizeString(source.shortDescription),
+    fullDescription: normalizeString(source.fullDescription),
+    category: normalizeString(source.category),
+    saintName: normalizeString(source.saintName),
+    prayerText: normalizeString(source.prayerText),
+    gospelText: normalizeString(source.gospelText),
+    lifeText: normalizeString(source.lifeText),
+    historyText: normalizeString(source.historyText),
+    seoTitle: normalizeString(source.seoTitle),
+    seoDescription: normalizeString(source.seoDescription),
+    seoKeywords: normalizeString(source.seoKeywords)
+  };
+}
+
+function normalizeTranslations(value: unknown) {
+  const source = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  return {
+    uk: normalizeTranslation(source.uk),
+    ru: normalizeTranslation(source.ru),
+    en: normalizeTranslation(source.en)
+  };
 }
 
 function published<T extends { status?: string }>(items: T[]) {
@@ -39,7 +67,7 @@ function firstTextLine(value: string, fallback: string) {
 }
 
 function prayerImageFromIcon(icon: Icon) {
-  return icon.imageUrls?.[0] || icon.imageUrl;
+  return imageForPrayer(icon);
 }
 
 function gospelReferenceFromText(value: string) {
@@ -72,6 +100,7 @@ function normalizeIcon(item: Partial<Icon>, index: number): Icon {
     seoKeywords: normalizeString(item.seoKeywords),
     canonicalUrl: normalizeString(item.canonicalUrl),
     calendarDate: normalizeString(item.calendarDate) || undefined,
+    translations: normalizeTranslations((item as { translations?: unknown }).translations),
     createdAt: normalizeString(item.createdAt) || now,
     updatedAt: normalizeString(item.updatedAt) || now
   };
@@ -150,6 +179,8 @@ function gospelFromIcons(items: Icon[]): GospelReading[] {
 }
 
 function churchesFromIcons(items: Icon[]): Church[] {
+  const generated = items.map(churchFromIcon).filter((church) => church.title && church.description);
+  if (generated.length) return generated;
   if (!items.length) return [];
   const source = items[0];
   return [{
@@ -161,6 +192,7 @@ function churchesFromIcons(items: Icon[]): Church[] {
     description: source.historyText || source.fullDescription || 'Храм может подключить QR-страницы икон, чтобы прихожане открывали молитву, житие святого, Евангелие дня и историю образа рядом со святыней.',
     schedule: 'Подключение и наполнение страниц настраивается в админке.',
     donationUrl: '',
+    imageUrl: source.imageUrl,
     relatedIcons: items.map((item) => item.slug),
     seoTitle: 'QR-иконы и молитвенные страницы для храмов',
     seoDescription: 'Материалы для храмов: QR-страницы икон, молитвы, жития, Евангелие дня и описание святынь.',

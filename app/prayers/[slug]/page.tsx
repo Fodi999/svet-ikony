@@ -36,9 +36,18 @@ export default async function PrayerPage({ params }: Props) {
         <p>Текст для внимательного чтения перед иконой, дома или в храме.</p>
       </section>
       <article className="sacred-panel prayer-panel prayer-reader-panel">
-        <span>Молитва</span>
-        <div className="reader-text prayer-reader"><Paragraphs text={prayer.text} /></div>
-        {prayer.audioUrl ? <audio controls src={prayer.audioUrl} /> : null}
+        <div className={prayer.imageUrl ? 'prayer-panel-layout' : ''}>
+          {prayer.imageUrl ? (
+            <figure className="prayer-panel-image">
+              <img src={prayer.imageUrl} alt={prayer.title} />
+            </figure>
+          ) : null}
+          <div className="prayer-panel-copy">
+            <span>Молитва</span>
+            <div className="reader-text prayer-reader"><Paragraphs text={prayer.text} /></div>
+            {prayer.audioUrl ? <audio controls src={prayer.audioUrl} /> : null}
+          </div>
+        </div>
       </article>
     </main>
   );

@@ -20,6 +20,15 @@ function published<T extends { status?: string }>(items: T[]) {
   return items.filter((item) => item.status === 'published');
 }
 
+function mergeBySlug<T extends { slug: string }>(primary: T[], generated: T[]) {
+  const seen = new Set<string>();
+  return [...primary, ...generated].filter((item) => {
+    if (seen.has(item.slug)) return false;
+    seen.add(item.slug);
+    return true;
+  });
+}
+
 function compactText(value: string, limit: number) {
   const normalized = value.replace(/\s+/g, ' ').trim();
   return normalized.length > limit ? `${normalized.slice(0, limit - 1).trim()}…` : normalized;
@@ -68,6 +77,7 @@ function normalizePrayer(item: Partial<Prayer>, index: number): Prayer {
     title,
     text: normalizeString(item.text),
     category: normalizeString(item.category) || 'Молитвы',
+    imageUrl: normalizeString(item.imageUrl) || undefined,
     relatedSaint: normalizeString(item.relatedSaint),
     relatedIcon: normalizeString(item.relatedIcon),
     audioUrl: normalizeString(item.audioUrl),
@@ -86,6 +96,7 @@ function prayersFromIcons(items: Icon[]): Prayer[] {
       title: icon.title.toLowerCase().includes('молит') ? icon.title : `Молитва: ${icon.title}`,
       text: icon.prayerText,
       category: icon.category || 'Молитвы перед иконой',
+      imageUrl: icon.imageUrl,
       relatedIcon: icon.slug,
       audioUrl: '',
       seoTitle: `Молитва перед ${icon.title}`,
@@ -160,6 +171,10 @@ function normalizeSiteContent(value: unknown): SiteContent {
   const normalizedIcons = hasIcons ? source.icons!.map(normalizeIcon).filter((item) => item.slug && item.title) : icons;
   const normalizedPrayers = hasPrayers ? source.prayers!.map(normalizePrayer).filter((item) => item.slug && item.title) : prayers;
   const publicIcons = hasIcons ? published(normalizedIcons) : icons;
+  const normalizedPublicPrayers = hasPrayers ? published(normalizedPrayers).map((prayer) => {
+    const icon = publicIcons.find((item) => item.slug === prayer.relatedIcon || item.slug === prayer.slug);
+    return icon && !prayer.imageUrl ? { ...prayer, imageUrl: icon.imageUrl, relatedIcon: prayer.relatedIcon || icon.slug } : prayer;
+  }) : prayers;
   const normalizedGospel = hasGospel ? (source.gospel as GospelReading[]).filter((item) => item.status === 'published') : [gospelToday];
   const normalizedSaints = hasSaints ? (source.saints as Saint[]).filter((item) => item.status === 'published') : saints;
   const normalizedPages = hasPages ? (source.pages!.map((item) => ({
@@ -172,12 +187,12 @@ function normalizeSiteContent(value: unknown): SiteContent {
 
   return {
     icons: publicIcons,
-    prayers: hasPrayers ? (published(normalizedPrayers).length ? published(normalizedPrayers) : prayersFromIcons(publicIcons)) : prayers,
+    prayers: hasPrayers ? mergeBySlug(normalizedPublicPrayers, prayersFromIcons(publicIcons)) : prayers,
     gospel: normalizedGospel.length ? normalizedGospel : (gospelFromIcons(publicIcons)[0] ? gospelFromIcons(publicIcons) : [gospelToday]),
-    saints: normalizedSaints.length ? normalizedSaints : saintsFromIcons(publicIcons),
+    saints: mergeBySlug(normalizedSaints, saintsFromIcons(publicIcons)),
     pages: normalizedPages,
     qrPages: normalizedQrPages,
-    churches: normalizedChurches.length ? normalizedChurches : churchesFromIcons(publicIcons),
+    churches: mergeBySlug(normalizedChurches, churchesFromIcons(publicIcons)),
     calendar: source.calendar,
     dashboard: source.dashboard || dashboard
   };

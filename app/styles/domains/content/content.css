@@ -418,6 +418,16 @@ button,
   gap: 10px;
 }
 
+.prayer-list-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  margin: calc(clamp(18px, 2vw, 30px) * -1) calc(clamp(18px, 2vw, 30px) * -1) 12px;
+  width: calc(100% + clamp(18px, 2vw, 30px) * 2);
+  object-fit: cover;
+  border-bottom: 1px solid #d8d8d8;
+}
+
 .list-grid span {
   color: #b8842b;
   font-size: 12px;

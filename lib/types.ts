@@ -46,6 +46,7 @@ export type Prayer = {
   title: string;
   text: string;
   category: string;
+  imageUrl?: string;
   relatedSaint?: string;
   relatedIcon?: string;
   audioUrl?: string;

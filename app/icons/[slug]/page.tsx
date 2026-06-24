@@ -1,5 +1,5 @@
 import { LocalizedIconDetail } from '@/components/site/LocalizedContent';
-import Link from 'next/link';
+import { AssetButton } from '@/components/site/AssetButton';
 import { publicApi } from '@/lib/api';
 import { jsonLd, pageMetadata } from '@/lib/seo';
 import type { CalendarDay, SeoPage } from '@/lib/types';
@@ -48,8 +48,8 @@ function CalendarFallbackPage({ day, page }: { day?: CalendarDay; page?: SeoPage
           <h1>{title}</h1>
           {description ? <p className="detail-lead">{description}</p> : null}
           <div className="detail-actions">
-            <Link className="primary-link" href={day?.prayerSlug ? `/prayers/${day.prayerSlug}` : '/prayers'}>Читать молитву</Link>
-            <Link className="secondary-link" href="/icons">Все иконы</Link>
+            <AssetButton variant="dark" href={day?.prayerSlug ? `/prayers/${day.prayerSlug}` : '/prayers'}>Читать молитву</AssetButton>
+            <AssetButton href="/icons">Все иконы</AssetButton>
           </div>
         </div>
       </section>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AssetButton, CopyIcon, DownloadIcon } from './AssetButton';
 
 export type IconPhotoCatalogItem = {
   image: string;
@@ -13,25 +14,6 @@ type Props = {
   iconUrl: string;
   items: IconPhotoCatalogItem[];
 };
-
-function CopyIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M8 7.5A2.5 2.5 0 0 1 10.5 5H18a2.5 2.5 0 0 1 2.5 2.5V15A2.5 2.5 0 0 1 18 17.5h-7.5A2.5 2.5 0 0 1 8 15V7.5Z" />
-      <path d="M5.5 8.5V18A2.5 2.5 0 0 0 8 20.5h9.5" />
-    </svg>
-  );
-}
-
-function DownloadIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M12 4v10" />
-      <path d="m7.5 10 4.5 4.5L16.5 10" />
-      <path d="M5 20h14" />
-    </svg>
-  );
-}
 
 function ZoomIcon() {
   return (
@@ -79,20 +61,17 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
               </div>
               {item.kind === 'qr' ? (
                 <div className="icon-qr-actions">
-                  <button className="icon-copy-link" type="button" onClick={() => void copyIconUrl()} aria-label="Скопировать ссылку на страницу иконы">
-                    <CopyIcon />
+                  <AssetButton icon={<CopyIcon />} onClick={() => void copyIconUrl()} ariaLabel="Скопировать ссылку на страницу иконы">
                     {copied ? 'Скопировано' : 'Скопировать'}
-                  </button>
-                  <a className="icon-copy-link" href={item.image} download={imageFileName(item, index)} aria-label="Скачать QR-код для печати">
-                    <DownloadIcon />
+                  </AssetButton>
+                  <AssetButton variant="dark" icon={<DownloadIcon />} href={item.image} download={imageFileName(item, index)} ariaLabel="Скачать QR-код для печати">
                     Скачать QR
-                  </a>
+                  </AssetButton>
                 </div>
               ) : (
-                <a className="icon-copy-link" href={item.image} download={imageFileName(item, index)} aria-label={`Скачать ${item.label}`}>
-                  <DownloadIcon />
+                <AssetButton variant="dark" icon={<DownloadIcon />} href={item.image} download={imageFileName(item, index)} ariaLabel={`Скачать ${item.label}`}>
                   Скачать
-                </a>
+                </AssetButton>
               )}
             </figcaption>
           </figure>

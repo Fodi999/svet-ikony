@@ -51,6 +51,11 @@
     gap: 12px;
   }
 
+  .calendar-top-actions {
+    justify-content: start;
+    flex-wrap: wrap;
+  }
+
   .month-switch {
     width: 100%;
     justify-content: space-between;
@@ -181,7 +186,12 @@
   }
 
   .calendar-grid {
-    column-count: 1;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    column-count: auto;
+    column-gap: 0;
+    background: transparent;
   }
 
   .weekday-strip {
@@ -196,13 +206,54 @@
 
   .calendar-day,
   .calendar-day.text-only {
-    min-height: 0;
-    padding: 12px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .calendar-day:not(:has(.day-event)) {
+    aspect-ratio: 1 / 1;
+    box-shadow: none;
+  }
+
+  .calendar-day:not(:has(.day-event))::before {
+    width: 2px;
+  }
+
+  .calendar-day:not(:has(.day-event)) .day-number {
+    position: static;
+    width: 100%;
+    min-height: 100%;
+    justify-content: center;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 18px;
+  }
+
+  .calendar-day:not(:has(.day-event)) .day-number small {
+    display: none;
+  }
+
+  .calendar-day:has(.day-event) {
+    grid-column: 1 / -1;
+    margin: 6px 0;
+  }
+
+  .calendar-day:has(.day-event):not(:has(.day-image-link)) {
+    min-height: 170px;
+    padding: 56px 12px 12px;
   }
 
   .calendar-grid .calendar-day:has(.day-image-link) {
+    grid-column: 1 / -1;
     min-height: 0;
     padding: 0;
+  }
+
+  .calendar-grid .calendar-day:has(.day-image-link) .day-image-link {
+    max-height: 76vh;
   }
 
   .list-accordion-trigger {
@@ -216,5 +267,141 @@
 
   .list-day-heading strong {
     font-size: 18px;
+  }
+}
+
+@media (max-width: 430px) {
+  .calendar-page {
+    padding: 14px 10px 30px;
+  }
+
+  .calendar-hero {
+    gap: 10px;
+    padding-bottom: 18px;
+  }
+
+  .calendar-hero h1 {
+    font-size: clamp(44px, 22vw, 74px);
+  }
+
+  .calendar-feature,
+  .calendar-info,
+  .calendar-icon-day {
+    padding: 14px;
+  }
+
+  .calendar-icon-day {
+    min-height: 230px;
+  }
+
+  .calendar-toolbar {
+    gap: 10px;
+    padding: 8px 0 12px;
+  }
+
+  .month-switch {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+  }
+
+  .month-step {
+    min-width: 0;
+    width: 42px;
+    padding: 0 !important;
+  }
+
+  .month-switch strong {
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  .year-switch input {
+    width: 86px;
+    min-width: 86px;
+  }
+
+  .filter-toggle {
+    min-height: 42px;
+  }
+
+  .view-switch {
+    min-height: 40px;
+  }
+
+  .month-block h2 {
+    font-size: clamp(44px, 19vw, 68px);
+    margin-top: 28px;
+  }
+
+  .weekday-strip {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+
+  .weekday-strip span {
+    border-bottom: 0;
+    padding-bottom: 4px;
+    text-align: center;
+    font-size: 9px;
+  }
+
+  .calendar-day:has(.day-event):not(:has(.day-image-link)) {
+    min-height: 158px;
+    padding: 54px 10px 10px;
+  }
+
+  .day-number {
+    min-height: 32px;
+    font-size: 24px;
+  }
+
+  .calendar-day:not(:has(.day-event)) {
+    min-height: 38px;
+  }
+
+  .calendar-day:not(:has(.day-event)) .day-number {
+    min-height: 100%;
+    font-size: 16px;
+  }
+
+  .calendar-day:has(.day-event) .day-number {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+  }
+
+  .today-badge {
+    top: 46px;
+    left: 8px;
+  }
+
+  .day-event,
+  .calendar-grid .calendar-day:has(.day-image-link) .day-event {
+    inset: auto 8px 8px;
+    padding: 10px;
+  }
+
+  .day-copy {
+    font-size: 13px;
+  }
+
+  .calendar-grid .calendar-day:has(.day-image-link) .day-title-link {
+    font-size: 15px;
+  }
+
+  .day-copy em {
+    max-height: 3.6em;
+    font-size: 12px;
+  }
+
+  .day-links {
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  .day-links a {
+    font-size: 11px;
   }
 }

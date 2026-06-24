@@ -7,6 +7,58 @@ body:has(.calendar-shell) .site-footer {
   display: none;
 }
 
+.calendar-top-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: end;
+  gap: 14px;
+}
+
+.calendar-breadcrumbs {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #d8d8d8;
+  background: #f4f4f4;
+}
+
+.calendar-breadcrumbs a,
+.calendar-breadcrumbs b {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  color: #151515;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.calendar-breadcrumbs b {
+  border-right: 1px solid #d8d8d8;
+  border-left: 1px solid #d8d8d8;
+  padding: 0 8px;
+  color: #8b8b8b;
+}
+
+.calendar-breadcrumbs a:hover {
+  background: #050505;
+  color: #f4f4f4;
+}
+
+.calendar-top-actions .language-switch {
+  background: transparent;
+}
+
+.calendar-top-actions .language-switch button {
+  color: #606060;
+}
+
+.calendar-top-actions .language-switch button.active {
+  background: #050505;
+  color: #f4f4f4;
+}
+
 .calendar-shell {
   min-height: 100vh;
   padding: 0;
@@ -492,4 +544,23 @@ body:has(.calendar-shell) .site-footer {
   font-size: clamp(62px, 8vw, 132px);
   font-weight: 400;
   line-height: .82;
+}
+
+.calendar-hero h1,
+.month-block h2 {
+  color: transparent;
+  background:
+    linear-gradient(110deg, #050505 0%, #050505 26%, #574b3d 38%, #b8842b 48%, #1f1f1f 58%, #050505 74%, #050505 100%);
+  background-size: 260% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: titleGradientFlow 5.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-hero h1,
+  .month-block h2 {
+    animation: none;
+    background-position: 42% 50%;
+  }
 }

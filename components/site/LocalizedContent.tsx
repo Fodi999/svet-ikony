@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { IconPhotoCatalog, type IconPhotoCatalogItem } from './IconPhotoCatalog';
 import { IconCard } from './IconCard';
+import { AssetButton, DownloadIcon } from './AssetButton';
 import { useI18n } from './LanguageProvider';
 import { absoluteSiteUrl } from '@/lib/site';
 import type { Church, Icon } from '@/lib/types';
@@ -36,7 +37,8 @@ const uiText = {
     phoneSite: 'Телефон / сайт',
     shrines: 'Святыни',
     iconPage: 'Страница иконы',
-    prayerCategory: 'Молитва'
+    prayerCategory: 'Молитва',
+    downloadQr: 'Скачать QR'
   },
   uk: {
     prayer: 'Молитва',
@@ -63,7 +65,8 @@ const uiText = {
     phoneSite: 'Телефон / сайт',
     shrines: 'Святині',
     iconPage: 'Сторінка ікони',
-    prayerCategory: 'Молитва'
+    prayerCategory: 'Молитва',
+    downloadQr: 'Завантажити QR'
   },
   en: {
     prayer: 'Prayer',
@@ -90,7 +93,8 @@ const uiText = {
     phoneSite: 'Phone / website',
     shrines: 'Shrines',
     iconPage: 'Icon page',
-    prayerCategory: 'Prayer'
+    prayerCategory: 'Prayer',
+    downloadQr: 'Download QR'
   }
 } as const;
 
@@ -125,6 +129,75 @@ function displayText(value?: string) {
   return (value || '').replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
 }
 
+function downloadFileName(title: string, image: string, prefix = 'qr') {
+  const baseName = title.toLowerCase().replace(/[^a-z0-9а-яё]+/gi, '-').replace(/^-|-$/g, '') || 'prayer';
+  const extension = image.split('?')[0]?.split('.').pop()?.toLowerCase();
+  const safeExtension = extension && extension.length <= 5 ? extension : 'jpg';
+  return `${prefix}-${baseName}.${safeExtension}`;
+}
+
+function isPublicStorySection(label: string) {
+  return !/(alt|prompt|source|источник|джерело|generation|генерац|не писать|do not write)/i.test(label);
+}
+
+function excerptParagraphs(value: string, maxParagraphs = 2, maxChars = 520) {
+  const paragraphs = paragraphsFromText(value);
+  const excerpts: string[] = [];
+  let used = 0;
+
+  for (const paragraph of paragraphs) {
+    if (excerpts.length >= maxParagraphs || used >= maxChars) break;
+    const remaining = maxChars - used;
+    if (remaining <= 0) break;
+    const text = paragraph.length > remaining ? `${paragraph.slice(0, Math.max(0, remaining - 1)).trim()}…` : paragraph;
+    excerpts.push(text);
+    used += text.length;
+  }
+
+  return excerpts;
+}
+
+function storySectionsFromText(text: string | undefined, locale: keyof typeof uiText) {
+  const structured = sectionsFromText(text)
+    .filter((section) => isPublicStorySection(section.label))
+    .map((section) => ({
+      title: translateSectionLabel(section.label, locale),
+      paragraphs: excerptParagraphs(section.value)
+    }))
+    .filter((section) => section.paragraphs.length);
+
+  if (structured.length) return structured.slice(0, 5);
+
+  return paragraphsFromText(text).slice(0, 4).map((paragraph, index) => ({
+    title: index === 0 ? ui(locale, 'explanation') : `${ui(locale, 'explanation')} ${index + 1}`,
+    paragraphs: excerptParagraphs(paragraph, 1, 420)
+  }));
+}
+
+function IconStory({ text, images }: { text?: string; images: string[] }) {
+  const { locale } = useI18n();
+  const sections = storySectionsFromText(text, locale);
+  if (!sections.length) return null;
+
+  return (
+    <section className="icon-story-flow">
+      {sections.map((section, index) => {
+        const image = images[index % images.length];
+        return (
+          <article className="icon-story-block" key={`${section.title}-${index}`}>
+            {image ? <figure><img src={image} alt={section.title} /></figure> : null}
+            <div>
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <h2>{section.title}</h2>
+              {section.paragraphs.map((paragraph, paragraphIndex) => <p key={`${section.title}-${paragraphIndex}`}>{paragraph}</p>)}
+            </div>
+          </article>
+        );
+      })}
+    </section>
+  );
+}
+
 export function LocalizedIconGrid({ icons }: { icons: Icon[] }) {
   const { locale } = useI18n();
   return <div className="icon-grid">{icons.map((icon) => <IconCard key={icon.id} icon={localizeIcon(icon, locale)} />)}</div>;
@@ -135,14 +208,28 @@ export function LocalizedPrayersList({ icons }: { icons: Icon[] }) {
   const items = icons.map((icon) => localizeIcon(icon, locale)).filter((icon) => icon.prayerText.trim());
   return (
     <div className="list-grid">
-      {items.map((icon) => (
-        <Link className="prayer-list-card" key={icon.id} href={`/prayers/${icon.slug}`}>
-          <img src={imageForPrayer(icon)} alt={icon.title} />
-          <span>{icon.category || ui(locale, 'prayerCategory')}</span>
-          <strong>{prayerTitle(icon.title, locale)}</strong>
-          <p>{textPreview(icon.prayerText, 220)}</p>
-        </Link>
-      ))}
+      {items.map((icon) => {
+        const title = prayerTitle(icon.title, locale);
+        const image = imageForPrayer(icon);
+        return (
+          <article className="prayer-list-card" key={icon.id}>
+            <Link className="prayer-list-media" href={`/prayers/${icon.slug}`}>
+              <img src={image} alt={title} />
+            </Link>
+            <div className="prayer-list-copy">
+              <span>{icon.category || ui(locale, 'prayerCategory')}</span>
+              <Link href={`/prayers/${icon.slug}`}><strong>{title}</strong></Link>
+              <p>{textPreview(icon.prayerText, 190)}</p>
+              <div className="prayer-card-actions">
+                <AssetButton href={`/prayers/${icon.slug}`}>{ui(locale, 'readPrayer')}</AssetButton>
+                <AssetButton variant="dark" icon={<DownloadIcon />} href={image} download={downloadFileName(title, image)}>
+                  {ui(locale, 'downloadQr')}
+                </AssetButton>
+              </div>
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -236,8 +323,8 @@ export function LocalizedChurchesPage({ icons, fallbackChurches }: { icons: Icon
                 {church.shrines ? <><dt>{ui(locale, 'shrines')}</dt><dd>{church.shrines}</dd></> : null}
               </dl>
               <div className="detail-actions">
-                {church.mapsUrl ? <a className="primary-link" href={church.mapsUrl} target="_blank" rel="noreferrer">Google Maps</a> : null}
-                {church.relatedIcons?.[0] ? <Link className="secondary-link" href={`/icons/${church.relatedIcons[0]}`}>{ui(locale, 'iconPage')}</Link> : null}
+                {church.mapsUrl ? <AssetButton variant="dark" href={church.mapsUrl} target="_blank" rel="noreferrer">Google Maps</AssetButton> : null}
+                {church.relatedIcons?.[0] ? <AssetButton href={`/icons/${church.relatedIcons[0]}`}>{ui(locale, 'iconPage')}</AssetButton> : null}
               </div>
             </div>
           </article>
@@ -275,10 +362,10 @@ export function LocalizedIconDetail({ icon, related }: { icon: Icon; related: Ic
           <h1>{iconTitle}</h1>
           <p className="detail-lead">{item.shortDescription || textPreview(item.fullDescription, 220)}</p>
           <div className="sacred-meta">{item.saintName ? <span>{item.saintName}</span> : null}<span>{item.status === 'published' ? ui(locale, 'published') : ui(locale, 'draft')}</span></div>
-          <div className="soft-note reader-text"><DisplayText text={item.fullDescription} /></div>
-          <div className="detail-actions"><Link className="primary-link" href="#prayer">{ui(locale, 'readPrayer')}</Link><Link className="secondary-link" href="/churches">{ui(locale, 'forChurches')}</Link></div>
+          <div className="detail-actions"><AssetButton variant="dark" href="#prayer">{ui(locale, 'readPrayer')}</AssetButton><AssetButton href="/churches">{ui(locale, 'forChurches')}</AssetButton></div>
         </div>
       </section>
+      <IconStory text={item.fullDescription} images={photoImages.length ? photoImages : [item.imageUrl]} />
       {publicGalleryImages.length > 1 ? <section className="icon-photo-catalog"><div className="section-head"><p className="eyebrow">{ui(locale, 'photoQr')}</p><h2>{ui(locale, 'imageCatalog')}</h2></div><IconPhotoCatalog title={iconTitle} iconUrl={iconPageUrl} items={publicGalleryImages} /></section> : null}
       <section className="sacred-content-grid">
         <article id="prayer" className="sacred-panel prayer-panel"><div className="prayer-panel-layout"><figure className="prayer-panel-image"><img src={prayerImage} alt={`${ui(locale, 'prayer')}: ${iconTitle}`} /></figure><div className="prayer-panel-copy"><span>01</span><h2>{ui(locale, 'prayer')}</h2><div className="reader-text"><DisplayText text={item.prayerText} /></div>{item.audioUrl ? <audio controls src={item.audioUrl} /> : null}</div></div></article>

@@ -3,213 +3,6 @@ body {
   background: #050505;
 }
 
-@keyframes titleGradientFlow {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-body:has(.calendar-shell) .site-footer {
-  display: none;
-}
-
-.calendar-top-actions {
-  display: inline-flex;
-  align-items: center;
-  justify-content: end;
-  gap: 14px;
-}
-
-.calendar-breadcrumbs {
-  min-height: 38px;
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid #d8d8d8;
-  background: #f4f4f4;
-}
-
-.calendar-breadcrumbs a,
-.calendar-breadcrumbs b {
-  min-height: 38px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 12px;
-  color: #151515;
-  font-size: 13px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.calendar-breadcrumbs b {
-  border-right: 1px solid #d8d8d8;
-  border-left: 1px solid #d8d8d8;
-  padding: 0 8px;
-  color: #8b8b8b;
-}
-
-.calendar-breadcrumbs a:hover {
-  background: #050505;
-  color: #f4f4f4;
-}
-
-.calendar-top-actions .language-switch {
-  background: transparent;
-}
-
-.calendar-top-actions .language-switch button {
-  color: #606060;
-}
-
-.calendar-top-actions .language-switch button.active {
-  background: #050505;
-  color: #f4f4f4;
-}
-
-.month-switch {
-  gap: clamp(14px, 2vw, 30px);
-}
-
-.month-switch button,
-.view-switch button,
-.filter-toggle {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: #151515;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.month-switch button {
-  padding: 0;
-  white-space: nowrap;
-}
-
-.month-switch button:hover,
-.view-switch button:hover,
-.filter-toggle:hover {
-  color: #666;
-}
-
-.filter-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 38px;
-  border: 1px solid #d8d8d8;
-  padding: 0 12px 0 14px;
-  background: #f4f4f4;
-  color: #151515;
-  font-size: 14px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.filter-toggle span {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-}
-
-.filter-toggle i {
-  width: 16px;
-  height: 16px;
-  display: grid;
-  place-items: center;
-  color: #151515;
-  font-size: 13px;
-  font-style: normal;
-  line-height: 1;
-  transition: transform .16s ease;
-}
-
-.filter-toggle[aria-expanded="true"] i {
-  transform: rotate(180deg);
-}
-
-.calendar-filter {
-  z-index: 8;
-}
-
-.filter-menu {
-  left: auto;
-  right: 0;
-  width: 250px;
-  padding: 6px;
-}
-
-.filter-menu button {
-  min-height: 38px;
-  border: 0;
-  padding: 0 10px;
-}
-
-.filter-menu button + button {
-  border-top: 1px solid #dadada;
-}
-
-.view-switch {
-  gap: 8px;
-}
-
-.view-switch button.active {
-  color: #050505;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.calendar-toolbar {
-  border-top: 2px solid #d8d8d8;
-  padding-top: 8px;
-}
-
-.calendar-toolbar {
-  position: relative;
-  z-index: 40;
-  overflow: visible;
-}
-
-.calendar-filter {
-  position: relative;
-  z-index: 70;
-}
-
-.filter-toggle {
-  outline: none;
-}
-
-.filter-toggle:focus,
-.filter-toggle:focus-visible {
-  border-color: #050505;
-  box-shadow: none;
-}
-
-.filter-menu {
-  z-index: 90;
-  border: 1px solid #050505;
-  background: #f4f4f4;
-  box-shadow: 0 24px 58px rgba(0, 0, 0, .28);
-}
-
-.filter-menu button {
-  background: #f4f4f4;
-  outline: none;
-}
-
-.today-card {
-  z-index: 1;
-}
-
-.calendar-page,
 .page,
 .read-page,
 .detail-page,
@@ -263,8 +56,6 @@ body:not(:has(.calendar-shell)) main {
   text-wrap: balance;
 }
 
-.calendar-hero h1,
-.month-block h2,
 .page-hero h1,
 .read-hero h1,
 .sacred-hero-copy h1,
@@ -279,8 +70,6 @@ body:not(:has(.calendar-shell)) main {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .calendar-hero h1,
-  .month-block h2,
   .page-hero h1,
   .read-hero h1,
   .sacred-hero-copy h1,
@@ -325,6 +114,212 @@ body:not(:has(.calendar-shell)) main {
   grid-template-columns: minmax(0, 1fr) minmax(190px, 280px);
 }
 
+.icons-page {
+  overflow: hidden;
+}
+
+.icons-catalog-hero {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
+  align-items: end;
+  gap: clamp(24px, 5vw, 80px);
+}
+
+.icons-catalog-hero h1 {
+  max-width: 980px;
+}
+
+.icons-catalog-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  border: 1px solid #d8d8d8;
+  background: #d8d8d8;
+}
+
+.icons-catalog-stats div {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: end;
+  gap: 10px;
+  min-height: 132px;
+  padding: 18px;
+  background:
+    linear-gradient(135deg, rgba(184, 132, 43, .09), transparent 42%),
+    #f8f5ef;
+}
+
+.icons-catalog-stats .icons-catalog-qr-stat {
+  justify-items: start;
+}
+
+.icons-catalog-stats dt {
+  min-width: 0;
+  color: #050505;
+  font-family: Impact, "Arial Black", sans-serif;
+  font-size: clamp(34px, 3.6vw, 58px);
+  line-height: .9;
+  white-space: nowrap;
+}
+
+.icons-catalog-stats dd {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  color: #6b655f;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+  overflow-wrap: normal;
+}
+
+.icons-catalog-qr-stat dd {
+  max-width: 120px;
+}
+
+.icons-toolbar {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(220px, 340px);
+  align-items: end;
+  gap: 14px;
+  max-width: 1180px;
+  margin: clamp(22px, 3vw, 38px) 0 0;
+}
+
+.icons-toolbar label,
+.icons-select-field {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.icons-toolbar label span,
+.icons-select-field > span {
+  color: #8a837b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.icons-toolbar input {
+  min-height: 58px;
+  border-color: #d7d0c7;
+  background: #fbfaf8;
+  color: #111;
+  font-size: 16px;
+  font-weight: 800;
+  outline: none;
+}
+
+.icons-toolbar input:focus,
+.icons-select-button:focus-visible {
+  border-color: #b8842b;
+  box-shadow: inset 0 0 0 1px rgba(184, 132, 43, .38);
+}
+
+.icons-toolbar input::placeholder {
+  color: #8f8982;
+  font-weight: 700;
+}
+
+.icons-select-field {
+  position: relative;
+}
+
+.icons-select-button {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid #d7d0c7;
+  border-radius: 0;
+  padding: 0 16px;
+  background: #fbfaf8;
+  color: #111;
+  cursor: pointer;
+  outline: none;
+}
+
+.icons-select-button b {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icons-select-button i {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-right: 2px solid #050505;
+  border-bottom: 2px solid #050505;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform .16s ease;
+}
+
+.icons-select-button[aria-expanded="true"] i {
+  transform: translateY(2px) rotate(225deg);
+}
+
+.icons-select-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: grid;
+  border: 1px solid #b8842b;
+  background: #fbfaf8;
+  box-shadow: 0 18px 42px rgba(47, 35, 22, .16);
+}
+
+.icons-select-menu button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid #e3dcd2;
+  padding: 0 14px;
+  background: #fbfaf8;
+  color: #2b2925;
+  font-size: 15px;
+  font-weight: 850;
+  text-align: left;
+  cursor: pointer;
+}
+
+.icons-select-menu button:last-child {
+  border-bottom: 0;
+}
+
+.icons-select-menu button:hover,
+.icons-select-menu button.active {
+  background: #efe7db;
+  color: #050505;
+}
+
+.icons-catalog-section {
+  margin-top: clamp(20px, 3vw, 42px);
+}
+
+.icons-empty {
+  border: 1px solid #d8d8d8;
+  margin: 0;
+  padding: 28px;
+  background: #fbfaf8;
+  color: #5d5752;
+  font-size: 18px;
+  font-weight: 800;
+}
+
 input,
 select,
 textarea {
@@ -342,8 +337,6 @@ textarea {
 }
 
 button,
-.primary-link,
-.secondary-link,
 .primary-button,
 .secondary-button,
 .header-action {
@@ -351,7 +344,6 @@ button,
 }
 
 .lead-form button,
-.primary-link,
 .primary-button {
   min-height: 48px;
   display: inline-flex;
@@ -364,7 +356,6 @@ button,
   font-weight: 900;
 }
 
-.secondary-link,
 .secondary-button {
   min-height: 48px;
   border: 1px solid #050505;
@@ -388,7 +379,7 @@ button,
 .church-card,
 .feature-grid > article,
 .church-grid > article,
-.list-grid a,
+.list-grid > a,
 .content-feature-grid article,
 .faq details,
 .sacred-panel,
@@ -400,12 +391,103 @@ button,
   padding: clamp(18px, 2vw, 30px);
 }
 
+.icons-page .icon-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 0;
+}
+
+.icons-page .icon-card {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #fbfaf8;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color .18s ease, background .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.icons-page .icon-card:hover {
+  background: #fffdf8;
+  box-shadow: 0 18px 46px rgba(47, 35, 22, .08);
+  transform: translateY(-2px);
+}
+
+.icons-page .icon-card figure {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  margin: 0;
+  border-bottom: 1px solid #ded7cc;
+  padding: clamp(16px, 2.2vw, 34px);
+  background:
+    linear-gradient(135deg, rgba(184, 132, 43, .12), transparent 38%),
+    linear-gradient(180deg, #fff, #f4efe6);
+}
+
+.icons-page .icon-card img {
+  display: block;
+  width: 100%;
+  max-width: min(100%, 420px);
+  height: clamp(280px, 34vw, 560px);
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+  background: #fffdf8;
+  box-shadow: 0 14px 36px rgba(47, 35, 22, .12);
+}
+
+.icons-page .icon-card-copy {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: clamp(18px, 2vw, 28px);
+}
+
+.icons-page .icon-card span {
+  color: #b8842b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.icons-page .icon-card h3 {
+  margin: 0;
+  font-size: clamp(22px, 2vw, 34px);
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.icons-page .icon-card p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.icons-page .icon-card small {
+  width: max-content;
+  margin-top: 6px;
+  border-bottom: 1px solid #050505;
+  padding-bottom: 3px;
+  color: #050505;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
 .icon-card:hover,
 .feature-card:hover,
 .church-card:hover,
 .feature-grid > article:hover,
 .church-grid > article:hover,
-.list-grid a:hover,
+.list-grid > a:hover,
 .content-feature-grid article:hover,
 .faq details:hover,
 .mini-grid a:hover {
@@ -413,19 +495,67 @@ button,
   background: #f8f5ef;
 }
 
-.list-grid a {
+.list-grid > a {
   display: grid;
   gap: 10px;
+}
+
+.list-grid .prayer-list-card {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0;
+  border: 1px solid #d8d8d8;
+  background: #f9f7f2;
+  padding: 0;
+  overflow: hidden;
+}
+
+.list-grid .prayer-list-card:hover {
+  border-color: #b8842b;
+  background: #f8f5ef;
+}
+
+.list-grid .prayer-list-media {
+  display: block;
+  border: 0;
+  border-bottom: 1px solid #ded7cc;
+  padding: clamp(16px, 2.4vw, 34px);
+  background:
+    linear-gradient(135deg, rgba(184, 132, 43, .12), transparent 38%),
+    #ffffff;
 }
 
 .prayer-list-card img {
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
-  margin: calc(clamp(18px, 2vw, 30px) * -1) calc(clamp(18px, 2vw, 30px) * -1) 12px;
-  width: calc(100% + clamp(18px, 2vw, 30px) * 2);
-  object-fit: cover;
-  border-bottom: 1px solid #d8d8d8;
+  max-height: clamp(280px, 28vw, 520px);
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(5, 5, 5, .08);
+}
+
+.prayer-list-copy {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: clamp(18px, 2vw, 28px);
+}
+
+.prayer-list-copy > a {
+  min-height: 0;
+  display: block;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-decoration: none;
+  background: transparent;
+}
+
+.prayer-list-copy > a:hover {
+  background: transparent;
 }
 
 .list-grid span {
@@ -467,6 +597,14 @@ button,
 .faq p {
   color: #5d5752;
   line-height: 1.5;
+}
+
+.prayer-card-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
 }
 
 .sacred-detail-hero,
@@ -632,8 +770,7 @@ button,
   opacity: 1;
 }
 
-.icon-photo-open svg,
-.icon-copy-link svg {
+.icon-photo-open svg {
   width: 16px;
   height: 16px;
   fill: none;
@@ -678,31 +815,6 @@ button,
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
-}
-
-.icon-copy-link {
-  min-width: 40px;
-  min-height: 36px;
-  flex: 0 0 auto;
-  border: 1px solid #d8d8d8;
-  background: #fff;
-  color: #050505;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 10px;
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.icon-copy-link:hover,
-.icon-copy-link:focus-visible {
-  border-color: #b8842b;
-  color: #b8842b;
 }
 
 .icon-qr-actions {
@@ -795,6 +907,7 @@ button,
 }
 
 .sacred-content-grid,
+.icon-story-flow,
 .related-section,
 .seo-text,
 .faq {
@@ -817,6 +930,78 @@ button,
 
 .reader-text p {
   margin-top: 0;
+}
+
+.icon-story-flow {
+  display: grid;
+  gap: clamp(18px, 3vw, 42px);
+  margin-top: clamp(34px, 5vw, 78px);
+}
+
+.icon-story-block {
+  display: grid;
+  grid-template-columns: minmax(260px, .92fr) minmax(0, 1.08fr);
+  gap: clamp(20px, 4vw, 64px);
+  align-items: center;
+  border-bottom: 1px solid #d8d8d8;
+  padding-bottom: clamp(22px, 3vw, 42px);
+}
+
+.icon-story-block:nth-child(even) figure {
+  order: 2;
+}
+
+.icon-story-block figure {
+  margin: 0;
+  border: 1px solid #d8d8d8;
+  background: #f9f9f9;
+  padding: clamp(10px, 1.4vw, 18px);
+}
+
+.icon-story-block img {
+  display: block;
+  width: 100%;
+  max-height: min(66vh, 680px);
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+  background: #f3f0ea;
+}
+
+.icon-story-block > div {
+  min-width: 0;
+  max-width: 760px;
+}
+
+.icon-story-block span {
+  display: block;
+  margin-bottom: 12px;
+  color: #b8842b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.icon-story-block h2 {
+  margin: 0 0 clamp(12px, 1.4vw, 18px);
+  color: #050505;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(28px, 3.2vw, 58px);
+  font-weight: 900;
+  line-height: .95;
+  text-transform: uppercase;
+}
+
+.icon-story-block p {
+  margin: 0 0 14px;
+  color: #3b342e;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(17px, 1.45vw, 22px);
+  line-height: 1.5;
+}
+
+.icon-story-block p:last-child {
+  margin-bottom: 0;
 }
 
 .prayer-panel-layout {
@@ -920,46 +1105,6 @@ button,
   grid-column: 1 / -1;
 }
 
-.site-footer {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 24px;
-  border-top: 1px solid rgba(237, 215, 168, .16);
-  background: #050505;
-}
-
-.site-footer strong {
-  display: block;
-  color: #edd7a8;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 28px;
-  line-height: 1;
-}
-
-.site-footer small {
-  display: block;
-  margin-top: 8px;
-  color: #fffaf2;
-  font-weight: 900;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.site-footer p {
-  max-width: 620px;
-  color: #aaa19a;
-}
-
-.site-footer div:last-child {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: end;
-  gap: 18px;
-  color: #f7f7f7;
-  font-weight: 800;
-}
-
 @media (max-width: 900px) {
   body:not(:has(.calendar-shell)) .page,
   body:not(:has(.calendar-shell)) .read-page,
@@ -974,12 +1119,15 @@ button,
 
   .filter-row,
   .lead-form,
+  .icons-catalog-hero,
+  .icons-toolbar,
   .icon-grid,
   .feature-grid,
   .church-grid,
   .list-grid,
   .content-feature-grid,
   .sacred-content-grid,
+  .icon-story-block,
   .mini-grid,
   .icon-photo-grid,
   .icon-detail,
@@ -1029,6 +1177,37 @@ button,
     margin: 18px 0;
   }
 
+  .icons-catalog-hero {
+    align-items: start;
+  }
+
+  .icons-catalog-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .icons-catalog-stats div {
+    min-height: 104px;
+    padding: 14px;
+  }
+
+  .icons-catalog-stats dd {
+    max-width: 100%;
+  }
+
+  .icons-toolbar {
+    gap: 12px;
+    max-width: none;
+  }
+
+  .icons-page .icon-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .icons-page .icon-card img {
+    height: clamp(260px, 54vw, 440px);
+  }
+
   input,
   select,
   textarea {
@@ -1051,7 +1230,7 @@ button,
   .church-card,
   .feature-grid > article,
   .church-grid > article,
-  .list-grid a,
+  .list-grid > a,
   .content-feature-grid article,
   .faq details,
   .sacred-panel,
@@ -1070,11 +1249,6 @@ button,
   .icon-photo-card figcaption {
     align-items: start;
     flex-wrap: wrap;
-  }
-
-  .icon-copy-link {
-    width: 100%;
-    margin-left: 0;
   }
 
   .icon-qr-actions,
@@ -1099,6 +1273,10 @@ button,
     grid-template-columns: 1fr;
   }
 
+  .prayer-card-actions {
+    grid-template-columns: 1fr;
+  }
+
   .icon-photo-open {
     min-height: 0;
     max-height: 72vh;
@@ -1118,7 +1296,7 @@ button,
     white-space: normal;
   }
 
-  .icon-copy-link,
+  .asset-button,
   .icon-qr-actions {
     width: 100%;
   }
@@ -1127,11 +1305,12 @@ button,
     justify-content: stretch;
   }
 
-  .icon-qr-actions .icon-copy-link {
+  .icon-qr-actions .asset-button {
     flex: 1 1 160px;
   }
 
   .sacred-content-grid,
+  .icon-story-flow,
   .icon-photo-catalog,
   .related-section,
   .seo-text,
@@ -1140,14 +1319,16 @@ button,
     padding-top: 22px;
   }
 
-  .site-footer {
-    align-items: start;
-    flex-direction: column;
-    padding: 34px 16px;
+  .icon-story-block:nth-child(even) figure {
+    order: 0;
   }
 
-  .site-footer div:last-child {
-    justify-content: start;
+  .icon-story-block {
+    gap: 16px;
+  }
+
+  .icon-story-block img {
+    max-height: 72vh;
   }
 
   .detail-actions,
@@ -1156,8 +1337,6 @@ button,
     width: 100%;
   }
 
-  .primary-link,
-  .secondary-link,
   .primary-button,
   .secondary-button,
   .lead-form button {
@@ -1173,19 +1352,6 @@ button,
     line-height: 1.62;
   }
 
-  .calendar-toolbar {
-    align-items: start;
-  }
-
-  .filter-menu {
-    right: auto;
-    left: 0;
-  }
-
-  .calendar-top-actions {
-    justify-content: start;
-    flex-wrap: wrap;
-  }
 }
 
 @media (max-width: 520px) {
@@ -1225,6 +1391,137 @@ button,
 
   .mini-grid a {
     min-height: 108px;
+  }
+
+  .icons-catalog-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .icons-catalog-stats div {
+    min-height: 86px;
+  }
+
+  .icons-toolbar input,
+  .icons-select-button {
+    min-height: 54px;
+  }
+
+  .icons-page .icon-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .icons-page .icon-card figure {
+    padding: 14px;
+  }
+
+  .icons-page .icon-card img {
+    height: min(76vh, 460px);
+  }
+}
+
+@media (max-width: 430px) {
+  body:not(:has(.calendar-shell)) .page,
+  body:not(:has(.calendar-shell)) .read-page,
+  body:not(:has(.calendar-shell)) .detail-page,
+  body:not(:has(.calendar-shell)) .list-page {
+    padding: 20px 12px 34px;
+  }
+
+  .page-hero,
+  .read-hero {
+    padding-bottom: 22px;
+  }
+
+  .page-hero h1,
+  .read-hero h1,
+  .sacred-hero-copy h1,
+  .detail-page h1 {
+    font-size: clamp(34px, 14vw, 54px);
+    line-height: .92;
+  }
+
+  .page-hero p,
+  .read-hero p,
+  .sacred-hero-copy .detail-lead,
+  .detail-lead,
+  .icon-detail > div > p:not(.eyebrow) {
+    font-size: 16px;
+  }
+
+  .icons-catalog-stats div {
+    min-height: 74px;
+    padding: 12px;
+  }
+
+  .icons-catalog-stats dt {
+    font-size: 36px;
+  }
+
+  .icons-catalog-stats dd,
+  .icons-catalog-qr-stat dd {
+    max-width: none;
+    font-size: 10px;
+  }
+
+  .icons-toolbar {
+    margin-top: 20px;
+  }
+
+  .icons-toolbar input,
+  .icons-select-button {
+    min-height: 50px;
+    padding-inline: 12px;
+    font-size: 15px;
+  }
+
+  .icons-select-menu button {
+    min-height: 42px;
+    font-size: 14px;
+  }
+
+  .icons-page .icon-card img {
+    height: min(62vh, 360px);
+  }
+
+  .icons-page .icon-card-copy,
+  .prayer-list-copy {
+    padding: 16px;
+  }
+
+  .icons-page .icon-card h3,
+  .list-grid strong,
+  .feature-grid > article h3,
+  .church-grid > article h3,
+  .sacred-panel h2,
+  .content-feature-grid h3 {
+    font-size: clamp(21px, 7vw, 30px);
+  }
+
+  .sacred-image-frame,
+  .icon-detail > img,
+  .prayer-panel-image {
+    padding: 10px;
+  }
+
+  .sacred-image-frame img,
+  .icon-detail > img,
+  .prayer-panel-image img,
+  .icon-story-block img {
+    max-height: 68vh;
+  }
+
+  .prayer-reader-panel {
+    padding: 18px 14px;
+  }
+
+  .prayer-reader {
+    font-size: 18px;
+    line-height: 1.58;
+  }
+
+  .asset-button {
+    min-height: 42px;
+    white-space: normal;
   }
 }
 

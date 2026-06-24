@@ -421,7 +421,7 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
               ) : null}
               <div className={view === 'list' ? 'calendar-list' : 'calendar-grid'}>
                 {view === 'list' ? visibleDays.map((item) => {
-                const imageUrl = item.imageUrl || '';
+                const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
                 const detailHref = pageHrefForDay(item, pages);
                 const itemKey = `${months[monthIndex].key}-${item.day}`;
                 const isExpanded = expandedDay === itemKey;
@@ -469,20 +469,20 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
               }) : (
                 <>
                   {visibleDays.map((item) => {
-                const imageUrl = item.imageUrl || '';
+                const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
                 const detailHref = pageHrefForDay(item, pages);
 
                 return (
-                  <article key={`${item.monthKey || months[monthIndex].key}-${item.day}`} className={'calendar-day' + (item.textOnly ? ' text-only' : '') + (!item.outOfMonth && item.day === today.day ? ' today' : '') + (item.outOfMonth ? ' out-of-month' : '')}>
+                  <article key={`${item.monthKey || months[monthIndex].key}-${item.day}`} className={`calendar-day day-kind-${item.kind}${item.textOnly ? ' text-only' : ''}${!item.outOfMonth && item.day === today.day ? ' today' : ''}${item.outOfMonth ? ' out-of-month' : ''}`}>
                     <div className="day-number">{item.day}{item.outOfMonth && item.monthKey ? <small>{t(item.monthKey)}</small> : null}{item.current ? <i /> : null}{item.feast || item.kind === 'fast' ? <i className="red" /> : null}</div>
                     {!item.outOfMonth && item.day === today.day ? <span className="today-badge">{t('today')}</span> : null}
+                    {!item.outOfMonth && item.label && imageUrl && view === 'calendar' ? (
+                      <Link className="day-image-link" href={detailHref} aria-label={`${t('openDay')} ${item.label || t('iconOfDay')}`}>
+                        <img src={imageUrl} alt={item.icon?.title || item.label || t('iconOfDay')} />
+                      </Link>
+                    ) : null}
                     {item.label ? (
                       <div className="day-event">
-                        {!item.outOfMonth && imageUrl && view === 'calendar' ? (
-                          <Link className="day-image-link" href={detailHref} aria-label={`${t('openDay')} ${item.label || t('iconOfDay')}`}>
-                            <img src={imageUrl} alt={item.icon?.title || item.label || t('iconOfDay')} />
-                          </Link>
-                        ) : null}
                         <div className="day-copy">
                           <Link className="day-title-link" href={detailHref}>{item.label}</Link>
                           <span>{item.note}</span>

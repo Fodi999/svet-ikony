@@ -5,6 +5,66 @@ export type StructuredSection = { label: string; value: string };
 
 const structuredLabelPattern = /\*\*([^*\n]+?)\*\*\s*:?/g;
 
+const sectionLabelTranslations: Record<string, Partial<Record<SiteLocale, string>>> = {
+  'краткое описание изображения': { uk: 'Короткий опис зображення', ru: 'Краткое описание изображения', en: 'Short image description' },
+  'символы на иконе': { uk: 'Символи на іконі', ru: 'Символы на иконе', en: 'Symbols in the icon' },
+  'alt для фото': { uk: 'Alt для фото', ru: 'Alt для фото', en: 'Image alt text' },
+  'prompt для генерации': { uk: 'Prompt для генерації', ru: 'Prompt для генерации', en: 'Generation prompt' },
+  'источник изображения': { uk: 'Джерело зображення', ru: 'Источник изображения', en: 'Image source' },
+  'полное описание': { uk: 'Повний опис', ru: 'Полное описание', en: 'Full description' },
+  'смысл праздника': { uk: 'Сенс свята', ru: 'Смысл праздника', en: 'Meaning of the feast' },
+  'что важно знать': { uk: 'Що важливо знати', ru: 'Что важно знать', en: 'What is important to know' },
+  'для кого эта молитва страница': { uk: 'Для кого ця молитва / сторінка', ru: 'Для кого эта молитва/страница', en: 'Who this prayer / page is for' },
+  'не писать': { uk: 'Не писати', ru: 'Не писать', en: 'Do not write' },
+  'главные святые дня': { uk: 'Головні святі дня', ru: 'Главные святые дня', en: 'Main saints of the day' },
+  'кратко кто это': { uk: 'Коротко хто це', ru: 'Кратко кто это', en: 'Who they are' },
+  'годы век': { uk: 'Роки / століття', ru: 'Годы / век', en: 'Years / century' },
+  'чем известен': { uk: 'Чим відомий', ru: 'Чем известен', en: 'Known for' },
+  'память по календарю': { uk: 'Пам’ять за календарем', ru: 'Память по календарю', en: 'Calendar commemoration' },
+  'источники': { uk: 'Джерела', ru: 'Источники', en: 'Sources' },
+  'тропарь': { uk: 'Тропар', ru: 'Тропарь', en: 'Troparion' },
+  'кондак': { uk: 'Кондак', ru: 'Кондак', en: 'Kontakion' },
+  'величание': { uk: 'Величання', ru: 'Величание', en: 'Magnification' },
+  'краткая молитва': { uk: 'Коротка молитва', ru: 'Краткая молитва', en: 'Short prayer' },
+  'молитва своими словами': { uk: 'Молитва своїми словами', ru: 'Молитва своими словами', en: 'Prayer in simple words' },
+  'язык': { uk: 'Мова', ru: 'Язык', en: 'Language' },
+  'источник текста': { uk: 'Джерело тексту', ru: 'Источник текста', en: 'Text source' },
+  'апостольское чтение': { uk: 'Апостольське читання', ru: 'Апостольское чтение', en: 'Apostolic reading' },
+  'евангельское чтение': { uk: 'Євангельське читання', ru: 'Евангельское чтение', en: 'Gospel reading' },
+  'цитата дня': { uk: 'Цитата дня', ru: 'Цитата дня', en: 'Verse of the day' },
+  'объяснение простыми словами': { uk: 'Пояснення простими словами', ru: 'Объяснение простыми словами', en: 'Plain-language explanation' },
+  'связь с событием': { uk: 'Зв’язок із подією', ru: 'Связь с событием', en: 'Connection with the event' },
+  'источник': { uk: 'Джерело', ru: 'Источник', en: 'Source' },
+  'краткое житие': { uk: 'Коротке житіє', ru: 'Краткое житие', en: 'Short life' },
+  'подробное житие': { uk: 'Докладне житіє', ru: 'Подробное житие', en: 'Detailed life' },
+  'главные события жизни': { uk: 'Головні події життя', ru: 'Главные события жизни', en: 'Main events of life' },
+  'духовный смысл': { uk: 'Духовний сенс', ru: 'Духовный смысл', en: 'Spiritual meaning' },
+  'где почитается': { uk: 'Де шанується', ru: 'Где почитается', en: 'Where venerated' },
+  'история праздника': { uk: 'Історія свята', ru: 'История праздника', en: 'History of the feast' },
+  'дата по старому стилю': { uk: 'Дата за старим стилем', ru: 'Дата по старому стилю', en: 'Old-style date' },
+  'дата по новому стилю': { uk: 'Дата за новим стилем', ru: 'Дата по новому стилю', en: 'New-style date' },
+  'разные календарные традиции': { uk: 'Різні календарні традиції', ru: 'Разные календарные традиции', en: 'Different calendar traditions' },
+  'почему бывает путаница': { uk: 'Чому виникає плутанина', ru: 'Почему бывает путаница', en: 'Why confusion happens' },
+  'проверенные источники': { uk: 'Перевірені джерела', ru: 'Проверенные источники', en: 'Verified sources' },
+  'дата проверена': { uk: 'Дату перевірено', ru: 'Дата проверена', en: 'Date checked' },
+  'календарный стиль': { uk: 'Календарний стиль', ru: 'Календарный стиль', en: 'Calendar style' },
+  'найденное событие': { uk: 'Знайдена подія', ru: 'Найденное событие', en: 'Found event' },
+  'уверенность': { uk: 'Упевненість', ru: 'Уверенность', en: 'Confidence' },
+  'предупреждение': { uk: 'Попередження', ru: 'Предупреждение', en: 'Warning' },
+  'название храма': { uk: 'Назва храму', ru: 'Название храма', en: 'Church name' },
+  'кому посвящен': { uk: 'Кому присвячений', ru: 'Кому посвящён', en: 'Dedicated to' },
+  'кому посвящён': { uk: 'Кому присвячений', ru: 'Кому посвящён', en: 'Dedicated to' },
+  'страна город': { uk: 'Країна / місто', ru: 'Страна / город', en: 'Country / city' },
+  'адрес': { uk: 'Адреса', ru: 'Адрес', en: 'Address' },
+  'google maps ссылка': { uk: 'Посилання Google Maps', ru: 'Google Maps ссылка', en: 'Google Maps link' },
+  'расписание богослужений': { uk: 'Розклад богослужінь', ru: 'Расписание богослужений', en: 'Service schedule' },
+  'телефон сайт': { uk: 'Телефон / сайт', ru: 'Телефон / сайт', en: 'Phone / website' },
+  'краткое описание': { uk: 'Короткий опис', ru: 'Краткое описание', en: 'Short description' },
+  'святыни иконы мощи': { uk: 'Святині / ікони / мощі', ru: 'Святыни / иконы / мощи', en: 'Shrines / icons / relics' },
+  'фото храма': { uk: 'Фото храму', ru: 'Фото храма', en: 'Church photo' }
+};
+
+
 function clean(value?: string) {
   return (value || '').replace(/\r/g, '').trim();
 }
@@ -64,6 +124,10 @@ export function paragraphsFromText(text?: string) {
 
 function normalizeKey(value: string) {
   return value.toLowerCase().replace(/[ё]/g, 'е').replace(/[^a-zа-яіїєґ0-9]+/gi, ' ').trim();
+}
+
+export function translateSectionLabel(label: string, locale: SiteLocale) {
+  return sectionLabelTranslations[normalizeKey(label)]?.[locale] || label;
 }
 
 export function findSection(text: string | undefined, aliases: string[]) {

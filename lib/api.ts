@@ -20,6 +20,15 @@ function published<T extends { status?: string }>(items: T[]) {
   return items.filter((item) => item.status === 'published');
 }
 
+function compactText(value: string, limit: number) {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  return normalized.length > limit ? `${normalized.slice(0, limit - 1).trim()}…` : normalized;
+}
+
+function firstTextLine(value: string, fallback: string) {
+  return value.split(/\n{2,}|\n/).map((line) => line.trim()).find(Boolean) || fallback;
+}
+
 function normalizeIcon(item: Partial<Icon>, index: number): Icon {
   const title = normalizeString(item.title) || `Икона ${index + 1}`;
   const slug = normalizeString(item.slug) || title.toLowerCase().replace(/[^a-zа-я0-9]+/gi, '-').replace(/^-+|-+$/g, '') || `icon-${index + 1}`;
@@ -68,6 +77,77 @@ function normalizePrayer(item: Partial<Prayer>, index: number): Prayer {
   };
 }
 
+function prayersFromIcons(items: Icon[]): Prayer[] {
+  return items
+    .filter((icon) => icon.prayerText.trim())
+    .map((icon) => ({
+      id: `prayer-${icon.slug}`,
+      slug: icon.slug,
+      title: icon.title.toLowerCase().includes('молит') ? icon.title : `Молитва: ${icon.title}`,
+      text: icon.prayerText,
+      category: icon.category || 'Молитвы перед иконой',
+      relatedIcon: icon.slug,
+      audioUrl: '',
+      seoTitle: `Молитва перед ${icon.title}`,
+      seoDescription: compactText(icon.prayerText, 180),
+      status: 'published'
+    }));
+}
+
+function saintsFromIcons(items: Icon[]): Saint[] {
+  return items
+    .filter((icon) => icon.saintName.trim() || icon.lifeText.trim())
+    .map((icon) => ({
+      id: `saint-${icon.slug}`,
+      slug: icon.slug,
+      name: icon.saintName || icon.title,
+      shortDescription: icon.shortDescription || firstTextLine(icon.lifeText, icon.title),
+      biography: icon.lifeText || icon.fullDescription || icon.historyText,
+      feastDay: '',
+      imageUrl: icon.imageUrl,
+      relatedIcons: [icon.slug],
+      prayers: icon.prayerText.trim() ? [icon.slug] : [],
+      seoTitle: `${icon.saintName || icon.title}: житие и день памяти`,
+      seoDescription: compactText(icon.lifeText || icon.shortDescription || icon.fullDescription, 180),
+      status: 'published'
+    }));
+}
+
+function gospelFromIcons(items: Icon[]): GospelReading[] {
+  const icon = items.find((item) => item.gospelText.trim());
+  if (!icon) return [];
+  return [{
+    id: `gospel-${icon.slug}`,
+    date: new Date().toISOString().slice(0, 10),
+    title: 'Евангелие дня',
+    reference: 'Чтение дня',
+    text: icon.gospelText,
+    explanation: icon.shortDescription || 'Чтение дня помогает соединить молитву перед образом с внимательным словом Евангелия.',
+    seoTitle: 'Евангелие дня',
+    seoDescription: compactText(icon.gospelText, 180),
+    status: 'published'
+  }];
+}
+
+function churchesFromIcons(items: Icon[]): Church[] {
+  if (!items.length) return [];
+  const source = items[0];
+  return [{
+    id: 'church-svet-ikony-qr',
+    slug: 'svet-ikony-dlya-hramov',
+    title: 'Свет Иконы для храмов',
+    city: 'Онлайн',
+    address: 'QR-страницы православных икон',
+    description: source.historyText || source.fullDescription || 'Храм может подключить QR-страницы икон, чтобы прихожане открывали молитву, житие святого, Евангелие дня и историю образа рядом со святыней.',
+    schedule: 'Подключение и наполнение страниц настраивается в админке.',
+    donationUrl: '',
+    relatedIcons: items.map((item) => item.slug),
+    seoTitle: 'QR-иконы и молитвенные страницы для храмов',
+    seoDescription: 'Материалы для храмов: QR-страницы икон, молитвы, жития, Евангелие дня и описание святынь.',
+    status: 'published'
+  }];
+}
+
 function normalizeSiteContent(value: unknown): SiteContent {
   const source = value && typeof value === 'object' ? value as Partial<SiteContent> : {};
   const hasIcons = Array.isArray(source.icons);
@@ -79,6 +159,7 @@ function normalizeSiteContent(value: unknown): SiteContent {
   const hasChurches = Array.isArray(source.churches);
   const normalizedIcons = hasIcons ? source.icons!.map(normalizeIcon).filter((item) => item.slug && item.title) : icons;
   const normalizedPrayers = hasPrayers ? source.prayers!.map(normalizePrayer).filter((item) => item.slug && item.title) : prayers;
+  const publicIcons = hasIcons ? published(normalizedIcons) : icons;
   const normalizedGospel = hasGospel ? (source.gospel as GospelReading[]).filter((item) => item.status === 'published') : [gospelToday];
   const normalizedSaints = hasSaints ? (source.saints as Saint[]).filter((item) => item.status === 'published') : saints;
   const normalizedPages = hasPages ? (source.pages!.map((item) => ({
@@ -90,13 +171,13 @@ function normalizeSiteContent(value: unknown): SiteContent {
   const normalizedChurches = hasChurches ? (source.churches as Church[]).filter((item) => item.status === 'published') : churches;
 
   return {
-    icons: hasIcons ? published(normalizedIcons) : icons,
-    prayers: hasPrayers ? published(normalizedPrayers) : prayers,
-    gospel: normalizedGospel.length ? normalizedGospel : [gospelToday],
-    saints: normalizedSaints,
+    icons: publicIcons,
+    prayers: hasPrayers ? (published(normalizedPrayers).length ? published(normalizedPrayers) : prayersFromIcons(publicIcons)) : prayers,
+    gospel: normalizedGospel.length ? normalizedGospel : (gospelFromIcons(publicIcons)[0] ? gospelFromIcons(publicIcons) : [gospelToday]),
+    saints: normalizedSaints.length ? normalizedSaints : saintsFromIcons(publicIcons),
     pages: normalizedPages,
     qrPages: normalizedQrPages,
-    churches: normalizedChurches,
+    churches: normalizedChurches.length ? normalizedChurches : churchesFromIcons(publicIcons),
     calendar: source.calendar,
     dashboard: source.dashboard || dashboard
   };

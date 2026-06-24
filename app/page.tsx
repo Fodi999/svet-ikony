@@ -8,10 +8,11 @@ function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export default async function HomePage({ searchParams }: { searchParams?: { year?: string | string[]; month?: string | string[] } }) {
+export default async function HomePage({ searchParams }: { searchParams?: Promise<{ year?: string | string[]; month?: string | string[] }> }) {
+  const params = await searchParams;
   const content = await publicApi.content({
-    year: firstParam(searchParams?.year),
-    month: firstParam(searchParams?.month)
+    year: firstParam(params?.year),
+    month: firstParam(params?.month)
   });
   const gospel = content.gospel[0] ?? await publicApi.gospelToday();
   return (

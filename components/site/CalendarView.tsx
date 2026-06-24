@@ -121,7 +121,7 @@ function createMonthDays(icons: Icon[], prayers: Prayer[], gospel: GospelReading
         label: day.label,
         note: day.note,
         kind: day.kind,
-        imageUrl: day.imageUrl || icon?.imageUrl,
+        imageUrl: day.imageUrl,
         icon,
         prayerSlug: day.prayerSlug,
         gospelSlug: day.gospelSlug,
@@ -413,7 +413,7 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
               ) : null}
               <div className={view === 'list' ? 'calendar-list' : 'calendar-grid'}>
                 {view === 'list' ? visibleDays.map((item) => {
-                const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
+                const imageUrl = item.imageUrl || '';
                 const detailHref = pageHrefForDay(item, pages);
                 const itemKey = `${months[monthIndex].key}-${item.day}`;
                 const isExpanded = expandedDay === itemKey;
@@ -461,7 +461,7 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
               }) : (
                 <>
                   {visibleDays.map((item) => {
-                const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
+                const imageUrl = item.imageUrl || '';
                 const detailHref = pageHrefForDay(item, pages);
 
                 return (

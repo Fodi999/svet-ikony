@@ -119,7 +119,13 @@ async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'DELETE', body?
 }
 
 export const publicApi = {
-  content: async () => normalizeSiteContent(await apiGet<SiteContent>('/api/content', { icons, prayers, gospel: [gospelToday], saints, pages: seoPages, qrPages, churches, dashboard })),
+  content: async (params?: { year?: string | number; month?: string | number }) => {
+    const query = new URLSearchParams();
+    if (params?.year) query.set('year', String(params.year));
+    if (params?.month) query.set('month', String(params.month));
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return normalizeSiteContent(await apiGet<SiteContent>(`/api/content${suffix}`, { icons, prayers, gospel: [gospelToday], saints, pages: seoPages, qrPages, churches, dashboard }));
+  },
   icons: async () => (await publicApi.content()).icons,
   icon: async (slug: string) => (await publicApi.icons()).find((item) => item.slug === slug) || null,
   saints: async () => (await publicApi.content()).saints,

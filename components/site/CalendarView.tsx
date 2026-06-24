@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { CalendarContent, GospelReading, Icon, Prayer, SeoPage } from '@/lib/types';
 import { LanguageSwitch, useI18n } from './LanguageProvider';
 import type { TranslationKey } from '@/lib/i18n';
@@ -236,6 +237,9 @@ function localizedHeroText(value: string | undefined, fallbackKey: TranslationKe
 
 export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: { icons: Icon[]; prayers: Prayer[]; gospel: GospelReading; pages?: SeoPage[]; calendar?: CalendarContent }) {
   const { t } = useI18n();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [filterOpen, setFilterOpen] = useState(false);
   const [filter, setFilter] = useState<FilterKind>('all');
   const [view, setView] = useState<ViewMode>('calendar');
@@ -283,6 +287,17 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
       });
     return () => controller.abort();
   }, [year, monthIndex]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    const nextYear = String(year);
+    const nextMonth = String(monthIndex + 1);
+    if (params.get('year') === nextYear && params.get('month') === nextMonth) return;
+    params.set('year', String(year));
+    params.set('month', String(monthIndex + 1));
+    const nextUrl = `${pathname}?${params.toString()}`;
+    router.replace(nextUrl, { scroll: false });
+  }, [monthIndex, pathname, router, searchParams, year]);
 
   function moveMonth(delta: number) {
     const absoluteMonth = year * 12 + monthIndex + delta;

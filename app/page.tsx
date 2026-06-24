@@ -2,8 +2,17 @@ import { CalendarView } from '@/components/site/CalendarView';
 import { publicApi } from '@/lib/api';
 import { jsonLd } from '@/lib/seo';
 
-export default async function HomePage() {
-  const content = await publicApi.content();
+export const revalidate = 0;
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function HomePage({ searchParams }: { searchParams?: { year?: string | string[]; month?: string | string[] } }) {
+  const content = await publicApi.content({
+    year: firstParam(searchParams?.year),
+    month: firstParam(searchParams?.month)
+  });
   const gospel = content.gospel[0] ?? await publicApi.gospelToday();
   return (
     <main className="calendar-shell">

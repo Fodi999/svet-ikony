@@ -50,3 +50,50 @@
   font-size: 15px;
   line-height: 1.35;
 }
+
+/* Orthodox church theme */
+.list-panel-links a:hover {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--background);
+}
+
+.calendar-empty {
+  border-top-color: var(--border-gold);
+  color: var(--muted);
+}
+
+.calendar-service-grid {
+  border-top-color: var(--border-gold);
+}
+
+.calendar-service-grid a {
+  position: relative;
+  border: 1px solid var(--border-gold);
+  padding: clamp(18px, 2vw, 28px);
+  background:
+    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 48%),
+    var(--surface);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.calendar-service-grid a::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  background: var(--ornament-corner) center / contain no-repeat;
+  opacity: .5;
+  pointer-events: none;
+}
+
+.calendar-service-grid span {
+  color: var(--gold-light);
+}
+
+.calendar-service-grid small {
+  color: var(--muted);
+}

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { IconPhotoCatalog, type IconPhotoCatalogItem } from './IconPhotoCatalog';
 import { IconCard } from './IconCard';
 import { AssetButton, DownloadIcon } from './AssetButton';
-import { useI18n } from './LanguageProvider';
+import { useI18n, useLocaleHref } from './LanguageProvider';
+import { StableImage } from './StableImage';
 import { absoluteSiteUrl } from '@/lib/site';
 import type { Church, Icon } from '@/lib/types';
 import { churchFromIcon, hasChurchFields, imageForPrayer, localizeIcon, paragraphsFromText, sectionsFromText, textPreview, translateSectionLabel } from '@/lib/iconContent';
@@ -184,8 +185,8 @@ function IconStory({ text, images }: { text?: string; images: string[] }) {
       {sections.map((section, index) => {
         const image = images[index % images.length];
         return (
-          <article className="icon-story-block" key={`${section.title}-${index}`}>
-            {image ? <figure><img src={image} alt={section.title} /></figure> : null}
+          <article className="icon-story-block" key={`${section.title}-${image || section.paragraphs.join('|').slice(0, 64)}`}>
+            {image ? <figure><StableImage src={image} alt={section.title} width={800} height={1000} /></figure> : null}
             <div>
               <span>{String(index + 1).padStart(2, '0')}</span>
               <h2>{section.title}</h2>
@@ -205,6 +206,7 @@ export function LocalizedIconGrid({ icons }: { icons: Icon[] }) {
 
 export function LocalizedPrayersList({ icons }: { icons: Icon[] }) {
   const { locale } = useI18n();
+  const localeHref = useLocaleHref();
   const items = icons.map((icon) => localizeIcon(icon, locale)).filter((icon) => icon.prayerText.trim());
   return (
     <div className="list-grid">
@@ -213,12 +215,12 @@ export function LocalizedPrayersList({ icons }: { icons: Icon[] }) {
         const image = imageForPrayer(icon);
         return (
           <article className="prayer-list-card" key={icon.id}>
-            <Link className="prayer-list-media" href={`/prayers/${icon.slug}`}>
-              <img src={image} alt={title} />
+            <Link className="prayer-list-media" href={localeHref(`/prayers/${icon.slug}`)}>
+              <StableImage src={image} alt={title} width={720} height={720} />
             </Link>
             <div className="prayer-list-copy">
               <span>{icon.category || ui(locale, 'prayerCategory')}</span>
-              <Link href={`/prayers/${icon.slug}`}><strong>{title}</strong></Link>
+              <Link href={localeHref(`/prayers/${icon.slug}`)}><strong>{title}</strong></Link>
               <p>{textPreview(icon.prayerText, 190)}</p>
               <div className="prayer-card-actions">
                 <AssetButton href={`/prayers/${icon.slug}`}>{ui(locale, 'readPrayer')}</AssetButton>
@@ -246,7 +248,7 @@ export function LocalizedPrayerDetail({ icon }: { icon: Icon }) {
       </section>
       <article className="sacred-panel prayer-panel prayer-reader-panel">
         <div className="prayer-panel-layout">
-          <figure className="prayer-panel-image"><img src={imageForPrayer(item)} alt={item.title} /></figure>
+          <figure className="prayer-panel-image"><StableImage src={imageForPrayer(item)} alt={item.title} width={720} height={720} /></figure>
           <div className="prayer-panel-copy">
             <span>{ui(locale, 'prayer')}</span>
             <div className="reader-text prayer-reader"><DisplayText text={item.prayerText} /></div>
@@ -260,8 +262,9 @@ export function LocalizedPrayerDetail({ icon }: { icon: Icon }) {
 
 export function LocalizedSaintsList({ icons }: { icons: Icon[] }) {
   const { locale } = useI18n();
+  const localeHref = useLocaleHref();
   const items = icons.map((icon) => localizeIcon(icon, locale)).filter((icon) => icon.saintName.trim() || icon.lifeText.trim());
-  return <div className="list-grid">{items.map((icon) => <Link key={icon.id} href={`/saints/${icon.slug}`}><span>{icon.calendarDate || icon.category}</span><strong>{icon.saintName || icon.title}</strong><p>{textPreview(icon.lifeText || icon.shortDescription || icon.fullDescription, 180)}</p></Link>)}</div>;
+  return <div className="list-grid">{items.map((icon) => <Link key={icon.id} href={localeHref(`/saints/${icon.slug}`)}><span>{icon.calendarDate || icon.category}</span><strong>{icon.saintName || icon.title}</strong><p>{textPreview(icon.lifeText || icon.shortDescription || icon.fullDescription, 180)}</p></Link>)}</div>;
 }
 
 export function LocalizedSaintDetail({ icon }: { icon: Icon }) {
@@ -270,7 +273,7 @@ export function LocalizedSaintDetail({ icon }: { icon: Icon }) {
   return (
     <main className="detail-page">
       <section className="sacred-detail-hero">
-        <figure className="sacred-image-frame"><img src={item.imageUrl} alt={item.saintName || item.title} /></figure>
+        <figure className="sacred-image-frame"><StableImage src={item.imageUrl} alt={item.saintName || item.title} width={800} height={1000} loading="eager" /></figure>
         <div className="sacred-hero-copy">
           <p className="eyebrow">{item.calendarDate || item.category}</p>
           <h1>{item.saintName || item.title}</h1>
@@ -310,7 +313,7 @@ export function LocalizedChurchesPage({ icons, fallbackChurches }: { icons: Icon
       <div className="church-directory">
         {items.map((church) => (
           <article className="church-directory-card" key={church.id}>
-            {church.imageUrl ? <img src={church.imageUrl} alt={church.title} /> : null}
+            {church.imageUrl ? <figure className="church-directory-media"><StableImage src={church.imageUrl} alt={church.title} width={720} height={640} /></figure> : null}
             <div className="church-directory-copy">
               <span>{church.city}</span>
               <h2>{church.title}</h2>
@@ -336,6 +339,7 @@ export function LocalizedChurchesPage({ icons, fallbackChurches }: { icons: Icon
 
 export function LocalizedIconDetail({ icon, related }: { icon: Icon; related: Icon[] }) {
   const { locale } = useI18n();
+  const localeHref = useLocaleHref();
   const item = localizeIcon(icon, locale);
   const relatedItems = related.map((entry) => localizeIcon(entry, locale));
   const galleryImages = uniqueImages([item.imageUrl, ...(item.imageUrls ?? [])]);
@@ -351,12 +355,12 @@ export function LocalizedIconDetail({ icon, related }: { icon: Icon; related: Ic
     })),
     ...(qrImage ? [{ image: qrImage, label: ui(locale, 'qrCode'), kind: 'qr' } satisfies IconPhotoCatalogItem] : [])
   ];
-  const iconPageUrl = absoluteSiteUrl(`/icons/${item.slug}`);
+  const iconPageUrl = absoluteSiteUrl(localeHref(`/icons/${item.slug}`));
 
   return (
     <main className="detail-page">
       <section className="sacred-detail-hero">
-        <figure className="sacred-image-frame"><img src={item.imageUrl} alt={iconTitle} /></figure>
+        <figure className="sacred-image-frame"><StableImage src={item.imageUrl} alt={iconTitle} width={800} height={1000} loading="eager" /></figure>
         <div className="sacred-hero-copy">
           <p className="eyebrow">{item.category}</p>
           <h1>{iconTitle}</h1>
@@ -368,12 +372,12 @@ export function LocalizedIconDetail({ icon, related }: { icon: Icon; related: Ic
       <IconStory text={item.fullDescription} images={photoImages.length ? photoImages : [item.imageUrl]} />
       {publicGalleryImages.length > 1 ? <section className="icon-photo-catalog"><div className="section-head"><p className="eyebrow">{ui(locale, 'photoQr')}</p><h2>{ui(locale, 'imageCatalog')}</h2></div><IconPhotoCatalog title={iconTitle} iconUrl={iconPageUrl} items={publicGalleryImages} /></section> : null}
       <section className="sacred-content-grid">
-        <article id="prayer" className="sacred-panel prayer-panel"><div className="prayer-panel-layout"><figure className="prayer-panel-image"><img src={prayerImage} alt={`${ui(locale, 'prayer')}: ${iconTitle}`} /></figure><div className="prayer-panel-copy"><span>01</span><h2>{ui(locale, 'prayer')}</h2><div className="reader-text"><DisplayText text={item.prayerText} /></div>{item.audioUrl ? <audio controls src={item.audioUrl} /> : null}</div></div></article>
+        <article id="prayer" className="sacred-panel prayer-panel"><div className="prayer-panel-layout"><figure className="prayer-panel-image"><StableImage src={prayerImage} alt={`${ui(locale, 'prayer')}: ${iconTitle}`} width={720} height={720} /></figure><div className="prayer-panel-copy"><span>01</span><h2>{ui(locale, 'prayer')}</h2><div className="reader-text"><DisplayText text={item.prayerText} /></div>{item.audioUrl ? <audio controls src={item.audioUrl} /> : null}</div></div></article>
         <article className="sacred-panel"><span>02</span><h2>{ui(locale, 'gospel')}</h2><div className="reader-text"><DisplayText text={item.gospelText} /></div></article>
         <article className="sacred-panel"><span>03</span><h2>{ui(locale, 'life')}</h2><div className="reader-text"><DisplayText text={item.lifeText} /></div></article>
         <article className="sacred-panel"><span>04</span><h2>{ui(locale, 'iconHistory')}</h2><div className="reader-text"><DisplayText text={item.historyText} /></div></article>
       </section>
-      {relatedItems.length ? <section className="related-section"><div className="section-head"><p className="eyebrow">{ui(locale, 'similarIcons')}</p><h2>{ui(locale, 'furtherReading')}</h2></div><div className="mini-grid">{relatedItems.map((entry) => <Link key={entry.id} href={`/icons/${entry.slug}`}>{displayText(entry.title)}<small>{entry.category}</small></Link>)}</div></section> : null}
+      {relatedItems.length ? <section className="related-section"><div className="section-head"><p className="eyebrow">{ui(locale, 'similarIcons')}</p><h2>{ui(locale, 'furtherReading')}</h2></div><div className="mini-grid">{relatedItems.map((entry) => <Link key={entry.id} href={localeHref(`/icons/${entry.slug}`)}>{displayText(entry.title)}<small>{entry.category}</small></Link>)}</div></section> : null}
     </main>
   );
 }

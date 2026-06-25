@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1100" role="img" aria-label="Saint Panteleimon icon">
-  <rect width="900" height="1100" fill="#98622f"/>
-  <rect x="58" y="58" width="784" height="984" fill="#eed18b"/>
-  <circle cx="450" cy="310" r="182" fill="#fff1b9"/>
-  <path d="M354 286c16-76 176-76 192 0 16 82-28 158-96 158s-112-76-96-158Z" fill="#5f3724"/>
-  <path d="M262 502c96-70 280-70 376 0 62 124 70 284 48 432H214c-22-148-14-308 48-432Z" fill="#1e5d55"/>
-  <path d="M324 544h252v360H324z" fill="#8d2937" opacity=".88"/>
-  <path d="M278 650h344M306 750h288M354 848h192" stroke="#f5da8a" stroke-width="20"/>
-  <path d="M612 642l66 74-106 108-66-74z" fill="#f8eed0" stroke="#9d692b" stroke-width="14"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 800" role="img">
+  <rect width="640" height="800" fill="#0B0B0A"/>
+  <rect x="44" y="44" width="552" height="712" fill="#15130F" stroke="#D6A84F" stroke-width="8"/>
+  <circle cx="320" cy="250" r="118" fill="none" stroke="#F1D18A" stroke-width="12" opacity=".75"/>
+  <path d="M206 420c30-78 68-118 114-118s84 40 114 118v260H206V420Z" fill="#201B13" stroke="#D6A84F" stroke-width="5"/>
+  <path d="M278 464h84v168h-84V464Z" fill="#D6A84F"/>
+  <path d="M248 512h144v38H248v-38Z" fill="#F1D18A"/>
+  <path d="M258 244c20-36 42-54 62-54s42 18 62 54c-18 30-38 45-62 45s-44-15-62-45Z" fill="#F1D18A"/>
+  <path d="M214 696h212" stroke="#D6A84F" stroke-width="6" stroke-linecap="round"/>
 </svg>

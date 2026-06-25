@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { dictionary, localeNames, locales, type Locale, type TranslationKey } from '@/lib/i18n';
+import { createContext, useContext, useEffect, useMemo } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { defaultLocale, localeFromPathname, localeNames, locales, translate, type Locale, type TranslationKey, withLocale } from '@/lib/i18n';
 
 type LanguageContextValue = {
   locale: Locale;
@@ -11,23 +12,15 @@ type LanguageContextValue = {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-function getStoredLocale(): Locale {
-  if (typeof window === 'undefined') return 'uk';
-  const stored = window.localStorage.getItem('site-locale');
-  return locales.includes(stored as Locale) ? stored as Locale : 'uk';
-}
-
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('uk');
-
-  useEffect(() => {
-    setLocaleState(getStoredLocale());
-  }, []);
+  const pathname = usePathname();
+  const router = useRouter();
+  const locale = localeFromPathname(pathname || `/${defaultLocale}`);
 
   const setLocale = (nextLocale: Locale) => {
-    setLocaleState(nextLocale);
-    window.localStorage.setItem('site-locale', nextLocale);
-    document.documentElement.lang = nextLocale;
+    const query = typeof window === 'undefined' ? '' : window.location.search.replace(/^\?/, '');
+    const nextPath = withLocale(pathname || '/', nextLocale);
+    router.push(`${nextPath}${query ? `?${query}` : ''}`, { scroll: false });
   };
 
   useEffect(() => {
@@ -37,10 +30,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<LanguageContextValue>(() => ({
     locale,
     setLocale,
-    t: (key) => dictionary[locale][key]
-  }), [locale]);
+    t: (key) => translate(locale, key)
+  }), [locale, pathname, router]);
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+}
+
+export function useLocaleHref() {
+  const { locale } = useI18n();
+  return (href: string) => withLocale(href, locale);
 }
 
 export function useI18n() {

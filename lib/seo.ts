@@ -8,8 +8,8 @@ export function pageMetadata(input: {
   image?: string;
   keywords?: string;
 }): Metadata {
-  const title = input.title || 'ikona.link | Молитва у иконы';
-  const description = input.description || 'Православные QR-страницы икон с молитвами, житиями и духовными материалами.';
+  const title = input.title || 'ikona.link | Молитва біля ікони';
+  const description = input.description || 'Православні QR-сторінки ікон з молитвами, житіями та духовними матеріалами.';
   const url = `${siteUrl}${input.path || '/'}`;
   return {
     title,

@@ -1,15 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1100" role="img" aria-label="Kazan icon">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#fff0c8"/>
-      <stop offset="1" stop-color="#8c5b2c"/>
-    </linearGradient>
-  </defs>
-  <rect width="900" height="1100" fill="url(#g)"/>
-  <rect x="56" y="56" width="788" height="988" fill="none" stroke="#fff6d8" stroke-width="18"/>
-  <circle cx="430" cy="306" r="178" fill="#d8aa51"/>
-  <circle cx="550" cy="390" r="102" fill="#efd48d"/>
-  <path d="M292 438c46-114 236-114 284 0 54 116 66 298 40 506H250c-26-208-12-390 42-506Z" fill="#7c2531"/>
-  <path d="M482 440c35-54 128-50 162 10 34 80 38 196 24 318H486c-20-126-16-244-4-328Z" fill="#24456d"/>
-  <path d="M338 516c80 56 184 56 270 0M320 632c108 64 230 64 352 0M300 760h330" stroke="#f0cf76" stroke-width="20" opacity=".72"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 800" role="img">
+  <rect width="640" height="800" fill="#0B0B0A"/>
+  <rect x="44" y="44" width="552" height="712" fill="#15130F" stroke="#D6A84F" stroke-width="8"/>
+  <path d="M116 704V252c0-112 92-204 204-204s204 92 204 204v452H116Z" fill="#211D14" stroke="#D6A84F" stroke-width="5"/>
+  <circle cx="320" cy="286" r="132" fill="none" stroke="#F1D18A" stroke-width="14" opacity=".75"/>
+  <path d="M234 466c32-42 60-62 86-62s54 20 86 62v130H234V466Z" fill="#D6A84F" opacity=".92"/>
+  <path d="M244 310c38-52 76-78 114-78 48 0 86 34 114 102-58-14-98-10-120 12-38 38-74 26-108-36Z" fill="#F1D18A"/>
+  <path d="M188 664h264" stroke="#D6A84F" stroke-width="6" stroke-linecap="round"/>
 </svg>

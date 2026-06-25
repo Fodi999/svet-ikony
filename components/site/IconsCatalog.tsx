@@ -11,13 +11,13 @@ function normalized(value: string) {
 }
 
 export function IconsCatalog({ icons }: { icons: Icon[] }) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [categoryOpen, setCategoryOpen] = useState(false);
   const localizedIcons = useMemo(() => icons.map((icon) => localizeIcon(icon, locale)), [icons, locale]);
   const categories = useMemo(() => Array.from(new Set(localizedIcons.map((icon) => icon.category).filter(Boolean))), [localizedIcons]);
-  const categoryOptions = useMemo(() => [{ value: 'all', label: 'Все разделы' }, ...categories.map((item) => ({ value: item, label: item }))], [categories]);
+  const categoryOptions = useMemo(() => [{ value: 'all', label: t('allSections') }, ...categories.map((item) => ({ value: item, label: item }))], [categories, t]);
   const currentCategory = categoryOptions.find((item) => item.value === category)?.label || categoryOptions[0].label;
   const visibleIcons = useMemo(() => {
     const search = normalized(query);
@@ -38,16 +38,16 @@ export function IconsCatalog({ icons }: { icons: Icon[] }) {
     <>
       <div className="icons-toolbar">
         <label className="icons-search-field">
-          <span>Поиск</span>
+          <span>{t('search')}</span>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Название иконы, святой или праздник"
+            placeholder={t('iconSearchPlaceholder')}
             type="search"
           />
         </label>
         <div className="icons-select-field">
-          <span>Раздел</span>
+          <span>{t('section')}</span>
           <button
             className="icons-select-button"
             type="button"
@@ -81,7 +81,7 @@ export function IconsCatalog({ icons }: { icons: Icon[] }) {
         {visibleIcons.length ? (
           <div className="icon-grid">{visibleIcons.map((icon) => <IconCard key={icon.id} icon={icon} />)}</div>
         ) : (
-          <p className="icons-empty">По этому запросу икон не найдено.</p>
+          <p className="icons-empty">{t('noIconsFound')}</p>
         )}
       </section>
     </>

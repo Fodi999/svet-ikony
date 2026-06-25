@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import type { MouseEventHandler, ReactNode } from 'react';
+import { useLocaleHref } from './LanguageProvider';
+import { SvgIcon } from './SvgIcon';
 
 type AssetButtonProps = {
   children: ReactNode;
@@ -17,25 +19,15 @@ type AssetButtonProps = {
 };
 
 export function DownloadIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M12 4v10" />
-      <path d="m7.5 10 4.5 4.5L16.5 10" />
-      <path d="M5 20h14" />
-    </svg>
-  );
+  return <SvgIcon name="download" size={16} />;
 }
 
 export function CopyIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M8 7.5A2.5 2.5 0 0 1 10.5 5H18a2.5 2.5 0 0 1 2.5 2.5V15A2.5 2.5 0 0 1 18 17.5h-7.5A2.5 2.5 0 0 1 8 15V7.5Z" />
-      <path d="M5.5 8.5V18A2.5 2.5 0 0 0 8 20.5h9.5" />
-    </svg>
-  );
+  return <SvgIcon name="copy" size={16} />;
 }
 
 export function AssetButton({ children, href, download, icon, variant = 'light', type = 'button', ariaLabel, target, rel, onClick }: AssetButtonProps) {
+  const localeHref = useLocaleHref();
   const className = `asset-button${variant === 'dark' ? ' asset-button-dark' : ''}`;
   const content = <><span className="asset-button-icon">{icon}</span><span className="asset-button-label">{children}</span></>;
 
@@ -44,7 +36,7 @@ export function AssetButton({ children, href, download, icon, variant = 'light',
   }
 
   if (href) {
-    return <Link className={className} href={href} aria-label={ariaLabel}>{content}</Link>;
+    return <Link className={className} href={localeHref(href)} aria-label={ariaLabel}>{content}</Link>;
   }
 
   return <button className={className} type={type} onClick={onClick} aria-label={ariaLabel}>{content}</button>;

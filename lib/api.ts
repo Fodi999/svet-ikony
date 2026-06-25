@@ -1,8 +1,8 @@
 import { churches, dashboard, gospelToday, icons, prayers, qrPages, saints, seoPages } from './fallbackData';
 import { churchFromIcon, imageForPrayer } from './iconContent';
-import type { Church, Dashboard, GospelReading, Icon, IconTranslation, Prayer, QrPage, Saint, SeoPage, SiteContent } from './types';
+import type { Church, Dashboard, GospelReading, Icon, IconTranslation, Prayer, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
 
-const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://ministerial-yetta-fodi999-c58d8823.koyeb.app').replace(/\/+$/, '');
+const apiUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
 const publicPrefix = apiUrl.endsWith('/public') ? '' : '/public';
 
 function normalizeString(value: unknown) {
@@ -241,6 +241,7 @@ function normalizeSiteContent(value: unknown): SiteContent {
 }
 
 async function apiGet<T>(path: string, fallback: T): Promise<T> {
+  if (!apiUrl) return fallback;
   try {
     const response = await fetch(`${apiUrl}${publicPrefix}${path}`, { cache: 'no-store' });
     if (!response.ok) return fallback;
@@ -266,25 +267,26 @@ async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'DELETE', body?
 }
 
 export const publicApi = {
-  content: async (params?: { year?: string | number; month?: string | number }) => {
+  content: async (params?: { year?: string | number; month?: string | number; locale?: SiteLocale }) => {
     const query = new URLSearchParams();
     if (params?.year) query.set('year', String(params.year));
     if (params?.month) query.set('month', String(params.month));
+    if (params?.locale) query.set('locale', params.locale);
     const suffix = query.toString() ? `?${query.toString()}` : '';
     return normalizeSiteContent(await apiGet<SiteContent>(`/api/content${suffix}`, { icons, prayers, gospel: [gospelToday], saints, pages: seoPages, qrPages, churches, dashboard }));
   },
-  icons: async () => (await publicApi.content()).icons,
-  icon: async (slug: string) => (await publicApi.icons()).find((item) => item.slug === slug) || null,
-  saints: async () => (await publicApi.content()).saints,
-  saint: async (slug: string) => (await publicApi.saints()).find((item) => item.slug === slug) || null,
-  prayers: async () => (await publicApi.content()).prayers,
-  prayer: async (slug: string) => (await publicApi.prayers()).find((item) => item.slug === slug) || null,
-  gospelToday: async () => (await publicApi.content()).gospel[0] ?? gospelToday,
-  gospelByDate: async (date: string) => (await publicApi.content()).gospel.find((item) => item.date === date) ?? { ...gospelToday, date },
-  seoPage: async (slug: string) => (await publicApi.content()).pages.find((item) => item.slug === slug) || null,
-  qrPage: async (qrId: string) => (await publicApi.content()).qrPages.find((item) => item.qrId === qrId) || null,
+  icons: async (locale?: SiteLocale) => (await publicApi.content({ locale })).icons,
+  icon: async (slug: string, locale?: SiteLocale) => (await publicApi.icons(locale)).find((item) => item.slug === slug) || null,
+  saints: async (locale?: SiteLocale) => (await publicApi.content({ locale })).saints,
+  saint: async (slug: string, locale?: SiteLocale) => (await publicApi.saints(locale)).find((item) => item.slug === slug) || null,
+  prayers: async (locale?: SiteLocale) => (await publicApi.content({ locale })).prayers,
+  prayer: async (slug: string, locale?: SiteLocale) => (await publicApi.prayers(locale)).find((item) => item.slug === slug) || null,
+  gospelToday: async (locale?: SiteLocale) => (await publicApi.content({ locale })).gospel[0] ?? gospelToday,
+  gospelByDate: async (date: string, locale?: SiteLocale) => (await publicApi.content({ locale })).gospel.find((item) => item.date === date) ?? { ...gospelToday, date },
+  seoPage: async (slug: string, locale?: SiteLocale) => (await publicApi.content({ locale })).pages.find((item) => item.slug === slug) || null,
+  qrPage: async (qrId: string, locale?: SiteLocale) => (await publicApi.content({ locale })).qrPages.find((item) => item.qrId === qrId) || null,
   scanQr: (qrId: string) => apiSend(`/api/qr/${qrId}/scan`, 'POST', undefined, { ok: true }),
-  churches: async () => (await publicApi.content()).churches
+  churches: async (locale?: SiteLocale) => (await publicApi.content({ locale })).churches
 };
 
 export const adminApi = {

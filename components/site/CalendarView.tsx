@@ -1,13 +1,23 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { CalendarContent, GospelReading, Icon, Prayer, SeoPage } from '@/lib/types';
+import type { CalendarContent, CalendarServiceCard as CalendarService, GospelReading, Icon, Prayer, SeoPage } from '@/lib/types';
 import { LanguageSwitch, useI18n } from './LanguageProvider';
-import type { TranslationKey } from '@/lib/i18n';
+import { withLocale, type TranslationKey } from '@/lib/i18n';
+import {
+  CalendarFeatureCard,
+  CalendarGridDay,
+  CalendarImageCard,
+  CalendarInfoCard,
+  CalendarListDay,
+  CalendarServiceCard,
+  type CalendarDay
+} from './CalendarCards';
+import { SvgIcon } from './SvgIcon';
 
-type DayKind = 'feast' | 'fast' | 'gospel' | 'prayer' | 'quiet';
+type DayKind = CalendarDay['kind'];
 type FilterKind = 'all' | DayKind;
 type ViewMode = 'calendar' | 'list';
 
@@ -27,29 +37,8 @@ const months = [
 ] as const satisfies Array<{ key: TranslationKey; ruTitle: string; days: number }>;
 
 const weekdayKeys: TranslationKey[] = ['weekdayMon', 'weekdayTue', 'weekdayWed', 'weekdayThu', 'weekdayFri', 'weekdaySat', 'weekdaySun'];
-const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://ministerial-yetta-fodi999-c58d8823.koyeb.app').replace(/\/+$/, '');
+const apiUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
 const publicPrefix = apiUrl.endsWith('/public') ? '' : '/public';
-
-type CalendarDay = {
-  day: string;
-  gregorianDate?: string;
-  julianDay?: string;
-  julianDate?: string;
-  label: string;
-  note: string;
-  kind: DayKind;
-  imageUrl?: string;
-  icon?: Icon;
-  prayerSlug?: string;
-  gospelSlug?: string;
-  detailHref?: string;
-  current?: boolean;
-  feast?: boolean;
-  textOnly?: boolean;
-  description?: string;
-  outOfMonth?: boolean;
-  monthKey?: TranslationKey;
-};
 
 const filterLabelKeys: Record<FilterKind, TranslationKey> = {
   all: 'allDays',
@@ -59,6 +48,24 @@ const filterLabelKeys: Record<FilterKind, TranslationKey> = {
   prayer: 'prayers',
   quiet: 'quietDays'
 };
+
+function calendarCacheKey(year: number, monthIndex: number, locale: string) {
+  return `${locale}-${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+}
+
+function monthFromAbsolute(absoluteMonth: number) {
+  return {
+    year: Math.floor(absoluteMonth / 12),
+    monthIndex: ((absoluteMonth % 12) + 12) % 12
+  };
+}
+
+function queryForMonth(pathname: string, searchParams: URLSearchParams, year: number, monthIndex: number) {
+  const params = new URLSearchParams(searchParams.toString());
+  params.set('year', String(year));
+  params.set('month', String(monthIndex + 1));
+  return `${pathname}?${params.toString()}`;
+}
 
 function normalizeLookup(value?: string) {
   return (value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-яіїєґ0-9]+/gi, ' ').trim();
@@ -160,8 +167,44 @@ function createQuietMonth(totalDays: number): CalendarDay[] {
   return fillMonthDays([], totalDays);
 }
 
+function collectCalendarImageUrls(calendar: CalendarContent | undefined, icons: Icon[], prayers: Prayer[], gospel: GospelReading) {
+  if (!calendar) return [];
+  const monthIndex = monthIndexFromTitle(calendar.hero?.monthTitle);
+  const year = Number(calendar.hero?.year) || new Date().getFullYear();
+  const days = createMonthDays(icons, prayers, gospel, calendar, getDaysInMonth(year, monthIndex));
+  return Array.from(new Set([
+    ...days.map((day) => day.imageUrl || day.icon?.imageUrl || ''),
+    icons.find((icon) => icon.slug === calendar.hero?.iconDayIconSlug)?.imageUrl || ''
+  ].filter(Boolean)));
+}
+
+function preloadImages(urls: string[], preloaded?: Set<string>) {
+  if (typeof window === 'undefined') return;
+  urls.forEach((url) => {
+    if (preloaded?.has(url)) return;
+    preloaded?.add(url);
+    const image = new window.Image();
+    image.decoding = 'async';
+    image.src = url;
+  });
+}
+
 function getMondayStartOffset(year: number, monthIndex: number) {
   return (new Date(year, monthIndex, 1).getDay() + 6) % 7;
+}
+
+function calendarCellKey(item: CalendarDay, year: number, monthIndex: number) {
+  const source = normalizeLookup(item.detailHref || item.icon?.slug || item.prayerSlug || item.gospelSlug || item.label || item.kind).replace(/\s+/g, '-');
+  if (!item.outOfMonth) return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${item.day}-${source || item.kind}`;
+
+  const offset = item.monthKey ? months.findIndex((month) => month.key === item.monthKey) : monthIndex;
+  const cellMonthIndex = offset >= 0 ? offset : monthIndex;
+  const cellYear = monthIndex === 0 && cellMonthIndex === 11
+    ? year - 1
+    : monthIndex === 11 && cellMonthIndex === 0
+      ? year + 1
+      : year;
+  return `${cellYear}-${String(cellMonthIndex + 1).padStart(2, '0')}-${item.day}-outside`;
 }
 
 function createCalendarGridDays(days: CalendarDay[], monthIndex: number, year: number): CalendarDay[] {
@@ -198,8 +241,19 @@ function dayDateLabel(item: CalendarDay) {
   return '';
 }
 
-async function fetchCalendarContent(year: number, monthIndex: number, signal: AbortSignal) {
-  const response = await fetch(`${apiUrl}${publicPrefix}/api/content?year=${year}&month=${monthIndex + 1}`, {
+function formatCalendarDate(date: Date, locale: string) {
+  const localeCode = locale === 'en' ? 'en-US' : locale === 'uk' ? 'uk-UA' : 'ru-RU';
+  return new Intl.DateTimeFormat(localeCode, { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+}
+
+async function fetchCalendarContent(year: number, monthIndex: number, locale: string, signal: AbortSignal) {
+  if (!apiUrl) throw new Error('Calendar API URL is not configured');
+  const query = new URLSearchParams({
+    year: String(year),
+    month: String(monthIndex + 1),
+    locale
+  });
+  const response = await fetch(`${apiUrl}${publicPrefix}/api/content?${query.toString()}`, {
     cache: 'no-store',
     signal
   });
@@ -235,8 +289,39 @@ function localizedHeroText(value: string | undefined, fallbackKey: TranslationKe
   return value || t(fallbackKey);
 }
 
+function serviceTranslationKeys(service: CalendarService): [TranslationKey, TranslationKey] | null {
+  const normalizedTitle = normalizeLookup(service.title);
+  const normalizedHref = normalizeLookup(service.href);
+  const id = normalizeLookup(service.id);
+
+  if (id.includes('prayers') || normalizedHref === 'prayers' || normalizedTitle.includes('молит')) {
+    return ['calendarServicePrayersTitle', 'calendarServicePrayersText'];
+  }
+  if (id.includes('gospel') || normalizedHref === 'gospel' || normalizedTitle.includes('евангел')) {
+    return ['calendarServiceGospelTitle', 'calendarServiceGospelText'];
+  }
+  if (id.includes('feasts') || normalizedHref.includes('pravoslavnaya ikona s qr kodom') || normalizedTitle.includes('праздник') || normalizedTitle.includes('пост')) {
+    return ['calendarServiceFeastsTitle', 'calendarServiceFeastsText'];
+  }
+  if (id.includes('icons') || normalizedHref === 'icons' || normalizedTitle.includes('икон')) {
+    return ['calendarServiceIconsTitle', 'calendarServiceIconsText'];
+  }
+
+  return null;
+}
+
+function localizeService(service: CalendarService, t: (key: TranslationKey) => string): CalendarService {
+  const keys = serviceTranslationKeys(service);
+  if (!keys) return service;
+  return {
+    ...service,
+    title: t(keys[0]),
+    description: t(keys[1])
+  };
+}
+
 export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: { icons: Icon[]; prayers: Prayer[]; gospel: GospelReading; pages?: SeoPage[]; calendar?: CalendarContent }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -249,73 +334,212 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
   const [year, setYear] = useState(initialYear);
   const [monthIndex, setMonthIndex] = useState(() => monthIndexFromTitle(calendar?.hero?.monthTitle));
   const [calendarLoading, setCalendarLoading] = useState(false);
+  const [monthTransition, setMonthTransition] = useState(false);
+  const [monthDirection, setMonthDirection] = useState<'next' | 'prev'>('next');
+  const calendarCache = useRef(new Map<string, CalendarContent>());
+  const preloadedImages = useRef(new Set<string>());
+  const previousAbsoluteMonth = useRef(year * 12 + monthIndex);
+  const pendingLocalMonth = useRef<string | null>(null);
   const activeCalendarYear = Number(activeCalendar?.hero?.year) || 0;
   const activeCalendarMonth = monthIndexFromTitle(activeCalendar?.hero?.monthTitle);
   const selectedCalendar = activeCalendarYear === year && activeCalendarMonth === monthIndex ? activeCalendar : undefined;
   const hero = selectedCalendar?.hero;
   const monthDaysTotal = getDaysInMonth(year, monthIndex);
-  const days = useMemo(() => createMonthDays(icons, prayers, gospel, selectedCalendar, monthDaysTotal), [icons, prayers, gospel, selectedCalendar, monthDaysTotal]);
+  const showMonthPlaceholder = !selectedCalendar && Boolean(activeCalendar || calendarLoading);
+  const days = useMemo(
+    () => showMonthPlaceholder ? createQuietMonth(monthDaysTotal) : createMonthDays(icons, prayers, gospel, selectedCalendar, monthDaysTotal),
+    [icons, prayers, gospel, selectedCalendar, monthDaysTotal, showMonthPlaceholder]
+  );
   const calendarGridDays = useMemo(() => createCalendarGridDays(days, monthIndex, year), [days, monthIndex, year]);
   const visibleDays = filter === 'all' ? (view === 'calendar' ? calendarGridDays : days) : days.filter((day) => day.kind === filter);
   const now = new Date();
+  const realTodayDay = String(now.getDate()).padStart(2, '0');
+  const isCurrentVisibleMonth = now.getFullYear() === year && now.getMonth() === monthIndex;
   const today = days.find((day) => day.current)
     ?? (now.getFullYear() === year && now.getMonth() === monthIndex ? days.find((day) => day.day === String(now.getDate()).padStart(2, '0')) : undefined)
     ?? days.find((day) => day.label)
     ?? days[0];
+  const heroToday = (isCurrentVisibleMonth ? days.find((day) => day.day === realTodayDay) : undefined)
+    ?? today
+    ?? days[0];
+  const heroTodayHref = pageHrefForDay(heroToday, pages);
+  const heroTodayDate = heroToday?.gregorianDate || formatCalendarDate(now, locale);
+  const heroTodayOldDate = heroToday?.julianDate ? `${heroToday.julianDate} ст. ст.` : '';
   const prevMonth = months[(monthIndex + 11) % 12];
   const nextMonth = months[(monthIndex + 1) % 12];
   const monthTitle = `${t(months[monthIndex].key)} ${year}`;
-  const iconOfDay = icons.find((icon) => icon.slug === hero?.iconDayIconSlug) ?? icons[1] ?? icons[0];
-  const prayerOfDay = prayers.find((prayer) => prayer.slug === hero?.iconDayPrayerSlug) ?? prayers[0];
-  const services = selectedCalendar?.services?.length ? selectedCalendar.services : [
-    { id: 'service-prayers', index: '01', title: 'Молитвы на каждый день', description: 'Краткое правило и молитвы перед иконой.', href: '/prayers' },
-    { id: 'service-gospel', index: '02', title: 'Евангелие дня', description: 'Чтение, ссылка и спокойное объяснение.', href: '/gospel' },
-    { id: 'service-feasts', index: '03', title: 'Праздники и посты', description: 'Церковные даты, важные дни и отметки.', href: '/p/pravoslavnaya-ikona-s-qr-kodom' },
-    { id: 'service-icons', index: '04', title: 'Иконы святых', description: 'История образов, жития и QR-страницы.', href: '/icons' }
+  const iconOfDay = showMonthPlaceholder ? undefined : heroToday?.icon ?? icons.find((icon) => icon.slug === hero?.iconDayIconSlug) ?? icons[1] ?? icons[0];
+  const prayerOfDay = prayers.find((prayer) => prayer.slug === heroToday?.prayerSlug)
+    ?? prayers.find((prayer) => prayer.slug === hero?.iconDayPrayerSlug)
+    ?? prayers[0];
+  const navigationTips = [
+    { href: '/prayers', label: t('navPrayers'), text: t('prayerDay') },
+    { href: '/gospel', label: t('navGospel'), text: t('gospelDay'), tone: 'red' as const },
+    { href: '/icons', label: t('navIcons'), text: t('iconOfDay') }
   ];
+  const dayActionLabels = {
+    prayers: t('prayers'),
+    gospel: t('gospel'),
+    more: t('more')
+  };
+  const services = (selectedCalendar?.services?.length ? selectedCalendar.services : [
+    { id: 'service-prayers', index: '01', title: t('calendarServicePrayersTitle'), description: t('calendarServicePrayersText'), href: '/prayers' },
+    { id: 'service-gospel', index: '02', title: t('calendarServiceGospelTitle'), description: t('calendarServiceGospelText'), href: '/gospel' },
+    { id: 'service-feasts', index: '03', title: t('calendarServiceFeastsTitle'), description: t('calendarServiceFeastsText'), href: '/p/pravoslavnaya-ikona-s-qr-kodom' },
+    { id: 'service-icons', index: '04', title: t('calendarServiceIconsTitle'), description: t('calendarServiceIconsText'), href: '/icons' }
+  ]).map((service) => localizeService(service, t));
 
   useEffect(() => {
+    if (!calendar) return;
+    const calendarYear = Number(calendar.hero?.year) || initialYear;
+    const calendarMonthIndex = monthIndexFromTitle(calendar.hero?.monthTitle);
+    const key = calendarCacheKey(calendarYear, calendarMonthIndex, locale);
+    calendarCache.current.set(key, calendar);
+    if (calendarYear === year && calendarMonthIndex === monthIndex) {
+      setActiveCalendar((current) => current === calendar ? current : calendar);
+    }
+  }, [calendar, initialYear, locale, monthIndex, year]);
+
+  useEffect(() => {
+    const queryYear = Number(searchParams.get('year'));
+    const queryMonth = Number(searchParams.get('month'));
+    if (!Number.isFinite(queryYear) || !Number.isFinite(queryMonth) || queryMonth < 1 || queryMonth > 12) return;
+
+    const nextMonthIndex = queryMonth - 1;
+    const queryKey = calendarCacheKey(queryYear, nextMonthIndex, locale);
+    const stateKey = calendarCacheKey(year, monthIndex, locale);
+    if (queryKey === stateKey) {
+      pendingLocalMonth.current = null;
+      return;
+    }
+    if (pendingLocalMonth.current === stateKey) return;
+
+    const currentAbsolute = year * 12 + monthIndex;
+    const nextAbsolute = queryYear * 12 + nextMonthIndex;
+    setMonthDirection(nextAbsolute >= currentAbsolute ? 'next' : 'prev');
+    pendingLocalMonth.current = null;
+    setYear(queryYear);
+    setMonthIndex(nextMonthIndex);
+  }, [locale, monthIndex, searchParams, year]);
+
+  useEffect(() => {
+    const key = calendarCacheKey(year, monthIndex, locale);
+    const cachedCalendar = calendarCache.current.get(key);
+    if (cachedCalendar) {
+      setActiveCalendar(cachedCalendar);
+      setCalendarLoading(false);
+      preloadImages(collectCalendarImageUrls(cachedCalendar, icons, prayers, gospel), preloadedImages.current);
+      return;
+    }
+
     const controller = new AbortController();
     setCalendarLoading(true);
-    fetchCalendarContent(year, monthIndex, controller.signal)
+    fetchCalendarContent(year, monthIndex, locale, controller.signal)
       .then((nextCalendar) => {
-        if (nextCalendar) setActiveCalendar(nextCalendar);
+        if (!nextCalendar) return;
+        calendarCache.current.set(key, nextCalendar);
+        setActiveCalendar(nextCalendar);
+        preloadImages(collectCalendarImageUrls(nextCalendar, icons, prayers, gospel), preloadedImages.current);
       })
       .catch(() => undefined)
       .finally(() => {
         if (!controller.signal.aborted) setCalendarLoading(false);
       });
     return () => controller.abort();
-  }, [year, monthIndex]);
+  }, [gospel, icons, locale, monthIndex, prayers, year]);
+
+  useEffect(() => {
+    const controllers: AbortController[] = [];
+
+    [-1, 1].forEach((delta) => {
+      const adjacent = monthFromAbsolute(year * 12 + monthIndex + delta);
+      const key = calendarCacheKey(adjacent.year, adjacent.monthIndex, locale);
+      const cachedCalendar = calendarCache.current.get(key);
+      const href = queryForMonth(pathname, new URLSearchParams(searchParams.toString()), adjacent.year, adjacent.monthIndex);
+
+      router.prefetch(href);
+
+      if (cachedCalendar) {
+        preloadImages(collectCalendarImageUrls(cachedCalendar, icons, prayers, gospel), preloadedImages.current);
+        return;
+      }
+
+      const controller = new AbortController();
+      controllers.push(controller);
+      fetchCalendarContent(adjacent.year, adjacent.monthIndex, locale, controller.signal)
+        .then((nextCalendar) => {
+          if (!nextCalendar) return;
+          calendarCache.current.set(key, nextCalendar);
+          preloadImages(collectCalendarImageUrls(nextCalendar, icons, prayers, gospel), preloadedImages.current);
+        })
+        .catch(() => undefined);
+    });
+
+    return () => controllers.forEach((controller) => controller.abort());
+  }, [gospel, icons, locale, monthIndex, pathname, prayers, router, searchParams, year]);
+
+  useEffect(() => {
+    const nextAbsolute = year * 12 + monthIndex;
+    const previousAbsolute = previousAbsoluteMonth.current;
+    if (nextAbsolute === previousAbsolute) return;
+
+    setMonthDirection(nextAbsolute > previousAbsolute ? 'next' : 'prev');
+    setMonthTransition(true);
+    previousAbsoluteMonth.current = nextAbsolute;
+    const timeout = window.setTimeout(() => setMonthTransition(false), 230);
+    return () => window.clearTimeout(timeout);
+  }, [monthIndex, year]);
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
     const nextYear = String(year);
     const nextMonth = String(monthIndex + 1);
-    if (params.get('year') === nextYear && params.get('month') === nextMonth) return;
+    if (params.get('year') === nextYear && params.get('month') === nextMonth) {
+      pendingLocalMonth.current = null;
+      return;
+    }
     params.set('year', String(year));
     params.set('month', String(monthIndex + 1));
+    pendingLocalMonth.current = calendarCacheKey(year, monthIndex, locale);
     const nextUrl = `${pathname}?${params.toString()}`;
     router.replace(nextUrl, { scroll: false });
-  }, [monthIndex, pathname, router, searchParams, year]);
+  }, [locale, monthIndex, pathname, router, searchParams, year]);
 
   function moveMonth(delta: number) {
     const absoluteMonth = year * 12 + monthIndex + delta;
-    setYear(Math.floor(absoluteMonth / 12));
-    setMonthIndex(((absoluteMonth % 12) + 12) % 12);
+    const next = monthFromAbsolute(absoluteMonth);
+    const cachedCalendar = calendarCache.current.get(calendarCacheKey(next.year, next.monthIndex, locale));
+    setMonthDirection(delta >= 0 ? 'next' : 'prev');
+    pendingLocalMonth.current = calendarCacheKey(next.year, next.monthIndex, locale);
+    if (cachedCalendar) setActiveCalendar(cachedCalendar);
+    setYear(next.year);
+    setMonthIndex(next.monthIndex);
+  }
+
+  function moveYear(delta: number) {
+    const nextYear = year + delta;
+    pendingLocalMonth.current = calendarCacheKey(nextYear, monthIndex, locale);
+    setMonthDirection(delta >= 0 ? 'next' : 'prev');
+    setYear(nextYear);
+  }
+
+  function setCalendarYear(nextYear: number) {
+    pendingLocalMonth.current = calendarCacheKey(nextYear, monthIndex, locale);
+    setMonthDirection(nextYear >= year ? 'next' : 'prev');
+    setYear(nextYear);
   }
 
   return (
     <section className="calendar-page">
       <div className="calendar-topline">
-        <Link className="calendar-logo" href="/">
-          <span className="orthodox-cross">☦</span>
+        <Link className="calendar-logo" href={withLocale('/', locale)}>
+          <span className="orthodox-cross"><SvgIcon name="orthodox-cross" size={25} /></span>
           <span><strong>{t('brand')}</strong><small>{t('portal')}</small></span>
         </Link>
         <div className="calendar-top-actions">
           <LanguageSwitch />
           <nav className="calendar-breadcrumbs" aria-label={`${t('home')} / ${t('calendar')}`}>
-            <Link href="/">{t('home')}</Link>
+            <Link href={withLocale('/', locale)}>{t('home')}</Link>
             <b>/</b>
             <a href="#calendar-grid">{t('calendar')}</a>
           </nav>
@@ -327,44 +551,41 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
           <span className="calendar-year">{hero?.year ?? '2026'}</span>
           <h1>{localizedHeroTitle(hero?.title, t)}</h1>
         </div>
-        <aside className="calendar-feature">
-          <p>{t('todayFeast')}</p>
-          <strong><span className="gold-cross">☦</span> {localizedHeroText(hero?.featureTitle, 'saintVasily', t)}</strong>
-          <span>{localizedHeroText(hero?.featureNote, 'saintMemory', t)}<br />{localizedHeroText(hero?.featureDate, 'jan14Old', t)}</span>
-          <Link href={hero?.featureHref || '/saints/nikolay-chudotvorets'}>{t('aboutFeast')} →</Link>
-        </aside>
-        <aside className="calendar-icon-day">
-          {iconOfDay ? <img src={iconOfDay.imageUrl} alt={iconOfDay.title} /> : null}
-          <div>
-            <p>{t('todayIcon')}</p>
-            <strong>{localizedHeroText(hero?.iconDayTitle || iconOfDay?.title, 'iconOfDay', t)}</strong>
-            <span>{localizedHeroText(hero?.iconDayDate, 'jan14', t)}</span>
-            <Link href={prayerOfDay ? `/prayers/${prayerOfDay.slug}` : '/prayers'}>{t('openPrayer')} →</Link>
-          </div>
-        </aside>
-        <aside className="calendar-info">
-          <p>{t('information')}</p>
-          <span><i /> {localizedHeroText(hero?.infoPrimary, 'currentFeast', t)}</span>
-          <span><i className="red" /> {localizedHeroText(hero?.infoSecondary, 'importantDay', t)}</span>
-        </aside>
+        <CalendarFeatureCard
+          eyebrow={t('todayFeast')}
+          title={heroToday?.label || t('quietDays')}
+          date={heroTodayDate}
+          oldDate={heroTodayOldDate}
+          note={heroToday?.note}
+          link={{ href: heroToday?.label ? heroTodayHref : '#calendar-grid', label: heroToday?.label ? t('more') : t('calendar') }}
+        />
+        <CalendarImageCard
+          imageUrl={iconOfDay?.imageUrl}
+          imageAlt={iconOfDay?.title || t('iconOfDay')}
+          eyebrow={t('todayIcon')}
+          title={heroToday?.label || localizedHeroText(hero?.iconDayTitle || iconOfDay?.title, 'iconOfDay', t)}
+          dateText={`${heroTodayDate}${heroTodayOldDate ? ` / ${heroTodayOldDate}` : ''}`}
+          link={{ href: prayerOfDay ? `/prayers/${prayerOfDay.slug}` : '/prayers', label: t('openPrayer') }}
+        />
+        <CalendarInfoCard eyebrow={t('information')} title={t('catalog')} links={navigationTips} />
       </section>
 
       <div className="calendar-toolbar">
         <div className="month-switch">
           <button className="month-step" type="button" onClick={() => moveMonth(-1)} aria-label={`${t(prevMonth.key)}`}>
-            <span>←</span>
+            <span><SvgIcon name="arrow-left" size={18} /></span>
             <small>{t(prevMonth.key)}</small>
           </button>
-          <strong>{monthTitle}{calendarLoading ? ' · загрузка' : ''}</strong>
+          <strong>{monthTitle}{calendarLoading ? ` - ${t('calendarLoading')}` : ''}</strong>
           <button className="month-step" type="button" onClick={() => moveMonth(1)} aria-label={`${t(nextMonth.key)}`}>
             <small>{t(nextMonth.key)}</small>
-            <span>→</span>
+            <span><SvgIcon name="arrow-right" size={18} /></span>
           </button>
         </div>
         <div className="year-switch" aria-label="Вибір року">
-          <button type="button" onClick={() => setYear((value) => value - 1)}>−</button>
+          <button type="button" onClick={() => moveYear(-1)} aria-label={t('prevYear')}><SvgIcon name="minus" size={18} /></button>
           <label>
-            <span>Рік</span>
+            <span>{t('yearLabel')}</span>
             <input
               type="number"
               min="1900"
@@ -372,17 +593,17 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
               value={year}
               onChange={(event) => {
                 const nextYear = Number(event.target.value);
-                if (Number.isFinite(nextYear)) setYear(nextYear);
+                if (Number.isFinite(nextYear)) setCalendarYear(nextYear);
               }}
             />
           </label>
-          <button type="button" onClick={() => setYear((value) => value + 1)}>+</button>
+          <button type="button" onClick={() => moveYear(1)} aria-label={t('nextYear')}><SvgIcon name="plus" size={18} /></button>
         </div>
         <div className="calendar-filter">
           <button className="filter-toggle" type="button" aria-expanded={filterOpen} onClick={() => setFilterOpen((open) => !open)}>
             <span>{t('filter')}</span>
             <strong>{t(filterLabelKeys[filter])}</strong>
-            <i aria-hidden="true">⌄</i>
+            <i aria-hidden="true"><SvgIcon name="chevron-down" size={16} /></i>
           </button>
           {filterOpen ? (
             <div className="filter-menu">
@@ -411,103 +632,71 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
 
       <div className="calendar-main">
         <section id="calendar-grid" className="month-block">
-          <h2>{t(months[monthIndex].key)}</h2>
-          {visibleDays.length ? (
-            <>
-              {view === 'calendar' ? (
-                <div className="weekday-strip" aria-label="Дні тижня">
-                  {weekdayKeys.map((key) => <span key={key}>{t(key)}</span>)}
+          <div className={'calendar-month-surface' + (monthTransition ? ' is-changing' : '')} data-direction={monthDirection}>
+            <h2>{t(months[monthIndex].key)}</h2>
+            {visibleDays.length ? (
+              <>
+                {view === 'calendar' ? (
+                  <div className="weekday-strip" aria-label={t('weekdaysLabel')}>
+                    {weekdayKeys.map((key) => <span key={key}>{t(key)}</span>)}
+                  </div>
+                ) : null}
+                <div className={view === 'list' ? 'calendar-list' : 'calendar-grid'}>
+                  {view === 'list' ? visibleDays.map((item) => {
+                    const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
+                    const detailHref = pageHrefForDay(item, pages);
+                    const itemKey = calendarCellKey(item, year, monthIndex);
+                    const isExpanded = expandedDay === itemKey;
+
+                    return (
+                      <CalendarListDay
+                        key={itemKey}
+                        item={item}
+                        itemKey={itemKey}
+                        imageUrl={imageUrl}
+                        detailHref={detailHref}
+                        isToday={item.day === today.day}
+                        isExpanded={isExpanded}
+                        onToggle={() => setExpandedDay((current) => current === itemKey ? '' : itemKey)}
+                        dateLabel={dayDateLabel(item)}
+                        quietLabel={t('quietDays')}
+                        iconFallbackAlt={t('iconOfDay')}
+                        openDayLabel={t('openDay')}
+                        dayLinksLabel={t('dayLinks')}
+                        monthGenitiveLabel={t('januaryGenitive')}
+                        monthLabel={monthTitle}
+                        actionLabels={dayActionLabels}
+                      />
+                    );
+                  }) : visibleDays.map((item) => {
+                    const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
+                    const detailHref = pageHrefForDay(item, pages);
+                    const itemKey = calendarCellKey(item, year, monthIndex);
+
+                    return (
+                      <CalendarGridDay
+                        key={itemKey}
+                        item={item}
+                        imageUrl={imageUrl}
+                        detailHref={detailHref}
+                        isToday={!item.outOfMonth && item.day === today.day}
+                        dateLabel={dayDateLabel(item)}
+                        todayLabel={t('today')}
+                        iconFallbackAlt={t('iconOfDay')}
+                        openDayLabel={t('openDay')}
+                        dayLinksLabel={t('dayLinks')}
+                        monthGenitiveLabel={t('januaryGenitive')}
+                        outOfMonthLabel={item.monthKey ? t(item.monthKey) : undefined}
+                        actionLabels={dayActionLabels}
+                      />
+                    );
+                  })}
                 </div>
-              ) : null}
-              <div className={view === 'list' ? 'calendar-list' : 'calendar-grid'}>
-                {view === 'list' ? visibleDays.map((item) => {
-                const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
-                const detailHref = pageHrefForDay(item, pages);
-                const itemKey = `${months[monthIndex].key}-${item.day}`;
-                const isExpanded = expandedDay === itemKey;
-                const hasContent = Boolean(item.label);
-
-                return (
-                  <article key={itemKey} className={'list-accordion-item' + (isExpanded ? ' open' : '') + (item.day === today.day ? ' today' : '')}>
-                    <button
-                      className="list-accordion-trigger"
-                      type="button"
-                      aria-expanded={isExpanded}
-                      onClick={() => setExpandedDay((current) => current === itemKey ? '' : itemKey)}
-                    >
-                      <span className="list-day-number">{item.day}{item.current ? <i /> : null}{item.feast || item.kind === 'fast' ? <i className="red" /> : null}</span>
-                      <span className="list-day-heading">
-                        <strong>{hasContent ? item.label : t('quietDays')}</strong>
-                        <small>{hasContent ? item.note : monthTitle}</small>
-                      </span>
-                      <span className="list-accordion-mark" aria-hidden="true">{isExpanded ? '−' : '+'}</span>
-                    </button>
-                    {isExpanded ? (
-                      <div className="list-accordion-panel">
-                        {imageUrl ? (
-                          <Link className="list-image-link" href={detailHref} aria-label={`${t('openDay')} ${item.label || t('iconOfDay')}`}>
-                            <img src={imageUrl} alt={item.icon?.title || item.label || t('iconOfDay')} />
-                          </Link>
-                        ) : null}
-                        <div className="list-panel-copy">
-                          <p>{hasContent ? item.note : t('quietDays')}</p>
-                          <h3>{hasContent ? item.label : `${item.day} ${t(months[monthIndex].key)}`}</h3>
-                          {dayDateLabel(item) ? <small>{dayDateLabel(item)}</small> : null}
-                          {item.description ? <span>{item.description}</span> : <span>{monthTitle}</span>}
-                          {hasContent ? (
-                            <nav className="list-panel-links" aria-label={`${t('dayLinks')} ${item.day} ${t('januaryGenitive')}`}>
-                              <Link href={item.prayerSlug ? `/prayers/${item.prayerSlug}` : '/prayers'}>{t('prayers')}</Link>
-                              <Link href={item.gospelSlug && item.gospelSlug !== 'today' ? `/gospel/${item.gospelSlug}` : '/gospel'}>{t('gospel')}</Link>
-                              <Link href={detailHref}>{t('more')}</Link>
-                            </nav>
-                          ) : null}
-                        </div>
-                      </div>
-                    ) : null}
-                  </article>
-                );
-              }) : (
-                <>
-                  {visibleDays.map((item) => {
-                const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
-                const detailHref = pageHrefForDay(item, pages);
-
-                return (
-                  <article key={`${item.monthKey || months[monthIndex].key}-${item.day}`} className={`calendar-day day-kind-${item.kind}${item.textOnly ? ' text-only' : ''}${!item.outOfMonth && item.day === today.day ? ' today' : ''}${item.outOfMonth ? ' out-of-month' : ''}`}>
-                    <div className="day-number">{item.day}{item.outOfMonth && item.monthKey ? <small>{t(item.monthKey)}</small> : null}{item.current ? <i /> : null}{item.feast || item.kind === 'fast' ? <i className="red" /> : null}</div>
-                    {!item.outOfMonth && item.day === today.day ? <span className="today-badge">{t('today')}</span> : null}
-                    {!item.outOfMonth && item.label && imageUrl && view === 'calendar' ? (
-                      <Link className="day-image-link" href={detailHref} aria-label={`${t('openDay')} ${item.label || t('iconOfDay')}`}>
-                        <img src={imageUrl} alt={item.icon?.title || item.label || t('iconOfDay')} />
-                      </Link>
-                    ) : null}
-                    {item.label ? (
-                      <div className="day-event">
-                        <div className="day-copy">
-                          <Link className="day-title-link" href={detailHref}>{item.label}</Link>
-                          <span>{item.note}</span>
-                          {dayDateLabel(item) ? <span className="day-date-note">{dayDateLabel(item)}</span> : null}
-                          {item.description ? <em>{item.description}</em> : null}
-                        </div>
-                        {!item.outOfMonth ? (
-                          <nav className="day-links" aria-label={`${t('dayLinks')} ${item.day} ${t('januaryGenitive')}`}>
-                            <Link href={item.prayerSlug ? `/prayers/${item.prayerSlug}` : '/prayers'}>{t('prayers')}</Link>
-                            <Link href={item.gospelSlug && item.gospelSlug !== 'today' ? `/gospel/${item.gospelSlug}` : '/gospel'}>{t('gospel')}</Link>
-                            <Link href={detailHref}>{t('more')}</Link>
-                          </nav>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </article>
-                );
-              })}
-                </>
-              )}
-              </div>
-            </>
-          ) : (
-            <p className="calendar-empty">{t('noDays')}</p>
-          )}
+              </>
+            ) : (
+              <p className="calendar-empty">{t('noDays')}</p>
+            )}
+          </div>
         </section>
 
         <aside className="today-card">
@@ -521,17 +710,13 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
             <dt>{t('prayerDay')}</dt>
             <dd>{hero?.todayPrayerTitle || prayerOfDay?.title}</dd>
           </dl>
-          <Link href={hero?.todayHref || '/gospel'}>{t('read')}</Link>
+          <Link href={withLocale(hero?.todayHref || '/gospel', locale)}>{t('read')}</Link>
         </aside>
       </div>
 
       <section className="calendar-service-grid">
         {services.map((service) => (
-          <Link key={service.id} href={service.href || '/'}>
-            <span>{service.index}</span>
-            <strong>{service.title}</strong>
-            <small>{service.description}</small>
-          </Link>
+          <CalendarServiceCard key={service.id} href={service.href} index={service.index} title={service.title} description={service.description} />
         ))}
       </section>
     </section>

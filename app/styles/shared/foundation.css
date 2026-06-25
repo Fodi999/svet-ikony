@@ -5,18 +5,27 @@ html {
 }
 
 :root {
-  color-scheme: light;
-  --ink: #241915;
-  --muted: #74665c;
-  --paper: #fffaf2;
-  --paper-deep: #efe2ca;
-  --gold: #b8842b;
-  --gold-soft: #edd7a8;
-  --clay: #8f4d38;
-  --sage: #697762;
-  --line: rgba(70, 48, 30, .16);
-  --shadow: 0 24px 70px rgba(64, 42, 16, .14);
-  --soft-shadow: 0 18px 46px rgba(56, 37, 19, .1);
+  color-scheme: dark;
+  --background: #0B0B0A;
+  --surface: #15130F;
+  --surface-soft: #1D1A13;
+  --text: #FFFFFF;
+  --muted: #C9C2B3;
+  --gold: #D6A84F;
+  --gold-light: #F1D18A;
+  --border-gold: rgba(214, 168, 79, .35);
+  --ink: var(--text);
+  --paper: var(--background);
+  --paper-deep: var(--surface);
+  --gold-soft: var(--gold-light);
+  --clay: #A86F44;
+  --sage: #909B7E;
+  --line: var(--border-gold);
+  --shadow: 0 24px 70px rgba(0, 0, 0, .38);
+  --soft-shadow: 0 18px 46px rgba(0, 0, 0, .28);
+  --ornament-corner: url("/ornaments/card-corner.svg");
+  --ornament-divider: url("/ornaments/section-divider.svg");
+  --ornament-border: url("/ornaments/page-border.svg");
 }
 
 @keyframes titleGradientFlow {
@@ -33,14 +42,39 @@ html {
   }
 }
 
+@keyframes imageSkeleton {
+  0% {
+    background-position: 220% 0, 0 0;
+  }
+
+  100% {
+    background-position: -120% 0, 0 0;
+  }
+}
+
 body {
+  position: relative;
   margin: 0;
   min-height: 100vh;
   overflow-x: hidden;
-  background: #f7f2e8;
+  background:
+    linear-gradient(180deg, rgba(214, 168, 79, .08), transparent 240px),
+    var(--background);
   color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
   text-rendering: optimizeLegibility;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    var(--ornament-border) top center / 360px 48px repeat-x,
+    linear-gradient(90deg, rgba(214, 168, 79, .08), transparent 18%, transparent 82%, rgba(214, 168, 79, .08));
+  opacity: .42;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -82,13 +116,13 @@ button, input, textarea, select { font: inherit; }
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--gold);
   padding: 0 18px;
-  background: var(--ink);
-  color: #fffaf0;
+  background: var(--gold);
+  color: #0B0B0A;
   font-weight: 700;
 }
-.secondary-button, .card-link { background: transparent; color: var(--ink); }
+.secondary-button, .card-link { background: transparent; color: var(--gold-light); }
 
 main { min-height: 70vh; }
 .hero, .page-hero, .section, .detail-page { padding: clamp(54px, 8vw, 116px) clamp(18px, 5vw, 72px); }
@@ -118,6 +152,14 @@ main { min-height: 70vh; }
   font-size: clamp(18px, 2.2vw, 26px);
   line-height: 1.45;
 }
+
+.svg-icon {
+  display: block;
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  pointer-events: none;
+}
 .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
 .hero-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 36px; }
 .stat { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 6px; }
@@ -125,19 +167,30 @@ main { min-height: 70vh; }
 
 .qr-demo, .phone-mockup, .feature-card, .icon-card, .church-card, .donation-card, .content-panel {
   border: 1px solid var(--line);
-  background: rgba(255,255,255,.55);
+  background: color-mix(in srgb, var(--surface) 92%, black);
   box-shadow: var(--shadow);
 }
 .qr-demo { padding: 22px; display: grid; gap: 18px; }
-.qr-demo-image { aspect-ratio: 1; display: grid; place-items: center; background: #fff; border: 1px solid var(--line); }
-.phone-mockup { border-radius: 34px; padding: 16px; max-width: 380px; margin-left: auto; background: #1f1711; color: #fffaf0; }
-.phone-screen { border-radius: 24px; overflow: hidden; background: var(--paper); color: var(--ink); }
+.qr-demo-image { aspect-ratio: 1; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line); }
+.phone-mockup { border-radius: 34px; padding: 16px; max-width: 380px; margin-left: auto; background: #050504; color: var(--text); }
+.phone-screen { border-radius: 24px; overflow: hidden; background: var(--surface); color: var(--text); }
 
 .section-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
 .section-header h2 { margin: 0; font-size: clamp(34px, 5vw, 76px); line-height: .96; }
 .icon-grid, .feature-grid, .church-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
 .icon-card, .feature-card, .church-card, .donation-card { padding: 18px; display: grid; gap: 14px; }
-.icon-card img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: var(--paper-deep); }
+.icon-card figure {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 4 / 5;
+  background:
+    linear-gradient(110deg, transparent 0 28%, rgba(255, 255, 255, .72) 42%, transparent 56%),
+    var(--paper-deep);
+  background-size: 220% 100%, 100% 100%;
+  overflow: hidden;
+  animation: imageSkeleton 1.4s ease-in-out infinite;
+}
+.icon-card img { position: relative; z-index: 1; width: 100%; height: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: var(--paper-deep); }
 .icon-card h3, .feature-card h3, .church-card h3 { margin: 0; font-size: 24px; }
 .icon-card p, .feature-card p, .church-card p, .detail-content { color: var(--muted); line-height: 1.55; }
 
@@ -152,6 +205,13 @@ main { min-height: 70vh; }
 .content-panel h2 { margin-top: 0; font-size: 30px; }
 .qr-strip { display: flex; align-items: center; gap: 18px; padding: 18px; border: 1px solid var(--line); background: #fff; }
 .qr-strip img { width: 92px; height: 92px; }
+.qr-drawer img {
+  width: 100%;
+  max-width: 180px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #fff;
+}
 
 .list-page { padding: clamp(54px, 8vw, 108px) clamp(18px, 5vw, 72px); }
 .plain-list { display: grid; gap: 12px; }
@@ -182,7 +242,8 @@ main { min-height: 70vh; }
   align-items: start;
 }
 
-.icon-detail > img {
+.icon-detail > img,
+.icon-detail-image {
   width: 100%;
   max-height: min(72vh, 780px);
   aspect-ratio: 4 / 5;
@@ -191,6 +252,18 @@ main { min-height: 70vh; }
   background: var(--paper-deep);
   padding: clamp(10px, 1.3vw, 18px);
   box-shadow: var(--shadow);
+}
+
+.icon-detail-image {
+  margin: 0;
+  display: grid;
+  place-items: center;
+}
+
+.icon-detail-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .icon-detail > div {

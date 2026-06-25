@@ -1,15 +1,20 @@
-const steps = [
-  ['01', 'Икона в киоте', 'QR-код аккуратно скрыт в выдвижном элементе и не нарушает внешний вид.'],
-  ['02', 'Сканирование', 'Человек открывает страницу конкретной иконы с молитвой и материалами.'],
-  ['03', 'Духовное чтение', 'Молитва, Евангелие дня, житие и история доступны с телефона.']
-];
+'use client';
+
+import { useI18n } from './LanguageProvider';
 
 export function HowItWorks() {
+  const { t } = useI18n();
+  const steps = [
+    ['01', t('howStepIconTitle'), t('howStepIconText')],
+    ['02', t('howStepScanTitle'), t('howStepScanText')],
+    ['03', t('howStepReadTitle'), t('howStepReadText')]
+  ];
+
   return (
     <section className="section">
       <div className="section-head">
-        <p className="eyebrow">Как это работает</p>
-        <h2>Тихая цифровая поддержка рядом с иконой</h2>
+        <p className="eyebrow">{t('howItWorksEyebrow')}</p>
+        <h2>{t('howItWorksTitle')}</h2>
       </div>
       <div className="feature-grid">
         {steps.map(([index, title, text]) => <article key={index}><span>{index}</span><h3>{title}</h3><p>{text}</p></article>)}

@@ -1,288 +1,65 @@
-export type Locale = 'ru' | 'uk' | 'en';
+import en from '@/messages/en.json';
+import ru from '@/messages/ru.json';
+import uk from '@/messages/uk.json';
 
+export type Locale = 'uk' | 'ru' | 'en';
+
+export const defaultLocale: Locale = 'uk';
 export const locales: Locale[] = ['uk', 'ru', 'en'];
 
 export const localeNames: Record<Locale, string> = {
-  ru: 'RU',
   uk: 'UK',
+  ru: 'RU',
   en: 'EN'
 };
 
 export const dictionary = {
-  ru: {
-    brand: 'Молитва у иконы',
-    portal: 'Православный портал',
-    navIcons: 'Иконы',
-    navPrayers: 'Молитвы',
-    navSaints: 'Святые',
-    navGospel: 'Евангелие',
-    navChurches: 'Храмам',
-    forChurches: 'Для храмов',
-    footerText: 'Православные QR-страницы для молитвенного чтения, истории икон и духовных материалов.',
-    seoPage: 'SEO-страница',
-    qrExample: 'Пример QR',
-    home: 'Главная',
-    calendar: 'Календарь',
-    list: 'Список',
-    filter: 'Фильтр',
-    allDays: 'Все дни',
-    feastIcons: 'Праздники / иконы',
-    fastSpecial: 'Пост / особые дни',
-    gospel: 'Евангелие',
-    prayers: 'Молитвы',
-    quietDays: 'Тихие дни',
-    today: 'Сегодня',
-    todayFeast: 'Праздник дня',
-    todayIcon: 'Икона дня',
-    information: 'Информация',
-    openPrayer: 'Открыть молитву',
-    aboutFeast: 'О празднике',
-    currentFeast: 'Сегодняшний праздник',
-    importantDay: 'Важный день',
-    monthJanuary: 'Январь',
-    monthFebruary: 'Февраль',
-    monthMarch: 'Март',
-    monthApril: 'Апрель',
-    monthMay: 'Май',
-    monthJune: 'Июнь',
-    monthJuly: 'Июль',
-    monthAugust: 'Август',
-    monthSeptember: 'Сентябрь',
-    monthOctober: 'Октябрь',
-    monthNovember: 'Ноябрь',
-    monthDecember: 'Декабрь',
-    weekdayMon: 'ПН',
-    weekdayTue: 'ВТ',
-    weekdayWed: 'СР',
-    weekdayThu: 'ЧТ',
-    weekdayFri: 'ПТ',
-    weekdaySat: 'СБ',
-    weekdaySun: 'ВС',
-    svetIkony: 'СВЕТ ИКОН',
-    saintVasily: 'Святитель Василий Великий',
-    saintMemory: 'Память святого',
-    saintNicholasIcon: 'Икона святителя Николая Чудотворца',
-    jan14Old: '14 января (ст. ст.)',
-    jan14: '14 января 2026',
-    iconOfDay: 'Икона дня',
-    open: 'Открыть',
-    more: 'Подробнее',
-    noDays: 'Нет дней по выбранному фильтру.',
-    gospelDay: 'Евангелие дня',
-    prayerDay: 'Молитва дня',
-    read: 'Читать',
-    calendarViewLabel: 'Вид календаря',
-    openDay: 'Открыть',
-    dayLinks: 'Ссылки на',
-    januaryGenitive: 'января',
-    langLabel: 'Язык',
-    catalog: 'Каталог',
-    iconsPageTitle: 'Православные иконы',
-    iconsPageLead: 'Поиск, категории и страницы, готовые для QR-кодов физических икон.',
-    iconSearchPlaceholder: 'Поиск по иконе или святому',
-    iconsSeoTitle: 'Иконы с QR-кодом',
-    iconsSeoText: 'Каждая опубликованная страница может быть связана с физической иконой, чтобы человек мог спокойно открыть молитву, историю образа и духовные материалы.',
-    prayersPageEyebrow: 'Молитвы',
-    prayersPageTitle: 'Тексты для спокойного чтения',
-    saintsPageEyebrow: 'Святые',
-    saintsPageTitle: 'Жития и дни памяти',
-    churchesPageEyebrow: 'Для храмов',
-    churchesPageTitle: 'QR-иконы и духовные материалы для прихода',
-    churchesPageLead: 'Интерактивные страницы помогают прихожанам читать молитвы, жития, расписание и материалы без лишней печати.',
-    churchesFeatureIcons: 'Иконы',
-    churchesFeatureIconsText: 'Отдельная страница для каждого образа.',
-    churchesFeatureSchedule: 'Расписание',
-    churchesFeatureScheduleText: 'Информация для прихожан и паломников.',
-    churchesFeatureDonations: 'Пожертвования',
-    churchesFeatureDonationsText: 'Ссылка на официальный способ поддержки храма.',
-    churchNamePlaceholder: 'Название храма',
-    cityPlaceholder: 'Город',
-    churchRequestPlaceholder: 'Что нужно подключить',
-    sendRequest: 'Отправить заявку'
-  },
-  uk: {
-    brand: 'Молитва біля ікони',
-    portal: 'Православний портал',
-    navIcons: 'Ікони',
-    navPrayers: 'Молитви',
-    navSaints: 'Святі',
-    navGospel: 'Євангеліє',
-    navChurches: 'Храмам',
-    forChurches: 'Для храмів',
-    footerText: 'Православні QR-сторінки для молитовного читання, історії ікон і духовних матеріалів.',
-    seoPage: 'SEO-сторінка',
-    qrExample: 'Приклад QR',
-    home: 'Головна',
-    calendar: 'Календар',
-    list: 'Список',
-    filter: 'Фільтр',
-    allDays: 'Усі дні',
-    feastIcons: 'Свята / ікони',
-    fastSpecial: 'Піст / особливі дні',
-    gospel: 'Євангеліє',
-    prayers: 'Молитви',
-    quietDays: 'Тихі дні',
-    today: 'Сьогодні',
-    todayFeast: 'Свято дня',
-    todayIcon: 'Ікона дня',
-    information: 'Інформація',
-    openPrayer: 'Відкрити молитву',
-    aboutFeast: 'Про свято',
-    currentFeast: 'Сьогоднішнє свято',
-    importantDay: 'Важливий день',
-    monthJanuary: 'Січень',
-    monthFebruary: 'Лютий',
-    monthMarch: 'Березень',
-    monthApril: 'Квітень',
-    monthMay: 'Травень',
-    monthJune: 'Червень',
-    monthJuly: 'Липень',
-    monthAugust: 'Серпень',
-    monthSeptember: 'Вересень',
-    monthOctober: 'Жовтень',
-    monthNovember: 'Листопад',
-    monthDecember: 'Грудень',
-    weekdayMon: 'ПН',
-    weekdayTue: 'ВТ',
-    weekdayWed: 'СР',
-    weekdayThu: 'ЧТ',
-    weekdayFri: 'ПТ',
-    weekdaySat: 'СБ',
-    weekdaySun: 'НД',
-    svetIkony: 'Світ Ікони',
-    saintVasily: 'Святитель Василій Великий',
-    saintMemory: 'Пам’ять святого',
-    saintNicholasIcon: 'Ікона святителя Миколая Чудотворця',
-    jan14Old: '14 січня (ст. ст.)',
-    jan14: '14 січня 2026',
-    iconOfDay: 'Ікона дня',
-    open: 'Відкрити',
-    more: 'Докладніше',
-    noDays: 'Немає днів за вибраним фільтром.',
-    gospelDay: 'Євангеліє дня',
-    prayerDay: 'Молитва дня',
-    read: 'Читати',
-    calendarViewLabel: 'Вигляд календаря',
-    openDay: 'Відкрити',
-    dayLinks: 'Посилання на',
-    januaryGenitive: 'січня',
-    langLabel: 'Мова',
-    catalog: 'Каталог',
-    iconsPageTitle: 'Православні ікони',
-    iconsPageLead: 'Пошук, категорії та сторінки, готові для QR-кодів фізичних ікон.',
-    iconSearchPlaceholder: 'Пошук за іконою або святим',
-    iconsSeoTitle: 'Ікони з QR-кодом',
-    iconsSeoText: 'Кожна опублікована сторінка може бути пов’язана з фізичною іконою, щоб людина могла спокійно відкрити молитву, історію образу та духовні матеріали.',
-    prayersPageEyebrow: 'Молитви',
-    prayersPageTitle: 'Тексти для спокійного читання',
-    saintsPageEyebrow: 'Святі',
-    saintsPageTitle: 'Житія і дні пам’яті',
-    churchesPageEyebrow: 'Для храмів',
-    churchesPageTitle: 'QR-ікони та духовні матеріали для парафії',
-    churchesPageLead: 'Інтерактивні сторінки допомагають парафіянам читати молитви, житія, розклад і матеріали без зайвого друку.',
-    churchesFeatureIcons: 'Ікони',
-    churchesFeatureIconsText: 'Окрема сторінка для кожного образу.',
-    churchesFeatureSchedule: 'Розклад',
-    churchesFeatureScheduleText: 'Інформація для парафіян і паломників.',
-    churchesFeatureDonations: 'Пожертви',
-    churchesFeatureDonationsText: 'Посилання на офіційний спосіб підтримки храму.',
-    churchNamePlaceholder: 'Назва храму',
-    cityPlaceholder: 'Місто',
-    churchRequestPlaceholder: 'Що потрібно підключити',
-    sendRequest: 'Надіслати заявку'
-  }
-  ,
-  en: {
-    brand: 'Prayer by the Icon',
-    portal: 'Orthodox portal',
-    navIcons: 'Icons',
-    navPrayers: 'Prayers',
-    navSaints: 'Saints',
-    navGospel: 'Gospel',
-    navChurches: 'Churches',
-    forChurches: 'For churches',
-    footerText: 'Orthodox QR pages for prayer, icon history, and spiritual materials.',
-    seoPage: 'SEO page',
-    qrExample: 'QR example',
-    home: 'Home',
-    calendar: 'Calendar',
-    list: 'List',
-    filter: 'Filter',
-    allDays: 'All days',
-    feastIcons: 'Feasts / icons',
-    fastSpecial: 'Fasting / special days',
-    gospel: 'Gospel',
-    prayers: 'Prayers',
-    quietDays: 'Quiet days',
-    today: 'Today',
-    todayFeast: 'Feast of the day',
-    todayIcon: 'Icon of the day',
-    information: 'Information',
-    openPrayer: 'Open prayer',
-    aboutFeast: 'About the feast',
-    currentFeast: 'Today’s feast',
-    importantDay: 'Important day',
-    monthJanuary: 'January',
-    monthFebruary: 'February',
-    monthMarch: 'March',
-    monthApril: 'April',
-    monthMay: 'May',
-    monthJune: 'June',
-    monthJuly: 'July',
-    monthAugust: 'August',
-    monthSeptember: 'September',
-    monthOctober: 'October',
-    monthNovember: 'November',
-    monthDecember: 'December',
-    weekdayMon: 'MON',
-    weekdayTue: 'TUE',
-    weekdayWed: 'WED',
-    weekdayThu: 'THU',
-    weekdayFri: 'FRI',
-    weekdaySat: 'SAT',
-    weekdaySun: 'SUN',
-    svetIkony: 'Light of Icons',
-    saintVasily: 'Saint Basil the Great',
-    saintMemory: 'Commemoration',
-    saintNicholasIcon: 'Icon of Saint Nicholas the Wonderworker',
-    jan14Old: 'January 14 (old style)',
-    jan14: 'January 14, 2026',
-    iconOfDay: 'Icon of the day',
-    open: 'Open',
-    more: 'Details',
-    noDays: 'No days for the selected filter.',
-    gospelDay: 'Gospel of the day',
-    prayerDay: 'Prayer of the day',
-    read: 'Read',
-    calendarViewLabel: 'Calendar view',
-    openDay: 'Open',
-    dayLinks: 'Links to',
-    januaryGenitive: 'January',
-    langLabel: 'Language',
-    catalog: 'Catalog',
-    iconsPageTitle: 'Orthodox icons',
-    iconsPageLead: 'Search, categories, and pages ready for QR codes on physical icons.',
-    iconSearchPlaceholder: 'Search by icon or saint',
-    iconsSeoTitle: 'Icons with QR code',
-    iconsSeoText: 'Each published page can be connected with a physical icon so a person can open the prayer, history, and spiritual materials.',
-    prayersPageEyebrow: 'Prayers',
-    prayersPageTitle: 'Texts for calm reading',
-    saintsPageEyebrow: 'Saints',
-    saintsPageTitle: 'Lives and feast days',
-    churchesPageEyebrow: 'For churches',
-    churchesPageTitle: 'QR icons and spiritual materials for parishes',
-    churchesPageLead: 'Interactive pages help parishioners and pilgrims read prayers, lives, schedules, and materials without extra printing.',
-    churchesFeatureIcons: 'Icons',
-    churchesFeatureIconsText: 'A separate page for every sacred image.',
-    churchesFeatureSchedule: 'Schedule',
-    churchesFeatureScheduleText: 'Information for parishioners and pilgrims.',
-    churchesFeatureDonations: 'Donations',
-    churchesFeatureDonationsText: 'A link to the official way to support the church.',
-    churchNamePlaceholder: 'Church name',
-    cityPlaceholder: 'City',
-    churchRequestPlaceholder: 'What should be connected',
-    sendRequest: 'Send request'
-  }
+  uk,
+  ru,
+  en
 } as const;
 
-export type TranslationKey = keyof typeof dictionary.ru;
+export type TranslationKey = keyof typeof uk;
+
+const localePattern = new RegExp(`^/(${locales.join('|')})(?=/|$)`);
+
+export function isLocale(value: string | undefined): value is Locale {
+  return Boolean(value && locales.includes(value as Locale));
+}
+
+export function localeFromPathname(pathname: string): Locale {
+  const match = pathname.match(localePattern);
+  return isLocale(match?.[1]) ? match[1] : defaultLocale;
+}
+
+export function stripLocaleFromPathname(pathname: string) {
+  const stripped = pathname.replace(localePattern, '') || '/';
+  return stripped.startsWith('/') ? stripped : `/${stripped}`;
+}
+
+function shouldKeepHref(href: string) {
+  return (
+    !href ||
+    href.startsWith('#') ||
+    href.startsWith('mailto:') ||
+    href.startsWith('tel:') ||
+    /^[a-z][a-z0-9+.-]*:\/\//i.test(href)
+  );
+}
+
+export function withLocale(href: string, locale: Locale) {
+  if (shouldKeepHref(href)) return href;
+
+  const [pathAndQuery, hash = ''] = href.split('#');
+  const [path = '/', query = ''] = pathAndQuery.split('?');
+  if (!path.startsWith('/')) return href;
+  if (path.startsWith('/_next') || path.startsWith('/api')) return href;
+
+  const cleanPath = stripLocaleFromPathname(path);
+  const localizedPath = cleanPath === '/' ? `/${locale}` : `/${locale}${cleanPath}`;
+  return `${localizedPath}${query ? `?${query}` : ''}${hash ? `#${hash}` : ''}`;
+}
+
+export function translate(locale: Locale, key: TranslationKey) {
+  return dictionary[locale]?.[key] ?? dictionary[defaultLocale][key];
+}

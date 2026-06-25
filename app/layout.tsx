@@ -5,8 +5,13 @@ import { Footer } from '@/components/site/Footer';
 import { LanguageProvider } from '@/components/site/LanguageProvider';
 
 export const metadata: Metadata = {
-  title: 'ikona.link | Молитва у иконы',
-  description: 'Православные QR-страницы икон с молитвами, житиями и духовными материалами.'
+  title: 'ikona.link | Молитва біля ікони',
+  description: 'Православні QR-сторінки ікон з молитвами, житіями та духовними матеріалами.',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg'
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

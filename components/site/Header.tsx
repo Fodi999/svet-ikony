@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LanguageSwitch, useI18n } from './LanguageProvider';
+import { stripLocaleFromPathname } from '@/lib/i18n';
+import { LanguageSwitch, useI18n, useLocaleHref } from './LanguageProvider';
+import { SvgIcon } from './SvgIcon';
 
 const nav = [
   ['navIcons', '/icons'],
@@ -14,12 +16,14 @@ const nav = [
 
 export function Header() {
   const { t } = useI18n();
+  const localeHref = useLocaleHref();
   const pathname = usePathname();
+  const currentPath = stripLocaleFromPathname(pathname || '/');
 
   return (
     <header className="site-header">
-      <Link className="brand" href="/">
-        <span>☦</span>
+      <Link className="brand" href={localeHref('/')}>
+        <span className="brand-mark"><SvgIcon name="orthodox-cross" size={22} /></span>
         <span className="brand-copy">
           <small>{t('portal')}</small>
           <b>{t('brand')}</b>
@@ -27,13 +31,13 @@ export function Header() {
       </Link>
       <nav className="main-nav" aria-label={t('catalog')}>
         {nav.map(([label, href]) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
-          return <Link key={href} className={active ? 'active' : ''} href={href}>{t(label)}</Link>;
+          const active = currentPath === href || currentPath.startsWith(`${href}/`);
+          return <Link key={href} className={active ? 'active' : ''} href={localeHref(href)}>{t(label)}</Link>;
         })}
       </nav>
       <div className="header-tools">
         <LanguageSwitch />
-        <Link className="header-action" href="/churches">{t('forChurches')}</Link>
+        <Link className="header-action" href={localeHref('/churches')}>{t('forChurches')}</Link>
       </div>
     </header>
   );

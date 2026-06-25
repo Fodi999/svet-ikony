@@ -2,15 +2,17 @@
 
 import Link from 'next/link';
 import type { Icon } from '@/lib/types';
-import { useI18n } from './LanguageProvider';
+import { useI18n, useLocaleHref } from './LanguageProvider';
+import { StableImage } from './StableImage';
 
 export function IconCard({ icon }: { icon: Icon }) {
   const { t } = useI18n();
+  const localeHref = useLocaleHref();
 
   return (
-    <Link className="icon-card" href={`/icons/${icon.slug}`}>
+    <Link className="icon-card" href={localeHref(`/icons/${icon.slug}`)}>
       <figure>
-        <img src={icon.imageUrl} alt={icon.title} />
+        <StableImage src={icon.imageUrl} alt={icon.title} width={640} height={800} />
       </figure>
       <div className="icon-card-copy">
         <span>{icon.category}</span>

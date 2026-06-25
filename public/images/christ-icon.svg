@@ -1,21 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1100" role="img" aria-label="Christ icon">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f7e6bd"/>
-      <stop offset="1" stop-color="#9d692b"/>
-    </linearGradient>
-    <radialGradient id="halo" cx="50%" cy="28%" r="24%">
-      <stop offset="0" stop-color="#fff8d8"/>
-      <stop offset=".55" stop-color="#dfb75f"/>
-      <stop offset="1" stop-color="#8a5a22"/>
-    </radialGradient>
-  </defs>
-  <rect width="900" height="1100" fill="url(#bg)"/>
-  <rect x="50" y="52" width="800" height="996" fill="none" stroke="#fff2c7" stroke-width="18"/>
-  <circle cx="450" cy="310" r="176" fill="url(#halo)"/>
-  <path d="M365 288c14-70 152-70 170 0 18 76-22 152-84 152-64 0-104-76-86-152Z" fill="#6b3f24"/>
-  <path d="M312 480c74-54 202-54 276 0 72 128 86 294 58 474H254c-28-180-14-346 58-474Z" fill="#2d4265"/>
-  <path d="M322 514c62 38 194 38 256 0v398H322Z" fill="#7d2631" opacity=".9"/>
-  <path d="M268 668h364M294 748h312M326 828h248" stroke="#e6c579" stroke-width="18" opacity=".75"/>
-  <path d="M450 164v292M304 310h292" stroke="#fff0b6" stroke-width="20" opacity=".72"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 800" role="img">
+  <rect width="640" height="800" fill="#0B0B0A"/>
+  <rect x="44" y="44" width="552" height="712" fill="#15130F" stroke="#D6A84F" stroke-width="8"/>
+  <circle cx="320" cy="250" r="138" fill="none" stroke="#F1D18A" stroke-width="14" opacity=".82"/>
+  <path d="M320 112v276M182 250h276" stroke="#D6A84F" stroke-width="12" stroke-linecap="round" opacity=".9"/>
+  <path d="M190 448c34-92 78-138 130-138s96 46 130 138v240H190V448Z" fill="#201B13" stroke="#D6A84F" stroke-width="5"/>
+  <path d="M244 468h152v52H244v-52Zm42 86h68v84h-68v-84Z" fill="#D6A84F"/>
+  <path d="M254 246c20-42 42-64 66-64s46 22 66 64c-18 34-40 51-66 51s-48-17-66-51Z" fill="#F1D18A"/>
 </svg>

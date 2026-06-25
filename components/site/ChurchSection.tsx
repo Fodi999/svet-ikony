@@ -1,14 +1,20 @@
+'use client';
+
 import Link from 'next/link';
+import { useI18n, useLocaleHref } from './LanguageProvider';
 
 export function ChurchSection() {
+  const { t } = useI18n();
+  const localeHref = useLocaleHref();
+
   return (
     <section className="church-section">
       <div>
-        <p className="eyebrow">Для храмов</p>
-        <h2>QR-страницы для икон, расписания и материалов прихода</h2>
+        <p className="eyebrow">{t('forChurches')}</p>
+        <h2>{t('churchSectionTitle')}</h2>
       </div>
-      <p>Можно создать страницы храмовых икон, добавить молитвы, расписание, ссылки на пожертвования и духовные тексты для прихожан.</p>
-      <Link href="/churches">Открыть раздел</Link>
+      <p>{t('churchSectionText')}</p>
+      <Link href={localeHref('/churches')}>{t('openSection')}</Link>
     </section>
   );
 }

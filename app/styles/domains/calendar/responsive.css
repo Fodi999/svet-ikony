@@ -21,22 +21,20 @@
     grid-column: 1 / -1;
   }
 
-  .calendar-feature,
-  .calendar-info,
-  .calendar-icon-day {
+  .calendar-hero-card {
     transform: none;
   }
 }
 
 @media (max-width: 900px) {
   .calendar-page {
-    padding: 22px 14px 42px;
+    padding: 18px 14px 38px;
   }
 
   .calendar-hero {
     grid-template-columns: 1fr;
-    gap: 14px;
-    padding-bottom: 22px;
+    gap: 12px;
+    padding-bottom: 18px;
   }
 
   .calendar-hero h1 {
@@ -116,15 +114,13 @@
     column-count: 3;
   }
 
-  .calendar-feature,
-  .calendar-info,
-  .calendar-icon-day {
+  .calendar-hero-card {
     min-height: auto;
-    padding: 16px;
+    padding: 15px;
   }
 
   .calendar-icon-day {
-    min-height: 280px;
+    min-height: 220px;
   }
 
   .calendar-service-grid {
@@ -158,11 +154,12 @@
 
 @media (max-width: 520px) {
   .calendar-page {
-    padding: 18px 12px 36px;
+    padding: 14px 10px 32px;
   }
 
   .calendar-hero h1 {
-    font-size: clamp(52px, 24vw, 88px);
+    font-size: clamp(46px, 21vw, 76px);
+    line-height: .86;
   }
 
   .calendar-year {
@@ -171,13 +168,45 @@
 
   .calendar-feature strong,
   .calendar-icon-day strong {
-    font-size: clamp(20px, 7vw, 34px);
+    font-size: clamp(22px, 8vw, 38px);
   }
 
   .calendar-info p,
   .calendar-feature p,
   .calendar-icon-day p {
     margin-bottom: 6px;
+  }
+
+  .calendar-icon-day > div,
+  .calendar-icon-day::after {
+    opacity: 1;
+    transform: none;
+  }
+
+  .calendar-feature span,
+  .calendar-info span,
+  .calendar-icon-day span,
+  .calendar-feature em {
+    font-size: 15px;
+  }
+
+  .calendar-feature a,
+  .calendar-icon-day a {
+    font-size: 16px;
+  }
+
+  .calendar-info a {
+    min-height: 52px;
+    grid-template-columns: 10px minmax(0, 1fr);
+  }
+
+  .calendar-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    border-bottom: 1px solid var(--border-gold);
+    background: rgba(11, 11, 10, .94);
+    backdrop-filter: blur(14px);
   }
 
   .month-block h2 {
@@ -253,7 +282,20 @@
   }
 
   .calendar-grid .calendar-day:has(.day-image-link) .day-image-link {
-    max-height: 76vh;
+    width: 112px;
+    height: 112px;
+    aspect-ratio: 1 / 1;
+    margin: 54px 10px 10px;
+  }
+
+  .calendar-grid .calendar-day:has(.day-image-link) .day-image-link img {
+    aspect-ratio: 1 / 1;
+    object-position: center top;
+  }
+
+  .calendar-grid .calendar-day:has(.day-image-link) .day-event {
+    inset: 54px 10px 10px 132px;
+    min-height: 112px;
   }
 
   .list-accordion-trigger {
@@ -272,31 +314,34 @@
 
 @media (max-width: 430px) {
   .calendar-page {
-    padding: 14px 10px 30px;
+    padding: 12px 8px 28px;
   }
 
   .calendar-hero {
-    gap: 10px;
-    padding-bottom: 18px;
+    gap: 9px;
+    padding-bottom: 14px;
   }
 
   .calendar-hero h1 {
-    font-size: clamp(44px, 22vw, 74px);
+    font-size: clamp(42px, 20vw, 68px);
   }
 
-  .calendar-feature,
-  .calendar-info,
-  .calendar-icon-day {
-    padding: 14px;
+  .calendar-hero-card {
+    padding: 12px;
+    gap: 9px;
   }
 
   .calendar-icon-day {
-    min-height: 230px;
+    min-height: 178px;
+  }
+
+  .calendar-icon-day > div {
+    padding: 12px;
   }
 
   .calendar-toolbar {
     gap: 10px;
-    padding: 8px 0 12px;
+    padding: 8px 0 10px;
   }
 
   .month-switch {
@@ -329,8 +374,8 @@
   }
 
   .month-block h2 {
-    font-size: clamp(44px, 19vw, 68px);
-    margin-top: 28px;
+    font-size: clamp(40px, 17vw, 58px);
+    margin: 22px 0 18px;
   }
 
   .weekday-strip {
@@ -347,8 +392,8 @@
   }
 
   .calendar-day:has(.day-event):not(:has(.day-image-link)) {
-    min-height: 158px;
-    padding: 54px 10px 10px;
+    min-height: 142px;
+    padding: 48px 9px 9px;
   }
 
   .day-number {
@@ -372,7 +417,7 @@
   }
 
   .today-badge {
-    top: 46px;
+    top: 42px;
     left: 8px;
   }
 
@@ -380,6 +425,17 @@
   .calendar-grid .calendar-day:has(.day-image-link) .day-event {
     inset: auto 8px 8px;
     padding: 10px;
+  }
+
+  .calendar-grid .calendar-day:has(.day-image-link) .day-image-link {
+    width: 84px;
+    height: 84px;
+    margin: 48px 8px 8px;
+  }
+
+  .calendar-grid .calendar-day:has(.day-image-link) .day-event {
+    inset: 48px 8px 8px 102px;
+    min-height: 84px;
   }
 
   .day-copy {
@@ -402,6 +458,16 @@
   }
 
   .day-links a {
+    min-height: 30px;
     font-size: 11px;
+  }
+
+  .list-panel-links {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .list-panel-links a {
+    justify-content: center;
   }
 }

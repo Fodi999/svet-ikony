@@ -30,6 +30,13 @@
   cursor: pointer;
 }
 
+.list-accordion-trigger:focus-visible,
+.list-panel-links a:focus-visible,
+.list-image-link:focus-visible {
+  outline: 2px solid #b8842b;
+  outline-offset: 3px;
+}
+
 .list-day-number {
   display: flex;
   align-items: center;
@@ -93,13 +100,21 @@
 }
 
 .list-image-link {
+  position: relative;
   display: block;
   min-width: 0;
   border: 1px solid #d7cdbd;
-  background: #eee4ce;
+  background:
+    linear-gradient(110deg, transparent 0 28%, rgba(255, 255, 255, .76) 42%, transparent 56%),
+    #eee4ce;
+  background-size: 220% 100%, 100% 100%;
+  overflow: hidden;
+  animation: imageSkeleton 1.4s ease-in-out infinite;
 }
 
 .list-image-link img {
+  position: relative;
+  z-index: 1;
   width: 100%;
   aspect-ratio: 4 / 5;
   display: block;
@@ -141,6 +156,12 @@
   line-height: 1.35;
 }
 
+.list-panel-copy small {
+  color: #8e8a84;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .list-panel-links {
   display: flex;
   flex-wrap: wrap;
@@ -158,4 +179,50 @@
   font-size: 13px;
   font-weight: 900;
   text-decoration: none;
+}
+
+/* Orthodox church theme */
+.calendar-list {
+  border-top-color: var(--border-gold);
+}
+
+.list-accordion-item {
+  border-bottom-color: var(--border-gold);
+  background: var(--surface);
+}
+
+.list-accordion-item.open,
+.list-accordion-item:hover {
+  background: var(--surface-soft);
+}
+
+.list-accordion-trigger,
+.list-day-heading strong,
+.list-day-number,
+.list-panel-copy h3 {
+  color: var(--text);
+}
+
+.list-day-heading small,
+.list-panel-copy p {
+  color: var(--gold-light);
+}
+
+.list-panel-copy span,
+.list-panel-copy small {
+  color: var(--muted);
+}
+
+.list-accordion-mark,
+.list-image-link,
+.list-panel-links a {
+  border-color: var(--border-gold);
+  color: var(--gold-light);
+}
+
+.list-image-link {
+  background:
+    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .16) 42%, transparent 56%),
+    var(--surface-soft);
+  background-size: 220% 100%, 100% 100%;
 }

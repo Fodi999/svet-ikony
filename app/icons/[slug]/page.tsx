@@ -1,6 +1,9 @@
 import { LocalizedIconDetail } from '@/components/site/LocalizedContent';
 import { AssetButton } from '@/components/site/AssetButton';
+import { StableImage } from '@/components/site/StableImage';
 import { publicApi } from '@/lib/api';
+import { getRequestLocale } from '@/lib/serverLocale';
+import { translate, type Locale } from '@/lib/i18n';
 import { jsonLd, pageMetadata } from '@/lib/seo';
 import type { CalendarDay, SeoPage } from '@/lib/types';
 
@@ -29,8 +32,8 @@ function displayText(value?: string) {
   return (value || '').replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
 }
 
-function CalendarFallbackPage({ day, page }: { day?: CalendarDay; page?: SeoPage }) {
-  const title = displayText(page?.h1 || day?.label || 'Материал календаря');
+function CalendarFallbackPage({ day, page, locale }: { day?: CalendarDay; page?: SeoPage; locale: Locale }) {
+  const title = displayText(page?.h1 || day?.label || translate(locale, 'calendarMaterial'));
   const description = page?.seoDescription || day?.description || day?.note || '';
   const imageUrl = page?.imageUrl || day?.imageUrl || '';
   const content = page?.content || day?.description || day?.note || '';
@@ -40,22 +43,22 @@ function CalendarFallbackPage({ day, page }: { day?: CalendarDay; page?: SeoPage
       <section className={imageUrl ? 'sacred-detail-hero' : 'read-hero'}>
         {imageUrl ? (
           <figure className="sacred-image-frame">
-            <img src={imageUrl} alt={title} />
+            <StableImage src={imageUrl} alt={title} width={800} height={1000} loading="eager" />
           </figure>
         ) : null}
         <div className="sacred-hero-copy">
-          <p className="eyebrow">{page?.targetKeyword || day?.note || 'Церковный календарь'}</p>
+          <p className="eyebrow">{page?.targetKeyword || day?.note || translate(locale, 'churchCalendar')}</p>
           <h1>{title}</h1>
           {description ? <p className="detail-lead">{description}</p> : null}
           <div className="detail-actions">
-            <AssetButton variant="dark" href={day?.prayerSlug ? `/prayers/${day.prayerSlug}` : '/prayers'}>Читать молитву</AssetButton>
-            <AssetButton href="/icons">Все иконы</AssetButton>
+            <AssetButton variant="dark" href={day?.prayerSlug ? `/prayers/${day.prayerSlug}` : '/prayers'}>{translate(locale, 'readPrayer')}</AssetButton>
+            <AssetButton href="/icons">{translate(locale, 'allIcons')}</AssetButton>
           </div>
         </div>
       </section>
       {content ? (
         <article className="sacred-panel">
-          <span>Материал</span>
+          <span>{translate(locale, 'material')}</span>
           <div className="reader-text"><Paragraphs text={content} /></div>
         </article>
       ) : null}
@@ -66,10 +69,11 @@ function CalendarFallbackPage({ day, page }: { day?: CalendarDay; page?: SeoPage
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
-  const icon = await publicApi.icon(slug);
+  const locale = await getRequestLocale();
+  const icon = await publicApi.icon(slug, locale);
   if (icon) return pageMetadata({ title: icon.seoTitle || icon.title, description: icon.seoDescription || icon.shortDescription, path: `/icons/${slug}`, image: icon.imageUrl, keywords: icon.seoKeywords });
 
-  const content = await publicApi.content();
+  const content = await publicApi.content({ locale });
   const page = content.pages.find((item) => item.slug === slug);
   const day = content.calendar?.days.find((item) => item.detailHref?.endsWith(`/${slug}`) || item.iconSlug === slug);
   return pageMetadata({ title: page?.seoTitle || page?.title || day?.label, description: page?.seoDescription || day?.description, path: `/icons/${slug}`, image: page?.imageUrl || day?.imageUrl, keywords: page?.seoKeywords });
@@ -77,13 +81,14 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function IconPage({ params }: Props) {
   const { slug } = await params;
-  const content = await publicApi.content();
+  const locale = await getRequestLocale();
+  const content = await publicApi.content({ locale });
   const icon = content.icons.find((item) => item.slug === slug) || null;
   if (!icon) {
     const page = content.pages.find((item) => item.slug === slug);
     const day = content.calendar?.days.find((item) => item.detailHref?.endsWith(`/${slug}`) || item.iconSlug === slug);
-    if (page || day) return <CalendarFallbackPage day={day} page={page} />;
-    return <main className="page"><h1>Страница не найдена</h1></main>;
+    if (page || day) return <CalendarFallbackPage day={day} page={page} locale={locale} />;
+    return <main className="page"><h1>{translate(locale, 'pageNotFound')}</h1></main>;
   }
   const related = content.icons.filter((item) => item.slug !== icon.slug).slice(0, 3);
   return (

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { CalendarContent, CalendarServiceCard as CalendarService, GospelReading, Icon, Prayer, SeoPage } from '@/lib/types';
 import { LanguageSwitch, useI18n } from './LanguageProvider';
+import { publicApiPrefix, publicApiUrl } from '@/lib/config';
 import { withLocale, type TranslationKey } from '@/lib/i18n';
 import {
   CalendarFeatureCard,
@@ -37,8 +38,6 @@ const months = [
 ] as const satisfies Array<{ key: TranslationKey; ruTitle: string; days: number }>;
 
 const weekdayKeys: TranslationKey[] = ['weekdayMon', 'weekdayTue', 'weekdayWed', 'weekdayThu', 'weekdayFri', 'weekdaySat', 'weekdaySun'];
-const apiUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
-const publicPrefix = apiUrl.endsWith('/public') ? '' : '/public';
 
 const filterLabelKeys: Record<FilterKind, TranslationKey> = {
   all: 'allDays',
@@ -247,13 +246,12 @@ function formatCalendarDate(date: Date, locale: string) {
 }
 
 async function fetchCalendarContent(year: number, monthIndex: number, locale: string, signal: AbortSignal) {
-  if (!apiUrl) throw new Error('Calendar API URL is not configured');
   const query = new URLSearchParams({
     year: String(year),
     month: String(monthIndex + 1),
     locale
   });
-  const response = await fetch(`${apiUrl}${publicPrefix}/api/content?${query.toString()}`, {
+  const response = await fetch(`${publicApiUrl}${publicApiPrefix}/api/content?${query.toString()}`, {
     cache: 'no-store',
     signal
   });

@@ -11,6 +11,10 @@
   "observability": {
     "enabled": true
   },
+  "vars": {
+    "NEXT_PUBLIC_API_URL": "https://ministerial-yetta-fodi999-c58d8823.koyeb.app",
+    "NEXT_PUBLIC_SITE_URL": "https://ikona.link"
+  },
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",

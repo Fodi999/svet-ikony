@@ -1,9 +1,7 @@
 import { churches, dashboard, gospelToday, icons, prayers, qrPages, saints, seoPages } from './fallbackData';
+import { publicApiPrefix, publicApiUrl } from './config';
 import { churchFromIcon, imageForPrayer } from './iconContent';
 import type { Church, Dashboard, GospelReading, Icon, IconTranslation, Prayer, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
-
-const apiUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
-const publicPrefix = apiUrl.endsWith('/public') ? '' : '/public';
 
 function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
@@ -241,9 +239,8 @@ function normalizeSiteContent(value: unknown): SiteContent {
 }
 
 async function apiGet<T>(path: string, fallback: T): Promise<T> {
-  if (!apiUrl) return fallback;
   try {
-    const response = await fetch(`${apiUrl}${publicPrefix}${path}`, { cache: 'no-store' });
+    const response = await fetch(`${publicApiUrl}${publicApiPrefix}${path}`, { cache: 'no-store' });
     if (!response.ok) return fallback;
     return await response.json() as T;
   } catch {
@@ -252,9 +249,8 @@ async function apiGet<T>(path: string, fallback: T): Promise<T> {
 }
 
 async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown, fallback?: T): Promise<T> {
-  if (!apiUrl) return fallback as T;
   try {
-    const response = await fetch(`${apiUrl}${publicPrefix}${path}`, {
+    const response = await fetch(`${publicApiUrl}${publicApiPrefix}${path}`, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined

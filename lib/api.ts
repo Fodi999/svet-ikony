@@ -1,7 +1,7 @@
 import { churches, dashboard, gospelToday, icons, prayers, qrPages, saints, seoPages } from './fallbackData';
 import { publicApiPrefix, publicApiUrl } from './config';
 import { churchFromIcon, imageForPrayer } from './iconContent';
-import type { Church, ChurchArticleDto, ChurchIconDto, ChurchPrayerDto, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSitemapItem, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
+import type { CalendarDay, CalendarDayKind, Church, ChurchArticleDto, ChurchIconDto, ChurchPrayerDto, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSitemapItem, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
 
 function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
@@ -45,6 +45,10 @@ function normalizeTranslations(value: unknown) {
 function published<T extends { status?: string }>(items: T[]) {
   return items.filter((item) => item.status === 'published');
 }
+
+const monthNames = [
+  'январ', 'феврал', 'март', 'апрел', 'ма', 'июн', 'июл', 'август', 'сентябр', 'октябр', 'ноябр', 'декабр'
+];
 
 function mergeBySlug<T extends { slug: string }>(primary: T[], generated: T[]) {
   const seen = new Set<string>();
@@ -184,6 +188,69 @@ function seoPageFromChurchArticle(item: ChurchArticleDto): SeoPage {
     status: item.status === 'published' ? 'published' : 'draft',
     createdAt: item.createdAt,
     updatedAt: item.updatedAt
+  };
+}
+
+function calendarKindFromChurch(dayType: string): CalendarDayKind {
+  if (dayType === 'fasting') return 'fast';
+  if (dayType === 'gospel') return 'gospel';
+  if (dayType === 'memorial' || dayType === 'saint') return 'prayer';
+  if (dayType === 'feast') return 'feast';
+  return 'quiet';
+}
+
+function calendarDayFromChurchPage(page: PublicChurchContentPage): CalendarDay {
+  const date = page.calendarDay.dateNewStyle || page.calendarDay.dateOldStyle || '';
+  const dayNumber = date.split('-')[2] || '01';
+  const icon = page.icons[0];
+  const prayer = page.prayers[0];
+  const article = page.articles[0];
+  return {
+    id: page.calendarDay.id,
+    day: dayNumber.padStart(2, '0'),
+    gregorianDate: page.calendarDay.dateNewStyle || undefined,
+    julianDate: page.calendarDay.dateOldStyle || undefined,
+    label: page.calendarDay.title,
+    note: icon?.saintName || icon?.feastName || page.calendarDay.dayType,
+    kind: calendarKindFromChurch(page.calendarDay.dayType),
+    imageUrl: icon?.imageUrl || '',
+    iconSlug: icon?.slug || '',
+    prayerSlug: prayer?.slug || '',
+    gospelSlug: '',
+    detailHref: date ? `/church/calendar/${date}` : `/church/articles/${article?.slug || ''}`,
+    current: date === new Date().toISOString().slice(0, 10),
+    feast: page.calendarDay.dayType === 'feast',
+    textOnly: !icon?.imageUrl,
+    description: page.calendarDay.description || article?.seoDescription || article?.content || ''
+  };
+}
+
+function monthIndexFromCalendarTitle(title?: string) {
+  const normalized = normalizeString(title).toLowerCase();
+  const index = monthNames.findIndex((month) => normalized.includes(month));
+  return index >= 0 ? index + 1 : undefined;
+}
+
+function mergeChurchMonthContent(content: SiteContent, monthPages: PublicChurchContentPage[]): SiteContent {
+  if (!monthPages.length) return content;
+  const churchIcons = monthPages
+    .map((page) => page.icons[0] ? iconFromChurchDto(page.icons[0], page.prayers[0], page.articles[0]) : null)
+    .filter(Boolean) as Icon[];
+  const churchPrayers = monthPages.flatMap((page) => page.prayers.map((prayer) => prayerFromChurchDto(prayer, page.icons.find((icon) => icon.id === prayer.iconId) || page.icons[0])));
+  const churchPages = monthPages.flatMap((page) => page.articles.map(seoPageFromChurchArticle));
+  const churchDays = monthPages.map(calendarDayFromChurchPage);
+  const byDay = new Map(churchDays.map((day) => [day.day, day]));
+  const calendar = content.calendar
+    ? { ...content.calendar, days: content.calendar.days.map((day) => byDay.get(day.day) || day) }
+    : undefined;
+  const existingDays = new Set(content.calendar?.days.map((day) => day.day) || []);
+  const appendedDays = churchDays.filter((day) => !existingDays.has(day.day));
+  return {
+    ...content,
+    icons: mergeBySlug(churchIcons, content.icons),
+    prayers: mergeBySlug(churchPrayers, content.prayers),
+    pages: mergeBySlug(churchPages, content.pages),
+    calendar: calendar ? { ...calendar, days: [...calendar.days, ...appendedDays] } : calendar
   };
 }
 
@@ -340,7 +407,11 @@ export const publicApi = {
     if (params?.month) query.set('month', String(params.month));
     if (params?.locale) query.set('locale', params.locale);
     const suffix = query.toString() ? `?${query.toString()}` : '';
-    return normalizeSiteContent(await apiGet<SiteContent>(`/api/content${suffix}`, { icons, prayers, gospel: [gospelToday], saints, pages: seoPages, qrPages, churches, dashboard }));
+    const normalized = normalizeSiteContent(await apiGet<SiteContent>(`/api/content${suffix}`, { icons, prayers, gospel: [gospelToday], saints, pages: seoPages, qrPages, churches, dashboard }));
+    const year = Number(params?.year) || Number(normalized.calendar?.hero?.year) || new Date().getFullYear();
+    const month = Number(params?.month) || monthIndexFromCalendarTitle(normalized.calendar?.hero?.monthTitle) || new Date().getMonth() + 1;
+    const monthPages = await publicApi.churchCalendarMonth(year, month);
+    return mergeChurchMonthContent(normalized, monthPages);
   },
   icons: async (locale?: SiteLocale) => (await publicApi.content({ locale })).icons,
   icon: async (slug: string, locale?: SiteLocale) => (await publicApi.icons(locale)).find((item) => item.slug === slug) || null,
@@ -349,6 +420,7 @@ export const publicApi = {
   prayers: async (locale?: SiteLocale) => (await publicApi.content({ locale })).prayers,
   prayer: async (slug: string, locale?: SiteLocale) => (await publicApi.prayers(locale)).find((item) => item.slug === slug) || null,
   churchCalendarDay: async (date: string, previewToken?: string) => churchApiGet<PublicChurchContentPage | null>(`/api/church/calendar/${date}`, null, previewToken),
+  churchCalendarMonth: async (year: string | number, month: string | number, previewToken?: string) => churchApiGet<PublicChurchContentPage[]>(`/api/church/calendar?year=${encodeURIComponent(String(year))}&month=${encodeURIComponent(String(month))}`, [], previewToken),
   churchToday: async (previewToken?: string) => churchApiGet<PublicChurchContentPage | null>('/api/church/calendar/today', null, previewToken),
   churchIcon: async (slug: string, previewToken?: string) => {
     const page = await churchApiGet<PublicChurchIconPage | null>(`/api/church/icons/${slug}`, null, previewToken);

@@ -1,7 +1,7 @@
 import { churches, dashboard, gospelToday, icons, prayers, qrPages, saints, seoPages } from './fallbackData';
 import { publicApiPrefix, publicApiUrl } from './config';
 import { churchFromIcon, imageForPrayer } from './iconContent';
-import type { Church, Dashboard, GospelReading, Icon, IconTranslation, Prayer, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
+import type { Church, ChurchArticleDto, ChurchIconDto, ChurchPrayerDto, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSitemapItem, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
 
 function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
@@ -120,6 +120,70 @@ function normalizePrayer(item: Partial<Prayer>, index: number): Prayer {
     seoTitle: normalizeString(item.seoTitle) || title,
     seoDescription: normalizeString(item.seoDescription) || normalizeString(item.text).slice(0, 160),
     status: normalizeStatus(item.status)
+  };
+}
+
+function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, article?: ChurchArticleDto): Icon {
+  const description = normalizeString(item.description) || normalizeString(article?.seoDescription) || normalizeString(article?.content);
+  const now = new Date().toISOString();
+  return {
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    shortDescription: compactText(description, 220),
+    fullDescription: normalizeString(article?.content) || description,
+    imageUrl: normalizeString(item.imageUrl) || '/images/kazan-icon.svg',
+    imageUrls: normalizeString(item.imageUrl) ? [item.imageUrl] : [],
+    qrCodeUrl: '/images/qr-code.svg',
+    category: normalizeString(item.feastName) || 'Православная икона',
+    saintName: normalizeString(item.saintName),
+    prayerText: normalizeString(prayer?.text),
+    gospelText: '',
+    lifeText: '',
+    historyText: normalizeString(article?.content),
+    status: item.status === 'published' ? 'published' : 'draft',
+    seoTitle: normalizeString(article?.seoTitle) || item.title,
+    seoDescription: normalizeString(article?.seoDescription) || description,
+    seoKeywords: '',
+    calendarDate: undefined,
+    translations: {},
+    createdAt: item.createdAt || now,
+    updatedAt: item.updatedAt || now
+  };
+}
+
+function prayerFromChurchDto(item: ChurchPrayerDto, icon?: ChurchIconDto): Prayer {
+  return {
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    text: item.text,
+    category: item.prayerType || 'Молитвы',
+    imageUrl: icon?.imageUrl || undefined,
+    relatedIcon: icon?.slug || undefined,
+    seoTitle: item.title,
+    seoDescription: compactText(item.text, 180),
+    status: item.status === 'published' ? 'published' : 'draft'
+  };
+}
+
+function seoPageFromChurchArticle(item: ChurchArticleDto): SeoPage {
+  return {
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    h1: item.title,
+    content: item.content,
+    pageType: 'church_article',
+    targetKeyword: item.title,
+    language: item.language,
+    blocks: [],
+    faq: [],
+    seoTitle: item.seoTitle || item.title,
+    seoDescription: item.seoDescription || compactText(item.content, 180),
+    status: item.status === 'published' ? 'published' : 'draft',
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt
   };
 }
 
@@ -248,6 +312,13 @@ async function apiGet<T>(path: string, fallback: T): Promise<T> {
   }
 }
 
+async function churchApiGet<T>(path: string, fallback: T, previewToken?: string): Promise<T> {
+  const query = new URLSearchParams();
+  if (previewToken) query.set('preview_token', previewToken);
+  const suffix = query.toString() ? `${path.includes('?') ? '&' : '?'}${query.toString()}` : '';
+  return apiGet<T>(path + suffix, fallback);
+}
+
 async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown, fallback?: T): Promise<T> {
   try {
     const response = await fetch(`${publicApiUrl}${publicApiPrefix}${path}`, {
@@ -277,6 +348,22 @@ export const publicApi = {
   saint: async (slug: string, locale?: SiteLocale) => (await publicApi.saints(locale)).find((item) => item.slug === slug) || null,
   prayers: async (locale?: SiteLocale) => (await publicApi.content({ locale })).prayers,
   prayer: async (slug: string, locale?: SiteLocale) => (await publicApi.prayers(locale)).find((item) => item.slug === slug) || null,
+  churchCalendarDay: async (date: string, previewToken?: string) => churchApiGet<PublicChurchContentPage | null>(`/api/church/calendar/${date}`, null, previewToken),
+  churchToday: async (previewToken?: string) => churchApiGet<PublicChurchContentPage | null>('/api/church/calendar/today', null, previewToken),
+  churchIcon: async (slug: string, previewToken?: string) => {
+    const page = await churchApiGet<PublicChurchIconPage | null>(`/api/church/icons/${slug}`, null, previewToken);
+    if (!page) return null;
+    return {
+      ...page,
+      iconView: iconFromChurchDto(page.icon, page.prayers[0], page.articles[0])
+    };
+  },
+  churchPrayer: async (slug: string, previewToken?: string) => churchApiGet<PublicChurchPrayerPage | null>(`/api/church/prayers/${slug}`, null, previewToken),
+  churchArticle: async (slug: string, previewToken?: string) => {
+    const result = await churchApiGet<PublicChurchArticlePage | null>(`/api/church/articles/${slug}`, null, previewToken);
+    return result ? { ...result, pageView: seoPageFromChurchArticle(result.article) } : null;
+  },
+  churchSitemap: async () => churchApiGet<PublicChurchSitemapItem[]>('/api/church/sitemap', []),
   gospelToday: async (locale?: SiteLocale) => (await publicApi.content({ locale })).gospel[0] ?? gospelToday,
   gospelByDate: async (date: string, locale?: SiteLocale) => (await publicApi.content({ locale })).gospel.find((item) => item.date === date) ?? { ...gospelToday, date },
   seoPage: async (slug: string, locale?: SiteLocale) => (await publicApi.content({ locale })).pages.find((item) => item.slug === slug) || null,

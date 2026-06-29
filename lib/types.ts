@@ -223,3 +223,104 @@ export type Dashboard = {
   latestPages: Array<{ title: string; type: string; status: Status }>;
   seo: Array<{ label: string; value: string }>;
 };
+
+export type ChurchContentStatus = 'draft' | 'published' | 'archived';
+
+export type ChurchCalendarDayDto = {
+  id: string;
+  siteId: string;
+  dateOldStyle?: string | null;
+  dateNewStyle?: string | null;
+  calendarType: string;
+  title: string;
+  dayType: string;
+  description: string;
+  rank: number;
+  status: ChurchContentStatus;
+  isGlobal: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ChurchIconDto = {
+  id: string;
+  siteId: string;
+  calendarDayId?: string | null;
+  title: string;
+  slug: string;
+  imageUrl: string;
+  saintName: string;
+  feastName: string;
+  description: string;
+  language: SiteLocale;
+  status: ChurchContentStatus;
+  isGlobal: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ChurchPrayerDto = {
+  id: string;
+  siteId: string;
+  iconId?: string | null;
+  calendarDayId?: string | null;
+  slug: string;
+  title: string;
+  text: string;
+  language: SiteLocale;
+  prayerType: string;
+  status: ChurchContentStatus;
+  isGlobal: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ChurchArticleDto = {
+  id: string;
+  siteId: string;
+  iconId?: string | null;
+  calendarDayId?: string | null;
+  title: string;
+  slug: string;
+  content: string;
+  language: SiteLocale;
+  seoTitle: string;
+  seoDescription: string;
+  status: ChurchContentStatus;
+  isGlobal: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PublicChurchContentPage = {
+  calendarDay: ChurchCalendarDayDto;
+  icons: ChurchIconDto[];
+  prayers: ChurchPrayerDto[];
+  articles: ChurchArticleDto[];
+};
+
+export type PublicChurchIconPage = {
+  icon: ChurchIconDto;
+  calendarDay?: ChurchCalendarDayDto | null;
+  prayers: ChurchPrayerDto[];
+  articles: ChurchArticleDto[];
+};
+
+export type PublicChurchPrayerPage = {
+  prayer: ChurchPrayerDto;
+  icon?: ChurchIconDto | null;
+  calendarDay?: ChurchCalendarDayDto | null;
+};
+
+export type PublicChurchArticlePage = {
+  article: ChurchArticleDto;
+  icon?: ChurchIconDto | null;
+  calendarDay?: ChurchCalendarDayDto | null;
+};
+
+export type PublicChurchSitemapItem = {
+  kind: 'calendar' | 'icon' | 'prayer' | 'article';
+  slug: string;
+  date?: string | null;
+  updatedAt: string;
+};

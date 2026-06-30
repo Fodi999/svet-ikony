@@ -1,4 +1,4 @@
-import { LocalizedPrayersList } from '@/components/site/LocalizedContent';
+import { DailyPrayerCollection, LocalizedPrayersList } from '@/components/site/LocalizedContent';
 import { T } from '@/components/site/TranslatedText';
 import { publicApi } from '@/lib/api';
 import { pageMetadata } from '@/lib/seo';
@@ -12,6 +12,7 @@ export default async function PrayersPage() {
   return (
     <main className="page">
       <section className="page-hero"><p className="eyebrow"><T k="prayersPageEyebrow" /></p><h1><T k="prayersPageTitle" /></h1></section>
+      <DailyPrayerCollection />
       <LocalizedPrayersList icons={icons} />
     </main>
   );

@@ -99,6 +99,96 @@ const uiText = {
   }
 } as const;
 
+const dailyPrayerTexts = {
+  ru: {
+    title: '📖 Сборник молитв на каждый день',
+    lead: 'В каждом дне есть время для молитвы и благодарности Богу.',
+    intro: 'Молитва открывает сердце для Божией любви и милости. Пусть эти слова помогут вам обращаться к Господу с доверием и благодарностью.',
+    closing: '🙏 Пусть Господь слышит ваши молитвы и наполняет сердца радостью и миром!',
+    subscribe: '@Pravoslav_molitvoslov - подпишитесь',
+    prayers: [
+      {
+        title: 'Молитва благодарности',
+        text: 'Господи, благодарю Тебя за все милости,\nявленные мне в жизни.\nНаучи меня видеть Твою любовь\nв каждом дне и за всё прославлять Тебя.\nАминь.'
+      },
+      {
+        title: 'Молитва перед учёбой или работой',
+        text: 'Господи, пошли мне дух разума и мудрости,\nукрепи меня в трудах моих,\nпросвети мой ум и сердце,\nчтобы всё делал(а) во славу Твою.\nАминь.'
+      },
+      {
+        title: 'Молитва о здравии близких',
+        text: 'Господи, Иисусе Христе, Сыне Божий,\nисцели и укрепи рабов Твоих (имена),\nдаруй им здоровье душевное и телесное,\nпошли им терпение и силы перенести все испытания.\nАминь.'
+      },
+      {
+        title: 'Молитва о мире в семье',
+        text: 'Господи, подай мир и любовь в наш дом,\nдаруй согласие, терпение и взаимопонимание,\nнаправь нас на путь добра и взаимной поддержки.\nАминь.'
+      },
+      {
+        title: 'Молитва в трудную минуту',
+        text: 'Господи, не оставь меня в час испытаний,\nукрепи мою веру и дай силы преодолеть все трудности.\nПомоги мне не унывать, но уповать на Твою волю\nи милость.\nАминь.'
+      }
+    ]
+  },
+  uk: {
+    title: '📖 Збірник молитов на кожен день',
+    lead: 'У кожному дні є час для молитви й подяки Богові.',
+    intro: 'Молитва відкриває серце для Божої любові та милості. Нехай ці слова допоможуть вам звертатися до Господа з довірою і вдячністю.',
+    closing: '🙏 Нехай Господь чує ваші молитви і наповнює серця радістю та миром!',
+    subscribe: '@Pravoslav_molitvoslov - підпишіться',
+    prayers: [
+      {
+        title: 'Молитва подяки',
+        text: 'Господи, дякую Тобі за всі милості,\nявлені мені в житті.\nНавчи мене бачити Твою любов\nу кожному дні і за все прославляти Тебе.\nАмінь.'
+      },
+      {
+        title: 'Молитва перед навчанням або роботою',
+        text: 'Господи, пошли мені дух розуму і мудрості,\nукріпи мене в трудах моїх,\nпросвіти мій розум і серце,\nщоб усе робив(ла) на славу Твою.\nАмінь.'
+      },
+      {
+        title: "Молитва за здоров'я близьких",
+        text: 'Господи Ісусе Христе, Сину Божий,\nзціли й укріпи рабів Твоїх (імена),\nдаруй їм здоров\'я душевне і тілесне,\nпошли їм терпіння і сили перенести всі випробування.\nАмінь.'
+      },
+      {
+        title: "Молитва про мир у сім'ї",
+        text: 'Господи, подай мир і любов у наш дім,\nдаруй згоду, терпіння і взаєморозуміння,\nнаправ нас на шлях добра і взаємної підтримки.\nАмінь.'
+      },
+      {
+        title: 'Молитва у важку хвилину',
+        text: 'Господи, не залиш мене в час випробувань,\nукріпи мою віру і дай сили подолати всі труднощі.\nДопоможи мені не впадати у відчай, а уповати на Твою волю\nі милість.\nАмінь.'
+      }
+    ]
+  },
+  en: {
+    title: '📖 A Collection of Daily Prayers',
+    lead: 'Every day holds a time for prayer and gratitude to God.',
+    intro: 'Prayer opens the heart to God\'s love and mercy. May these words help you turn to the Lord with trust and thanksgiving.',
+    closing: '🙏 May the Lord hear your prayers and fill your hearts with joy and peace!',
+    subscribe: '@Pravoslav_molitvoslov - subscribe',
+    prayers: [
+      {
+        title: 'Prayer of Thanksgiving',
+        text: 'Lord, I thank You for all the mercies\nshown to me in my life.\nTeach me to see Your love\nin every day and to glorify You for all things.\nAmen.'
+      },
+      {
+        title: 'Prayer Before Study or Work',
+        text: 'Lord, send me the spirit of understanding and wisdom,\nstrengthen me in my labors,\nenlighten my mind and heart,\nso that I may do all things for Your glory.\nAmen.'
+      },
+      {
+        title: 'Prayer for the Health of Loved Ones',
+        text: 'Lord Jesus Christ, Son of God,\nheal and strengthen Your servants (names),\ngrant them health of soul and body,\nand send them patience and strength to endure every trial.\nAmen.'
+      },
+      {
+        title: 'Prayer for Peace in the Family',
+        text: 'Lord, grant peace and love to our home,\ngive us harmony, patience, and mutual understanding,\nand guide us on the path of goodness and support for one another.\nAmen.'
+      },
+      {
+        title: 'Prayer in a Difficult Moment',
+        text: 'Lord, do not leave me in the hour of trial,\nstrengthen my faith and give me the power to overcome every difficulty.\nHelp me not to lose heart, but to trust in Your will\nand mercy.\nAmen.'
+      }
+    ]
+  }
+} as const;
+
 function ui(locale: keyof typeof uiText, key: keyof typeof uiText.ru) {
   return uiText[locale][key];
 }
@@ -233,6 +323,35 @@ export function LocalizedPrayersList({ icons }: { icons: Icon[] }) {
         );
       })}
     </div>
+  );
+}
+
+export function DailyPrayerCollection() {
+  const { locale } = useI18n();
+  const content = dailyPrayerTexts[locale];
+
+  return (
+    <section className="daily-prayer-collection">
+      <div className="daily-prayer-intro">
+        <p className="eyebrow">{ui(locale, 'prayer')}</p>
+        <h2>{content.title}</h2>
+        <p className="daily-prayer-lead">{content.lead}</p>
+        <p>{content.intro}</p>
+      </div>
+      <div className="daily-prayer-grid">
+        {content.prayers.map((prayer, index) => (
+          <article className="daily-prayer-card" key={prayer.title}>
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            <h3>{prayer.title}</h3>
+            <p>{prayer.text}</p>
+          </article>
+        ))}
+      </div>
+      <div className="daily-prayer-footer">
+        <p>{content.closing}</p>
+        <small>{content.subscribe}</small>
+      </div>
+    </section>
   );
 }
 

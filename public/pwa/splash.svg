@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1290 2796" role="img" aria-label="Молитва біля ікони">
+  <rect width="1290" height="2796" fill="#0B0B0A"/>
+  <rect x="72" y="72" width="1146" height="2652" fill="none" stroke="#4E3715" stroke-width="6"/>
+  <g transform="translate(389 1086)">
+    <rect width="512" height="512" fill="#15130F" stroke="#D6A84F" stroke-width="8"/>
+    <path fill="#D6A84F" d="M231 86h52v66h76v47h-76v51h118v52H283v89l71-18v53l-98 25-98-25v-53l73 18v-89H112v-52h119v-51h-76v-47h76V86Z"/>
+    <path fill="#F1D18A" d="M254 86h29v66h76v20H254V86Zm0 164h147v22H254v-22Zm0 52h29v112l71-18v21l-98 25-2-.5V302Z" opacity=".72"/>
+  </g>
+  <path fill="none" stroke="#D6A84F" stroke-width="6" d="M450 1688h390" opacity=".72"/>
+  <path fill="none" stroke="#7D5A22" stroke-width="6" d="M538 1718h214" opacity=".72"/>
+</svg>

@@ -683,6 +683,147 @@ button,
   line-height: 1.35;
 }
 
+.daily-prayer-reader {
+  display: grid;
+  gap: clamp(22px, 3vw, 38px);
+  border: 1px solid rgba(214, 168, 79, .5);
+  background:
+    linear-gradient(135deg, rgba(214, 168, 79, .16), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .01)),
+    #14120f;
+  padding: clamp(22px, 4vw, 56px);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, .28);
+}
+
+.daily-prayer-reader-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid rgba(214, 168, 79, .24);
+  padding-bottom: clamp(18px, 2vw, 26px);
+}
+
+.daily-prayer-reader-head span,
+.daily-prayer-reader-kicker,
+.daily-prayer-section-label span {
+  display: block;
+  color: #d9ad50;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.daily-prayer-reader-head h3 {
+  margin: 8px 0 0;
+  color: #f9f7f2;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(28px, 3.4vw, 58px);
+  font-weight: 900;
+  line-height: .96;
+  text-transform: uppercase;
+}
+
+.daily-prayer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 8px;
+}
+
+.daily-prayer-actions button,
+.daily-prayer-picker button {
+  min-height: 42px;
+  border: 1px solid rgba(214, 168, 79, .38);
+  background: rgba(214, 168, 79, .08);
+  color: #f1d18a;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.daily-prayer-actions button:first-child,
+.daily-prayer-actions button:hover,
+.daily-prayer-actions button:focus-visible,
+.daily-prayer-picker button.active {
+  border-color: #d6a84f;
+  background: #d6a84f;
+  color: #0b0b0a;
+}
+
+.daily-prayer-reader-body {
+  width: min(100%, 860px);
+  display: grid;
+  gap: clamp(14px, 2vw, 24px);
+}
+
+.daily-prayer-reader-body h3 {
+  margin: 0;
+  color: #fffaf0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(30px, 3vw, 52px);
+  font-weight: 700;
+  line-height: 1.12;
+}
+
+.daily-prayer-reader-body p {
+  margin: 0;
+  color: #eee7dc;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(22px, 2vw, 30px);
+  line-height: 1.72;
+  white-space: pre-line;
+}
+
+.daily-prayer-reader-body small {
+  width: max-content;
+  max-width: 100%;
+  border-left: 3px solid #d6a84f;
+  padding: 8px 0 8px 12px;
+  color: #d9ad50;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.daily-prayer-picker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.daily-prayer-picker::-webkit-scrollbar {
+  display: none;
+}
+
+.daily-prayer-picker button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(320px, 72vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-prayer-picker button span {
+  color: currentColor;
+  font-size: 11px;
+  opacity: .76;
+}
+
+.daily-prayer-section-label {
+  border-top: 1px solid rgba(214, 168, 79, .28);
+  padding-top: clamp(14px, 2vw, 22px);
+}
+
 .daily-prayer-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -699,6 +840,21 @@ button,
     linear-gradient(135deg, rgba(184, 132, 43, .12), rgba(255, 255, 255, .02) 46%),
     #11100d;
   padding: clamp(20px, 2.4vw, 34px);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+
+.daily-prayer-card:hover,
+.daily-prayer-card:focus-visible {
+  border-color: rgba(214, 168, 79, .72);
+  background:
+    linear-gradient(135deg, rgba(184, 132, 43, .18), rgba(255, 255, 255, .03) 48%),
+    #15130f;
+  transform: translateY(-2px);
+  outline: none;
 }
 
 .daily-prayer-card span {
@@ -753,6 +909,127 @@ button,
   font-weight: 900;
   letter-spacing: .1em;
   text-transform: uppercase;
+}
+
+.daily-prayer-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background:
+    linear-gradient(180deg, rgba(214, 168, 79, .08), transparent 260px),
+    rgba(5, 5, 5, .96);
+  backdrop-filter: blur(18px) saturate(1.08);
+}
+
+.daily-prayer-fullscreen-panel {
+  width: min(100%, 1060px);
+  height: min(100%, 880px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(16px, 2.4vw, 28px);
+  border: 1px solid rgba(214, 168, 79, .52);
+  background:
+    linear-gradient(135deg, rgba(214, 168, 79, .14), transparent 42%),
+    #11100d;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .58);
+  padding: clamp(18px, 3vw, 46px);
+  overflow: hidden;
+}
+
+.daily-prayer-fullscreen-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid rgba(214, 168, 79, .24);
+  padding-bottom: 14px;
+}
+
+.daily-prayer-fullscreen-top span {
+  color: #d9ad50;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.daily-prayer-fullscreen-close,
+.daily-prayer-fullscreen-actions button {
+  min-height: 44px;
+  border: 1px solid rgba(214, 168, 79, .42);
+  background: rgba(214, 168, 79, .08);
+  color: #f1d18a;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.daily-prayer-fullscreen-close:hover,
+.daily-prayer-fullscreen-close:focus-visible,
+.daily-prayer-fullscreen-actions button:hover,
+.daily-prayer-fullscreen-actions button:focus-visible {
+  border-color: #d6a84f;
+  background: #d6a84f;
+  color: #0b0b0a;
+}
+
+.daily-prayer-fullscreen-reader {
+  min-height: 0;
+  width: min(100%, 820px);
+  justify-self: center;
+  overflow-y: auto;
+  padding: 4px clamp(2px, 1vw, 14px) 8px;
+  scrollbar-color: rgba(214, 168, 79, .42) transparent;
+}
+
+.daily-prayer-fullscreen-reader h3 {
+  margin: 0 0 clamp(18px, 3vw, 34px);
+  color: #fffaf0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(34px, 4.8vw, 68px);
+  font-weight: 700;
+  line-height: 1.08;
+}
+
+.daily-prayer-fullscreen-reader p {
+  margin: 0;
+  color: #f0e8dc;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(23px, 2.4vw, 34px);
+  line-height: 1.72;
+  white-space: pre-line;
+}
+
+.daily-prayer-fullscreen-reader small {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin-top: 22px;
+  border-left: 3px solid #d6a84f;
+  padding: 8px 0 8px 12px;
+  color: #d9ad50;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.daily-prayer-fullscreen-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  border-top: 1px solid rgba(214, 168, 79, .24);
+  padding-top: 14px;
+}
+
+.daily-prayer-fullscreen-actions button:first-child {
+  border-color: #d6a84f;
+  background: #d6a84f;
+  color: #0b0b0a;
 }
 
 .sacred-detail-hero,
@@ -1478,6 +1755,52 @@ button,
     font-size: clamp(32px, 11vw, 58px);
   }
 
+  .daily-prayer-reader {
+    padding: clamp(18px, 5vw, 32px);
+  }
+
+  .daily-prayer-reader-head {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .daily-prayer-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: stretch;
+  }
+
+  .daily-prayer-actions button {
+    min-width: 0;
+    padding-inline: 10px;
+    white-space: normal;
+  }
+
+  .daily-prayer-fullscreen {
+    padding: 0;
+  }
+
+  .daily-prayer-fullscreen-panel {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    padding: max(16px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom));
+  }
+
+  .daily-prayer-fullscreen-reader {
+    width: 100%;
+    padding-inline: 2px;
+  }
+
+  .daily-prayer-fullscreen-reader h3 {
+    font-size: clamp(30px, 10vw, 44px);
+  }
+
+  .daily-prayer-fullscreen-reader p {
+    font-size: clamp(21px, 6vw, 26px);
+    line-height: 1.66;
+  }
+
   .icon-photo-open {
     min-height: 0;
     max-height: 72vh;
@@ -1619,6 +1942,15 @@ button,
   .icons-page .icon-card img {
     height: min(76vh, 460px);
   }
+
+  .daily-prayer-reader-body h3 {
+    font-size: clamp(28px, 9vw, 42px);
+  }
+
+  .daily-prayer-reader-body p {
+    font-size: clamp(20px, 6vw, 24px);
+    line-height: 1.66;
+  }
 }
 
 @media (max-width: 430px) {
@@ -1632,6 +1964,19 @@ button,
   .page-hero,
   .read-hero {
     padding-bottom: 22px;
+  }
+
+  .daily-prayer-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-prayer-fullscreen-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-prayer-fullscreen-close,
+  .daily-prayer-fullscreen-actions button {
+    width: 100%;
   }
 
   .page-hero h1,

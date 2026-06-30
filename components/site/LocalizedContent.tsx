@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { IconPhotoCatalog, type IconPhotoCatalogItem } from './IconPhotoCatalog';
 import { IconCard } from './IconCard';
@@ -102,10 +103,26 @@ const uiText = {
 const dailyPrayerTexts = {
   ru: {
     title: '📖 Сборник молитв на каждый день',
+    todayLabel: 'Сегодня',
+    dailyTitle: 'Молитва дня',
     lead: 'В каждом дне есть время для молитвы и благодарности Богу.',
     intro: 'Молитва открывает сердце для Божией любви и милости. Пусть эти слова помогут вам обращаться к Господу с доверием и благодарностью.',
     closing: '🙏 Пусть Господь слышит ваши молитвы и наполняет сердца радостью и миром!',
     subscribe: '@Pravoslav_molitvoslov - подпишитесь',
+    save: 'Сохранить',
+    saved: 'Сохранено',
+    share: 'Поделиться',
+    listen: 'Слушать',
+    stop: 'Остановить',
+    allPrayers: 'Все молитвы',
+    choosePrayer: 'Выбрать молитву',
+    shareDone: 'Ссылка скопирована',
+    listenUnavailable: 'Озвучивание недоступно в этом браузере',
+    openFull: 'Открыть для чтения',
+    copy: 'Скопировать',
+    copied: 'Скопировано',
+    download: 'Скачать',
+    close: 'Закрыть',
     prayers: [
       {
         title: 'Молитва благодарности',
@@ -131,10 +148,26 @@ const dailyPrayerTexts = {
   },
   uk: {
     title: '📖 Збірник молитов на кожен день',
+    todayLabel: 'Сьогодні',
+    dailyTitle: 'Молитва дня',
     lead: 'У кожному дні є час для молитви й подяки Богові.',
     intro: 'Молитва відкриває серце для Божої любові та милості. Нехай ці слова допоможуть вам звертатися до Господа з довірою і вдячністю.',
     closing: '🙏 Нехай Господь чує ваші молитви і наповнює серця радістю та миром!',
     subscribe: '@Pravoslav_molitvoslov - підпишіться',
+    save: 'Зберегти',
+    saved: 'Збережено',
+    share: 'Поділитися',
+    listen: 'Слухати',
+    stop: 'Зупинити',
+    allPrayers: 'Усі молитви',
+    choosePrayer: 'Обрати молитву',
+    shareDone: 'Посилання скопійовано',
+    listenUnavailable: 'Озвучення недоступне в цьому браузері',
+    openFull: 'Відкрити для читання',
+    copy: 'Скопіювати',
+    copied: 'Скопійовано',
+    download: 'Завантажити',
+    close: 'Закрити',
     prayers: [
       {
         title: 'Молитва подяки',
@@ -160,10 +193,26 @@ const dailyPrayerTexts = {
   },
   en: {
     title: '📖 A Collection of Daily Prayers',
+    todayLabel: 'Today',
+    dailyTitle: 'Prayer of the day',
     lead: 'Every day holds a time for prayer and gratitude to God.',
     intro: 'Prayer opens the heart to God\'s love and mercy. May these words help you turn to the Lord with trust and thanksgiving.',
     closing: '🙏 May the Lord hear your prayers and fill your hearts with joy and peace!',
     subscribe: '@Pravoslav_molitvoslov - subscribe',
+    save: 'Save',
+    saved: 'Saved',
+    share: 'Share',
+    listen: 'Listen',
+    stop: 'Stop',
+    allPrayers: 'All prayers',
+    choosePrayer: 'Choose prayer',
+    shareDone: 'Link copied',
+    listenUnavailable: 'Speech playback is not available in this browser',
+    openFull: 'Open for reading',
+    copy: 'Copy',
+    copied: 'Copied',
+    download: 'Download',
+    close: 'Close',
     prayers: [
       {
         title: 'Prayer of Thanksgiving',
@@ -191,6 +240,83 @@ const dailyPrayerTexts = {
 
 function ui(locale: keyof typeof uiText, key: keyof typeof uiText.ru) {
   return uiText[locale][key];
+}
+
+const DAILY_PRAYER_SAVE_KEY = 'ikona-daily-prayer-saved';
+const speechLang = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' } as const;
+const preferredMaleVoiceNames = [
+  'alex',
+  'daniel',
+  'david',
+  'fred',
+  'guy',
+  'mark',
+  'microsoft dmitry',
+  'microsoft pavel',
+  'microsoft david',
+  'microsoft mark',
+  'microsoft guy',
+  'google uk english male',
+  'yuri',
+  'dmitry',
+  'pavel',
+  'maxim',
+  'taras',
+  'ostap',
+  'mykola'
+];
+
+const likelyFemaleVoiceNames = [
+  'anna',
+  'elena',
+  'irina',
+  'katya',
+  'milena',
+  'samantha',
+  'tatyana',
+  'victoria',
+  'zira'
+];
+
+function todayPrayerIndex(total: number) {
+  if (!total) return 0;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const day = Math.floor((Number(now) - Number(start)) / 86400000);
+  return day % total;
+}
+
+function savedPrayerIds() {
+  if (typeof window === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(DAILY_PRAYER_SAVE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function prayerFileName(title: string) {
+  const slug = title.toLowerCase().replace(/[^a-z0-9а-яёіїєґ]+/gi, '-').replace(/^-|-$/g, '') || 'prayer';
+  return `${slug}.txt`;
+}
+
+function preferredSpeechVoice(locale: keyof typeof speechLang) {
+  if (!('speechSynthesis' in window)) return null;
+
+  const lang = speechLang[locale].toLowerCase();
+  const language = lang.split('-')[0];
+  const voices = window.speechSynthesis.getVoices();
+  const localizedVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith(language));
+  const candidates = localizedVoices.length ? localizedVoices : voices;
+
+  return candidates.find((voice) => {
+    const name = voice.name.toLowerCase();
+    return preferredMaleVoiceNames.some((maleName) => name.includes(maleName));
+  }) || candidates.find((voice) => {
+    const name = voice.name.toLowerCase();
+    return voice.lang.toLowerCase().startsWith(language) && !likelyFemaleVoiceNames.some((femaleName) => name.includes(femaleName));
+  }) || null;
 }
 
 function prayerTitle(title: string, locale: keyof typeof uiText) {
@@ -329,18 +455,187 @@ export function LocalizedPrayersList({ icons }: { icons: Icon[] }) {
 export function DailyPrayerCollection() {
   const { locale } = useI18n();
   const content = dailyPrayerTexts[locale];
+  const [selectedPrayerIndex, setSelectedPrayerIndex] = useState(0);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [statusText, setStatusText] = useState('');
+  const [expandedPrayerIndex, setExpandedPrayerIndex] = useState<number | null>(null);
+  const [fullscreenStatus, setFullscreenStatus] = useState('');
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const selectedPrayer = content.prayers[selectedPrayerIndex] || content.prayers[0];
+  const expandedPrayer = expandedPrayerIndex === null ? null : content.prayers[expandedPrayerIndex];
+  const selectedPrayerId = `${locale}-${selectedPrayer.title}`;
+  const isSaved = savedIds.includes(selectedPrayerId);
+
+  useEffect(() => {
+    setSelectedPrayerIndex(todayPrayerIndex(content.prayers.length));
+    setSavedIds(savedPrayerIds());
+  }, [content.prayers.length, locale]);
+
+  useEffect(() => () => {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  }, []);
+
+  useEffect(() => {
+    if (expandedPrayerIndex === null) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setExpandedPrayerIndex(null);
+        setFullscreenStatus('');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [expandedPrayerIndex]);
+
+  const selectPrayer = (index: number) => {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+    setStatusText('');
+    setSelectedPrayerIndex(index);
+  };
+
+  const toggleSave = () => {
+    const nextSaved = isSaved
+      ? savedIds.filter((id) => id !== selectedPrayerId)
+      : [...savedIds, selectedPrayerId];
+    setSavedIds(nextSaved);
+    window.localStorage.setItem(DAILY_PRAYER_SAVE_KEY, JSON.stringify(nextSaved));
+  };
+
+  const sharePrayer = async () => {
+    const shareText = `${selectedPrayer.title}\n\n${selectedPrayer.text}`;
+    const shareUrl = `${window.location.origin}${window.location.pathname}#daily-prayer`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: selectedPrayer.title, text: shareText, url: shareUrl });
+        return;
+      }
+
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+        setStatusText(content.shareDone);
+        window.setTimeout(() => setStatusText(''), 2600);
+      }
+    } catch {
+      setStatusText('');
+    }
+  };
+
+  const toggleListen = () => {
+    if (!('speechSynthesis' in window)) {
+      setStatusText(content.listenUnavailable);
+      return;
+    }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(`${selectedPrayer.title}. ${selectedPrayer.text.replace(/\n+/g, '. ')}`);
+    const voice = preferredSpeechVoice(locale);
+    if (voice) utterance.voice = voice;
+    utterance.lang = speechLang[locale];
+    utterance.rate = 0.9;
+    utterance.pitch = 0.82;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    utteranceRef.current = utterance;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  };
+
+  const copyExpandedPrayer = async () => {
+    if (!expandedPrayer) return;
+
+    try {
+      await navigator.clipboard.writeText(`${expandedPrayer.title}\n\n${expandedPrayer.text}`);
+      setFullscreenStatus(content.copied);
+      window.setTimeout(() => setFullscreenStatus(''), 2400);
+    } catch {
+      setFullscreenStatus('');
+    }
+  };
+
+  const downloadExpandedPrayer = () => {
+    if (!expandedPrayer) return;
+
+    const blob = new Blob([`${expandedPrayer.title}\n\n${expandedPrayer.text}\n`], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = prayerFileName(expandedPrayer.title);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <section className="daily-prayer-collection">
+    <section id="daily-prayer" className="daily-prayer-collection">
       <div className="daily-prayer-intro">
         <p className="eyebrow">{ui(locale, 'prayer')}</p>
         <h2>{content.title}</h2>
         <p className="daily-prayer-lead">{content.lead}</p>
         <p>{content.intro}</p>
       </div>
+      <article className="daily-prayer-reader">
+        <div className="daily-prayer-reader-head">
+          <div>
+            <span>{content.todayLabel}</span>
+            <h3>{content.dailyTitle}</h3>
+          </div>
+          <div className="daily-prayer-actions" aria-label={content.dailyTitle}>
+            <button type="button" onClick={toggleSave}>{isSaved ? content.saved : content.save}</button>
+            <button type="button" onClick={sharePrayer}>{content.share}</button>
+            <button type="button" onClick={toggleListen}>{isSpeaking ? content.stop : content.listen}</button>
+          </div>
+        </div>
+        <div className="daily-prayer-reader-body">
+          <p className="daily-prayer-reader-kicker">{String(selectedPrayerIndex + 1).padStart(2, '0')}</p>
+          <h3>{selectedPrayer.title}</h3>
+          <p>{selectedPrayer.text}</p>
+          {statusText ? <small>{statusText}</small> : null}
+        </div>
+      </article>
+      <div className="daily-prayer-picker" aria-label={content.choosePrayer}>
+        {content.prayers.map((prayer, index) => (
+          <button
+            key={prayer.title}
+            type="button"
+            className={index === selectedPrayerIndex ? 'active' : ''}
+            onClick={() => selectPrayer(index)}
+            aria-pressed={index === selectedPrayerIndex}
+          >
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            {prayer.title}
+          </button>
+        ))}
+      </div>
+      <div className="daily-prayer-section-label">
+        <span>{content.allPrayers}</span>
+      </div>
       <div className="daily-prayer-grid">
         {content.prayers.map((prayer, index) => (
-          <article className="daily-prayer-card" key={prayer.title}>
+          <article
+            className="daily-prayer-card"
+            key={prayer.title}
+            onClick={() => {
+              setExpandedPrayerIndex(index);
+              setFullscreenStatus('');
+            }}
+          >
             <span>{String(index + 1).padStart(2, '0')}</span>
             <h3>{prayer.title}</h3>
             <p>{prayer.text}</p>
@@ -351,6 +646,34 @@ export function DailyPrayerCollection() {
         <p>{content.closing}</p>
         <small>{content.subscribe}</small>
       </div>
+      {expandedPrayer ? (
+        <div className="daily-prayer-fullscreen" role="dialog" aria-modal="true" aria-labelledby="daily-prayer-fullscreen-title">
+          <article className="daily-prayer-fullscreen-panel">
+            <div className="daily-prayer-fullscreen-top">
+              <span>{String((expandedPrayerIndex ?? 0) + 1).padStart(2, '0')}</span>
+              <button
+                type="button"
+                className="daily-prayer-fullscreen-close"
+                onClick={() => {
+                  setExpandedPrayerIndex(null);
+                  setFullscreenStatus('');
+                }}
+              >
+                {content.close}
+              </button>
+            </div>
+            <div className="daily-prayer-fullscreen-reader">
+              <h3 id="daily-prayer-fullscreen-title">{expandedPrayer.title}</h3>
+              <p>{expandedPrayer.text}</p>
+              {fullscreenStatus ? <small>{fullscreenStatus}</small> : null}
+            </div>
+            <div className="daily-prayer-fullscreen-actions">
+              <button type="button" onClick={copyExpandedPrayer}>{content.copy}</button>
+              <button type="button" onClick={downloadExpandedPrayer}>{content.download}</button>
+            </div>
+          </article>
+        </div>
+      ) : null}
     </section>
   );
 }

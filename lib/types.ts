@@ -68,6 +68,7 @@ export type Prayer = {
   relatedSaint?: string;
   relatedIcon?: string;
   audioUrl?: string;
+  qrCodeUrl?: string;
   seoTitle?: string;
   seoDescription?: string;
   status: Status;
@@ -267,6 +268,8 @@ export type ChurchPrayerDto = {
   slug: string;
   title: string;
   text: string;
+  audioUrl: string;
+  qrCodeUrl: string;
   language: SiteLocale;
   prayerType: string;
   status: ChurchContentStatus;

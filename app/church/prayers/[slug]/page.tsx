@@ -43,6 +43,12 @@ export default async function ChurchPrayerPage({ params, searchParams }: Props) 
         <p className="eyebrow">{prayer.prayerType}</p>
         <h1>{prayer.title}</h1>
       </section>
+      {prayer.audioUrl ? (
+        <section className="sacred-panel prayer-audio-panel">
+          <span>Аудио молитвы</span>
+          <audio controls src={prayer.audioUrl}>Ваш браузер не поддерживает аудио.</audio>
+        </section>
+      ) : null}
       <article className="sacred-panel prayer-panel prayer-reader-panel">
         <span>Молитва</span>
         <div className="reader-text prayer-reader"><Paragraphs text={prayer.text} /></div>

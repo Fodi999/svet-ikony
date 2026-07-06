@@ -11,7 +11,8 @@ const nav = [
   ['navPrayers', '/prayers'],
   ['navSaints', '/saints'],
   ['navGospel', '/gospel'],
-  ['navChurches', '/churches']
+  ['navChurches', '/churches'],
+  ['navAlphabet', '/staroslavyanskaya-azbuka']
 ] as const;
 
 export function Header() {

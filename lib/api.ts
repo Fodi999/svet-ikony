@@ -121,6 +121,7 @@ function normalizePrayer(item: Partial<Prayer>, index: number): Prayer {
     relatedSaint: normalizeString(item.relatedSaint),
     relatedIcon: normalizeString(item.relatedIcon),
     audioUrl: normalizeString(item.audioUrl),
+    qrCodeUrl: normalizeString((item as { qrCodeUrl?: unknown }).qrCodeUrl),
     seoTitle: normalizeString(item.seoTitle) || title,
     seoDescription: normalizeString(item.seoDescription) || normalizeString(item.text).slice(0, 160),
     status: normalizeStatus(item.status)
@@ -165,6 +166,8 @@ function prayerFromChurchDto(item: ChurchPrayerDto, icon?: ChurchIconDto): Praye
     category: item.prayerType || 'Молитвы',
     imageUrl: icon?.imageUrl || undefined,
     relatedIcon: icon?.slug || undefined,
+    audioUrl: normalizeString(item.audioUrl) || undefined,
+    qrCodeUrl: normalizeString(item.qrCodeUrl) || undefined,
     seoTitle: item.title,
     seoDescription: compactText(item.text, 180),
     status: item.status === 'published' ? 'published' : 'draft'

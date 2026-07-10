@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useI18n, useLocaleHref } from './LanguageProvider';
-import { SvgIcon } from './SvgIcon';
+
+const logoSrc = '/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg';
 
 export function Footer() {
   const { t } = useI18n();
@@ -32,7 +33,9 @@ export function Footer() {
     <footer className="site-footer">
       <div className="site-footer-main">
         <div className="site-footer-brand">
-          <span className="footer-cross"><SvgIcon name="orthodox-cross" size={26} /></span>
+          <Link className="footer-logo-link" href={localeHref('/')} aria-label={t('home')}>
+            <img className="footer-logo" src={logoSrc} alt={t('brand')} />
+          </Link>
           <small>{t('portal')}</small>
           <strong>{t('brand')}</strong>
           <p>{t('footerText')}</p>

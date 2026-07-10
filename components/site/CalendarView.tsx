@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { CalendarContent, CalendarServiceCard as CalendarService, GospelReading, Icon, Prayer, SeoPage } from '@/lib/types';
-import { LanguageSwitch, useI18n } from './LanguageProvider';
+import { useI18n } from './LanguageProvider';
 import { publicApiPrefix, publicApiUrl } from '@/lib/config';
-import { withLocale, type TranslationKey } from '@/lib/i18n';
+import { type TranslationKey } from '@/lib/i18n';
 import {
   CalendarFeatureCard,
   CalendarGridDay,
@@ -529,21 +528,6 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
 
   return (
     <section className="calendar-page">
-      <div className="calendar-topline">
-        <Link className="calendar-logo" href={withLocale('/', locale)}>
-          <span className="orthodox-cross"><SvgIcon name="orthodox-cross" size={25} /></span>
-          <span><strong>{t('brand')}</strong><small>{t('portal')}</small></span>
-        </Link>
-        <div className="calendar-top-actions">
-          <LanguageSwitch />
-          <nav className="calendar-breadcrumbs" aria-label={`${t('home')} / ${t('calendar')}`}>
-            <Link href={withLocale('/', locale)}>{t('home')}</Link>
-            <b>/</b>
-            <a href="#calendar-grid">{t('calendar')}</a>
-          </nav>
-        </div>
-      </div>
-
       <section className="calendar-hero">
         <div>
           <span className="calendar-year">{hero?.year ?? '2026'}</span>
@@ -697,19 +681,6 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
           </div>
         </section>
 
-        <aside className="today-card">
-          <p>{t('today')}</p>
-          <strong>{hero?.todayDate ?? t('jan14')}</strong>
-          <dl>
-            <dt>{t('todayFeast')}</dt>
-            <dd>{today?.label}</dd>
-            <dt>{t('gospelDay')}</dt>
-            <dd>{hero?.todayGospel || gospel.reference}</dd>
-            <dt>{t('prayerDay')}</dt>
-            <dd>{hero?.todayPrayerTitle || prayerOfDay?.title}</dd>
-          </dl>
-          <Link href={withLocale(hero?.todayHref || '/gospel', locale)}>{t('read')}</Link>
-        </aside>
       </div>
 
       <section className="calendar-service-grid">

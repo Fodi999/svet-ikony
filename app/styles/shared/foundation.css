@@ -1,68 +1,107 @@
+/* ============================================================
+   Foundation: дизайн-токены, база, типографика, каркасы страниц
+   ============================================================ */
+
 * { box-sizing: border-box; }
 
 html {
+  min-height: 100%;
   overflow-x: hidden;
+  background: var(--background);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 :root {
   color-scheme: dark;
+
+  /* Палитра */
   --background: #0B0B0A;
   --surface: #15130F;
   --surface-soft: #1D1A13;
-  --text: #FFFFFF;
+  --text: #F7F3EA;
   --muted: #C9C2B3;
   --gold: #D6A84F;
   --gold-light: #F1D18A;
-  --border-gold: rgba(214, 168, 79, .35);
-  --ink: var(--text);
-  --paper: var(--background);
-  --paper-deep: var(--surface);
-  --gold-soft: var(--gold-light);
-  --clay: #A86F44;
-  --sage: #909B7E;
+  --gold-deep: #B8842B;
+  --border-gold: rgba(214, 168, 79, .32);
+  --border-soft: rgba(214, 168, 79, .16);
   --line: var(--border-gold);
-  --shadow: 0 24px 70px rgba(0, 0, 0, .38);
-  --soft-shadow: 0 18px 46px rgba(0, 0, 0, .28);
+
+  /* Форма */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-full: 999px;
+
+  /* Тени */
+  --shadow-sm: 0 8px 24px rgba(0, 0, 0, .22);
+  --shadow-md: 0 18px 46px rgba(0, 0, 0, .3);
+  --shadow-lg: 0 28px 80px rgba(0, 0, 0, .46);
+  --shadow: var(--shadow-md);
+
+  /* Движение */
+  --speed: .18s;
+  --ease: cubic-bezier(.2, .7, .3, 1);
+
+  /* Шрифты */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+
+  /* Орнаменты */
   --ornament-corner: url("/ornaments/card-corner.svg");
   --ornament-divider: url("/ornaments/section-divider.svg");
   --ornament-border: url("/ornaments/page-border.svg");
 }
 
 @keyframes titleGradientFlow {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 @keyframes imageSkeleton {
-  0% {
-    background-position: 220% 0, 0 0;
-  }
-
-  100% {
-    background-position: -120% 0, 0 0;
-  }
+  0% { background-position: 220% 0, 0 0; }
+  100% { background-position: -120% 0, 0 0; }
 }
 
 body {
   position: relative;
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   background:
     linear-gradient(180deg, rgba(214, 168, 79, .08), transparent 240px),
     var(--background);
-  color: var(--ink);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+  font-family: var(--font-ui);
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (display-mode: standalone) {
+  body {
+    min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+    overscroll-behavior-y: none;
+  }
+
+  .site-header {
+    width: calc(100% - max(12px, env(safe-area-inset-left)) - max(12px, env(safe-area-inset-right)));
+    margin-top: max(6px, env(safe-area-inset-top));
+  }
+
+  .page,
+  .read-page,
+  .detail-page,
+  .calendar-page {
+    padding-right: max(clamp(10px, 5vw, 72px), env(safe-area-inset-right));
+    padding-bottom: max(clamp(28px, 5vw, 92px), env(safe-area-inset-bottom));
+    padding-left: max(clamp(10px, 5vw, 72px), env(safe-area-inset-left));
+  }
 }
 
 body::before {
@@ -81,77 +120,30 @@ a { color: inherit; text-decoration: none; }
 img { max-width: 100%; display: block; }
 button, input, textarea, select { font: inherit; }
 
-@media (max-width: 520px) {
-  .hero,
-  .detail-layout,
-  .sacred-detail-hero {
-    grid-template-columns: 1fr;
-  }
-
-  .hero,
-  .page-hero,
-  .section,
-  .detail-page {
-    padding-inline: 14px;
-  }
-
-  .hero h1,
-  .page-hero h1,
-  .detail-page h1 {
-    font-size: clamp(36px, 15vw, 58px);
-    line-height: .9;
-  }
-
-  .hero p,
-  .page-hero p,
-  .section-lead,
-  .detail-lead {
-    font-size: 17px;
-  }
+a,
+button,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
 }
 
-.primary-button, .secondary-button, .card-link {
-  min-height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 1px solid var(--gold);
-  padding: 0 18px;
-  background: var(--gold);
-  color: #0B0B0A;
-  font-weight: 700;
+a,
+button {
+  touch-action: manipulation;
 }
-.secondary-button, .card-link { background: transparent; color: var(--gold-light); }
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(214, 168, 79, .38);
+  color: var(--text);
+}
 
 main { min-height: 70vh; }
-.hero, .page-hero, .section, .detail-page { padding: clamp(54px, 8vw, 116px) clamp(18px, 5vw, 72px); }
-.hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
-  gap: clamp(34px, 6vw, 86px);
-  align-items: center;
-}
-.eyebrow, .stat span, .card-category, .detail-meta, .footer-eyebrow {
-  color: var(--gold);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-}
-.hero h1, .page-hero h1, .detail-page h1 {
-  margin: 14px 0 18px;
-  max-width: 980px;
-  font-size: clamp(44px, 8vw, 124px);
-  line-height: .9;
-  letter-spacing: 0;
-}
-.hero p, .page-hero p, .section-lead, .detail-lead {
-  max-width: 720px;
-  color: var(--muted);
-  font-size: clamp(18px, 2.2vw, 26px);
-  line-height: 1.45;
-}
 
 .svg-icon {
   display: block;
@@ -160,81 +152,111 @@ main { min-height: 70vh; }
   object-fit: contain;
   pointer-events: none;
 }
-.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
-.hero-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 36px; }
-.stat { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 6px; }
-.stat strong { font-size: 28px; }
 
-.qr-demo, .phone-mockup, .feature-card, .icon-card, .church-card, .donation-card, .content-panel {
-  border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface) 92%, black);
-  box-shadow: var(--shadow);
-}
-.qr-demo { padding: 22px; display: grid; gap: 18px; }
-.qr-demo-image { aspect-ratio: 1; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line); }
-.phone-mockup { border-radius: 34px; padding: 16px; max-width: 380px; margin-left: auto; background: #050504; color: var(--text); }
-.phone-screen { border-radius: 24px; overflow: hidden; background: var(--surface); color: var(--text); }
-
-.section-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
-.section-header h2 { margin: 0; font-size: clamp(34px, 5vw, 76px); line-height: .96; }
-.icon-grid, .feature-grid, .church-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
-.icon-card, .feature-card, .church-card, .donation-card { padding: 18px; display: grid; gap: 14px; }
-.icon-card figure {
-  position: relative;
-  margin: 0;
-  aspect-ratio: 4 / 5;
-  background:
-    linear-gradient(110deg, transparent 0 28%, rgba(255, 255, 255, .72) 42%, transparent 56%),
-    var(--paper-deep);
-  background-size: 220% 100%, 100% 100%;
-  overflow: hidden;
-  animation: imageSkeleton 1.4s ease-in-out infinite;
-}
-.icon-card img { position: relative; z-index: 1; width: 100%; height: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: var(--paper-deep); }
-.icon-card h3, .feature-card h3, .church-card h3 { margin: 0; font-size: 24px; }
-.icon-card p, .feature-card p, .church-card p, .detail-content { color: var(--muted); line-height: 1.55; }
-
-.steps { counter-reset: step; display: grid; gap: 14px; }
-.step { counter-increment: step; display: grid; grid-template-columns: 70px 1fr; gap: 20px; padding: 22px 0; border-top: 1px solid var(--line); }
-.step::before { content: counter(step, decimal-leading-zero); color: var(--gold); font-weight: 800; letter-spacing: .18em; }
-
-.detail-layout { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(0, 1.2fr); gap: 36px; align-items: start; }
-.detail-image { border: 1px solid var(--line); background: var(--paper-deep); padding: 16px; }
-.detail-image img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
-.content-panel { padding: 24px; margin-top: 18px; }
-.content-panel h2 { margin-top: 0; font-size: 30px; }
-.qr-strip { display: flex; align-items: center; gap: 18px; padding: 18px; border: 1px solid var(--line); background: #fff; }
-.qr-strip img { width: 92px; height: 92px; }
-.qr-drawer img {
-  width: 100%;
-  max-width: 180px;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  background: #fff;
-}
-
-.list-page { padding: clamp(54px, 8vw, 108px) clamp(18px, 5vw, 72px); }
-.plain-list { display: grid; gap: 12px; }
-.plain-list a, .plain-list article { border-top: 1px solid var(--line); padding: 22px 0; display: grid; gap: 8px; }
-.plain-list h2, .plain-list h3 { margin: 0; font-size: clamp(28px, 4vw, 56px); }
-.plain-list p { margin: 0; color: var(--muted); max-width: 860px; }
+/* ------------------------------------------------------------
+   Каркасы страниц
+   ------------------------------------------------------------ */
 
 .page,
-.read-page {
-  padding: clamp(54px, 8vw, 116px) clamp(18px, 5vw, 72px);
+.read-page,
+.detail-page {
+  width: 100%;
+  margin: 0;
+  min-height: calc(100vh - 78px);
+  padding: clamp(42px, 5vw, 92px) clamp(18px, 5vw, 72px);
   background:
-    radial-gradient(circle at 80% 5%, rgba(185, 137, 50, .08), transparent 28%),
-    linear-gradient(135deg, rgba(33, 24, 18, .025) 0 1px, transparent 1px 15px),
-    #f6f5f1;
+    var(--ornament-border) top center / 420px 56px repeat-x,
+    linear-gradient(180deg, rgba(214, 168, 79, .08), transparent 260px),
+    var(--background);
+  color: var(--text);
 }
 
-.sacred-detail-hero {
+/* ------------------------------------------------------------
+   Типографика: заголовки, лиды, ярлыки
+   ------------------------------------------------------------ */
+
+.page-hero,
+.read-hero {
   display: grid;
-  grid-template-columns: minmax(280px, .86fr) minmax(0, 1.14fr);
-  gap: clamp(28px, 5vw, 78px);
-  align-items: start;
+  gap: 16px;
+  padding: 0 0 clamp(30px, 4vw, 64px);
+  border-bottom: 1px solid var(--border-gold);
 }
 
+.page-hero::after,
+.read-hero::after,
+.section-head::after {
+  content: "";
+  display: block;
+  width: min(320px, 100%);
+  height: 24px;
+  margin-top: 8px;
+  background: var(--ornament-divider) center / contain no-repeat;
+  opacity: .7;
+}
+
+.page-hero h1,
+.read-hero h1,
+.sacred-hero-copy h1,
+.detail-page h1 {
+  margin: 0;
+  max-width: min(100%, 1180px);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(38px, 5.8vw, 96px);
+  line-height: 1.02;
+  letter-spacing: -.01em;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  color: var(--text);
+  background:
+    linear-gradient(110deg, var(--text) 0%, var(--text) 28%, var(--gold-light) 46%, var(--gold) 54%, var(--text) 72%, var(--text) 100%);
+  background-size: 260% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: titleGradientFlow 5.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-hero h1,
+  .read-hero h1,
+  .sacred-hero-copy h1,
+  .detail-page h1 {
+    animation: none;
+    background-position: 42% 50%;
+  }
+}
+
+.page-hero p,
+.read-hero p,
+.sacred-hero-copy .detail-lead,
+.detail-lead,
+.icon-detail > div > p:not(.eyebrow) {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-serif);
+  font-size: clamp(18px, 2vw, 27px);
+  line-height: 1.45;
+}
+
+.eyebrow,
+.sacred-panel > span,
+.content-feature-grid span {
+  color: var(--gold-light);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------
+   Детальные страницы: герой с образом
+   ------------------------------------------------------------ */
+
+.sacred-detail-hero,
 .icon-detail {
   display: grid;
   grid-template-columns: minmax(280px, .86fr) minmax(0, 1.14fr);
@@ -242,55 +264,7 @@ main { min-height: 70vh; }
   align-items: start;
 }
 
-.icon-detail > img,
-.icon-detail-image {
-  width: 100%;
-  max-height: min(72vh, 780px);
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
-  border: 1px solid var(--line);
-  background: var(--paper-deep);
-  padding: clamp(10px, 1.3vw, 18px);
-  box-shadow: var(--shadow);
-}
-
-.icon-detail-image {
-  margin: 0;
-  display: grid;
-  place-items: center;
-}
-
-.icon-detail-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.icon-detail > div {
-  min-width: 0;
-  display: grid;
-  align-content: start;
-  gap: 18px;
-}
-
-.sacred-image-frame {
-  position: sticky;
-  top: 110px;
-  margin: 0;
-  border: 1px solid var(--line);
-  background: rgba(255, 250, 240, .72);
-  padding: clamp(10px, 1.3vw, 18px);
-  box-shadow: var(--shadow);
-}
-
-.sacred-image-frame img {
-  width: 100%;
-  max-height: min(72vh, 780px);
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
-  background: var(--paper-deep);
-}
-
+.icon-detail > div,
 .sacred-hero-copy {
   min-width: 0;
   display: grid;
@@ -298,80 +272,104 @@ main { min-height: 70vh; }
   gap: 18px;
 }
 
-.sacred-hero-copy h1,
-.read-hero h1 {
+.sacred-image-frame,
+.icon-detail-image,
+.icon-detail > img {
+  position: relative;
   margin: 0;
-  max-width: 1000px;
-  font-family: Impact, "Arial Black", sans-serif;
-  font-size: clamp(48px, 7.6vw, 118px);
-  line-height: .88;
-  text-transform: uppercase;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .16) 42%, transparent 56%),
+    var(--surface-soft);
+  background-size: 220% 100%, 100% 100%;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
-.sacred-hero-copy .detail-lead,
-.read-hero p {
-  margin: 0;
-  max-width: 760px;
-  color: var(--muted);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(20px, 2vw, 31px);
-  line-height: 1.28;
+.sacred-image-frame {
+  position: sticky;
+  top: 110px;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 5;
+}
+
+.icon-detail-image {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 5;
+}
+
+.sacred-image-frame img,
+.icon-detail-image img,
+.icon-detail > img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+  object-position: center;
 }
 
 .sacred-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 .sacred-meta span {
-  min-height: 30px;
+  min-height: 34px;
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--line);
-  padding: 0 10px;
-  color: var(--gold);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
+  padding: 0 14px;
+  color: var(--gold-light);
   font-size: 12px;
   font-weight: 900;
+  letter-spacing: .08em;
   text-transform: uppercase;
 }
 
 .soft-note {
   border-left: 3px solid var(--gold);
   padding: 14px 0 14px 18px;
-  color: var(--ink);
-  background: linear-gradient(90deg, rgba(185, 137, 50, .09), transparent);
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--text);
+  background: linear-gradient(90deg, rgba(214, 168, 79, .12), transparent);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  font-family: var(--font-serif);
   font-size: clamp(18px, 1.55vw, 24px);
   line-height: 1.45;
 }
 
-.soft-note p {
-  margin: 0 0 12px;
-}
+.soft-note p { margin: 0 0 12px; }
+.soft-note p:last-child { margin-bottom: 0; }
 
-.soft-note p:last-child {
-  margin-bottom: 0;
-}
-
-.detail-actions {
+.detail-actions,
+.hero-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   margin-top: 8px;
 }
+
+/* ------------------------------------------------------------
+   Контентные секции
+   ------------------------------------------------------------ */
 
 .sacred-content-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: clamp(14px, 2vw, 24px);
   margin-top: clamp(46px, 6vw, 88px);
+  border-top: 1px solid var(--border-gold);
+  padding-top: clamp(22px, 3vw, 42px);
 }
 
 .sacred-panel {
   min-width: 0;
-  border: 1px solid var(--line);
-  background: rgba(255, 250, 240, .56);
   padding: clamp(20px, 2.5vw, 36px);
 }
 
@@ -379,43 +377,36 @@ main { min-height: 70vh; }
 .content-feature-grid span {
   display: block;
   margin-bottom: 18px;
-  color: var(--gold);
-  font-weight: 900;
-  letter-spacing: .16em;
-  text-transform: uppercase;
 }
 
 .sacred-panel h2 {
   margin: 0 0 18px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(30px, 3vw, 54px);
-  line-height: 1;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(28px, 2.8vw, 48px);
+  font-weight: 700;
+  line-height: 1.05;
 }
 
 .prayer-panel {
   grid-column: span 2;
-  background: rgba(255, 250, 240, .82);
 }
 
 .reader-text {
-  color: var(--ink);
-  font-family: Georgia, "Times New Roman", serif;
+  max-width: 960px;
+  color: var(--muted);
+  font-family: var(--font-serif);
   font-size: clamp(18px, 1.45vw, 24px);
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
-.reader-text p {
-  margin: 0 0 16px;
-}
-
-.reader-text p:last-child {
-  margin-bottom: 0;
-}
+.reader-text p { margin: 0 0 16px; }
+.reader-text p:last-child { margin-bottom: 0; }
 
 .related-section {
   margin-top: clamp(46px, 6vw, 88px);
-  border-top: 1px solid var(--line);
-  padding-top: 28px;
+  border-top: 1px solid var(--border-gold);
+  padding-top: clamp(22px, 3vw, 42px);
 }
 
 .section-head {
@@ -426,16 +417,16 @@ main { min-height: 70vh; }
 
 .section-head h2 {
   margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(32px, 4vw, 70px);
-  line-height: 1;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(30px, 3.6vw, 62px);
+  line-height: 1.05;
 }
 
 .mini-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid var(--line);
-  border-left: 1px solid var(--line);
+  gap: clamp(12px, 1.5vw, 18px);
 }
 
 .mini-grid a {
@@ -443,26 +434,31 @@ main { min-height: 70vh; }
   display: grid;
   align-content: space-between;
   gap: 18px;
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
   padding: 18px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(21px, 2vw, 32px);
-  line-height: 1.05;
+  background:
+    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 46%),
+    var(--surface);
+  font-family: var(--font-serif);
+  font-size: clamp(20px, 1.8vw, 30px);
+  line-height: 1.1;
+  transition: border-color var(--speed) var(--ease), background var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+
+.mini-grid a:hover {
+  border-color: var(--gold);
+  background: var(--surface-soft);
+  transform: translateY(-2px);
 }
 
 .mini-grid small {
-  color: var(--gold);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--gold-light);
+  font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 900;
+  letter-spacing: .1em;
   text-transform: uppercase;
-}
-
-.read-hero {
-  display: grid;
-  gap: 16px;
-  margin-bottom: clamp(32px, 5vw, 70px);
 }
 
 .sacred-read-page {
@@ -474,25 +470,6 @@ main { min-height: 70vh; }
   margin-top: 12px;
 }
 
-.content-feature-grid article,
-.faq details {
-  border: 1px solid var(--line);
-  background: rgba(255, 250, 240, .52);
-  padding: clamp(18px, 2vw, 28px);
-}
-
-.content-feature-grid h3 {
-  margin: 0 0 12px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(24px, 2vw, 34px);
-}
-
-.content-feature-grid p,
-.faq p {
-  color: var(--muted);
-  line-height: 1.5;
-}
-
 .faq {
   display: grid;
   gap: 10px;
@@ -500,6 +477,74 @@ main { min-height: 70vh; }
 
 .faq summary {
   cursor: pointer;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-serif);
   font-size: 22px;
+}
+
+.faq p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------------------
+   Адаптив
+   ------------------------------------------------------------ */
+
+@media (max-width: 900px) {
+  .sacred-detail-hero,
+  .icon-detail,
+  .sacred-content-grid,
+  .mini-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .prayer-panel { grid-column: auto; }
+
+  .sacred-image-frame { position: static; }
+
+  .detail-actions,
+  .hero-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .page,
+  .read-page,
+  .detail-page {
+    padding: 24px 14px 40px;
+  }
+
+  .page-hero h1,
+  .read-hero h1,
+  .sacred-hero-copy h1,
+  .detail-page h1 {
+    font-size: clamp(32px, 10vw, 52px);
+    line-height: 1.06;
+  }
+
+  .page-hero p,
+  .read-hero p,
+  .sacred-hero-copy .detail-lead,
+  .detail-lead,
+  .icon-detail > div > p:not(.eyebrow) {
+    font-size: 17px;
+  }
+
+  .eyebrow,
+  .sacred-panel > span,
+  .content-feature-grid span {
+    letter-spacing: .12em;
+  }
+
+  .mini-grid a { min-height: 108px; }
+
+  .sacred-image-frame,
+  .icon-detail-image,
+  .icon-detail > img {
+    max-height: 68vh;
+  }
 }

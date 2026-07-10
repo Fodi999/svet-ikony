@@ -1,3 +1,7 @@
+/* ============================================================
+   Старославянская азбука
+   ============================================================ */
+
 .slavonic-page {
   min-height: 100vh;
   padding: clamp(42px, 5vw, 92px) clamp(18px, 5vw, 72px);
@@ -8,28 +12,13 @@
   color: var(--text);
 }
 
-.slavonic-hero,
-.slavonic-grid-section,
-.slavonic-message,
-.slavonic-modal {
-  position: relative;
-  border: 1px solid #d8d8d8;
-  background:
-    linear-gradient(135deg, rgba(184, 132, 43, .06), transparent 42%),
-    #fbfaf8;
-  color: var(--text);
-  box-shadow: none;
-}
-
 .slavonic-hero {
+  position: relative;
   overflow: hidden;
   padding: 0 0 clamp(34px, 5vw, 80px);
-  border: 0;
-  border-bottom: 1px solid rgba(237, 215, 168, .24);
-  background: transparent;
+  border-bottom: 1px solid var(--border-soft);
 }
 
-.slavonic-hero::after,
 .slavonic-grid-section::after,
 .slavonic-message::after,
 .slavonic-modal::after {
@@ -38,10 +27,7 @@
   inset: 12px;
   pointer-events: none;
   border: 1px solid rgba(184, 132, 43, .18);
-}
-
-.slavonic-hero::after {
-  display: none;
+  border-radius: calc(var(--radius-md) - 6px);
 }
 
 .slavonic-book-mark {
@@ -49,7 +35,7 @@
   right: clamp(8px, 4vw, 72px);
   bottom: 8px;
   color: rgba(184, 132, 43, .08);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-serif);
   font-size: clamp(92px, 20vw, 240px);
   line-height: .8;
   pointer-events: none;
@@ -58,7 +44,7 @@
 .slavonic-hero .eyebrow,
 .slavonic-message .eyebrow,
 .slavonic-modal .eyebrow {
-  color: #b8842b;
+  color: var(--gold-light);
 }
 
 .slavonic-hero h1 {
@@ -67,12 +53,11 @@
   max-width: min(100%, 1180px);
   margin: 14px 0 18px;
   color: var(--text);
-  background: none;
-  font-family: Impact, "Arial Black", sans-serif;
-  font-size: clamp(46px, 7.5vw, 132px);
-  line-height: .86;
-  letter-spacing: 0;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(38px, 5.8vw, 96px);
+  line-height: 1.02;
+  letter-spacing: -.01em;
   text-wrap: balance;
 }
 
@@ -82,7 +67,7 @@
   max-width: 760px;
   margin: 0;
   color: var(--muted);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-serif);
   font-size: clamp(18px, 2.1vw, 28px);
   line-height: 1.4;
 }
@@ -95,11 +80,12 @@
   max-width: 760px;
   margin-top: 18px;
   border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
   background: rgba(21, 19, 15, .82);
   color: var(--muted);
-  padding: 10px 12px;
+  padding: 10px 14px;
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -113,39 +99,12 @@
   margin-top: 30px;
 }
 
-.slavonic-primary-action,
-.slavonic-listen {
-  min-height: 46px;
-  border: 1px solid #b8842b;
-  background: #b8842b;
-  color: #050505;
-  padding: 0 18px;
-  font-size: 13px;
-  font-weight: 950;
-  line-height: 1;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.slavonic-primary-action:hover,
-.slavonic-primary-action:focus-visible,
-.slavonic-listen:not(:disabled):hover,
-.slavonic-listen:not(:disabled):focus-visible {
-  background: #d6a84f;
-  border-color: #d6a84f;
-}
-
-.slavonic-listen:disabled {
-  cursor: not-allowed;
-  opacity: .66;
-}
-
 .slavonic-hero-actions span {
-  min-height: 46px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
   background: rgba(21, 19, 15, .82);
   color: var(--gold-light);
   padding: 0 16px;
@@ -156,10 +115,6 @@
 
 .slavonic-grid-section {
   margin-top: clamp(28px, 4vw, 46px);
-  border-color: var(--border-gold);
-  background:
-    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 44%),
-    rgba(21, 19, 15, .94);
   padding: clamp(14px, 2vw, 22px);
 }
 
@@ -175,6 +130,7 @@
   min-width: 0;
   min-height: clamp(132px, 13vw, 184px);
   border: 1px solid rgba(214, 168, 79, .28);
+  border-radius: var(--radius-sm);
   background:
     linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 42%),
     rgba(29, 26, 19, .96);
@@ -186,7 +142,7 @@
   padding: 16px 10px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .025);
   cursor: pointer;
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+  transition: transform var(--speed) var(--ease), box-shadow var(--speed) var(--ease), border-color var(--speed) var(--ease), background var(--speed) var(--ease);
 }
 
 .slavonic-tile::before,
@@ -195,6 +151,7 @@
   position: absolute;
   inset: 8px;
   border: 1px solid rgba(214, 168, 79, .22);
+  border-radius: calc(var(--radius-sm) - 4px);
   pointer-events: none;
 }
 
@@ -211,7 +168,7 @@
     radial-gradient(circle at 50% 38%, rgba(214, 168, 79, .18), transparent 52%),
     linear-gradient(135deg, rgba(214, 168, 79, .14), transparent 48%),
     rgba(35, 30, 21, .98);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, .24), 0 0 0 1px rgba(214, 168, 79, .18);
+  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(214, 168, 79, .18);
 }
 
 .slavonic-tile__number {
@@ -225,17 +182,13 @@
   align-items: center;
   justify-content: center;
   border: 1px solid rgba(214, 168, 79, .3);
+  border-radius: var(--radius-full);
   background: rgba(11, 11, 10, .66);
   color: var(--gold-light);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1;
-}
-
-.slavonic-tile.red .slavonic-tile__number,
-.slavonic-tile.blue .slavonic-tile__number {
-  color: var(--gold-light);
 }
 
 .slavonic-tile__ornament {
@@ -246,10 +199,9 @@
 }
 
 .slavonic-tile strong {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-serif);
   font-size: clamp(54px, 8vw, 94px);
   line-height: .8;
-  text-shadow: none;
 }
 
 .slavonic-tile.red strong,
@@ -264,10 +216,14 @@
 
 .slavonic-tile small {
   color: var(--gold-light);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-serif);
   font-size: clamp(15px, 1.3vw, 19px);
   font-weight: 800;
 }
+
+/* ------------------------------------------------------------
+   Скрытое послание
+   ------------------------------------------------------------ */
 
 .slavonic-message {
   display: grid;
@@ -284,18 +240,17 @@
 
 .slavonic-message h2 {
   margin: 8px 0 12px;
-  color: #050505;
-  font-family: Impact, "Arial Black", sans-serif;
-  font-size: clamp(34px, 5vw, 74px);
-  line-height: .9;
-  letter-spacing: 0;
-  text-transform: uppercase;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(30px, 4vw, 60px);
+  line-height: 1.02;
 }
 
 .slavonic-message p:not(.eyebrow) {
   margin: 0;
-  color: #5d5752;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--muted);
+  font-family: var(--font-serif);
   font-size: clamp(18px, 2vw, 25px);
   line-height: 1.42;
 }
@@ -307,8 +262,9 @@
 }
 
 .slavonic-message-letters span {
-  border: 1px solid #d8d8d8;
-  background: #f8f5ef;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-xs);
+  background: rgba(214, 168, 79, .08);
   display: grid;
   place-items: center;
   gap: 4px;
@@ -316,17 +272,21 @@
 }
 
 .slavonic-message-letters b {
-  color: #9b211d;
-  font-family: Georgia, "Times New Roman", serif;
+  color: #d1473d;
+  font-family: var(--font-serif);
   font-size: clamp(34px, 4vw, 54px);
   line-height: .9;
 }
 
 .slavonic-message-letters small {
-  color: #5d5752;
+  color: var(--muted);
   font-size: 12px;
   font-weight: 900;
 }
+
+/* ------------------------------------------------------------
+   Модалка буквы
+   ------------------------------------------------------------ */
 
 .slavonic-modal-backdrop {
   position: fixed;
@@ -347,6 +307,7 @@
   grid-template-columns: minmax(180px, .45fr) minmax(0, 1fr);
   gap: clamp(18px, 4vw, 40px);
   padding: clamp(24px, 5vw, 54px);
+  box-shadow: var(--shadow-lg);
 }
 
 .slavonic-modal__close {
@@ -356,26 +317,35 @@
   z-index: 2;
   width: 42px;
   height: 42px;
-  border: 1px solid #d8d8d8;
-  background: #fbfaf8;
-  color: #050505;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
+  background: rgba(11, 11, 10, .78);
+  color: var(--gold-light);
   font-size: 28px;
   line-height: 1;
   cursor: pointer;
+  transition: border-color var(--speed) var(--ease), background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.slavonic-modal__close:hover,
+.slavonic-modal__close:focus-visible {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--background);
 }
 
 .slavonic-modal__letter {
   min-height: 260px;
   display: grid;
   place-items: center;
-  border: 1px solid #d8d8d8;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
   background:
     linear-gradient(135deg, rgba(184, 132, 43, .12), transparent 48%),
-    #f8f5ef;
-  font-family: Georgia, "Times New Roman", serif;
+    var(--surface-soft);
+  font-family: var(--font-serif);
   font-size: clamp(120px, 18vw, 220px);
   line-height: .8;
-  box-shadow: none;
 }
 
 .slavonic-modal__content {
@@ -387,11 +357,11 @@
 
 .slavonic-modal h2 {
   margin: 0;
-  color: #050505;
-  font-family: Impact, "Arial Black", sans-serif;
-  font-size: clamp(38px, 5vw, 76px);
-  line-height: .9;
-  text-transform: uppercase;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(34px, 4.4vw, 64px);
+  line-height: 1.02;
 }
 
 .slavonic-modal dl {
@@ -402,13 +372,14 @@
 }
 
 .slavonic-modal dl div {
-  border: 1px solid #d8d8d8;
-  background: #f8f5ef;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xs);
+  background: rgba(214, 168, 79, .06);
   padding: 12px;
 }
 
 .slavonic-modal dt {
-  color: #8a837b;
+  color: var(--muted);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: .12em;
@@ -417,15 +388,15 @@
 
 .slavonic-modal dd {
   margin: 5px 0 0;
-  color: #050505;
+  color: var(--text);
   font-weight: 900;
   line-height: 1.3;
 }
 
 .slavonic-modal__content > p:not(.eyebrow) {
   margin: 0;
-  color: #5d5752;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--muted);
+  font-family: var(--font-serif);
   font-size: clamp(17px, 1.7vw, 22px);
   line-height: 1.5;
 }
@@ -434,6 +405,10 @@
   width: max-content;
   min-width: 150px;
 }
+
+/* ------------------------------------------------------------
+   Адаптив
+   ------------------------------------------------------------ */
 
 @media (max-width: 1180px) {
   .slavonic-grid {

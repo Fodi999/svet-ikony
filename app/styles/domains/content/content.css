@@ -1,122 +1,96 @@
-/* Unified museum-style surface */
-body {
-  background: #050505;
-}
+/* ============================================================
+   Контентные страницы: каталоги, детальные страницы, читалки
+   ============================================================ */
 
-.page,
-.read-page,
-.detail-page,
-.list-page {
-  background: #f4f4f4;
-  color: #050505;
-}
+/* ------------------------------------------------------------
+   Формы
+   ------------------------------------------------------------ */
 
-body:not(:has(.calendar-shell)) .page,
-body:not(:has(.calendar-shell)) .read-page,
-body:not(:has(.calendar-shell)) .detail-page,
-body:not(:has(.calendar-shell)) .list-page {
+input,
+select,
+textarea {
   width: 100%;
-  margin: 0;
-  min-height: calc(100vh - 76px);
-  border: 0;
-  border-radius: 0;
-  padding: clamp(42px, 5vw, 92px) clamp(18px, 5vw, 72px);
-  box-shadow: none;
-}
-
-body:not(:has(.calendar-shell)) main {
-  position: relative;
-}
-
-.page,
-.read-page {
-  background-image: none;
-}
-
-.page-hero,
-.read-hero {
-  display: grid;
-  gap: 16px;
-  padding: 0 0 clamp(34px, 5vw, 80px);
-  border-bottom: 2px solid #d8d8d8;
-}
-
-.page-hero h1,
-.read-hero h1,
-.sacred-hero-copy h1,
-.detail-page h1 {
-  max-width: min(100%, 1280px);
-  color: #050505;
-  font-family: Impact, "Arial Black", sans-serif;
-  font-size: clamp(46px, 7.5vw, 132px);
-  line-height: .86;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  overflow-wrap: anywhere;
-  text-wrap: balance;
-}
-
-.page-hero h1,
-.read-hero h1,
-.sacred-hero-copy h1,
-.detail-page h1 {
-  color: transparent;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
   background:
-    linear-gradient(110deg, #050505 0%, #050505 26%, #574b3d 38%, #b8842b 48%, #1f1f1f 58%, #050505 74%, #050505 100%);
-  background-size: 260% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  animation: titleGradientFlow 5.8s ease-in-out infinite;
+    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 46%),
+    var(--surface);
+  color: var(--text);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .page-hero h1,
-  .read-hero h1,
-  .sacred-hero-copy h1,
-  .detail-page h1 {
-    animation: none;
-    background-position: 42% 50%;
-  }
+textarea {
+  min-height: 140px;
+  resize: vertical;
 }
 
-.page-hero p,
-.read-hero p,
-.sacred-hero-copy .detail-lead,
-.detail-lead,
-.icon-detail > div > p:not(.eyebrow) {
-  color: #5d5752;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(18px, 2.1vw, 28px);
-  line-height: 1.4;
+/* ------------------------------------------------------------
+   Сетки контента
+   ------------------------------------------------------------ */
+
+.icon-grid,
+.list-grid,
+.feature-grid,
+.content-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 28px);
+  margin-top: clamp(28px, 4vw, 58px);
 }
 
-.eyebrow,
-.sacred-panel > span,
-.content-feature-grid span,
-.card-category,
-.detail-meta {
-  color: #b8842b;
-  font-family: Arial, Helvetica, sans-serif;
+.content-feature-grid article,
+.faq details,
+.list-grid > a {
+  padding: clamp(18px, 2vw, 30px);
+}
+
+.list-grid > a {
+  display: grid;
+  gap: 10px;
+}
+
+.list-grid span {
+  color: var(--gold-light);
   font-size: 12px;
   font-weight: 900;
-  letter-spacing: .16em;
+  letter-spacing: .12em;
   text-transform: uppercase;
 }
 
-.filter-row,
-.lead-form {
-  display: grid;
-  gap: 12px;
-  margin: 24px 0;
+.list-grid strong,
+.icon-card h3,
+.content-feature-grid h3 {
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-weight: 900;
 }
 
-.filter-row {
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 280px);
+.content-feature-grid h3 {
+  margin: 0 0 12px;
+  font-size: clamp(22px, 1.9vw, 32px);
+  line-height: 1.1;
 }
 
-.icons-page {
-  overflow: hidden;
+.list-grid p,
+.icon-card p,
+.content-feature-grid p,
+.seo-text p {
+  color: var(--muted);
+  line-height: 1.5;
 }
+
+.seo-text,
+.icon-photo-catalog,
+.icon-story-flow {
+  border-top: 1px solid var(--border-gold);
+  padding-top: clamp(22px, 3vw, 42px);
+}
+
+/* ------------------------------------------------------------
+   Каталог икон: герой, статистика, тулбар
+   ------------------------------------------------------------ */
+
+.icons-page { overflow: hidden; }
 
 .icons-catalog-hero {
   grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
@@ -124,17 +98,14 @@ body:not(:has(.calendar-shell)) main {
   gap: clamp(24px, 5vw, 80px);
 }
 
-.icons-catalog-hero h1 {
-  max-width: 980px;
-}
+.icons-catalog-hero h1 { max-width: 980px; }
 
 .icons-catalog-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
   margin: 0;
-  border: 1px solid #d8d8d8;
-  background: #d8d8d8;
+  background: var(--border-gold);
 }
 
 .icons-catalog-stats div {
@@ -147,42 +118,30 @@ body:not(:has(.calendar-shell)) main {
   min-height: 132px;
   padding: 18px;
   background:
-    linear-gradient(135deg, rgba(184, 132, 43, .09), transparent 42%),
-    #f8f5ef;
-}
-
-.icons-catalog-stats .icons-catalog-qr-stat {
-  justify-items: start;
+    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 46%),
+    var(--surface);
 }
 
 .icons-catalog-stats dt {
   min-width: 0;
   max-width: 100%;
-  color: #050505;
-  font-family: Impact, "Arial Black", sans-serif;
-  font-size: 58px;
-  line-height: .9;
-  letter-spacing: 0;
-  overflow-wrap: anywhere;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 48px;
+  line-height: .95;
   white-space: nowrap;
 }
 
 .icons-catalog-stats dd {
   width: 100%;
-  max-width: none;
   margin: 0;
-  color: #6b655f;
+  color: var(--muted);
   font-size: 10px;
   font-weight: 900;
   line-height: 1.16;
-  letter-spacing: 0;
   text-transform: uppercase;
   overflow-wrap: anywhere;
   text-wrap: balance;
-}
-
-.icons-catalog-qr-stat dd {
-  max-width: 100%;
 }
 
 .icons-toolbar {
@@ -203,7 +162,7 @@ body:not(:has(.calendar-shell)) main {
 
 .icons-toolbar label span,
 .icons-select-field > span {
-  color: #8a837b;
+  color: var(--muted);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: .12em;
@@ -211,42 +170,39 @@ body:not(:has(.calendar-shell)) main {
 }
 
 .icons-toolbar input {
-  min-height: 58px;
-  border-color: #d7d0c7;
-  background: #fbfaf8;
-  color: #111;
+  min-height: 56px;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   outline: none;
 }
 
 .icons-toolbar input:focus,
 .icons-select-button:focus-visible {
-  border-color: #b8842b;
-  box-shadow: inset 0 0 0 1px rgba(184, 132, 43, .38);
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(214, 168, 79, .38);
 }
 
 .icons-toolbar input::placeholder {
-  color: #8f8982;
-  font-weight: 700;
+  color: var(--muted);
+  font-weight: 600;
 }
 
-.icons-select-field {
-  position: relative;
-}
+.icons-select-field { position: relative; }
 
 .icons-select-button {
   width: 100%;
-  min-height: 58px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  border: 1px solid #d7d0c7;
-  border-radius: 0;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
   padding: 0 16px;
-  background: #fbfaf8;
-  color: #111;
+  background:
+    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 46%),
+    var(--surface);
+  color: var(--text);
   cursor: pointer;
   outline: none;
 }
@@ -265,10 +221,10 @@ body:not(:has(.calendar-shell)) main {
   width: 10px;
   height: 10px;
   flex: 0 0 auto;
-  border-right: 2px solid #050505;
-  border-bottom: 2px solid #050505;
+  border-right: 2px solid var(--gold-light);
+  border-bottom: 2px solid var(--gold-light);
   transform: translateY(-2px) rotate(45deg);
-  transition: transform .16s ease;
+  transition: transform var(--speed) var(--ease);
 }
 
 .icons-select-button[aria-expanded="true"] i {
@@ -282,33 +238,32 @@ body:not(:has(.calendar-shell)) main {
   right: 0;
   z-index: 30;
   display: grid;
-  border: 1px solid #b8842b;
-  background: #fbfaf8;
-  box-shadow: 0 18px 42px rgba(47, 35, 22, .16);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
 }
 
 .icons-select-menu button {
   min-height: 44px;
   border: 0;
-  border-radius: 0;
-  border-bottom: 1px solid #e3dcd2;
+  border-bottom: 1px solid var(--border-soft);
   padding: 0 14px;
-  background: #fbfaf8;
-  color: #2b2925;
+  background: transparent;
+  color: var(--muted);
   font-size: 15px;
-  font-weight: 850;
+  font-weight: 800;
   text-align: left;
   cursor: pointer;
 }
 
-.icons-select-menu button:last-child {
-  border-bottom: 0;
-}
+.icons-select-menu button:last-child { border-bottom: 0; }
 
 .icons-select-menu button:hover,
 .icons-select-menu button.active {
-  background: #efe7db;
-  color: #050505;
+  background: rgba(214, 168, 79, .14);
+  color: var(--gold-light);
 }
 
 .icons-catalog-section {
@@ -316,85 +271,16 @@ body:not(:has(.calendar-shell)) main {
 }
 
 .icons-empty {
-  border: 1px solid #d8d8d8;
   margin: 0;
   padding: 28px;
-  background: #fbfaf8;
-  color: #5d5752;
+  color: var(--muted);
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
-input,
-select,
-textarea {
-  width: 100%;
-  border: 1px solid #d8d8d8;
-  border-radius: 0;
-  padding: 14px 16px;
-  background: #f9f9f9;
-  color: #050505;
-}
-
-textarea {
-  min-height: 140px;
-  resize: vertical;
-}
-
-button,
-.primary-button,
-.secondary-button,
-.header-action {
-  border-radius: 0;
-}
-
-.lead-form button,
-.primary-button {
-  min-height: 48px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #050505;
-  padding: 0 18px;
-  background: #050505;
-  color: #f4f4f4;
-  font-weight: 900;
-}
-
-.secondary-button {
-  min-height: 48px;
-  border: 1px solid #050505;
-  background: transparent;
-  color: #050505;
-}
-
-.icon-grid,
-.feature-grid,
-.church-grid,
-.list-grid,
-.content-feature-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(14px, 2vw, 28px);
-  margin-top: clamp(28px, 4vw, 58px);
-}
-
-.icon-card,
-.feature-card,
-.church-card,
-.feature-grid > article,
-.church-grid > article,
-.list-grid > a,
-.content-feature-grid article,
-.faq details,
-.sacred-panel,
-.content-panel {
-  border: 1px solid #d8d8d8;
-  border-radius: 0;
-  background: rgba(255, 255, 255, .22);
-  box-shadow: none;
-  padding: clamp(18px, 2vw, 30px);
-}
+/* ------------------------------------------------------------
+   Карточки икон в каталоге
+   ------------------------------------------------------------ */
 
 .icons-page .icon-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -402,45 +288,37 @@ button,
   margin-top: 0;
 }
 
-.icons-page .icon-card {
+.icon-card {
   min-width: 0;
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 0;
   padding: 0;
-  overflow: hidden;
-  background: #fbfaf8;
-  color: inherit;
   text-decoration: none;
-  transition: border-color .18s ease, background .18s ease, transform .18s ease, box-shadow .18s ease;
+  transition: border-color var(--speed) var(--ease), background var(--speed) var(--ease), transform var(--speed) var(--ease);
 }
 
-.icons-page .icon-card:hover {
-  background: #fffdf8;
-  box-shadow: 0 18px 46px rgba(47, 35, 22, .08);
-  transform: translateY(-2px);
-}
+.icon-card:hover { transform: translateY(-2px); }
 
-.icons-page .icon-card figure {
+.icon-card figure {
   position: relative;
   display: grid;
   place-items: center;
   aspect-ratio: 4 / 5;
   min-height: 0;
   margin: 0;
-  border-bottom: 1px solid #ded7cc;
+  border-bottom: 1px solid var(--border-gold);
   padding: clamp(16px, 2.2vw, 34px);
   background:
-    linear-gradient(135deg, rgba(184, 132, 43, .12), transparent 38%),
-    linear-gradient(180deg, #fff, #f4efe6);
+    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .16) 42%, transparent 56%),
+    var(--surface-soft);
+  background-size: 220% 100%, 100% 100%;
   overflow: hidden;
 }
 
-.icons-page .icon-card figure::before,
+/* Скелетон загрузки изображений */
+.icon-card figure::before,
 .list-grid .prayer-list-media::before,
-.sacred-image-frame::before,
-.icon-detail-image::before,
-.detail-image::before,
 .icon-photo-open::before,
 .icon-story-block figure::before,
 .prayer-panel-image::before {
@@ -450,13 +328,13 @@ button,
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(110deg, transparent 0 28%, rgba(255, 255, 255, .78) 42%, transparent 56%),
-    #ede6da;
+    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .14) 42%, transparent 56%),
+    var(--surface-soft);
   background-size: 220% 100%, 100% 100%;
   animation: imageSkeleton 1.4s ease-in-out infinite;
 }
 
-.icons-page .icon-card img {
+.icon-card img {
   position: relative;
   z-index: 1;
   display: block;
@@ -465,11 +343,11 @@ button,
   height: clamp(280px, 34vw, 560px);
   aspect-ratio: 4 / 5;
   object-fit: contain;
-  background: #fffdf8;
-  box-shadow: 0 14px 36px rgba(47, 35, 22, .12);
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-sm);
 }
 
-.icons-page .icon-card-copy {
+.icon-card-copy {
   min-width: 0;
   display: grid;
   align-content: start;
@@ -477,22 +355,22 @@ button,
   padding: clamp(18px, 2vw, 28px);
 }
 
-.icons-page .icon-card span {
-  color: #b8842b;
+.icon-card span {
+  color: var(--gold-light);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .12em;
   text-transform: uppercase;
 }
 
-.icons-page .icon-card h3 {
+.icon-card h3 {
   margin: 0;
-  font-size: clamp(22px, 2vw, 34px);
-  line-height: 1;
+  font-size: clamp(22px, 2vw, 32px);
+  line-height: 1.05;
   text-wrap: balance;
 }
 
-.icons-page .icon-card p {
+.icon-card p {
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
@@ -500,50 +378,28 @@ button,
   -webkit-box-orient: vertical;
 }
 
-.icons-page .icon-card small {
+.icon-card small {
   width: max-content;
   margin-top: 6px;
-  border-bottom: 1px solid #050505;
+  border-bottom: 1px solid var(--gold);
   padding-bottom: 3px;
-  color: #050505;
+  color: var(--gold-light);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
 
-.icon-card:hover,
-.feature-card:hover,
-.church-card:hover,
-.feature-grid > article:hover,
-.church-grid > article:hover,
-.list-grid > a:hover,
-.content-feature-grid article:hover,
-.faq details:hover,
-.mini-grid a:hover {
-  border-color: #b8842b;
-  background: #f8f5ef;
-}
-
-.list-grid > a {
-  display: grid;
-  gap: 10px;
-}
+/* ------------------------------------------------------------
+   Карточки молитв (list-grid)
+   ------------------------------------------------------------ */
 
 .list-grid .prayer-list-card {
   min-width: 0;
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 0;
-  border: 1px solid #d8d8d8;
-  background: #f9f7f2;
   padding: 0;
-  overflow: hidden;
-}
-
-.list-grid .prayer-list-card:hover {
-  border-color: #b8842b;
-  background: #f8f5ef;
 }
 
 .list-grid .prayer-list-media {
@@ -551,11 +407,8 @@ button,
   display: block;
   aspect-ratio: 1 / 1;
   border: 0;
-  border-bottom: 1px solid #ded7cc;
+  border-bottom: 1px solid var(--border-gold);
   padding: clamp(16px, 2.4vw, 34px);
-  background:
-    linear-gradient(135deg, rgba(184, 132, 43, .12), transparent 38%),
-    #ffffff;
   overflow: hidden;
 }
 
@@ -568,11 +421,11 @@ button,
   max-height: clamp(280px, 28vw, 520px);
   aspect-ratio: 1 / 1;
   object-fit: contain;
-  background: #fff;
-  box-shadow: 0 12px 32px rgba(5, 5, 5, .08);
 }
 
 .prayer-list-copy {
+  position: relative;
+  z-index: 1;
   min-width: 0;
   display: grid;
   align-content: start;
@@ -590,50 +443,9 @@ button,
   background: transparent;
 }
 
-.prayer-list-copy > a:hover {
-  background: transparent;
-}
-
-.list-grid span {
-  color: #b8842b;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-
-.list-grid strong,
-.icon-card h3,
-.feature-card h3,
-.church-card h3,
-.feature-grid > article h3,
-.church-grid > article h3,
-.sacred-panel h2,
-.content-feature-grid h3 {
-  color: #050505;
-  font-family: Arial, Helvetica, sans-serif;
-  font-weight: 900;
-}
-
-.feature-grid > article h3,
-.church-grid > article h3 {
-  margin: 0;
-  font-size: clamp(24px, 2.4vw, 42px);
-  line-height: 1;
-}
-
-.list-grid p,
-.icon-card p,
-.feature-card p,
-.church-card p,
-.feature-grid > article p,
-.church-grid > article p,
-.content-feature-grid p,
-.seo-text p,
-.faq p {
-  color: #5d5752;
-  line-height: 1.5;
-}
+.prayer-list-copy > span { color: var(--gold-light); }
+.prayer-list-copy strong { color: var(--text); }
+.prayer-list-copy p { color: var(--muted); }
 
 .prayer-card-actions {
   display: grid;
@@ -642,6 +454,10 @@ button,
   align-items: center;
   margin-top: 6px;
 }
+
+/* ------------------------------------------------------------
+   Ежедневные молитвы
+   ------------------------------------------------------------ */
 
 .daily-prayer-collection {
   display: grid;
@@ -659,26 +475,25 @@ button,
 
 .daily-prayer-intro h2 {
   margin: 0;
-  color: #f9f7f2;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: clamp(34px, 5vw, 84px);
-  font-weight: 900;
-  line-height: .96;
-  text-transform: uppercase;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(30px, 4vw, 68px);
+  font-weight: 700;
+  line-height: 1.05;
 }
 
 .daily-prayer-intro p,
 .daily-prayer-footer p {
   max-width: 760px;
   margin: 0;
-  color: #d8d1c4;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--muted);
+  font-family: var(--font-serif);
   font-size: clamp(18px, 1.6vw, 24px);
   line-height: 1.55;
 }
 
 .daily-prayer-intro .daily-prayer-lead {
-  color: #f1e7d3;
+  color: var(--gold-light);
   font-size: clamp(21px, 2vw, 32px);
   line-height: 1.35;
 }
@@ -686,13 +501,8 @@ button,
 .daily-prayer-reader {
   display: grid;
   gap: clamp(22px, 3vw, 38px);
-  border: 1px solid rgba(214, 168, 79, .5);
-  background:
-    linear-gradient(135deg, rgba(214, 168, 79, .16), transparent 42%),
-    linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .01)),
-    #14120f;
   padding: clamp(22px, 4vw, 56px);
-  box-shadow: 0 24px 72px rgba(0, 0, 0, .28);
+  box-shadow: var(--shadow-md);
 }
 
 .daily-prayer-reader-head {
@@ -700,7 +510,7 @@ button,
   align-items: start;
   justify-content: space-between;
   gap: 18px;
-  border-bottom: 1px solid rgba(214, 168, 79, .24);
+  border-bottom: 1px solid var(--border-soft);
   padding-bottom: clamp(18px, 2vw, 26px);
 }
 
@@ -708,7 +518,7 @@ button,
 .daily-prayer-reader-kicker,
 .daily-prayer-section-label span {
   display: block;
-  color: #d9ad50;
+  color: var(--gold-light);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .16em;
@@ -718,12 +528,11 @@ button,
 
 .daily-prayer-reader-head h3 {
   margin: 8px 0 0;
-  color: #f9f7f2;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: clamp(28px, 3.4vw, 58px);
-  font-weight: 900;
-  line-height: .96;
-  text-transform: uppercase;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3vw, 48px);
+  font-weight: 700;
+  line-height: 1.05;
 }
 
 .daily-prayer-actions {
@@ -736,24 +545,8 @@ button,
 .daily-prayer-actions button,
 .daily-prayer-picker button {
   min-height: 42px;
-  border: 1px solid rgba(214, 168, 79, .38);
-  background: rgba(214, 168, 79, .08);
-  color: #f1d18a;
   padding: 0 14px;
   font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.daily-prayer-actions button:first-child,
-.daily-prayer-actions button:hover,
-.daily-prayer-actions button:focus-visible,
-.daily-prayer-picker button.active {
-  border-color: #d6a84f;
-  background: #d6a84f;
-  color: #0b0b0a;
 }
 
 .daily-prayer-reader-body {
@@ -764,8 +557,8 @@ button,
 
 .daily-prayer-reader-body h3 {
   margin: 0;
-  color: #fffaf0;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--text);
+  font-family: var(--font-serif);
   font-size: clamp(30px, 3vw, 52px);
   font-weight: 700;
   line-height: 1.12;
@@ -773,8 +566,8 @@ button,
 
 .daily-prayer-reader-body p {
   margin: 0;
-  color: #eee7dc;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--muted);
+  font-family: var(--font-serif);
   font-size: clamp(22px, 2vw, 30px);
   line-height: 1.72;
   white-space: pre-line;
@@ -783,9 +576,9 @@ button,
 .daily-prayer-reader-body small {
   width: max-content;
   max-width: 100%;
-  border-left: 3px solid #d6a84f;
+  border-left: 3px solid var(--gold);
   padding: 8px 0 8px 12px;
-  color: #d9ad50;
+  color: var(--gold-light);
   font-size: 13px;
   font-weight: 900;
 }
@@ -798,9 +591,7 @@ button,
   scrollbar-width: none;
 }
 
-.daily-prayer-picker::-webkit-scrollbar {
-  display: none;
-}
+.daily-prayer-picker::-webkit-scrollbar { display: none; }
 
 .daily-prayer-picker button {
   flex: 0 0 auto;
@@ -820,7 +611,7 @@ button,
 }
 
 .daily-prayer-section-label {
-  border-top: 1px solid rgba(214, 168, 79, .28);
+  border-top: 1px solid var(--border-soft);
   padding-top: clamp(14px, 2vw, 22px);
 }
 
@@ -835,24 +626,15 @@ button,
   display: grid;
   align-content: start;
   gap: 14px;
-  border: 1px solid rgba(184, 132, 43, .34);
-  background:
-    linear-gradient(135deg, rgba(184, 132, 43, .12), rgba(255, 255, 255, .02) 46%),
-    #11100d;
   padding: clamp(20px, 2.4vw, 34px);
-  color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+  transition: border-color var(--speed) var(--ease), background var(--speed) var(--ease), transform var(--speed) var(--ease);
 }
 
 .daily-prayer-card:hover,
 .daily-prayer-card:focus-visible {
-  border-color: rgba(214, 168, 79, .72);
-  background:
-    linear-gradient(135deg, rgba(184, 132, 43, .18), rgba(255, 255, 255, .03) 48%),
-    #15130f;
   transform: translateY(-2px);
   outline: none;
 }
@@ -861,7 +643,7 @@ button,
   width: max-content;
   border-bottom: 1px solid rgba(184, 132, 43, .72);
   padding-bottom: 6px;
-  color: #d9ad50;
+  color: var(--gold-light);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .14em;
@@ -870,27 +652,26 @@ button,
 
 .daily-prayer-card h3 {
   margin: 0;
-  color: #f9f7f2;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: clamp(22px, 2.1vw, 36px);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: clamp(21px, 1.9vw, 32px);
   font-weight: 900;
-  line-height: 1.05;
-  text-transform: uppercase;
+  line-height: 1.1;
 }
 
 .daily-prayer-card h3::before {
   content: "❤";
   display: inline-block;
   margin-right: 10px;
-  color: #d9ad50;
+  color: var(--gold-light);
   font-size: .72em;
   transform: translateY(-1px);
 }
 
 .daily-prayer-card p {
   margin: 0;
-  color: #e5dfd5;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--muted);
+  font-family: var(--font-serif);
   font-size: clamp(17px, 1.35vw, 22px);
   line-height: 1.62;
   white-space: pre-line;
@@ -899,18 +680,19 @@ button,
 .daily-prayer-footer {
   display: grid;
   gap: 10px;
-  border-left: 4px solid #b8842b;
+  border-left: 4px solid var(--gold-deep);
   padding-left: clamp(16px, 2vw, 28px);
 }
 
 .daily-prayer-footer small {
-  color: #d9ad50;
+  color: var(--gold-light);
   font-size: 13px;
   font-weight: 900;
   letter-spacing: .1em;
   text-transform: uppercase;
 }
 
+/* Полноэкранная читалка молитв */
 .daily-prayer-fullscreen {
   position: fixed;
   inset: 0;
@@ -931,10 +713,11 @@ button,
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: clamp(16px, 2.4vw, 28px);
   border: 1px solid rgba(214, 168, 79, .52);
+  border-radius: var(--radius-lg);
   background:
     linear-gradient(135deg, rgba(214, 168, 79, .14), transparent 42%),
-    #11100d;
-  box-shadow: 0 28px 90px rgba(0, 0, 0, .58);
+    var(--surface);
+  box-shadow: var(--shadow-lg);
   padding: clamp(18px, 3vw, 46px);
   overflow: hidden;
 }
@@ -944,39 +727,16 @@ button,
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid rgba(214, 168, 79, .24);
+  border-bottom: 1px solid var(--border-soft);
   padding-bottom: 14px;
 }
 
 .daily-prayer-fullscreen-top span {
-  color: #d9ad50;
+  color: var(--gold-light);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .16em;
   text-transform: uppercase;
-}
-
-.daily-prayer-fullscreen-close,
-.daily-prayer-fullscreen-actions button {
-  min-height: 44px;
-  border: 1px solid rgba(214, 168, 79, .42);
-  background: rgba(214, 168, 79, .08);
-  color: #f1d18a;
-  padding: 0 16px;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.daily-prayer-fullscreen-close:hover,
-.daily-prayer-fullscreen-close:focus-visible,
-.daily-prayer-fullscreen-actions button:hover,
-.daily-prayer-fullscreen-actions button:focus-visible {
-  border-color: #d6a84f;
-  background: #d6a84f;
-  color: #0b0b0a;
 }
 
 .daily-prayer-fullscreen-reader {
@@ -990,8 +750,8 @@ button,
 
 .daily-prayer-fullscreen-reader h3 {
   margin: 0 0 clamp(18px, 3vw, 34px);
-  color: #fffaf0;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--text);
+  font-family: var(--font-serif);
   font-size: clamp(34px, 4.8vw, 68px);
   font-weight: 700;
   line-height: 1.08;
@@ -999,8 +759,8 @@ button,
 
 .daily-prayer-fullscreen-reader p {
   margin: 0;
-  color: #f0e8dc;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--muted);
+  font-family: var(--font-serif);
   font-size: clamp(23px, 2.4vw, 34px);
   line-height: 1.72;
   white-space: pre-line;
@@ -1011,9 +771,9 @@ button,
   width: max-content;
   max-width: 100%;
   margin-top: 22px;
-  border-left: 3px solid #d6a84f;
+  border-left: 3px solid var(--gold);
   padding: 8px 0 8px 12px;
-  color: #d9ad50;
+  color: var(--gold-light);
   font-size: 13px;
   font-weight: 900;
 }
@@ -1022,104 +782,13 @@ button,
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  border-top: 1px solid rgba(214, 168, 79, .24);
+  border-top: 1px solid var(--border-soft);
   padding-top: 14px;
 }
 
-.daily-prayer-fullscreen-actions button:first-child {
-  border-color: #d6a84f;
-  background: #d6a84f;
-  color: #0b0b0a;
-}
-
-.sacred-detail-hero,
-.icon-detail {
-  align-items: start;
-  gap: clamp(28px, 5vw, 78px);
-}
-
-.sacred-image-frame,
-.icon-detail-image,
-.icon-detail > img,
-.detail-image {
-  position: relative;
-  border: 1px solid #d8d8d8;
-  border-radius: 0;
-  background: #f9f9f9;
-  box-shadow: none;
-  overflow: hidden;
-}
-
-.icon-detail > div {
-  min-width: 0;
-  display: grid;
-  align-content: start;
-  gap: 18px;
-}
-
-.sacred-image-frame img,
-.icon-detail-image img,
-.icon-detail > img,
-.detail-image img {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  max-height: none;
-  aspect-ratio: 4 / 5;
-  object-fit: contain;
-  object-position: center;
-}
-
-.sacred-image-frame {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 4 / 5;
-}
-
-.icon-detail-image {
-  display: grid;
-  place-items: center;
-  margin: 0;
-  aspect-ratio: 4 / 5;
-}
-
-.soft-note {
-  border-left: 4px solid #b8842b;
-  background: transparent;
-  color: #2e2924;
-}
-
-.detail-actions,
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.sacred-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.sacred-meta span {
-  min-height: 36px;
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid #d8d8d8;
-  padding: 0 12px;
-  color: #b8842b;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.icon-photo-catalog {
-  border-top: 2px solid #d8d8d8;
-  padding-top: clamp(22px, 3vw, 42px);
-}
+/* ------------------------------------------------------------
+   Фотокаталог иконы и лайтбокс
+   ------------------------------------------------------------ */
 
 .icon-photo-catalog .section-head {
   margin-bottom: clamp(18px, 2.5vw, 30px);
@@ -1127,12 +796,11 @@ button,
 
 .icon-photo-catalog h2 {
   margin: 0;
-  color: #050505;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: clamp(26px, 3.2vw, 48px);
-  font-weight: 900;
-  line-height: .95;
-  text-transform: uppercase;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(24px, 2.8vw, 42px);
+  font-weight: 700;
+  line-height: 1.05;
 }
 
 .icon-photo-grid {
@@ -1145,11 +813,8 @@ button,
 .icon-photo-card {
   min-width: 0;
   margin: 0;
-  border: 1px solid #d8d8d8;
-  background: #fff;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  overflow: hidden;
 }
 
 .icon-photo-open {
@@ -1160,7 +825,9 @@ button,
   border: 0;
   padding: clamp(10px, 1.5vw, 18px);
   position: relative;
-  background: #f7f7f5;
+  background:
+    linear-gradient(135deg, rgba(214, 168, 79, .1), transparent 44%),
+    var(--surface);
   cursor: zoom-in;
   overflow: hidden;
 }
@@ -1175,16 +842,16 @@ button,
   display: block;
 }
 
-.icon-photo-card.is-product .icon-photo-open {
-  background: #f3eee7;
-}
-
-.icon-photo-card.is-qr {
-  background: #fff;
+.icon-photo-card.is-qr .icon-photo-open {
+  background:
+    linear-gradient(135deg, rgba(214, 168, 79, .12), transparent 42%),
+    #f6efe2;
 }
 
 .icon-photo-card.is-qr .icon-photo-open img {
   padding: clamp(18px, 3vw, 34px);
+  background: #fff;
+  border-radius: var(--radius-xs);
 }
 
 .icon-photo-open span {
@@ -1195,15 +862,16 @@ button,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid rgba(255,255,255,.68);
-  background: rgba(5,5,5,.72);
-  color: #fff;
-  padding: 8px 10px;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
+  background: rgba(11, 11, 10, .78);
+  color: var(--gold-light);
+  padding: 8px 12px;
   font-size: 11px;
   font-weight: 900;
   opacity: 0;
   text-transform: uppercase;
-  transition: opacity .18s ease;
+  transition: opacity var(--speed) var(--ease);
 }
 
 .icon-photo-open:hover span,
@@ -1224,7 +892,7 @@ button,
 .icon-photo-card figcaption {
   min-width: 0;
   min-height: 64px;
-  border-top: 1px solid #d8d8d8;
+  border-top: 1px solid var(--border-gold);
   padding: 10px;
   display: flex;
   align-items: center;
@@ -1241,7 +909,7 @@ button,
 
 .icon-photo-meta span {
   flex: 0 0 auto;
-  color: #b8842b;
+  color: var(--gold-light);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .12em;
@@ -1249,7 +917,7 @@ button,
 
 .icon-photo-meta strong {
   min-width: 0;
-  color: #050505;
+  color: var(--text);
   font-size: 13px;
   font-weight: 900;
   overflow: hidden;
@@ -1280,7 +948,7 @@ button,
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(5,5,5,.84);
+  background: rgba(5, 5, 5, .84);
 }
 
 .icon-lightbox-panel {
@@ -1288,10 +956,12 @@ button,
   max-height: min(90vh, calc(100vh - 56px));
   position: relative;
   z-index: 1;
-  border: 1px solid rgba(255,255,255,.22);
-  background: #0b0b0b;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  background: var(--background);
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
 }
 
 .icon-lightbox-panel::before {
@@ -1301,8 +971,8 @@ button,
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(110deg, transparent 0 28%, rgba(255, 255, 255, .12) 42%, transparent 56%),
-    #111;
+    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .13) 42%, transparent 56%),
+    var(--surface);
   background-size: 220% 100%, 100% 100%;
   animation: imageSkeleton 1.4s ease-in-out infinite;
 }
@@ -1322,38 +992,31 @@ button,
   top: 12px;
   right: 12px;
   z-index: 2;
-  border: 1px solid rgba(255,255,255,.34);
-  background: rgba(5,5,5,.76);
-  color: #fff;
-  padding: 9px 12px;
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-  cursor: pointer;
+  min-height: 38px;
+  padding: 0 12px;
+  background: rgba(11, 11, 10, .78);
 }
 
 .icon-lightbox-caption {
   min-width: 0;
-  border-top: 1px solid rgba(255,255,255,.16);
+  border-top: 1px solid var(--border-gold);
   padding: 12px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: #fff;
+  color: var(--text);
 }
 
 .icon-lightbox-caption strong,
 .icon-lightbox-caption a {
-  color: #fff;
+  color: var(--text);
   font-size: 13px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
-.icon-lightbox-caption a {
-  color: #e0b25f;
-}
+.icon-lightbox-caption a { color: var(--gold-light); }
 
 .icon-lightbox-actions {
   display: flex;
@@ -1363,31 +1026,9 @@ button,
   gap: 14px;
 }
 
-.sacred-content-grid,
-.icon-story-flow,
-.related-section,
-.seo-text,
-.faq {
-  border-top: 2px solid #d8d8d8;
-  padding-top: clamp(22px, 3vw, 42px);
-}
-
-.mini-grid {
-  border-color: #d8d8d8;
-}
-
-.mini-grid a {
-  border-color: #d8d8d8;
-}
-
-.reader-text {
-  max-width: 960px;
-  color: #2e2924;
-}
-
-.reader-text p {
-  margin-top: 0;
-}
+/* ------------------------------------------------------------
+   Житие: чередующиеся блоки с изображениями
+   ------------------------------------------------------------ */
 
 .icon-story-flow {
   display: grid;
@@ -1400,19 +1041,17 @@ button,
   grid-template-columns: minmax(260px, .92fr) minmax(0, 1.08fr);
   gap: clamp(20px, 4vw, 64px);
   align-items: center;
-  border-bottom: 1px solid #d8d8d8;
+  border-bottom: 1px solid var(--border-soft);
   padding-bottom: clamp(22px, 3vw, 42px);
 }
 
-.icon-story-block:nth-child(even) figure {
-  order: 2;
-}
+.icon-story-block:nth-child(even) figure { order: 2; }
 
 .icon-story-block figure {
   position: relative;
   margin: 0;
-  border: 1px solid #d8d8d8;
-  background: #f9f9f9;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
   padding: clamp(10px, 1.4vw, 18px);
   aspect-ratio: 4 / 5;
   overflow: hidden;
@@ -1424,10 +1063,8 @@ button,
   display: block;
   width: 100%;
   height: 100%;
-  max-height: none;
   aspect-ratio: 4 / 5;
   object-fit: contain;
-  background: #f3f0ea;
 }
 
 .icon-story-block > div {
@@ -1438,7 +1075,7 @@ button,
 .icon-story-block span {
   display: block;
   margin-bottom: 12px;
-  color: #b8842b;
+  color: var(--gold-light);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .16em;
@@ -1447,25 +1084,26 @@ button,
 
 .icon-story-block h2 {
   margin: 0 0 clamp(12px, 1.4vw, 18px);
-  color: #050505;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: clamp(28px, 3.2vw, 58px);
-  font-weight: 900;
-  line-height: .95;
-  text-transform: uppercase;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(26px, 2.8vw, 48px);
+  font-weight: 700;
+  line-height: 1.05;
 }
 
 .icon-story-block p {
   margin: 0 0 14px;
-  color: #3b342e;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--muted);
+  font-family: var(--font-serif);
   font-size: clamp(17px, 1.45vw, 22px);
   line-height: 1.5;
 }
 
-.icon-story-block p:last-child {
-  margin-bottom: 0;
-}
+.icon-story-block p:last-child { margin-bottom: 0; }
+
+/* ------------------------------------------------------------
+   Панель молитвы с образом
+   ------------------------------------------------------------ */
 
 .prayer-panel-layout {
   display: grid;
@@ -1477,8 +1115,8 @@ button,
 .prayer-panel-image {
   position: relative;
   margin: 0;
-  border: 1px solid #d8d8d8;
-  background: #f9f9f9;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
   aspect-ratio: 1 / 1;
   overflow: hidden;
 }
@@ -1489,18 +1127,15 @@ button,
   display: block;
   width: 100%;
   height: 100%;
-  max-height: none;
   padding: 12px;
   object-fit: contain;
 }
 
-.prayer-panel-copy {
-  min-width: 0;
-}
+.prayer-panel-copy { min-width: 0; }
 
 .prayer-panel-copy > span {
-  color: #b8842b;
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--gold-light);
+  font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .16em;
@@ -1510,35 +1145,32 @@ button,
 .prayer-reader-panel {
   max-width: 1180px;
   margin-inline: auto;
-  border-color: #d4c7b4;
   padding: clamp(22px, 4vw, 70px);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(248, 244, 236, .92)),
-    #fbf8f1;
 }
 
 .prayer-reader-panel > span {
   width: max-content;
-  border: 1px solid #d8d1c7;
-  padding: 8px 12px;
-  background: #f4f0e8;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
+  padding: 8px 14px;
+  background: rgba(214, 168, 79, .08);
 }
 
 .prayer-reader {
   max-width: 860px;
   margin-inline: auto;
-  color: #2b2520;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--text);
+  font-family: var(--font-serif);
   font-size: clamp(20px, 2vw, 31px);
   line-height: 1.72;
 }
 
 .prayer-reader h3 {
   margin: clamp(26px, 4vw, 54px) 0 clamp(14px, 2vw, 26px);
-  border-top: 1px solid #ded4c5;
+  border-top: 1px solid var(--border-soft);
   padding-top: clamp(18px, 2.4vw, 32px);
-  color: #b8842b;
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--gold-light);
+  font-family: var(--font-ui);
   font-size: clamp(16px, 1.45vw, 22px);
   font-weight: 900;
   letter-spacing: .08em;
@@ -1562,546 +1194,41 @@ button,
   display: block;
 }
 
-.lead-form {
-  max-width: 980px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-top: 2px solid #d8d8d8;
-  padding-top: clamp(22px, 3vw, 42px);
-}
+/* ------------------------------------------------------------
+   Структурированные блоки из админки
+   ------------------------------------------------------------ */
 
-.lead-form textarea,
-.lead-form button {
-  grid-column: 1 / -1;
-}
-
-@media (max-width: 900px) {
-  body:not(:has(.calendar-shell)) .page,
-  body:not(:has(.calendar-shell)) .read-page,
-  body:not(:has(.calendar-shell)) .detail-page,
-  body:not(:has(.calendar-shell)) .list-page {
-    margin: 0;
-    border: 0;
-    border-radius: 0;
-    min-height: calc(100vh - 112px);
-    padding: 28px 16px 46px;
-  }
-
-  .filter-row,
-  .lead-form,
-  .icons-catalog-hero,
-  .icons-toolbar,
-  .icon-grid,
-  .feature-grid,
-  .church-grid,
-  .list-grid,
-  .content-feature-grid,
-  .sacred-content-grid,
-  .daily-prayer-grid,
-  .icon-story-block,
-  .mini-grid,
-  .icon-photo-grid,
-  .icon-detail,
-  .sacred-detail-hero {
-    grid-template-columns: 1fr;
-  }
-
-  .prayer-panel {
-    grid-column: auto;
-  }
-
-  .prayer-panel-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .prayer-panel-image {
-    max-height: 72vh;
-  }
-
-  .prayer-panel-image img {
-    max-height: 72vh;
-  }
-
-  .page-hero,
-  .read-hero {
-    gap: 12px;
-    padding-bottom: 30px;
-  }
-
-  .page-hero h1,
-  .read-hero h1,
-  .sacred-hero-copy h1,
-  .detail-page h1 {
-    max-width: 100%;
-    font-size: clamp(42px, 16vw, 76px);
-    line-height: .9;
-    overflow-wrap: anywhere;
-  }
-
-  .page-hero p,
-  .read-hero p,
-  .sacred-hero-copy .detail-lead,
-  .detail-lead,
-  .icon-detail > div > p:not(.eyebrow) {
-    font-size: 18px;
-    line-height: 1.45;
-  }
-
-  .filter-row {
-    gap: 10px;
-    margin: 18px 0;
-  }
-
-  .icons-catalog-hero {
-    align-items: start;
-  }
-
-  .icons-catalog-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .icons-catalog-stats div {
-    min-height: 104px;
-    padding: 14px;
-  }
-
-  .icons-catalog-stats dd {
-    max-width: 100%;
-  }
-
-  .icons-toolbar {
-    gap: 12px;
-    max-width: none;
-  }
-
-  .icons-page .icon-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .icons-page .icon-card img {
-    height: clamp(260px, 54vw, 440px);
-  }
-
-  input,
-  select,
-  textarea {
-    min-height: 48px;
-    padding: 12px 14px;
-    font-size: 16px;
-  }
-
-  .icon-grid,
-  .feature-grid,
-  .church-grid,
-  .list-grid,
-  .content-feature-grid {
-    gap: 12px;
-    margin-top: 24px;
-  }
-
-  .icon-card,
-  .feature-card,
-  .church-card,
-  .feature-grid > article,
-  .church-grid > article,
-  .list-grid > a,
-  .content-feature-grid article,
-  .faq details,
-  .sacred-panel,
-  .content-panel {
-    padding: 16px;
-  }
-
-  .sacred-image-frame {
-    position: static;
-  }
-
-  .icon-photo-card {
-    grid-template-rows: minmax(220px, 72vw) auto;
-  }
-
-  .icon-photo-card figcaption {
-    align-items: start;
-    flex-wrap: wrap;
-  }
-
-  .icon-qr-actions,
-  .icon-lightbox-actions {
-    width: 100%;
-    justify-content: stretch;
-  }
-
-  .icon-qr-actions {
-    flex-direction: column;
-  }
-
-  .icon-lightbox {
-    padding: 16px;
-  }
-
-  .icon-lightbox-panel img {
-    max-height: calc(100vh - 132px);
-  }
-
-  .icon-photo-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .prayer-card-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .daily-prayer-intro h2 {
-    font-size: clamp(32px, 11vw, 58px);
-  }
-
-  .daily-prayer-reader {
-    padding: clamp(18px, 5vw, 32px);
-  }
-
-  .daily-prayer-reader-head {
-    display: grid;
-    justify-content: stretch;
-  }
-
-  .daily-prayer-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    justify-content: stretch;
-  }
-
-  .daily-prayer-actions button {
-    min-width: 0;
-    padding-inline: 10px;
-    white-space: normal;
-  }
-
-  .daily-prayer-fullscreen {
-    padding: 0;
-  }
-
-  .daily-prayer-fullscreen-panel {
-    width: 100%;
-    height: 100%;
-    border: 0;
-    padding: max(16px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom));
-  }
-
-  .daily-prayer-fullscreen-reader {
-    width: 100%;
-    padding-inline: 2px;
-  }
-
-  .daily-prayer-fullscreen-reader h3 {
-    font-size: clamp(30px, 10vw, 44px);
-  }
-
-  .daily-prayer-fullscreen-reader p {
-    font-size: clamp(21px, 6vw, 26px);
-    line-height: 1.66;
-  }
-
-  .icon-photo-open {
-    min-height: 0;
-    max-height: 72vh;
-    aspect-ratio: 1 / 1;
-  }
-
-  .icon-photo-card figcaption {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .icon-photo-meta {
-    width: 100%;
-  }
-
-  .icon-photo-meta strong {
-    white-space: normal;
-  }
-
-  .asset-button,
-  .icon-qr-actions {
-    width: 100%;
-  }
-
-  .icon-qr-actions {
-    justify-content: stretch;
-  }
-
-  .icon-qr-actions .asset-button {
-    flex: 1 1 160px;
-  }
-
-  .sacred-content-grid,
-  .icon-story-flow,
-  .icon-photo-catalog,
-  .related-section,
-  .seo-text,
-  .faq {
-    margin-top: 28px;
-    padding-top: 22px;
-  }
-
-  .icon-story-block:nth-child(even) figure {
-    order: 0;
-  }
-
-  .icon-story-block {
-    gap: 16px;
-  }
-
-  .icon-story-block figure,
-  .icon-story-block img {
-    max-height: 72vh;
-  }
-
-  .detail-actions,
-  .hero-actions,
-  .list-panel-links {
-    width: 100%;
-  }
-
-  .primary-button,
-  .secondary-button,
-  .lead-form button {
-    width: 100%;
-  }
-
-  .prayer-reader-panel {
-    padding: 22px 18px;
-  }
-
-  .prayer-reader {
-    font-size: clamp(19px, 5.4vw, 23px);
-    line-height: 1.62;
-  }
-
-}
-
-@media (max-width: 520px) {
-  body:not(:has(.calendar-shell)) .page,
-  body:not(:has(.calendar-shell)) .read-page,
-  body:not(:has(.calendar-shell)) .detail-page,
-  body:not(:has(.calendar-shell)) .list-page {
-    padding: 24px 14px 40px;
-  }
-
-  .page-hero h1,
-  .read-hero h1,
-  .sacred-hero-copy h1,
-  .detail-page h1 {
-    font-size: clamp(38px, 18vw, 64px);
-  }
-
-  .eyebrow,
-  .sacred-panel > span,
-  .content-feature-grid span,
-  .card-category,
-  .detail-meta {
-    letter-spacing: .12em;
-  }
-
-  .list-grid strong,
-  .icon-card h3,
-  .feature-card h3,
-  .church-card h3,
-  .feature-grid > article h3,
-  .church-grid > article h3,
-  .sacred-panel h2,
-  .content-feature-grid h3 {
-    font-size: clamp(22px, 7vw, 34px);
-    line-height: 1.05;
-  }
-
-  .mini-grid a {
-    min-height: 108px;
-  }
-
-  .icons-catalog-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .icons-catalog-stats div {
-    min-height: 86px;
-  }
-
-  .icons-toolbar input,
-  .icons-select-button {
-    min-height: 54px;
-  }
-
-  .icons-page .icon-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .icons-page .icon-card figure {
-    padding: 14px;
-  }
-
-  .icons-page .icon-card img {
-    height: min(76vh, 460px);
-  }
-
-  .daily-prayer-reader-body h3 {
-    font-size: clamp(28px, 9vw, 42px);
-  }
-
-  .daily-prayer-reader-body p {
-    font-size: clamp(20px, 6vw, 24px);
-    line-height: 1.66;
-  }
-}
-
-@media (max-width: 430px) {
-  body:not(:has(.calendar-shell)) .page,
-  body:not(:has(.calendar-shell)) .read-page,
-  body:not(:has(.calendar-shell)) .detail-page,
-  body:not(:has(.calendar-shell)) .list-page {
-    padding: 20px 12px 34px;
-  }
-
-  .page-hero,
-  .read-hero {
-    padding-bottom: 22px;
-  }
-
-  .daily-prayer-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .daily-prayer-fullscreen-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .daily-prayer-fullscreen-close,
-  .daily-prayer-fullscreen-actions button {
-    width: 100%;
-  }
-
-  .page-hero h1,
-  .read-hero h1,
-  .sacred-hero-copy h1,
-  .detail-page h1 {
-    font-size: clamp(34px, 14vw, 54px);
-    line-height: .92;
-  }
-
-  .page-hero p,
-  .read-hero p,
-  .sacred-hero-copy .detail-lead,
-  .detail-lead,
-  .icon-detail > div > p:not(.eyebrow) {
-    font-size: 16px;
-  }
-
-  .icons-catalog-stats div {
-    min-height: 74px;
-    padding: 12px;
-  }
-
-  .icons-catalog-stats dt {
-    font-size: 36px;
-  }
-
-  .icons-catalog-stats dd,
-  .icons-catalog-qr-stat dd {
-    max-width: none;
-    font-size: 10px;
-  }
-
-  .icons-toolbar {
-    margin-top: 20px;
-  }
-
-  .icons-toolbar input,
-  .icons-select-button {
-    min-height: 50px;
-    padding-inline: 12px;
-    font-size: 15px;
-  }
-
-  .icons-select-menu button {
-    min-height: 42px;
-    font-size: 14px;
-  }
-
-  .icons-page .icon-card img {
-    height: min(62vh, 360px);
-  }
-
-  .icons-page .icon-card-copy,
-  .prayer-list-copy {
-    padding: 16px;
-  }
-
-  .icons-page .icon-card h3,
-  .list-grid strong,
-  .feature-grid > article h3,
-  .church-grid > article h3,
-  .sacred-panel h2,
-  .content-feature-grid h3 {
-    font-size: clamp(21px, 7vw, 30px);
-  }
-
-  .sacred-image-frame,
-  .icon-detail-image,
-  .icon-detail > img,
-  .prayer-panel-image {
-    padding: 10px;
-  }
-
-  .sacred-image-frame img,
-  .icon-detail-image img,
-  .icon-detail > img,
-  .prayer-panel-image img,
-  .icon-story-block figure,
-  .icon-story-block img {
-    max-height: 68vh;
-  }
-
-  .prayer-reader-panel {
-    padding: 18px 14px;
-  }
-
-  .prayer-reader {
-    font-size: 18px;
-    line-height: 1.58;
-  }
-
-  .asset-button {
-    min-height: 42px;
-    white-space: normal;
-  }
-}
-
-
-/* Localized structured content from admin icon editor */
 .structured-blocks {
   display: grid;
   gap: clamp(14px, 1.6vw, 22px);
 }
 
 .structured-block {
-  border-left: 3px solid #b8842b;
+  border-left: 3px solid var(--gold-deep);
   padding-left: clamp(14px, 1.6vw, 20px);
 }
 
 .structured-block h3 {
   margin: 0 0 8px;
-  color: #b8842b;
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--gold-light);
+  font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 900;
   letter-spacing: .1em;
   text-transform: uppercase;
 }
 
+.structured-block p { color: var(--muted); }
+
 .structured-block p:last-child,
 .church-directory-card p:last-child,
 .church-facts dd:last-child {
   margin-bottom: 0;
 }
+
+/* ------------------------------------------------------------
+   Каталог храмов
+   ------------------------------------------------------------ */
 
 .church-directory {
   display: grid;
@@ -2110,22 +1237,19 @@ button,
 }
 
 .church-directory-card {
-  border: 1px solid #d8d8d8;
-  background: rgba(255, 255, 255, .32);
   display: grid;
   grid-template-columns: minmax(220px, 360px) minmax(0, 1fr);
   min-height: 320px;
-  overflow: hidden;
 }
 
 .church-directory-media {
   position: relative;
   min-height: 320px;
   margin: 0;
-  border-right: 1px solid #d8d8d8;
+  border-right: 1px solid var(--border-gold);
   background:
-    linear-gradient(110deg, transparent 0 28%, rgba(255, 255, 255, .7) 42%, transparent 56%),
-    #e9e1d4;
+    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .16) 42%, transparent 56%),
+    var(--surface-soft);
   background-size: 220% 100%, 100% 100%;
   overflow: hidden;
   animation: imageSkeleton 1.4s ease-in-out infinite;
@@ -2150,7 +1274,7 @@ button,
 
 .church-directory-copy > span,
 .church-dedication {
-  color: #b8842b;
+  color: var(--gold-light);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .1em;
@@ -2159,33 +1283,42 @@ button,
 
 .church-directory-copy h2 {
   margin: 0;
-  color: #050505;
-  font-family: Impact, "Arial Black", sans-serif;
-  font-size: clamp(34px, 4.2vw, 72px);
-  line-height: .9;
-  letter-spacing: 0;
-  text-transform: uppercase;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.6vw, 58px);
+  font-weight: 700;
+  line-height: 1.05;
+  background:
+    linear-gradient(110deg, var(--text) 0%, var(--text) 28%, var(--gold-light) 46%, var(--gold) 54%, var(--text) 72%, var(--text) 100%);
+  background-size: 260% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
+
+.church-directory-copy p { color: var(--muted); }
 
 .church-facts {
   display: grid;
   grid-template-columns: minmax(110px, 170px) minmax(0, 1fr);
   gap: 0;
-  border-top: 1px solid #d8d8d8;
-  border-left: 1px solid #d8d8d8;
+  border-top: 1px solid var(--border-soft);
+  border-left: 1px solid var(--border-soft);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
 }
 
 .church-facts dt,
 .church-facts dd {
   min-width: 0;
   margin: 0;
-  border-right: 1px solid #d8d8d8;
-  border-bottom: 1px solid #d8d8d8;
+  border-right: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
   padding: 11px 12px;
 }
 
 .church-facts dt {
-  color: #b8842b;
+  color: var(--gold-light);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: .1em;
@@ -2193,14 +1326,210 @@ button,
 }
 
 .church-facts dd {
-  color: #2e2924;
+  color: var(--muted);
   line-height: 1.45;
 }
 
-@media (max-width: 820px) {
-  .church-directory-card {
+/* ------------------------------------------------------------
+   Адаптив
+   ------------------------------------------------------------ */
+
+@media (max-width: 900px) {
+  .page,
+  .read-page,
+  .detail-page {
+    min-height: calc(100vh - 112px);
+    padding: 28px 16px 46px;
+  }
+
+  .icons-catalog-hero,
+  .icons-toolbar,
+  .icon-grid,
+  .list-grid,
+  .feature-grid,
+  .content-feature-grid,
+  .daily-prayer-grid,
+  .icon-story-block {
     grid-template-columns: 1fr;
   }
+
+  .prayer-panel-layout { grid-template-columns: 1fr; }
+
+  .prayer-panel-image,
+  .prayer-panel-image img {
+    max-height: 72vh;
+  }
+
+  .page-hero,
+  .read-hero {
+    gap: 12px;
+    padding-bottom: 30px;
+  }
+
+  .icons-catalog-hero { align-items: start; }
+
+  .icons-catalog-stats div {
+    min-height: 104px;
+    padding: 14px;
+  }
+
+  .icons-toolbar {
+    gap: 12px;
+    max-width: none;
+  }
+
+  .icons-page .icon-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .icon-card img { height: clamp(260px, 54vw, 440px); }
+
+  input,
+  select,
+  textarea {
+    min-height: 48px;
+    padding: 12px 14px;
+    font-size: 16px;
+  }
+
+  .icon-grid,
+  .list-grid,
+  .feature-grid,
+  .content-feature-grid {
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .content-feature-grid article,
+  .faq details,
+  .list-grid > a,
+  .sacred-panel {
+    padding: 16px;
+  }
+
+  .icon-photo-card {
+    grid-template-rows: minmax(220px, 72vw) auto;
+  }
+
+  .icon-photo-card figcaption {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .icon-photo-meta { width: 100%; }
+
+  .icon-photo-meta strong { white-space: normal; }
+
+  .icon-qr-actions,
+  .icon-lightbox-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .icon-qr-actions { flex-direction: column; }
+
+  .icon-lightbox { padding: 16px; }
+
+  .icon-lightbox-panel img {
+    max-height: calc(100vh - 132px);
+  }
+
+  .icon-photo-grid { grid-template-columns: 1fr; }
+
+  .icon-photo-open {
+    min-height: 0;
+    max-height: 72vh;
+    aspect-ratio: 1 / 1;
+  }
+
+  .prayer-card-actions { grid-template-columns: 1fr; }
+
+  .daily-prayer-intro h2 {
+    font-size: clamp(30px, 8vw, 48px);
+  }
+
+  .daily-prayer-reader {
+    padding: clamp(18px, 5vw, 32px);
+  }
+
+  .daily-prayer-reader-head {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .daily-prayer-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: stretch;
+  }
+
+  .daily-prayer-actions button {
+    min-width: 0;
+    padding-inline: 10px;
+    white-space: normal;
+  }
+
+  .daily-prayer-fullscreen { padding: 0; }
+
+  .daily-prayer-fullscreen-panel {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    padding: max(16px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom));
+  }
+
+  .daily-prayer-fullscreen-reader {
+    width: 100%;
+    padding-inline: 2px;
+  }
+
+  .daily-prayer-fullscreen-reader h3 {
+    font-size: clamp(30px, 10vw, 44px);
+  }
+
+  .daily-prayer-fullscreen-reader p {
+    font-size: clamp(21px, 6vw, 26px);
+    line-height: 1.66;
+  }
+
+  .seo-text,
+  .icon-story-flow,
+  .icon-photo-catalog,
+  .sacred-content-grid,
+  .related-section,
+  .faq {
+    margin-top: 28px;
+    padding-top: 22px;
+  }
+
+  .icon-story-block:nth-child(even) figure { order: 0; }
+
+  .icon-story-block { gap: 16px; }
+
+  .icon-story-block figure,
+  .icon-story-block img {
+    max-height: 72vh;
+  }
+
+  .detail-actions .asset-button,
+  .hero-actions .asset-button,
+  .prayer-card-actions .asset-button,
+  .icon-qr-actions .asset-button {
+    width: 100%;
+  }
+
+  .prayer-reader-panel { padding: 22px 18px; }
+
+  .prayer-reader {
+    font-size: clamp(19px, 5.4vw, 23px);
+    line-height: 1.62;
+  }
+}
+
+@media (max-width: 820px) {
+  .church-directory-card { grid-template-columns: 1fr; }
 
   .church-directory-media,
   .church-directory-media img {
@@ -2210,50 +1539,17 @@ button,
 
   .church-directory-media {
     border-right: 0;
-    border-bottom: 1px solid #d8d8d8;
+    border-bottom: 1px solid var(--border-gold);
   }
 
-  .church-facts {
-    grid-template-columns: 1fr;
-  }
+  .church-facts { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 720px) {
-  body:not(:has(.calendar-shell)) .page,
-  body:not(:has(.calendar-shell)) .read-page,
-  body:not(:has(.calendar-shell)) .detail-page,
-  body:not(:has(.calendar-shell)) .list-page {
+  .page,
+  .read-page,
+  .detail-page {
     padding: 26px 12px 42px;
-  }
-
-  .page-hero,
-  .read-hero {
-    gap: 12px;
-    padding-bottom: 24px;
-  }
-
-  .page-hero h1,
-  .read-hero h1,
-  .sacred-hero-copy h1,
-  .detail-page h1 {
-    font-size: clamp(34px, 13vw, 58px);
-    line-height: .92;
-  }
-
-  .page-hero p,
-  .read-hero p,
-  .sacred-hero-copy .detail-lead,
-  .detail-lead,
-  .icon-detail > div > p:not(.eyebrow) {
-    font-size: 16px;
-    line-height: 1.45;
-  }
-
-  .icons-catalog-hero,
-  .sacred-detail-hero,
-  .icon-detail,
-  .prayer-panel-layout {
-    grid-template-columns: 1fr;
   }
 
   .icons-catalog-stats {
@@ -2265,45 +1561,23 @@ button,
     padding: 12px;
   }
 
-  .icons-catalog-stats dt {
-    font-size: 42px;
-  }
+  .icons-catalog-stats dt { font-size: 38px; }
 
-  .icons-toolbar {
-    grid-template-columns: 1fr;
-  }
+  .icons-toolbar { grid-template-columns: 1fr; }
 
-  .icon-grid,
-  .feature-grid,
-  .church-grid,
-  .list-grid,
-  .content-feature-grid,
-  .icons-page .icon-grid,
-  .sacred-content-grid,
-  .daily-prayer-grid,
-  .icon-photo-grid,
-  .mini-grid {
+  .icons-page .icon-grid {
     grid-template-columns: 1fr;
     gap: 14px;
   }
 
-  .icons-page .icon-card img {
-    height: min(56vh, 360px);
-  }
+  .icon-card img { height: min(56vh, 360px); }
 
   .sacred-image-frame,
   .icon-detail-image,
-  .icon-detail > img,
-  .detail-image,
   .prayer-panel-image {
     position: relative;
     top: auto;
     max-height: none;
-  }
-
-  .sacred-image-frame,
-  .icon-detail-image {
-    aspect-ratio: 4 / 5;
   }
 
   .detail-actions,
@@ -2315,471 +1589,99 @@ button,
     grid-template-columns: 1fr;
     align-items: stretch;
   }
+}
 
-  .detail-actions .asset-button,
-  .hero-actions .asset-button,
-  .prayer-card-actions .asset-button,
-  .icon-qr-actions .asset-button {
-    width: 100%;
+@media (max-width: 520px) {
+  .list-grid strong,
+  .icon-card h3,
+  .content-feature-grid h3 {
+    font-size: clamp(21px, 6vw, 30px);
+    line-height: 1.08;
   }
 
-  .icon-card::before,
-  .feature-card::before,
-  .church-card::before,
-  .feature-grid > article::before,
-  .church-grid > article::before,
-  .list-grid > a::before,
-  .content-feature-grid article::before,
-  .faq details::before,
-  .sacred-panel::before,
-  .content-panel::before,
-  .church-directory-card::before,
-  .list-grid .prayer-list-card::before,
-  .icon-photo-card::before,
-  .icons-page .icon-card::before {
-    width: 22px;
-    height: 22px;
-    opacity: .34;
+  .icons-toolbar input,
+  .icons-select-button {
+    min-height: 52px;
   }
-}
 
-/* Orthodox church theme */
-.page,
-.read-page,
-.detail-page,
-.list-page,
-body:not(:has(.calendar-shell)) .page,
-body:not(:has(.calendar-shell)) .read-page,
-body:not(:has(.calendar-shell)) .detail-page,
-body:not(:has(.calendar-shell)) .list-page {
-  background:
-    var(--ornament-border) top center / 420px 56px repeat-x,
-    linear-gradient(180deg, rgba(214, 168, 79, .08), transparent 260px),
-    var(--background);
-  color: var(--text);
-}
+  .icon-card figure { padding: 14px; }
 
-.page-hero,
-.read-hero {
-  border-bottom-color: var(--border-gold);
-}
+  .icon-card img { height: min(76vh, 460px); }
 
-.page-hero::after,
-.read-hero::after,
-.section-head::after,
-.section-header::after {
-  content: "";
-  display: block;
-  width: min(320px, 100%);
-  height: 24px;
-  margin-top: 8px;
-  background: var(--ornament-divider) center / contain no-repeat;
-  opacity: .7;
-}
+  .daily-prayer-reader-body h3 {
+    font-size: clamp(28px, 9vw, 42px);
+  }
 
-.page-hero h1,
-.read-hero h1,
-.sacred-hero-copy h1,
-.detail-page h1,
-.church-directory-copy h2 {
-  color: var(--text);
-  background:
-    linear-gradient(110deg, var(--text) 0%, var(--text) 28%, var(--gold-light) 46%, var(--gold) 54%, var(--text) 72%, var(--text) 100%);
-  background-size: 260% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-}
-
-.page-hero p,
-.read-hero p,
-.sacred-hero-copy .detail-lead,
-.detail-lead,
-.icon-detail > div > p:not(.eyebrow),
-.icon-card p,
-.feature-card p,
-.church-card p,
-.detail-content,
-.church-directory-copy p,
-.church-facts dd {
-  color: var(--muted);
-}
-
-.eyebrow,
-.sacred-panel > span,
-.content-feature-grid span,
-.card-category,
-.detail-meta,
-.church-directory-copy > span,
-.church-dedication,
-.church-facts dt,
-.structured-block h3 {
-  color: var(--gold-light);
-}
-
-.icons-catalog-stats,
-.icons-toolbar input,
-.icons-select-button,
-.icons-select-menu,
-.icons-empty,
-.sacred-image-frame,
-.icon-detail-image,
-.icon-detail > img,
-.prayer-panel-image,
-.church-directory-card,
-.church-directory-media,
-.church-facts,
-.church-facts dt,
-.church-facts dd,
-.qr-strip,
-input,
-select,
-textarea {
-  border-color: var(--border-gold);
-}
-
-.icons-catalog-stats {
-  background: var(--border-gold);
-}
-
-.icons-catalog-stats div,
-.icons-toolbar input,
-.icons-select-button,
-.icons-select-menu,
-.icons-select-menu button,
-.icons-empty,
-.icons-page .icon-card,
-.icon-card,
-.feature-card,
-.church-card,
-.feature-grid > article,
-.church-grid > article,
-.list-grid > a,
-.content-feature-grid article,
-.faq details,
-.sacred-panel,
-.content-panel,
-.church-directory-card,
-.church-directory-copy,
-input,
-select,
-textarea {
-  background:
-    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 46%),
-    var(--surface);
-  color: var(--text);
-}
-
-.icons-catalog-stats dt,
-.icons-select-button,
-.icons-select-button b,
-.icons-toolbar input,
-.list-grid strong,
-.icon-card h3,
-.icons-page .icon-card h3,
-.icons-page .icon-card small,
-.feature-grid > article h3,
-.church-grid > article h3,
-.sacred-panel h2,
-.content-feature-grid h3 {
-  color: var(--text);
-}
-
-.icons-catalog-stats dd,
-.icons-toolbar label span,
-.icons-select-field > span,
-.icons-toolbar input::placeholder {
-  color: var(--muted);
-}
-
-.icons-select-menu button {
-  border-bottom-color: var(--border-gold);
-  color: var(--muted);
-}
-
-.icons-select-menu button:hover,
-.icons-select-menu button.active {
-  background: rgba(214, 168, 79, .14);
-  color: var(--gold-light);
-}
-
-.lead-form button,
-.primary-button {
-  border-color: var(--gold);
-  background: var(--gold);
-  color: var(--background);
-}
-
-.secondary-button {
-  border-color: var(--border-gold);
-  background: transparent;
-  color: var(--gold-light);
-}
-
-.icon-card,
-.feature-card,
-.church-card,
-.feature-grid > article,
-.church-grid > article,
-.list-grid > a,
-.content-feature-grid article,
-.faq details,
-.sacred-panel,
-.content-panel,
-.church-directory-card,
-.list-grid .prayer-list-card,
-.icon-photo-card,
-.icon-lightbox-panel,
-.icons-page .icon-card {
-  position: relative;
-  border-color: var(--border-gold);
-  overflow: hidden;
-}
-
-.icons-page .icon-card {
-  background:
-    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 46%),
-    var(--surface);
-  color: var(--text);
-}
-
-.icons-page .icon-card:hover {
-  background:
-    linear-gradient(135deg, rgba(214, 168, 79, .12), transparent 46%),
-    var(--surface-soft);
-  box-shadow: none;
-}
-
-.icons-page .icon-card figure {
-  border-bottom-color: var(--border-gold);
-}
-
-.icons-page .icon-card-copy {
-  background: var(--surface);
-}
-
-.icons-page .icon-card span,
-.icons-page .icon-card small {
-  color: var(--gold-light);
-}
-
-.icons-page .icon-card h3 {
-  color: var(--text);
-}
-
-.icons-page .icon-card small {
-  border-bottom-color: var(--gold);
-}
-
-.icon-card::before,
-.feature-card::before,
-.church-card::before,
-.feature-grid > article::before,
-.church-grid > article::before,
-.list-grid > a::before,
-.content-feature-grid article::before,
-.faq details::before,
-.sacred-panel::before,
-.content-panel::before,
-.church-directory-card::before,
-.list-grid .prayer-list-card::before,
-.icon-photo-card::before,
-.icons-page .icon-card::before {
-  content: "";
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2;
-  width: 30px;
-  height: 30px;
-  background: var(--ornament-corner) center / contain no-repeat;
-  opacity: .48;
-  pointer-events: none;
-}
-
-.icon-card figure,
-.icons-page .icon-card figure,
-.prayer-list-media,
-.prayer-panel-image,
-.sacred-image-frame,
-.icon-detail-image,
-.church-directory-media {
-  background:
-    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .16) 42%, transparent 56%),
-    var(--surface-soft);
-  background-size: 220% 100%, 100% 100%;
-}
-
-.soft-note {
-  border-left-color: var(--gold);
-  color: var(--text);
-  background: linear-gradient(90deg, rgba(214, 168, 79, .12), transparent);
-}
-
-.reader-text,
-.reader-text p,
-.structured-block p {
-  color: var(--muted);
-}
-
-.church-directory-media {
-  border-right-color: var(--border-gold);
-}
-
-.list-grid .prayer-list-card,
-.icon-photo-card,
-.icon-lightbox-panel,
-.icon-photo-card figcaption,
-.icon-lightbox-caption,
-.icon-photo-catalog,
-.sacred-content-grid,
-.icon-story-flow,
-.related-section,
-.seo-text,
-.faq,
-.sacred-meta span {
-  border-color: var(--border-gold);
-}
-
-.list-grid .prayer-list-card {
-  background: var(--surface);
-  color: var(--text);
-}
-
-.list-grid .prayer-list-card::before {
-  display: none;
-}
-
-.list-grid .prayer-list-card:hover {
-  background: var(--surface-soft);
-}
-
-.prayer-list-copy {
-  position: relative;
-  z-index: 1;
-  border-top: 1px solid var(--border-gold);
-  background:
-    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 48%),
-    var(--surface);
-}
-
-.prayer-list-copy > span {
-  color: var(--gold-light);
-}
-
-.prayer-list-copy strong {
-  color: var(--text);
-}
-
-.prayer-list-copy p {
-  color: var(--muted);
-}
-
-.icon-photo-card,
-.icon-photo-card figcaption {
-  background:
-    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 46%),
-    var(--surface);
-  color: var(--text);
-}
-
-.list-grid .prayer-list-card:hover,
-.icon-card:hover,
-.feature-card:hover,
-.church-card:hover,
-.feature-grid > article:hover,
-.church-grid > article:hover,
-.list-grid > a:hover,
-.content-feature-grid article:hover,
-.faq details:hover,
-.mini-grid a:hover {
-  border-color: var(--gold);
-  background: var(--surface-soft);
-}
-
-.prayer-list-media,
-.icon-photo-open,
-.icon-photo-card.is-product .icon-photo-open,
-.icon-lightbox-panel {
-  background:
-    linear-gradient(135deg, rgba(214, 168, 79, .1), transparent 44%),
-    var(--surface);
-}
-
-.prayer-list-media {
-  border-bottom-color: var(--border-gold);
-  background:
-    linear-gradient(135deg, rgba(214, 168, 79, .12), transparent 42%),
-    #f6efe2;
-}
-
-.icon-photo-card.is-qr .icon-photo-open {
-  background:
-    linear-gradient(135deg, rgba(214, 168, 79, .12), transparent 42%),
-    #f6efe2;
-}
-
-.icon-photo-card.is-qr .icon-photo-open img {
-  background: #fff;
-}
-
-.prayer-list-card img {
-  background: transparent;
-  box-shadow: none;
-}
-
-.icon-photo-meta span,
-.list-grid span,
-.sacred-meta span,
-.icon-lightbox-caption a {
-  color: var(--gold-light);
-}
-
-.icon-photo-meta strong,
-.icon-photo-catalog h2,
-.icon-lightbox-caption strong,
-.icon-lightbox-caption a {
-  color: var(--text);
-}
-
-.icon-photo-open span,
-.icon-lightbox-close {
-  border-color: var(--border-gold);
-  background: rgba(11, 11, 10, .78);
-  color: var(--gold-light);
-}
-
-.icon-lightbox-panel::before {
-  background:
-    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .13) 42%, transparent 56%),
-    var(--surface);
-}
-
-.qr-strip {
-  background: var(--surface);
-}
-
-@media (max-width: 820px) {
-  .church-directory-media {
-    border-bottom-color: var(--border-gold);
+  .daily-prayer-reader-body p {
+    font-size: clamp(20px, 6vw, 24px);
+    line-height: 1.66;
   }
 }
 
 @media (max-width: 430px) {
-  .icons-catalog-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .page,
+  .read-page,
+  .detail-page {
+    padding: 20px 12px 34px;
+  }
+
+  .page-hero,
+  .read-hero {
+    padding-bottom: 22px;
+  }
+
+  .daily-prayer-actions { grid-template-columns: 1fr; }
+
+  .daily-prayer-fullscreen-actions { grid-template-columns: 1fr; }
+
+  .daily-prayer-fullscreen-close,
+  .daily-prayer-fullscreen-actions button {
+    width: 100%;
   }
 
   .icons-catalog-stats div {
-    min-height: 96px;
+    min-height: 84px;
     padding: 10px;
   }
 
-  .icons-catalog-stats dt {
-    font-size: 36px;
-  }
+  .icons-catalog-stats dt { font-size: 34px; }
 
   .icons-catalog-stats dd {
     font-size: 9px;
     line-height: 1.12;
+  }
+
+  .icons-toolbar { margin-top: 20px; }
+
+  .icons-toolbar input,
+  .icons-select-button {
+    min-height: 50px;
+    padding-inline: 12px;
+    font-size: 15px;
+  }
+
+  .icons-select-menu button {
+    min-height: 42px;
+    font-size: 14px;
+  }
+
+  .icon-card img { height: min(62vh, 360px); }
+
+  .icon-card-copy,
+  .prayer-list-copy {
+    padding: 16px;
+  }
+
+  .sacred-image-frame,
+  .icon-detail-image,
+  .prayer-panel-image {
+    padding: 10px;
+  }
+
+  .prayer-reader-panel { padding: 18px 14px; }
+
+  .prayer-reader {
+    font-size: 18px;
+    line-height: 1.58;
   }
 }

@@ -1,4 +1,4 @@
-const VERSION = '2026-06-30-v1';
+const VERSION = '2026-07-10-pwa-v2';
 const CORE_CACHE = `ikona-core-${VERSION}`;
 const STATIC_CACHE = `ikona-static-${VERSION}`;
 const IMAGE_CACHE = `ikona-images-${VERSION}`;
@@ -11,6 +11,8 @@ const CORE_URLS = [
   '/pwa/app-icon-192.png',
   '/pwa/app-icon-512.png',
   '/pwa/app-icon-maskable-512.png',
+  '/pwa/apple-touch-icon.png',
+  '/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg',
   '/icons/orthodox-cross.svg',
   '/ornaments/page-border.svg',
   '/ornaments/section-divider.svg'

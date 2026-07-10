@@ -1,18 +1,22 @@
+/* ============================================================
+   Календарь: режим списка (аккордеон)
+   ============================================================ */
+
 .calendar-list {
   display: grid;
   gap: 0;
-  border-top: 1px solid #ddd6ce;
+  border-top: 1px solid var(--border-gold);
 }
 
 .list-accordion-item {
-  border-bottom: 1px solid #ddd6ce;
-  background: #fbfaf8;
-  transition: background .18s ease;
+  border-bottom: 1px solid var(--border-gold);
+  background: transparent;
+  transition: background var(--speed) var(--ease);
 }
 
 .list-accordion-item.open,
 .list-accordion-item:hover {
-  background: #f4f0e8;
+  background: var(--surface-soft);
 }
 
 .list-accordion-trigger {
@@ -25,7 +29,7 @@
   border: 0;
   padding: 18px 0;
   background: transparent;
-  color: #151515;
+  color: var(--text);
   text-align: left;
   cursor: pointer;
 }
@@ -33,7 +37,7 @@
 .list-accordion-trigger:focus-visible,
 .list-panel-links a:focus-visible,
 .list-image-link:focus-visible {
-  outline: 2px solid #b8842b;
+  outline: 2px solid var(--gold);
   outline-offset: 3px;
 }
 
@@ -41,8 +45,8 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #242424;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--text);
+  font-family: var(--font-serif);
   font-size: clamp(28px, 3vw, 52px);
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -52,7 +56,8 @@
   width: 11px;
   height: 11px;
   display: inline-block;
-  background: #050505;
+  border-radius: 3px;
+  background: var(--gold);
 }
 
 .list-day-number i.red {
@@ -67,7 +72,7 @@
 
 .list-day-heading strong {
   max-width: 880px;
-  color: #151515;
+  color: var(--text);
   font-size: clamp(18px, 2vw, 34px);
   font-weight: 900;
   line-height: 1.05;
@@ -75,7 +80,7 @@
 }
 
 .list-day-heading small {
-  color: #b8842b;
+  color: var(--gold-light);
   font-size: 14px;
   font-weight: 900;
 }
@@ -86,8 +91,9 @@
   display: grid;
   place-items: center;
   justify-self: end;
-  border: 1px solid #cfc6b8;
-  color: #151515;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
+  color: var(--gold-light);
   font-size: 26px;
   line-height: 1;
 }
@@ -103,10 +109,11 @@
   position: relative;
   display: block;
   min-width: 0;
-  border: 1px solid #d7cdbd;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
   background:
-    linear-gradient(110deg, transparent 0 28%, rgba(255, 255, 255, .76) 42%, transparent 56%),
-    #eee4ce;
+    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .16) 42%, transparent 56%),
+    var(--surface-soft);
   background-size: 220% 100%, 100% 100%;
   overflow: hidden;
   animation: imageSkeleton 1.4s ease-in-out infinite;
@@ -131,7 +138,7 @@
 
 .list-panel-copy p {
   margin: 0;
-  color: #b8842b;
+  color: var(--gold-light);
   font-size: 13px;
   font-weight: 900;
   letter-spacing: .08em;
@@ -141,23 +148,23 @@
 .list-panel-copy h3 {
   max-width: 760px;
   margin: 0;
-  color: #050505;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: clamp(28px, 4vw, 64px);
-  font-weight: 900;
-  line-height: .95;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3.4vw, 54px);
+  font-weight: 700;
+  line-height: 1.02;
   overflow-wrap: anywhere;
 }
 
 .list-panel-copy span {
   max-width: 680px;
-  color: #5e5a55;
+  color: var(--muted);
   font-size: clamp(17px, 1.5vw, 24px);
   line-height: 1.35;
 }
 
 .list-panel-copy small {
-  color: #8e8a84;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 900;
 }
@@ -171,58 +178,6 @@
 
 .list-panel-links a {
   min-height: 38px;
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid #d8d1c7;
   padding: 0 14px;
-  color: #151515;
   font-size: 13px;
-  font-weight: 900;
-  text-decoration: none;
-}
-
-/* Orthodox church theme */
-.calendar-list {
-  border-top-color: var(--border-gold);
-}
-
-.list-accordion-item {
-  border-bottom-color: var(--border-gold);
-  background: var(--surface);
-}
-
-.list-accordion-item.open,
-.list-accordion-item:hover {
-  background: var(--surface-soft);
-}
-
-.list-accordion-trigger,
-.list-day-heading strong,
-.list-day-number,
-.list-panel-copy h3 {
-  color: var(--text);
-}
-
-.list-day-heading small,
-.list-panel-copy p {
-  color: var(--gold-light);
-}
-
-.list-panel-copy span,
-.list-panel-copy small {
-  color: var(--muted);
-}
-
-.list-accordion-mark,
-.list-image-link,
-.list-panel-links a {
-  border-color: var(--border-gold);
-  color: var(--gold-light);
-}
-
-.list-image-link {
-  background:
-    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .16) 42%, transparent 56%),
-    var(--surface-soft);
-  background-size: 220% 100%, 100% 100%;
 }

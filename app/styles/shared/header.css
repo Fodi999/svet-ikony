@@ -1,23 +1,31 @@
+/* ============================================================
+   Шапка сайта: навигация, бренд, переключатель языка
+   ============================================================ */
+
 .site-header {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 1000;
-  min-height: 78px;
+  width: calc(100% - clamp(24px, 4vw, 72px));
+  max-width: 1840px;
+  min-height: 0;
+  margin: 10px auto 0;
   display: grid;
-  grid-template-columns: minmax(190px, 310px) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(270px, 360px) minmax(0, 1fr) auto;
   align-items: center;
   gap: clamp(14px, 2.4vw, 34px);
-  padding: 12px clamp(18px, 5vw, 72px);
-  border-bottom: 1px solid rgba(237, 215, 168, .14);
+  padding: 4px clamp(18px, 5vw, 72px);
+  border: 1px solid var(--border-soft);
+  border-radius: 18px;
   background:
     linear-gradient(90deg, rgba(214, 168, 79, .16), transparent 32%),
     rgba(11, 11, 10, .9);
   color: var(--text);
-  box-shadow: 0 18px 42px rgba(5, 5, 5, .24);
+  box-shadow: var(--shadow-sm);
   backdrop-filter: blur(18px) saturate(1.08);
 }
 
 .brand {
+  position: relative;
   min-width: 0;
   width: max-content;
   display: inline-flex;
@@ -27,14 +35,52 @@
   text-decoration: none;
 }
 
+.brand-logo-mark {
+  position: relative;
+  display: block;
+  width: 78px;
+  height: 106px;
+  flex: 0 0 78px;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+}
+
+.brand-logo-mark::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: linear-gradient(105deg, #fff8e8 5%, #d6a84f 28%, #fff 48%, #b8842b 68%, #fff3cf 92%);
+  background-size: 260% 100%;
+  -webkit-mask: url('/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg') center / contain no-repeat;
+  mask: url('/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg') center / contain no-repeat;
+  pointer-events: none;
+  animation: logo-shimmer 5s ease-in-out infinite;
+}
+
+@keyframes logo-shimmer {
+  0%, 100% { background-position: 100% 50%; }
+  50% { background-position: 0 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-logo-mark::after { animation: none; }
+}
+
 .brand-mark {
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
   display: grid;
   place-items: center;
   border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
   background: rgba(214, 168, 79, .08);
+  color: var(--gold-light);
   line-height: 1;
 }
 
@@ -57,13 +103,12 @@
   min-width: 0;
   overflow: hidden;
   color: var(--text);
-  font-family: Impact, "Arial Black", sans-serif;
-  font-size: 17px;
-  font-weight: 900;
-  letter-spacing: .02em;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: .01em;
   line-height: 1;
   text-overflow: ellipsis;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -77,6 +122,7 @@
   justify-content: center;
   gap: 4px;
   border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
   padding: 4px;
   background: rgba(5, 5, 5, .22);
 }
@@ -86,14 +132,15 @@
   display: inline-flex;
   align-items: center;
   border: 1px solid transparent;
-  padding: 0 13px;
+  border-radius: var(--radius-full);
+  padding: 0 14px;
   color: var(--muted);
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
-  transition: color .16s ease, background .16s ease, border-color .16s ease;
+  transition: color var(--speed) var(--ease), background var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
 
 .main-nav a:hover,
@@ -121,25 +168,24 @@
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
+  padding: 3px;
   background: rgba(5, 5, 5, .24);
 }
 
 .language-switch button {
-  min-width: 40px;
-  height: 40px;
+  min-width: 38px;
+  height: 32px;
   border: 0;
-  border-right: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
   padding: 0 10px;
   background: transparent;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: .08em;
   cursor: pointer;
-}
-
-.language-switch button:last-child {
-  border-right: 0;
+  transition: color var(--speed) var(--ease), background var(--speed) var(--ease);
 }
 
 .language-switch button:hover {
@@ -153,27 +199,13 @@
 
 .header-action {
   min-height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border-gold);
   padding: 0 16px;
-  background: rgba(214, 168, 79, .1);
-  color: var(--gold-light);
   font-size: 13px;
-  font-weight: 950;
-  line-height: 1;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: color .16s ease, background .16s ease, border-color .16s ease;
 }
 
-.header-action:hover,
-.header-action:focus-visible {
-  border-color: var(--gold-light);
-  background: var(--gold);
-  color: var(--background);
-}
+/* ------------------------------------------------------------
+   Адаптив
+   ------------------------------------------------------------ */
 
 @media (max-width: 1040px) {
   .site-header {
@@ -206,11 +238,66 @@
   }
 }
 
+@media (max-width: 900px) {
+  .site-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 6px 12px 8px;
+  }
+
+  .brand {
+    max-width: 100%;
+    gap: 9px;
+  }
+
+  .brand-logo-mark {
+    width: 58px;
+    height: 80px;
+    flex-basis: 58px;
+  }
+
+  .brand-copy {
+    overflow: hidden;
+  }
+
+  .brand-copy b {
+    max-width: min(28vw, 190px);
+    font-size: 17px;
+  }
+
+  .header-action {
+    display: none;
+  }
+
+  .main-nav {
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .main-nav a {
+    scroll-snap-align: start;
+  }
+}
+
 @media (max-width: 640px) {
   .site-header {
+    width: calc(100% - 12px);
+    margin-top: 6px;
     min-height: auto;
-    padding: 10px 12px;
+    border-radius: 13px;
+    padding: 4px 10px;
     gap: 10px;
+  }
+
+  .brand-logo {
+    width: 100%;
+    height: 100%;
+  }
+
+  .brand-logo-mark {
+    width: 48px;
+    height: 66px;
+    flex-basis: 48px;
   }
 
   .brand-copy small {
@@ -218,8 +305,8 @@
   }
 
   .brand-copy b {
-    max-width: min(48vw, 210px);
-    font-size: clamp(15px, 4.4vw, 20px);
+    max-width: min(34vw, 150px);
+    font-size: clamp(14px, 3.8vw, 17px);
   }
 
   .brand-mark {
@@ -238,15 +325,14 @@
     display: none;
   }
 
-  .language-switch,
-  .language-switch button {
+  .language-switch {
     min-height: 36px;
-    height: 36px;
   }
 
   .language-switch button {
-    min-width: 36px;
-    padding: 0 8px;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 6px;
   }
 
   .main-nav a {
@@ -267,9 +353,20 @@
     gap: 8px;
   }
 
+  .brand-logo {
+    width: 100%;
+    height: 100%;
+  }
+
+  .brand-logo-mark {
+    width: 42px;
+    height: 58px;
+    flex-basis: 42px;
+  }
+
   .brand-copy b {
-    max-width: 56vw;
-    font-size: clamp(16px, 5.2vw, 21px);
+    max-width: min(32vw, 130px);
+    font-size: clamp(13px, 4vw, 16px);
   }
 
   .main-nav {
@@ -284,15 +381,14 @@
     font-size: 12px;
   }
 
-  .language-switch,
-  .language-switch button {
+  .language-switch {
     min-height: 34px;
-    height: 34px;
   }
 
   .language-switch button {
-    min-width: 33px;
-    padding: 0 7px;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 5px;
     font-size: 10px;
   }
 }

@@ -1,16 +1,22 @@
 # CSS architecture
 
-`app/globals.css` is only the composition entrypoint. Keep imports ordered because the site still relies on normal CSS cascade.
+`app/globals.css` is only the composition entrypoint. Keep imports ordered because the site relies on normal CSS cascade.
 
-- `shared/foundation.css` - design tokens, reset, base elements, legacy shared blocks.
-- `shared/header.css` - global sticky site header, navigation, language switcher, header action.
-- `shared/components.css` - reusable UI primitives shared by domains: asset buttons, legacy link buttons, footer.
-- `domains/calendar/calendar.css` - calendar domain entrypoint; keep import order stable.
-- `domains/calendar/layout.css` - calendar page shell, hero, filters, toolbar, month title.
-- `domains/calendar/grid.css` - 7-column calendar grid and day poster cards.
-- `domains/calendar/list.css` - list mode accordion rows and expanded panels.
-- `domains/calendar/extras.css` - empty states, hidden today side card, service links under the calendar.
-- `domains/calendar/responsive.css` - calendar, list, and service responsive rules.
-- `domains/content/content.css` - generated/read/detail pages and content-specific galleries, readers, churches.
+Единая тёмная «церковная» тема: токены (цвета, радиусы, тени, шрифты) объявлены в `shared/foundation.css` и используются везде через `var(...)`.
 
-When adding new styles, prefer the domain file that owns the UI. Put reusable primitives in `shared/components.css`.
+- `shared/foundation.css` — дизайн-токены (`--gold`, `--radius-*`, `--shadow-*`, `--font-*`), reset, базовая типографика, каркасы страниц (`.page`, `.read-page`, `.detail-page`), герои и детальные layout-блоки.
+- `shared/header.css` — липкая шапка, навигация, переключатель языка.
+- `shared/components.css` — **единая система кнопок** (`.btn` + алиасы всех старых классов кнопок: `.asset-button`, `.primary-button`, `.secondary-button`, `.header-action` и кнопки читалки молитв) и **единая система карточек** (общий базис для `.icon-card`, `.sacred-panel`, `.daily-prayer-card`, `.calendar-hero-card` и др.), футер, PWA-промпт.
+- `domains/calendar/calendar.css` — entrypoint календаря; порядок импортов стабильный.
+- `domains/calendar/layout.css` — каркас календаря, герой, тулбар.
+- `domains/calendar/grid.css` — 7-колоночная сетка и карточки дней.
+- `domains/calendar/list.css` — режим списка (аккордеон).
+- `domains/calendar/extras.css` — пустые состояния, сервисные ссылки.
+- `domains/calendar/responsive.css` — адаптив календаря.
+- `domains/content/content.css` — каталоги, детальные страницы, читалки, храмы.
+- `domains/slavonic/slavonic.css` — страница старославянской азбуки.
+
+Правила:
+- Новую кнопку или карточку не стилизуй с нуля — добавь селектор в соответствующую группу в `shared/components.css`.
+- Цвета/радиусы/тени/шрифты — только через токены из `foundation.css`, без «сырых» hex-значений.
+- Светлой темы нет: тема одна, тёмная.

@@ -39,7 +39,8 @@
 
   .calendar-hero h1 {
     max-width: 100%;
-    font-size: clamp(58px, 23vw, 104px);
+    font-size: clamp(48px, 12vw, 84px);
+    line-height: 1;
     overflow-wrap: anywhere;
   }
 
@@ -47,11 +48,6 @@
     grid-template-columns: 1fr;
     align-items: start;
     gap: 12px;
-  }
-
-  .calendar-top-actions {
-    justify-content: start;
-    flex-wrap: wrap;
   }
 
   .month-switch {
@@ -158,8 +154,9 @@
   }
 
   .calendar-hero h1 {
-    font-size: clamp(46px, 21vw, 76px);
-    line-height: .86;
+    font-size: clamp(42px, 16vw, 64px);
+    line-height: .98;
+    text-wrap: balance;
   }
 
   .calendar-year {
@@ -168,7 +165,9 @@
 
   .calendar-feature strong,
   .calendar-icon-day strong {
-    font-size: clamp(22px, 8vw, 38px);
+    font-size: clamp(22px, 7vw, 32px);
+    line-height: 1.08;
+    overflow-wrap: anywhere;
   }
 
   .calendar-info p,
@@ -200,9 +199,26 @@
     grid-template-columns: 10px minmax(0, 1fr);
   }
 
+  .calendar-hero-card,
+  .calendar-info,
+  .calendar-feature,
+  .calendar-icon-day {
+    min-width: 0;
+    border-radius: 18px;
+  }
+
+  .calendar-info strong,
+  .calendar-info b,
+  .calendar-info small,
+  .calendar-feature span,
+  .calendar-feature em,
+  .calendar-icon-day span {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .calendar-toolbar {
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 60;
     border-bottom: 1px solid var(--border-gold);
     background: rgba(11, 11, 10, .94);
@@ -211,7 +227,9 @@
 
   .month-block h2 {
     font-size: clamp(52px, 22vw, 84px);
-    margin-top: 36px;
+    margin-top: 30px;
+    padding: .12em .03em .2em;
+    line-height: 1.14;
   }
 
   .calendar-grid {
@@ -323,7 +341,7 @@
   }
 
   .calendar-hero h1 {
-    font-size: clamp(42px, 20vw, 68px);
+    font-size: clamp(38px, 15vw, 56px);
   }
 
   .calendar-hero-card {
@@ -376,6 +394,8 @@
   .month-block h2 {
     font-size: clamp(40px, 17vw, 58px);
     margin: 22px 0 18px;
+    padding: .12em .03em .2em;
+    line-height: 1.16;
   }
 
   .weekday-strip {
@@ -447,7 +467,7 @@
   }
 
   .day-copy em {
-    max-height: 3.6em;
+    max-height: none;
     font-size: 12px;
   }
 

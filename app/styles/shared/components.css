@@ -1,43 +1,119 @@
-/* Shared component primitives used across domains */
+/* ============================================================
+   Компоненты: единые кнопки, карточки, футер, PWA
+   ============================================================ */
 
-.asset-button {
-  min-width: 0;
+/* ------------------------------------------------------------
+   Единая система кнопок.
+   База — «призрачная» кнопка; ниже — золотой primary-вариант.
+   Все старые классы кнопок замаплены на эту систему.
+   ------------------------------------------------------------ */
+
+.btn,
+.asset-button,
+.primary-button,
+.secondary-button,
+.header-action,
+.pwa-install-actions button,
+.daily-prayer-actions button,
+.daily-prayer-picker button,
+.daily-prayer-fullscreen-close,
+.daily-prayer-fullscreen-actions button,
+.list-panel-links a,
+.icon-lightbox-close,
+.slavonic-primary-action,
+.slavonic-listen {
   min-height: 44px;
-  flex: 0 0 auto;
-  border: 1px solid var(--border-gold);
-  background: var(--gold);
-  color: var(--background);
-  display: inline-grid;
-  grid-template-columns: auto minmax(0, auto);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0 14px;
-  font-size: 12px;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  padding: 0 18px;
+  background: rgba(214, 168, 79, .08);
+  color: var(--gold-light);
+  font-family: var(--font-ui);
+  font-size: 13px;
   font-weight: 900;
-  line-height: 1;
+  line-height: 1.15;
+  letter-spacing: .06em;
   text-align: center;
   text-transform: uppercase;
+  text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
-  text-decoration: none;
+  transition: border-color var(--speed) var(--ease), background var(--speed) var(--ease), color var(--speed) var(--ease), transform var(--speed) var(--ease);
 }
 
+.btn:hover,
+.btn:focus-visible,
 .asset-button:hover,
-.asset-button:focus-visible {
+.asset-button:focus-visible,
+.secondary-button:hover,
+.secondary-button:focus-visible,
+.header-action:hover,
+.header-action:focus-visible,
+.pwa-install-actions button:hover,
+.daily-prayer-actions button:hover,
+.daily-prayer-actions button:focus-visible,
+.daily-prayer-picker button:hover,
+.daily-prayer-picker button:focus-visible,
+.daily-prayer-fullscreen-close:hover,
+.daily-prayer-fullscreen-close:focus-visible,
+.daily-prayer-fullscreen-actions button:hover,
+.daily-prayer-fullscreen-actions button:focus-visible,
+.list-panel-links a:hover,
+.icon-lightbox-close:hover {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--background);
+}
+
+/* Золотой primary-вариант */
+.btn-primary,
+.asset-button:not(.asset-button-dark),
+.primary-button,
+.daily-prayer-actions button:first-child,
+.daily-prayer-fullscreen-actions button:first-child,
+.daily-prayer-picker button.active,
+.slavonic-primary-action,
+.slavonic-listen {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--background);
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible,
+.asset-button:not(.asset-button-dark):hover,
+.asset-button:not(.asset-button-dark):focus-visible,
+.primary-button:hover,
+.primary-button:focus-visible,
+.slavonic-primary-action:hover,
+.slavonic-primary-action:focus-visible,
+.slavonic-listen:not(:disabled):hover,
+.slavonic-listen:not(:disabled):focus-visible {
   border-color: var(--gold-light);
   background: var(--gold-light);
   color: var(--background);
 }
 
+.slavonic-listen:disabled {
+  cursor: not-allowed;
+  opacity: .66;
+}
+
+/* Иконка и подпись внутри кнопки */
 .asset-button svg,
-.asset-button img {
+.asset-button img,
+.btn svg {
   width: 16px;
   height: 16px;
   flex: 0 0 16px;
 }
 
-.asset-button svg {
+.asset-button svg,
+.btn svg {
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -52,9 +128,7 @@
   place-items: center;
 }
 
-.asset-button-icon:empty {
-  display: none;
-}
+.asset-button-icon:empty { display: none; }
 
 .asset-button-label {
   min-width: 0;
@@ -63,44 +137,82 @@
   text-overflow: ellipsis;
 }
 
-.asset-button-dark {
-  border-color: var(--border-gold);
-  background: transparent;
-  color: var(--gold-light);
+/* ------------------------------------------------------------
+   Единая система карточек.
+   Все карточные поверхности сайта используют этот базис.
+   ------------------------------------------------------------ */
+
+.card,
+.icon-card,
+.sacred-panel,
+.content-feature-grid article,
+.faq details,
+.list-grid > a,
+.list-grid .prayer-list-card,
+.icon-photo-card,
+.daily-prayer-card,
+.daily-prayer-reader,
+.church-directory-card,
+.calendar-hero-card,
+.icons-empty,
+.slavonic-grid-section,
+.slavonic-message,
+.slavonic-modal {
+  position: relative;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 46%),
+    var(--surface);
+  color: var(--text);
+  overflow: hidden;
 }
 
-.asset-button-dark:hover,
-.asset-button-dark:focus-visible {
-  border-color: var(--gold-light);
-  background: var(--gold);
-  color: var(--background);
+.card:hover,
+.icon-card:hover,
+.content-feature-grid article:hover,
+.faq details:hover,
+.list-grid > a:hover,
+.list-grid .prayer-list-card:hover,
+.daily-prayer-card:hover,
+.calendar-hero-card:hover,
+.calendar-hero-card:focus-within {
+  border-color: var(--gold);
+  background:
+    linear-gradient(135deg, rgba(214, 168, 79, .12), transparent 46%),
+    var(--surface-soft);
 }
 
-.primary-link,
-.secondary-link {
-  min-height: 46px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--gold);
-  padding: 0 18px;
-  background: var(--gold);
-  color: var(--background);
-  font-weight: 900;
+/* Угловой орнамент на карточках */
+.icon-card::before,
+.content-feature-grid article::before,
+.faq details::before,
+.sacred-panel::before,
+.list-grid > a::before,
+.church-directory-card::before,
+.daily-prayer-card::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  background: var(--ornament-corner) center / contain no-repeat;
+  opacity: .48;
+  pointer-events: none;
 }
 
-.secondary-link {
-  background: transparent;
-  color: var(--gold-light);
-}
+/* ------------------------------------------------------------
+   Футер
+   ------------------------------------------------------------ */
 
 .site-footer {
   position: relative;
   z-index: 2;
   isolation: isolate;
   padding: 0 clamp(18px, 5vw, 72px);
-  border-top: 1px solid rgba(237, 215, 168, .16);
-  background-color: var(--background);
+  border-top: 1px solid var(--border-soft);
   background:
     linear-gradient(135deg, rgba(184, 132, 43, .1), transparent 34%),
     var(--background);
@@ -121,14 +233,40 @@
   gap: 12px;
 }
 
+.footer-logo-link {
+  position: relative;
+  width: min(100%, 130px);
+  display: block;
+}
+
+.footer-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: 0;
+}
+
+.footer-logo-link::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: linear-gradient(105deg, #fff8e8 5%, #d6a84f 28%, #fff 48%, #b8842b 68%, #fff3cf 92%);
+  background-size: 260% 100%;
+  -webkit-mask: url('/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg') center / contain no-repeat;
+  mask: url('/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg') center / contain no-repeat;
+  pointer-events: none;
+  animation: logo-shimmer 5s ease-in-out infinite;
+}
+
 .footer-cross {
   width: 42px;
   height: 42px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(237, 215, 168, .32);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
   color: var(--gold-light);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-serif);
   font-size: 22px;
   line-height: 1;
 }
@@ -137,12 +275,10 @@
   display: block;
   max-width: 620px;
   color: var(--text);
-  font-family: Impact, "Arial Black", sans-serif;
-  font-size: clamp(36px, 4.2vw, 72px);
-  font-weight: 900;
-  line-height: .88;
-  letter-spacing: 0;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.4vw, 58px);
+  font-weight: 700;
+  line-height: 1.05;
   text-wrap: balance;
 }
 
@@ -159,7 +295,7 @@
   max-width: 520px;
   margin: 0;
   color: var(--muted);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-serif);
   font-size: clamp(17px, 1.4vw, 22px);
   line-height: 1.5;
 }
@@ -176,7 +312,7 @@
   display: grid;
   align-content: start;
   gap: 10px;
-  border-left: 1px solid rgba(237, 215, 168, .18);
+  border-left: 1px solid var(--border-soft);
   padding-left: clamp(16px, 2vw, 28px);
 }
 
@@ -192,9 +328,10 @@
 .site-footer a {
   color: var(--text);
   font-size: 15px;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.25;
   text-decoration: none;
+  transition: color var(--speed) var(--ease);
 }
 
 .site-footer a:hover,
@@ -208,18 +345,22 @@
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  border-top: 1px solid rgba(237, 215, 168, .14);
-  color: #8f8982;
+  border-top: 1px solid var(--border-soft);
+  color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
 
 .site-footer-bottom a {
-  color: #aaa19a;
+  color: var(--muted);
   font-size: 12px;
 }
+
+/* ------------------------------------------------------------
+   PWA: приглашение к установке
+   ------------------------------------------------------------ */
 
 .pwa-install-prompt {
   position: fixed;
@@ -232,10 +373,11 @@
   gap: 14px;
   align-items: center;
   border: 1px solid rgba(214, 168, 79, .52);
+  border-radius: var(--radius-md);
   background:
     linear-gradient(135deg, rgba(214, 168, 79, .16), rgba(11, 11, 10, .92) 42%),
     rgba(11, 11, 10, .96);
-  box-shadow: 0 18px 54px rgba(0, 0, 0, .42);
+  box-shadow: var(--shadow-lg);
   padding: 14px;
   color: var(--text);
   backdrop-filter: blur(18px) saturate(1.08);
@@ -246,7 +388,7 @@
   margin-bottom: 4px;
   color: var(--gold-light);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1.15;
   text-transform: uppercase;
 }
@@ -254,7 +396,7 @@
 .pwa-install-prompt p {
   margin: 0;
   color: var(--muted);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-serif);
   font-size: 14px;
   line-height: 1.35;
 }
@@ -267,36 +409,37 @@
 
 .pwa-install-actions button {
   min-height: 38px;
-  border: 1px solid var(--gold);
   padding: 0 12px;
-  background: var(--gold);
-  color: var(--background);
   font-size: 12px;
-  font-weight: 950;
-  cursor: pointer;
-  white-space: nowrap;
 }
 
-.pwa-install-actions .pwa-install-dismiss {
-  border-color: rgba(214, 168, 79, .38);
-  background: rgba(214, 168, 79, .08);
-  color: var(--gold-light);
+.pwa-install-actions button:not(.pwa-install-dismiss) {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--background);
 }
+
+/* ------------------------------------------------------------
+   Оффлайн-страница
+   ------------------------------------------------------------ */
 
 .offline-page .offline-hero {
   min-height: 62vh;
   align-content: center;
 }
 
+/* ------------------------------------------------------------
+   Адаптив
+   ------------------------------------------------------------ */
+
 @media (max-width: 900px) {
-  .asset-button {
+  .asset-button,
+  .primary-button,
+  .secondary-button {
     width: 100%;
-    margin-left: 0;
   }
 
-  .site-footer {
-    padding: 0 16px;
-  }
+  .site-footer { padding: 0 16px; }
 
   .site-footer-main {
     grid-template-columns: 1fr;
@@ -309,9 +452,7 @@
     gap: 22px;
   }
 
-  .site-footer-nav section {
-    padding-left: 16px;
-  }
+  .site-footer-nav section { padding-left: 16px; }
 
   .site-footer-bottom {
     align-items: start;
@@ -331,22 +472,18 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .pwa-install-actions button {
-    width: 100%;
-  }
+  .pwa-install-actions button { width: 100%; }
 }
 
 @media (max-width: 430px) {
   .asset-button {
     min-height: 42px;
     padding-inline: 12px;
-    font-size: 11px;
+    font-size: 12px;
     white-space: normal;
   }
 
-  .site-footer {
-    padding: 0 12px;
-  }
+  .site-footer { padding: 0 12px; }
 
   .site-footer-main {
     gap: 24px;
@@ -360,25 +497,17 @@
   }
 
   .site-footer strong {
-    font-size: clamp(30px, 12vw, 44px);
-    line-height: .92;
+    font-size: clamp(26px, 8vw, 38px);
+    line-height: 1.08;
   }
 
-  .site-footer p {
-    font-size: 16px;
-  }
+  .site-footer p { font-size: 16px; }
 
-  .site-footer-nav {
-    gap: 18px;
-  }
+  .site-footer-nav { gap: 18px; }
 
-  .site-footer-nav section {
-    padding-left: 12px;
-  }
+  .site-footer-nav section { padding-left: 12px; }
 
-  .site-footer a {
-    font-size: 14px;
-  }
+  .site-footer a { font-size: 14px; }
 
   .site-footer-bottom {
     min-height: 0;

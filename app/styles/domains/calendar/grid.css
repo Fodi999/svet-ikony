@@ -1,15 +1,15 @@
+/* ============================================================
+   Календарь: 7-колоночная сетка и карточки дней
+   ============================================================ */
+
 .calendar-grid {
   width: 100%;
   min-width: 0;
   column-count: 7;
   column-gap: 14px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .52), rgba(246, 244, 239, .74)),
-    #fbfaf8;
-}
-
-.weekday-cell {
-  display: none;
+    linear-gradient(180deg, rgba(214, 168, 79, .07), rgba(11, 11, 10, .18)),
+    var(--background);
 }
 
 .weekday-strip {
@@ -21,10 +21,10 @@
 
 .weekday-strip span {
   min-width: 0;
-  border-bottom: 1px solid #ddd6ce;
+  border-bottom: 1px solid var(--border-gold);
   padding: 0 0 10px;
-  color: #8e8a84;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--muted);
+  font-family: var(--font-serif);
   font-size: 14px;
   font-weight: 800;
   letter-spacing: .08em;
@@ -40,15 +40,15 @@
   gap: 8px;
   break-inside: avoid;
   margin: 0 0 14px;
-  border: 1px solid #e5ded4;
-  border-radius: 0;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
   padding: 0;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, .94), rgba(247, 245, 240, .9)),
-    #fbfaf8;
-  overflow: hidden;
-  box-shadow: 0 10px 28px rgba(47, 35, 22, .055);
-  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background .18s ease;
+    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 50%),
+    var(--surface);
+  color: var(--text);
+  overflow: clip;
+  transition: border-color var(--speed) var(--ease), box-shadow var(--speed) var(--ease), background var(--speed) var(--ease);
 }
 
 .calendar-day::before {
@@ -57,50 +57,137 @@
   inset: 0 auto 0 0;
   z-index: 4;
   width: 4px;
-  background: #d8d1c7;
+  background: var(--border-gold);
   opacity: .62;
 }
 
 .calendar-day:hover {
-  border-color: #cabca9;
+  border-color: var(--gold);
+  background: var(--surface-soft);
+}
+
+.calendar-day:focus-within,
+.calendar-day.today {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(214, 168, 79, .22);
+}
+
+/* Цветовая маркировка типа дня */
+.calendar-day.day-kind-feast::before { background: var(--gold-deep); }
+.calendar-day.day-kind-fast::before { background: #9a2f3a; }
+.calendar-day.day-kind-gospel::before { background: #516d91; }
+.calendar-day.day-kind-prayer::before { background: #697762; }
+.calendar-day.day-kind-quiet::before { background: var(--border-gold); }
+
+.calendar-day.today::before {
+  background: var(--gold);
+  opacity: 1;
+}
+
+.calendar-day.out-of-month {
+  background: rgba(21, 19, 15, .58);
+  color: rgba(201, 194, 179, .72);
+  box-shadow: none;
+}
+
+.calendar-day.out-of-month::before {
+  opacity: .38;
+}
+
+.calendar-day:has(.day-event):not(:has(.day-image-link)) {
+  min-height: 0;
+  padding: 58px 14px 14px;
+}
+
+.calendar-day.today:not(:has(.day-event)) {
+  min-height: 94px;
+}
+
+/* Номер дня */
+.day-number {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-xs);
+  padding: 0 10px;
+  background: rgba(11, 11, 10, .82);
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-size: 28px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.day-number small {
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.calendar-day.today .day-number {
+  color: var(--gold-light);
+}
+
+.today-badge {
+  position: absolute;
+  top: 50px;
+  left: 10px;
+  z-index: 5;
+  width: max-content;
+  min-height: 0;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  background: rgba(11, 11, 10, .82);
+  color: var(--gold-light);
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* Событие дня */
+.day-event {
+  position: relative;
+  z-index: 3;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  align-content: start;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-xs);
+  padding: 14px;
+  background: rgba(11, 11, 10, .92);
+  color: var(--text);
+}
+
+.calendar-day.out-of-month .day-event {
+  display: none;
+}
+
+/* Постерные дни с изображением */
+.day-image-link {
+  position: relative;
+  min-width: 0;
+  align-self: start;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, .98), rgba(244, 240, 232, .96)),
-    #fbfaf8;
-  box-shadow: 0 16px 38px rgba(47, 35, 22, .09);
-  transform: translateY(-1px);
-}
-
-.calendar-day:focus-within {
-  border-color: #b8842b;
-  box-shadow: 0 0 0 2px rgba(184, 132, 43, .16), 0 16px 38px rgba(47, 35, 22, .09);
-}
-
-.calendar-day.day-kind-feast::before {
-  background: #b8842b;
-}
-
-.calendar-day.day-kind-fast::before {
-  background: #9a2f3a;
-}
-
-.calendar-day.day-kind-gospel::before {
-  background: #516d91;
-}
-
-.calendar-day.day-kind-prayer::before {
-  background: #697762;
-}
-
-.calendar-day.day-kind-quiet::before {
-  background: #d8d1c7;
+    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .16) 42%, transparent 56%),
+    var(--surface-soft);
+  background-size: 220% 100%, 100% 100%;
+  overflow: hidden;
+  animation: imageSkeleton 1.4s ease-in-out infinite;
 }
 
 .calendar-grid .calendar-day:has(.day-image-link) {
   min-height: 0;
   padding: 0;
-  border-color: #ded5c8;
-  background: #fffdf8;
-  color: #242424;
 }
 
 .calendar-grid .calendar-day:has(.day-image-link)::after {
@@ -112,149 +199,12 @@
   pointer-events: none;
   background: linear-gradient(180deg, transparent 0%, rgba(20, 14, 9, .42) 38%, rgba(12, 8, 5, .86) 100%);
   opacity: 0;
-  transition: opacity .18s ease;
+  transition: opacity var(--speed) var(--ease);
 }
 
 .calendar-grid .calendar-day:has(.day-image-link):hover::after,
 .calendar-grid .calendar-day:has(.day-image-link):focus-within::after {
-  content: "";
   opacity: 1;
-}
-
-.calendar-day.out-of-month {
-  background:
-    linear-gradient(135deg, rgba(245, 243, 239, .92), rgba(239, 236, 230, .82)),
-    #f4f2ef;
-  color: #9b9892;
-  box-shadow: none;
-}
-
-.calendar-day.out-of-month::before {
-  background: #ccc6bd;
-  opacity: .38;
-}
-
-.calendar-day:has(.day-event):not(:has(.day-image-link)) {
-  min-height: 180px;
-  padding: 58px 14px 14px;
-}
-
-.calendar-day.today {
-  border-color: #b8842b;
-  background:
-    linear-gradient(135deg, rgba(255, 252, 244, .98), rgba(242, 231, 211, .92)),
-    #f6ead3;
-  box-shadow: inset 0 0 0 1px rgba(184, 132, 43, .3), 0 18px 44px rgba(184, 132, 43, .14);
-}
-
-.calendar-day.today::before {
-  background: #b8842b;
-  opacity: 1;
-}
-
-.day-number {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 5;
-  min-height: 34px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid rgba(255, 255, 255, .68);
-  padding: 0 10px;
-  background: rgba(255, 253, 248, .9);
-  color: #242424;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 28px;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  box-shadow: 0 10px 26px rgba(47, 35, 22, .16);
-}
-
-.day-number small {
-  color: #9b9892;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.calendar-day.today .day-number {
-  color: #b8842b;
-}
-
-.calendar-grid .calendar-day:has(.day-image-link) .day-number {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 5;
-  width: max-content;
-  min-height: 38px;
-  border: 1px solid rgba(255, 255, 255, .78);
-  padding: 0 10px;
-  background: rgba(255, 253, 248, .92);
-  color: #2f2a24;
-  box-shadow: 0 10px 26px rgba(47, 35, 22, .18);
-  text-shadow: none;
-}
-
-.calendar-grid .calendar-day:has(.day-image-link) .day-number i {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, .22);
-}
-
-.today-badge {
-  position: absolute;
-  top: 50px;
-  left: 10px;
-  z-index: 5;
-  width: max-content;
-  min-height: 0;
-  border: 1px solid rgba(184, 132, 43, .46);
-  padding: 4px 8px;
-  background: rgba(255, 253, 248, .86);
-  color: #b8842b;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 15px;
-  font-weight: 800;
-  text-transform: none;
-}
-
-.day-event {
-  position: relative;
-  left: auto;
-  right: auto;
-  bottom: auto;
-  z-index: 3;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
-  align-content: start;
-  border: 1px solid rgba(184, 132, 43, .18);
-  padding: 12px;
-  background: rgba(255, 253, 248, .72);
-  color: #2b2925;
-  backdrop-filter: none;
-}
-
-.calendar-day:not(:has(.day-image-link)) .day-event {
-  grid-template-columns: 1fr;
-}
-
-.calendar-day.out-of-month .day-event {
-  display: none;
-}
-
-.day-image-link {
-  position: relative;
-  min-width: 0;
-  align-self: start;
-  background:
-    linear-gradient(110deg, transparent 0 28%, rgba(255, 255, 255, .75) 42%, transparent 56%),
-    #eee6d8;
-  background-size: 220% 100%, 100% 100%;
-  overflow: hidden;
-  animation: imageSkeleton 1.4s ease-in-out infinite;
 }
 
 .calendar-grid .calendar-day:has(.day-image-link) .day-image-link {
@@ -266,15 +216,15 @@
   width: 100%;
   aspect-ratio: 9 / 16;
   overflow: hidden;
-  background: #f7f1e8;
 }
 
 .calendar-day img {
   width: 64px;
   height: 64px;
   max-width: 64px;
-  border: 1px solid #c99b45;
-  background: #ede7dc;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-xs);
+  background: var(--surface-soft);
   object-fit: cover;
 }
 
@@ -286,17 +236,27 @@
   max-width: none;
   aspect-ratio: 9 / 16;
   border: 0;
+  border-radius: 0;
   padding: 0;
   object-fit: cover;
   object-position: center;
   filter: saturate(.98) contrast(1.02);
-  transition: filter .18s ease, transform .18s ease;
+  transition: filter var(--speed) var(--ease), transform var(--speed) var(--ease);
 }
 
 .calendar-grid .calendar-day:has(.day-image-link):hover img,
 .calendar-grid .calendar-day:has(.day-image-link):focus-within img {
   filter: saturate(1.02) contrast(1.02);
   transform: scale(1.006);
+}
+
+.calendar-grid .calendar-day:has(.day-image-link) .day-number {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  width: max-content;
+  min-height: 38px;
 }
 
 .calendar-grid .calendar-day:has(.day-image-link) .day-event {
@@ -307,15 +267,15 @@
   grid-template-columns: 1fr;
   gap: 0;
   min-height: 0;
-  border-color: rgba(255, 255, 255, .18);
+  border-color: rgba(214, 168, 79, .28);
   padding: 12px;
-  background: rgba(11, 8, 5, .52);
+  background: rgba(11, 11, 10, .72);
   color: #fff;
   backdrop-filter: blur(8px);
   opacity: 0;
   transform: translateY(12px);
   pointer-events: none;
-  transition: opacity .18s ease, transform .18s ease;
+  transition: opacity var(--speed) var(--ease), transform var(--speed) var(--ease);
 }
 
 .calendar-grid .calendar-day:has(.day-image-link):hover .day-event,
@@ -325,50 +285,37 @@
   pointer-events: auto;
 }
 
+/* Текст дня */
 .day-copy {
   position: relative;
   z-index: 3;
   min-width: 0;
   display: grid;
-  gap: 5px;
-  color: #2b2925;
-  font-family: Arial, Helvetica, sans-serif;
+  gap: 7px;
+  color: var(--muted);
+  font-family: var(--font-ui);
   font-size: 14px;
-  line-height: 1.25;
+  line-height: 1.4;
 }
 
 .calendar-grid .calendar-day:has(.day-image-link) .day-copy {
-  position: relative;
-  left: auto;
-  right: auto;
-  bottom: auto;
-  z-index: 2;
-  align-self: auto;
   color: #fff;
-  opacity: 1;
-  transform: none;
-  padding: 0;
-  text-shadow: none;
-  pointer-events: auto;
-}
-
-.calendar-grid .calendar-day:has(.day-image-link):hover .day-copy,
-.calendar-grid .calendar-day:has(.day-image-link):focus-within .day-copy {
-  opacity: 1;
-  transform: none;
-  pointer-events: auto;
 }
 
 .day-title-link {
-  color: #171717;
+  display: block;
+  color: var(--gold-light);
+  font-size: 15px;
   font-weight: 900;
+  line-height: 1.3;
+  hyphens: auto;
   overflow-wrap: anywhere;
 }
 
 .day-title-link:focus-visible,
 .day-image-link:focus-visible,
 .day-links a:focus-visible {
-  outline: 2px solid #b8842b;
+  outline: 2px solid var(--gold);
   outline-offset: 3px;
 }
 
@@ -378,42 +325,35 @@
   line-height: 1.12;
 }
 
-.day-copy span {
-  color: #b8842b;
-  font-weight: 700;
-}
-
-.day-kind-fast .day-copy span {
-  color: #f0b0bb;
-}
-
-.day-kind-gospel .day-copy span {
-  color: #b9d3f2;
-}
-
-.day-kind-prayer .day-copy span {
-  color: #c5dfbb;
-}
-
+.day-copy span,
 .calendar-grid .calendar-day:has(.day-image-link) .day-copy span {
-  color: #f0c36f;
+  display: block;
+  color: var(--gold-light);
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
+
+.day-kind-fast .day-copy span { color: #f0b0bb; }
+.day-kind-gospel .day-copy span { color: #b9d3f2; }
+.day-kind-prayer .day-copy span { color: #c5dfbb; }
 
 .day-copy em {
   display: block;
-  max-height: 3.75em;
-  overflow: hidden;
-  color: #625c55;
+  max-height: none;
+  overflow: visible;
+  color: var(--muted);
   font-size: 13px;
   font-style: normal;
-  line-height: 1.25;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .calendar-grid .calendar-day:has(.day-image-link) .day-copy em {
-  max-height: 3.75em;
   color: rgba(255, 255, 255, .82);
 }
 
+/* Ссылки дня */
 .day-links {
   position: relative;
   z-index: 3;
@@ -422,38 +362,28 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
-  border-top: 1px solid rgba(47, 35, 22, .12);
+  border-top: 1px solid var(--border-gold);
   padding-top: 10px;
-}
-
-.calendar-grid .calendar-day:has(.day-image-link) .day-links {
-  position: relative;
-  left: auto;
-  right: auto;
-  bottom: auto;
-  z-index: 2;
-  margin: 10px 0 0;
-  border-top-color: rgba(255, 255, 255, .18);
-  opacity: 1;
-  transform: none;
-  pointer-events: auto;
-}
-
-.calendar-grid .calendar-day:has(.day-image-link):hover .day-links,
-.calendar-grid .calendar-day:has(.day-image-link):focus-within .day-links {
-  opacity: 1;
-  transform: none;
-  pointer-events: auto;
 }
 
 .day-links a {
   min-height: 24px;
   display: inline-flex;
   align-items: center;
-  color: #6c655d;
-  font-size: 12px;
+  color: var(--muted);
+  font-size: 13px;
   font-weight: 800;
+  line-height: 1.3;
   text-decoration: none;
+}
+
+.day-links a:hover {
+  color: var(--gold-light);
+}
+
+.calendar-grid .calendar-day:has(.day-image-link) .day-links {
+  margin: 10px 0 0;
+  border-top-color: rgba(255, 255, 255, .18);
 }
 
 .calendar-grid .calendar-day:has(.day-image-link) .day-links a {
@@ -463,7 +393,7 @@
 .day-links a + a::before {
   content: "|";
   margin-right: 8px;
-  color: rgba(47, 35, 22, .24);
+  color: var(--border-gold);
 }
 
 @media (hover: none) {
@@ -476,91 +406,4 @@
     transform: none;
     pointer-events: auto;
   }
-}
-
-/* Orthodox church theme */
-.calendar-grid {
-  background:
-    linear-gradient(180deg, rgba(214, 168, 79, .07), rgba(11, 11, 10, .18)),
-    var(--background);
-}
-
-.weekday-strip span {
-  border-bottom-color: var(--border-gold);
-  color: var(--muted);
-}
-
-.calendar-day,
-.calendar-day.text-only,
-.calendar-grid .calendar-day:has(.day-image-link) {
-  border-color: var(--border-gold);
-  background:
-    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 50%),
-    var(--surface);
-  color: var(--text);
-  box-shadow: none;
-}
-
-.calendar-day:hover {
-  border-color: var(--gold);
-  background: var(--surface-soft);
-  transform: none;
-}
-
-.calendar-day:focus-within,
-.calendar-day.today {
-  border-color: var(--gold);
-  box-shadow: inset 0 0 0 1px rgba(214, 168, 79, .22);
-}
-
-.calendar-day.out-of-month {
-  background: rgba(21, 19, 15, .58);
-  color: rgba(201, 194, 179, .72);
-}
-
-.day-number,
-.calendar-grid .calendar-day:has(.day-image-link) .day-number,
-.today-badge,
-.day-event {
-  border-color: var(--border-gold);
-  background: rgba(11, 11, 10, .82);
-  color: var(--text);
-  box-shadow: none;
-}
-
-.calendar-day.today .day-number,
-.today-badge,
-.day-copy span,
-.calendar-grid .calendar-day:has(.day-image-link) .day-copy span,
-.day-title-link {
-  color: var(--gold-light);
-}
-
-.day-number small,
-.day-copy,
-.day-copy em,
-.day-links a {
-  color: var(--muted);
-}
-
-.day-image-link,
-.calendar-grid .calendar-day:has(.day-image-link) .day-image-link {
-  background:
-    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .16) 42%, transparent 56%),
-    var(--surface-soft);
-  background-size: 220% 100%, 100% 100%;
-}
-
-.calendar-grid .calendar-day:has(.day-image-link) .day-event {
-  border-color: rgba(214, 168, 79, .28);
-  background: rgba(11, 11, 10, .72);
-}
-
-.day-links,
-.calendar-grid .calendar-day:has(.day-image-link) .day-links {
-  border-top-color: var(--border-gold);
-}
-
-.day-links a + a::before {
-  color: var(--border-gold);
 }

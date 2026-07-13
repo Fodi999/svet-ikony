@@ -26,6 +26,37 @@ function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+const prayerTypeLabels: Record<SiteLocale, Record<string, string>> = {
+  uk: {
+    prayer: 'Канонічна молитва',
+    akathist: 'Акафіст',
+    troparion: 'Тропар',
+    kontakion: 'Кондак',
+    velichanie: 'Величання',
+    modern: 'Сучасна молитва'
+  },
+  ru: {
+    prayer: 'Каноническая молитва',
+    akathist: 'Акафист',
+    troparion: 'Тропарь',
+    kontakion: 'Кондак',
+    velichanie: 'Величание',
+    modern: 'Современная молитва'
+  },
+  en: {
+    prayer: 'Canonical prayer',
+    akathist: 'Akathist',
+    troparion: 'Troparion',
+    kontakion: 'Kontakion',
+    velichanie: 'Hymn of praise',
+    modern: 'Modern prayer'
+  }
+};
+
+function prayerTypeLabel(prayerType: string, locale: SiteLocale) {
+  return prayerTypeLabels[locale]?.[prayerType] || normalizeString(prayerType);
+}
+
 function normalizeStringArray(value: unknown) {
   return Array.isArray(value) ? value.map(normalizeString).filter(Boolean) : [];
 }
@@ -171,7 +202,7 @@ function prayerFromChurchDto(item: ChurchPrayerDto, icon?: ChurchIconDto): Praye
     slug: item.slug,
     title: item.title,
     text: item.text,
-    category: normalizeString(item.prayerType),
+    category: prayerTypeLabel(item.prayerType, item.language),
     imageUrl: icon?.imageUrl || undefined,
     relatedIcon: icon?.slug || undefined,
     audioUrl: normalizeString(item.audioUrl) || undefined,

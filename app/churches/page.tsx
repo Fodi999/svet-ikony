@@ -11,8 +11,10 @@ const labels = {
 
 export async function generateMetadata() {
   const locale = await getRequestLocale();
-  const churchInfo = await publicApi.churchInfo();
-  const translation = churchInfo?.translations[locale] || churchInfo?.translations.uk;
+  const churchInfo = await publicApi.churchInfo(locale);
+  const translation = churchInfo
+    ? [churchInfo.translations[locale], churchInfo.translations.uk, churchInfo.translations.ru, churchInfo.translations.en].find((item) => item?.title?.trim())
+    : null;
   const title = churchInfo?.status === 'published' && translation?.title ? translation.title : labels[locale].title;
   const description = churchInfo?.status === 'published' && translation?.description
     ? translation.description.slice(0, 200)
@@ -22,6 +24,6 @@ export async function generateMetadata() {
 
 export default async function ChurchesPage() {
   const locale = await getRequestLocale();
-  const [content, churchInfo] = await Promise.all([publicApi.content({ locale }), publicApi.churchInfo()]);
-  return <LocalizedChurchesPage icons={content.icons} fallbackChurches={content.churches} churchInfo={churchInfo} />;
+  const churchInfo = await publicApi.churchInfo(locale);
+  return <LocalizedChurchesPage churchInfo={churchInfo} />;
 }

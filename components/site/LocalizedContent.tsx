@@ -13,8 +13,8 @@ import { useI18n, useLocaleHref } from './LanguageProvider';
 import { StableImage } from './StableImage';
 import { SvgIcon } from './SvgIcon';
 import { absoluteSiteUrl } from '@/lib/site';
-import type { Church, ChurchInfoDto, Icon, Prayer } from '@/lib/types';
-import { churchFromIcon, hasChurchFields, imageForPrayer, localizeIcon, paragraphsFromText, sectionsFromText, textPreview, translateSectionLabel } from '@/lib/iconContent';
+import type { ChurchInfoDto, Icon, Prayer } from '@/lib/types';
+import { imageForPrayer, localizeIcon, paragraphsFromText, sectionsFromText, textPreview, translateSectionLabel } from '@/lib/iconContent';
 
 
 const uiText = {
@@ -353,9 +353,15 @@ function ChurchGallery({ title, images }: { title: string; images: string[] }) {
   );
 }
 
-export function LocalizedChurchesPage({ icons, fallbackChurches, churchInfo }: { icons: Icon[]; fallbackChurches: Church[]; churchInfo: ChurchInfoDto | null }) {
+function bestChurchTranslation(churchInfo: ChurchInfoDto | null, locale: keyof typeof uiText) {
+  if (!churchInfo) return null;
+  return [churchInfo.translations[locale], churchInfo.translations.uk, churchInfo.translations.ru, churchInfo.translations.en]
+    .find((item) => item?.title?.trim()) || null;
+}
+
+export function LocalizedChurchesPage({ churchInfo }: { churchInfo: ChurchInfoDto | null }) {
   const { locale, t } = useI18n();
-  const translation = churchInfo?.translations[locale] || churchInfo?.translations.uk;
+  const translation = bestChurchTranslation(churchInfo, locale);
 
   if (churchInfo && churchInfo.status === 'published' && translation?.title) {
     const contactHref = externalHref(churchInfo.phoneOrSite);
@@ -433,36 +439,13 @@ export function LocalizedChurchesPage({ icons, fallbackChurches, churchInfo }: {
     );
   }
 
-  const fromIcons = icons.map((icon) => churchFromIcon(localizeIcon(icon, locale))).filter(hasChurchFields);
-  const items = fromIcons.length ? fromIcons : fallbackChurches;
   return (
-    <main className="page">
-      <section className="page-hero"><p className="eyebrow">{t('churchesPageEyebrow')}</p><h1>{t('churchesPageTitle')}</h1><p>{t('churchesPageLead')}</p></section>
-      <div className="church-directory">
-        {items.map((church) => (
-          <article className="church-directory-card" key={church.id}>
-            {church.imageUrl ? <figure className="church-directory-media"><StableImage src={church.imageUrl} alt={church.title} width={720} height={640} /></figure> : null}
-            <div className="church-directory-copy">
-              <span>{church.city}</span>
-              <h2>{church.title}</h2>
-              {church.dedication ? <p className="church-dedication">{ui(locale, 'dedicatedTo')}: {church.dedication}</p> : null}
-              <p>{church.description}</p>
-              <dl className="church-facts">
-                {church.address ? <><dt>{ui(locale, 'address')}</dt><dd>{church.address}</dd></> : null}
-                {church.schedule ? <><dt>{ui(locale, 'schedule')}</dt><dd>{church.schedule}</dd></> : null}
-                {church.priest ? <><dt>{ui(locale, 'priest')}</dt><dd>{church.priest}</dd></> : null}
-                {church.priestPhone ? <><dt>{ui(locale, 'priestPhone')}</dt><dd>{church.priestPhone}</dd></> : null}
-                {church.phoneOrSite ? <><dt>{ui(locale, 'phoneSite')}</dt><dd>{church.phoneOrSite}</dd></> : null}
-                {church.shrines ? <><dt>{ui(locale, 'shrines')}</dt><dd>{church.shrines}</dd></> : null}
-              </dl>
-              <div className="detail-actions">
-                {church.mapsUrl ? <AssetButton variant="dark" href={church.mapsUrl} target="_blank" rel="noreferrer">Google Maps</AssetButton> : null}
-                {church.relatedIcons?.[0] ? <AssetButton href={`/icons/${church.relatedIcons[0]}`}>{ui(locale, 'iconPage')}</AssetButton> : null}
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
+    <main className="page church-profile-page">
+      <section className="page-hero">
+        <p className="eyebrow">{t('churchesPageEyebrow')}</p>
+        <h1>{t('churchesPageTitle')}</h1>
+        <p>{t('churchesPageLead')}</p>
+      </section>
     </main>
   );
 }

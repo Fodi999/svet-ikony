@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { Icon } from '@/lib/types';
 import { localizeIcon } from '@/lib/iconContent';
+import { BrandLogo } from './BrandLogo';
 import { useI18n } from './LanguageProvider';
 import { IconCard } from './IconCard';
 
@@ -39,12 +40,15 @@ export function IconsCatalog({ icons }: { icons: Icon[] }) {
       <div className="icons-toolbar">
         <label className="icons-search-field">
           <span>{t('search')}</span>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t('iconSearchPlaceholder')}
-            type="search"
-          />
+          <span className="icons-search-control">
+            <BrandLogo className="icons-search-logo" size={24} />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t('iconSearchPlaceholder')}
+              type="search"
+            />
+          </span>
         </label>
         <div className="icons-select-field">
           <span>{t('section')}</span>

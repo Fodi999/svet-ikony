@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { CalendarContent, CalendarServiceCard as CalendarService, GospelReading, Icon, Prayer, SeoPage } from '@/lib/types';
+import type { CalendarContent, CalendarServiceCard as CalendarService, Icon, Prayer, SeoPage } from '@/lib/types';
 import { useI18n } from './LanguageProvider';
 import { publicApiPrefix, publicApiUrl } from '@/lib/config';
 import { type TranslationKey } from '@/lib/i18n';
@@ -88,6 +88,8 @@ function slugFromHref(href?: string) {
 }
 
 function pageHrefForDay(item: CalendarDay, pages: SeoPage[] = []) {
+  if (item.icon?.source === 'church') return item.detailHref || `/church/icons/${item.icon.slug}`;
+
   const hrefSlug = slugFromHref(item.detailHref);
   const hasIconPage = Boolean(item.icon?.slug);
   const seoPage = pages.find((page) => page.slug === hrefSlug);
@@ -113,7 +115,7 @@ function getDaysInMonth(year: number, monthIndex: number) {
   return new Date(year, monthIndex + 1, 0).getDate();
 }
 
-function createMonthDays(icons: Icon[], prayers: Prayer[], gospel: GospelReading, calendar: CalendarContent | undefined, totalDays: number): CalendarDay[] {
+function createMonthDays(icons: Icon[], calendar: CalendarContent | undefined, totalDays: number): CalendarDay[] {
   if (calendar?.days?.length) {
     return fillMonthDays(calendar.days.map((day) => {
       const icon = findCalendarIcon(icons, day);
@@ -139,37 +141,18 @@ function createMonthDays(icons: Icon[], prayers: Prayer[], gospel: GospelReading
     }), totalDays);
   }
 
-  return fillMonthDays([
-    { day: '01', label: '', note: '', kind: 'quiet', textOnly: true },
-    { day: '02', label: '', note: '', kind: 'quiet', textOnly: true },
-    { day: '03', label: 'Икона Божией Матери «Казанская»', note: 'Праздничная икона', kind: 'feast', icon: icons[0], feast: true, description: 'Молитва о семье, мире и укреплении в вере.' },
-    { day: '04', label: 'Святитель Николай Чудотворец', note: 'Память святого', kind: 'feast', icon: icons[1], description: 'Почитание святого, помощника в пути и нужде.' },
-    { day: '05', label: '', note: '', kind: 'quiet', textOnly: true },
-    { day: '06', label: 'Крещение Господне', note: 'Праздник', kind: 'feast', icon: icons[0], current: true, description: 'Воспоминание Богоявления и освящения вод.' },
-    { day: '07', label: 'Рождество Христово', note: 'Празднество', kind: 'fast', icon: icons[1], feast: true, description: 'Праздничное чтение и домашняя молитва.' },
-    { day: '08', label: '', note: '', kind: 'quiet', textOnly: true },
-    { day: '09', label: 'Блаженная Матрона Московская', note: 'Память святой', kind: 'prayer', icon: icons[2], description: 'Молитва о помощи в житейских обстоятельствах.' },
-    { day: '10', label: '', note: '', kind: 'quiet', textOnly: true },
-    { day: '11', label: 'Великомученик Пантелеимон', note: 'Память святого', kind: 'prayer', icon: icons[2], description: 'Молитвенное обращение о болящих.' },
-    { day: '12', label: '', note: '', kind: 'quiet', textOnly: true },
-    { day: '13', label: 'Собор Предтечи и Крестителя Господня Иоанна', note: 'Память святого', kind: 'feast', icon: icons[1], description: 'День молитвенного почитания Предтечи.' },
-    { day: '14', label: 'Обрезание Господне', note: 'Господский праздник', kind: 'feast', icon: icons.find((icon) => icon.slug === 'obrezanie-gospodne') ?? icons[0], current: true, feast: true, description: 'Праздник Обрезания Господня: 1 января по церковному юлианскому календарю, 14 января по гражданскому календарю.' },
-    { day: '15', label: '', note: '', kind: 'quiet', textOnly: true },
-    { day: '16', label: 'Икона Божией Матери «Умиление»', note: 'Праздничная икона', kind: 'feast', icon: icons[0], description: 'Молитва о мире сердца и покаянии.' },
-    { day: '17', label: '', note: '', kind: 'quiet', textOnly: true },
-    { day: '18', label: gospel.reference ? 'Неделя 32-я по Пятидесятнице' : 'Евангельское чтение', note: 'Евангельское чтение', kind: 'gospel', icon: icons[0], description: gospel.text }
-  ], totalDays);
+  return createQuietMonth(totalDays);
 }
 
 function createQuietMonth(totalDays: number): CalendarDay[] {
   return fillMonthDays([], totalDays);
 }
 
-function collectCalendarImageUrls(calendar: CalendarContent | undefined, icons: Icon[], prayers: Prayer[], gospel: GospelReading) {
+function collectCalendarImageUrls(calendar: CalendarContent | undefined, icons: Icon[]) {
   if (!calendar) return [];
   const monthIndex = monthIndexFromTitle(calendar.hero?.monthTitle);
   const year = Number(calendar.hero?.year) || new Date().getFullYear();
-  const days = createMonthDays(icons, prayers, gospel, calendar, getDaysInMonth(year, monthIndex));
+  const days = createMonthDays(icons, calendar, getDaysInMonth(year, monthIndex));
   return Array.from(new Set([
     ...days.map((day) => day.imageUrl || day.icon?.imageUrl || ''),
     icons.find((icon) => icon.slug === calendar.hero?.iconDayIconSlug)?.imageUrl || ''
@@ -317,7 +300,7 @@ function localizeService(service: CalendarService, t: (key: TranslationKey) => s
   };
 }
 
-export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: { icons: Icon[]; prayers: Prayer[]; gospel: GospelReading; pages?: SeoPage[]; calendar?: CalendarContent }) {
+export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: Icon[]; prayers: Prayer[]; pages?: SeoPage[]; calendar?: CalendarContent }) {
   const { locale, t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
@@ -325,7 +308,7 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
   const [filterOpen, setFilterOpen] = useState(false);
   const [filter, setFilter] = useState<FilterKind>('all');
   const [view, setView] = useState<ViewMode>('calendar');
-  const [expandedDay, setExpandedDay] = useState('monthJanuary-14');
+  const [expandedDay, setExpandedDay] = useState('');
   const [activeCalendar, setActiveCalendar] = useState(calendar);
   const initialYear = Number(calendar?.hero?.year) || new Date().getFullYear();
   const [year, setYear] = useState(initialYear);
@@ -344,8 +327,8 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
   const monthDaysTotal = getDaysInMonth(year, monthIndex);
   const showMonthPlaceholder = !selectedCalendar && Boolean(activeCalendar || calendarLoading);
   const days = useMemo(
-    () => showMonthPlaceholder ? createQuietMonth(monthDaysTotal) : createMonthDays(icons, prayers, gospel, selectedCalendar, monthDaysTotal),
-    [icons, prayers, gospel, selectedCalendar, monthDaysTotal, showMonthPlaceholder]
+    () => showMonthPlaceholder ? createQuietMonth(monthDaysTotal) : createMonthDays(icons, selectedCalendar, monthDaysTotal),
+    [icons, selectedCalendar, monthDaysTotal, showMonthPlaceholder]
   );
   const calendarGridDays = useMemo(() => createCalendarGridDays(days, monthIndex, year), [days, monthIndex, year]);
   const visibleDays = filter === 'all' ? (view === 'calendar' ? calendarGridDays : days) : days.filter((day) => day.kind === filter);
@@ -365,10 +348,9 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
   const prevMonth = months[(monthIndex + 11) % 12];
   const nextMonth = months[(monthIndex + 1) % 12];
   const monthTitle = `${t(months[monthIndex].key)} ${year}`;
-  const iconOfDay = showMonthPlaceholder ? undefined : heroToday?.icon ?? icons.find((icon) => icon.slug === hero?.iconDayIconSlug) ?? icons[1] ?? icons[0];
+  const iconOfDay = showMonthPlaceholder ? undefined : heroToday?.icon ?? icons.find((icon) => icon.slug === hero?.iconDayIconSlug);
   const prayerOfDay = prayers.find((prayer) => prayer.slug === heroToday?.prayerSlug)
-    ?? prayers.find((prayer) => prayer.slug === hero?.iconDayPrayerSlug)
-    ?? prayers[0];
+    ?? prayers.find((prayer) => prayer.slug === hero?.iconDayPrayerSlug);
   const navigationTips = [
     { href: '/prayers', label: t('navPrayers'), text: t('prayerDay') },
     { href: '/gospel', label: t('navGospel'), text: t('gospelDay'), tone: 'red' as const },
@@ -382,7 +364,7 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
   const services = (selectedCalendar?.services?.length ? selectedCalendar.services : [
     { id: 'service-prayers', index: '01', title: t('calendarServicePrayersTitle'), description: t('calendarServicePrayersText'), href: '/prayers' },
     { id: 'service-gospel', index: '02', title: t('calendarServiceGospelTitle'), description: t('calendarServiceGospelText'), href: '/gospel' },
-    { id: 'service-feasts', index: '03', title: t('calendarServiceFeastsTitle'), description: t('calendarServiceFeastsText'), href: '/p/pravoslavnaya-ikona-s-qr-kodom' },
+    { id: 'service-feasts', index: '03', title: t('calendarServiceFeastsTitle'), description: t('calendarServiceFeastsText'), href: '/icons' },
     { id: 'service-icons', index: '04', title: t('calendarServiceIconsTitle'), description: t('calendarServiceIconsText'), href: '/icons' }
   ]).map((service) => localizeService(service, t));
 
@@ -425,7 +407,7 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
     if (cachedCalendar) {
       setActiveCalendar(cachedCalendar);
       setCalendarLoading(false);
-      preloadImages(collectCalendarImageUrls(cachedCalendar, icons, prayers, gospel), preloadedImages.current);
+      preloadImages(collectCalendarImageUrls(cachedCalendar, icons), preloadedImages.current);
       return;
     }
 
@@ -436,14 +418,14 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
         if (!nextCalendar) return;
         calendarCache.current.set(key, nextCalendar);
         setActiveCalendar(nextCalendar);
-        preloadImages(collectCalendarImageUrls(nextCalendar, icons, prayers, gospel), preloadedImages.current);
+        preloadImages(collectCalendarImageUrls(nextCalendar, icons), preloadedImages.current);
       })
       .catch(() => undefined)
       .finally(() => {
         if (!controller.signal.aborted) setCalendarLoading(false);
       });
     return () => controller.abort();
-  }, [gospel, icons, locale, monthIndex, prayers, year]);
+  }, [icons, locale, monthIndex, year]);
 
   useEffect(() => {
     const controllers: AbortController[] = [];
@@ -457,7 +439,7 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
       router.prefetch(href);
 
       if (cachedCalendar) {
-        preloadImages(collectCalendarImageUrls(cachedCalendar, icons, prayers, gospel), preloadedImages.current);
+        preloadImages(collectCalendarImageUrls(cachedCalendar, icons), preloadedImages.current);
         return;
       }
 
@@ -467,13 +449,13 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
         .then((nextCalendar) => {
           if (!nextCalendar) return;
           calendarCache.current.set(key, nextCalendar);
-          preloadImages(collectCalendarImageUrls(nextCalendar, icons, prayers, gospel), preloadedImages.current);
+          preloadImages(collectCalendarImageUrls(nextCalendar, icons), preloadedImages.current);
         })
         .catch(() => undefined);
     });
 
     return () => controllers.forEach((controller) => controller.abort());
-  }, [gospel, icons, locale, monthIndex, pathname, prayers, router, searchParams, year]);
+  }, [icons, locale, monthIndex, pathname, router, searchParams, year]);
 
   useEffect(() => {
     const nextAbsolute = year * 12 + monthIndex;
@@ -530,7 +512,7 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
     <section className="calendar-page">
       <section className="calendar-hero">
         <div>
-          <span className="calendar-year">{hero?.year ?? '2026'}</span>
+          <span className="calendar-year">{hero?.year ?? String(year)}</span>
           <h1>{localizedHeroTitle(hero?.title, t)}</h1>
         </div>
         <CalendarFeatureCard
@@ -547,7 +529,7 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
           eyebrow={t('todayIcon')}
           title={heroToday?.label || localizedHeroText(hero?.iconDayTitle || iconOfDay?.title, 'iconOfDay', t)}
           dateText={`${heroTodayDate}${heroTodayOldDate ? ` / ${heroTodayOldDate}` : ''}`}
-          link={{ href: prayerOfDay ? `/prayers/${prayerOfDay.slug}` : '/prayers', label: t('openPrayer') }}
+          link={{ href: prayerOfDay ? (prayerOfDay.source === 'church' ? `/church/prayers/${prayerOfDay.slug}` : `/prayers/${prayerOfDay.slug}`) : '/prayers', label: t('openPrayer') }}
         />
         <CalendarInfoCard eyebrow={t('information')} title={t('catalog')} links={navigationTips} />
       </section>
@@ -668,7 +650,6 @@ export function CalendarView({ icons, prayers, gospel, pages = [], calendar }: {
                         openDayLabel={t('openDay')}
                         dayLinksLabel={t('dayLinks')}
                         monthGenitiveLabel={t('januaryGenitive')}
-                        outOfMonthLabel={item.monthKey ? t(item.monthKey) : undefined}
                         actionLabels={dayActionLabels}
                       />
                     );

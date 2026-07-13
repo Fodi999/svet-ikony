@@ -1,15 +1,19 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useState } from 'react';
+import { Clock3, MapPin, Phone, Sparkles, UserRound } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { IconPhotoCatalog, type IconPhotoCatalogItem } from './IconPhotoCatalog';
 import { IconCard } from './IconCard';
 import { AssetButton, DownloadIcon } from './AssetButton';
+import { BrandLogo } from './BrandLogo';
 import { useI18n, useLocaleHref } from './LanguageProvider';
 import { StableImage } from './StableImage';
+import { SvgIcon } from './SvgIcon';
 import { absoluteSiteUrl } from '@/lib/site';
-import type { Church, Icon } from '@/lib/types';
+import type { Church, ChurchInfoDto, Icon, Prayer } from '@/lib/types';
 import { churchFromIcon, hasChurchFields, imageForPrayer, localizeIcon, paragraphsFromText, sectionsFromText, textPreview, translateSectionLabel } from '@/lib/iconContent';
 
 
@@ -38,9 +42,14 @@ const uiText = {
     schedule: 'Расписание',
     phoneSite: 'Телефон / сайт',
     shrines: 'Святыни',
+    priest: 'Настоятель',
+    priestPhone: 'Телефон настоятеля',
+    aboutChurch: 'О храме',
+    openMap: 'Открыть карту',
     iconPage: 'Страница иконы',
     prayerCategory: 'Молитва',
-    downloadQr: 'Скачать QR'
+    downloadQr: 'Скачать QR',
+    gallery: 'Фотогалерея'
   },
   uk: {
     prayer: 'Молитва',
@@ -66,9 +75,14 @@ const uiText = {
     schedule: 'Розклад',
     phoneSite: 'Телефон / сайт',
     shrines: 'Святині',
+    priest: 'Настоятель',
+    priestPhone: 'Телефон настоятеля',
+    aboutChurch: 'Про храм',
+    openMap: 'Відкрити карту',
     iconPage: 'Сторінка ікони',
     prayerCategory: 'Молитва',
-    downloadQr: 'Завантажити QR'
+    downloadQr: 'Завантажити QR',
+    gallery: 'Фотогалерея'
   },
   en: {
     prayer: 'Prayer',
@@ -94,229 +108,19 @@ const uiText = {
     schedule: 'Schedule',
     phoneSite: 'Phone / website',
     shrines: 'Shrines',
+    priest: 'Rector',
+    priestPhone: "Rector's phone",
+    aboutChurch: 'About the church',
+    openMap: 'Open map',
     iconPage: 'Icon page',
     prayerCategory: 'Prayer',
-    downloadQr: 'Download QR'
-  }
-} as const;
-
-const dailyPrayerTexts = {
-  ru: {
-    title: '📖 Сборник молитв на каждый день',
-    todayLabel: 'Сегодня',
-    dailyTitle: 'Молитва дня',
-    lead: 'В каждом дне есть время для молитвы и благодарности Богу.',
-    intro: 'Молитва открывает сердце для Божией любви и милости. Пусть эти слова помогут вам обращаться к Господу с доверием и благодарностью.',
-    closing: '🙏 Пусть Господь слышит ваши молитвы и наполняет сердца радостью и миром!',
-    subscribe: '@Pravoslav_molitvoslov - подпишитесь',
-    save: 'Сохранить',
-    saved: 'Сохранено',
-    share: 'Поделиться',
-    listen: 'Слушать',
-    stop: 'Остановить',
-    allPrayers: 'Все молитвы',
-    choosePrayer: 'Выбрать молитву',
-    shareDone: 'Ссылка скопирована',
-    listenUnavailable: 'Озвучивание недоступно в этом браузере',
-    openFull: 'Открыть для чтения',
-    copy: 'Скопировать',
-    copied: 'Скопировано',
-    download: 'Скачать',
-    close: 'Закрыть',
-    prayers: [
-      {
-        title: 'Молитва благодарности',
-        text: 'Господи, благодарю Тебя за все милости,\nявленные мне в жизни.\nНаучи меня видеть Твою любовь\nв каждом дне и за всё прославлять Тебя.\nАминь.'
-      },
-      {
-        title: 'Молитва перед учёбой или работой',
-        text: 'Господи, пошли мне дух разума и мудрости,\nукрепи меня в трудах моих,\nпросвети мой ум и сердце,\nчтобы всё делал(а) во славу Твою.\nАминь.'
-      },
-      {
-        title: 'Молитва о здравии близких',
-        text: 'Господи, Иисусе Христе, Сыне Божий,\nисцели и укрепи рабов Твоих (имена),\nдаруй им здоровье душевное и телесное,\nпошли им терпение и силы перенести все испытания.\nАминь.'
-      },
-      {
-        title: 'Молитва о мире в семье',
-        text: 'Господи, подай мир и любовь в наш дом,\nдаруй согласие, терпение и взаимопонимание,\nнаправь нас на путь добра и взаимной поддержки.\nАминь.'
-      },
-      {
-        title: 'Молитва в трудную минуту',
-        text: 'Господи, не оставь меня в час испытаний,\nукрепи мою веру и дай силы преодолеть все трудности.\nПомоги мне не унывать, но уповать на Твою волю\nи милость.\nАминь.'
-      }
-    ]
-  },
-  uk: {
-    title: '📖 Збірник молитов на кожен день',
-    todayLabel: 'Сьогодні',
-    dailyTitle: 'Молитва дня',
-    lead: 'У кожному дні є час для молитви й подяки Богові.',
-    intro: 'Молитва відкриває серце для Божої любові та милості. Нехай ці слова допоможуть вам звертатися до Господа з довірою і вдячністю.',
-    closing: '🙏 Нехай Господь чує ваші молитви і наповнює серця радістю та миром!',
-    subscribe: '@Pravoslav_molitvoslov - підпишіться',
-    save: 'Зберегти',
-    saved: 'Збережено',
-    share: 'Поділитися',
-    listen: 'Слухати',
-    stop: 'Зупинити',
-    allPrayers: 'Усі молитви',
-    choosePrayer: 'Обрати молитву',
-    shareDone: 'Посилання скопійовано',
-    listenUnavailable: 'Озвучення недоступне в цьому браузері',
-    openFull: 'Відкрити для читання',
-    copy: 'Скопіювати',
-    copied: 'Скопійовано',
-    download: 'Завантажити',
-    close: 'Закрити',
-    prayers: [
-      {
-        title: 'Молитва подяки',
-        text: 'Господи, дякую Тобі за всі милості,\nявлені мені в житті.\nНавчи мене бачити Твою любов\nу кожному дні і за все прославляти Тебе.\nАмінь.'
-      },
-      {
-        title: 'Молитва перед навчанням або роботою',
-        text: 'Господи, пошли мені дух розуму і мудрості,\nукріпи мене в трудах моїх,\nпросвіти мій розум і серце,\nщоб усе робив(ла) на славу Твою.\nАмінь.'
-      },
-      {
-        title: "Молитва за здоров'я близьких",
-        text: 'Господи Ісусе Христе, Сину Божий,\nзціли й укріпи рабів Твоїх (імена),\nдаруй їм здоров\'я душевне і тілесне,\nпошли їм терпіння і сили перенести всі випробування.\nАмінь.'
-      },
-      {
-        title: "Молитва про мир у сім'ї",
-        text: 'Господи, подай мир і любов у наш дім,\nдаруй згоду, терпіння і взаєморозуміння,\nнаправ нас на шлях добра і взаємної підтримки.\nАмінь.'
-      },
-      {
-        title: 'Молитва у важку хвилину',
-        text: 'Господи, не залиш мене в час випробувань,\nукріпи мою віру і дай сили подолати всі труднощі.\nДопоможи мені не впадати у відчай, а уповати на Твою волю\nі милість.\nАмінь.'
-      }
-    ]
-  },
-  en: {
-    title: '📖 A Collection of Daily Prayers',
-    todayLabel: 'Today',
-    dailyTitle: 'Prayer of the day',
-    lead: 'Every day holds a time for prayer and gratitude to God.',
-    intro: 'Prayer opens the heart to God\'s love and mercy. May these words help you turn to the Lord with trust and thanksgiving.',
-    closing: '🙏 May the Lord hear your prayers and fill your hearts with joy and peace!',
-    subscribe: '@Pravoslav_molitvoslov - subscribe',
-    save: 'Save',
-    saved: 'Saved',
-    share: 'Share',
-    listen: 'Listen',
-    stop: 'Stop',
-    allPrayers: 'All prayers',
-    choosePrayer: 'Choose prayer',
-    shareDone: 'Link copied',
-    listenUnavailable: 'Speech playback is not available in this browser',
-    openFull: 'Open for reading',
-    copy: 'Copy',
-    copied: 'Copied',
-    download: 'Download',
-    close: 'Close',
-    prayers: [
-      {
-        title: 'Prayer of Thanksgiving',
-        text: 'Lord, I thank You for all the mercies\nshown to me in my life.\nTeach me to see Your love\nin every day and to glorify You for all things.\nAmen.'
-      },
-      {
-        title: 'Prayer Before Study or Work',
-        text: 'Lord, send me the spirit of understanding and wisdom,\nstrengthen me in my labors,\nenlighten my mind and heart,\nso that I may do all things for Your glory.\nAmen.'
-      },
-      {
-        title: 'Prayer for the Health of Loved Ones',
-        text: 'Lord Jesus Christ, Son of God,\nheal and strengthen Your servants (names),\ngrant them health of soul and body,\nand send them patience and strength to endure every trial.\nAmen.'
-      },
-      {
-        title: 'Prayer for Peace in the Family',
-        text: 'Lord, grant peace and love to our home,\ngive us harmony, patience, and mutual understanding,\nand guide us on the path of goodness and support for one another.\nAmen.'
-      },
-      {
-        title: 'Prayer in a Difficult Moment',
-        text: 'Lord, do not leave me in the hour of trial,\nstrengthen my faith and give me the power to overcome every difficulty.\nHelp me not to lose heart, but to trust in Your will\nand mercy.\nAmen.'
-      }
-    ]
+    downloadQr: 'Download QR',
+    gallery: 'Photo gallery'
   }
 } as const;
 
 function ui(locale: keyof typeof uiText, key: keyof typeof uiText.ru) {
   return uiText[locale][key];
-}
-
-const DAILY_PRAYER_SAVE_KEY = 'ikona-daily-prayer-saved';
-const speechLang = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' } as const;
-const preferredMaleVoiceNames = [
-  'alex',
-  'daniel',
-  'david',
-  'fred',
-  'guy',
-  'mark',
-  'microsoft dmitry',
-  'microsoft pavel',
-  'microsoft david',
-  'microsoft mark',
-  'microsoft guy',
-  'google uk english male',
-  'yuri',
-  'dmitry',
-  'pavel',
-  'maxim',
-  'taras',
-  'ostap',
-  'mykola'
-];
-
-const likelyFemaleVoiceNames = [
-  'anna',
-  'elena',
-  'irina',
-  'katya',
-  'milena',
-  'samantha',
-  'tatyana',
-  'victoria',
-  'zira'
-];
-
-function todayPrayerIndex(total: number) {
-  if (!total) return 0;
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
-  const day = Math.floor((Number(now) - Number(start)) / 86400000);
-  return day % total;
-}
-
-function savedPrayerIds() {
-  if (typeof window === 'undefined') return [];
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(DAILY_PRAYER_SAVE_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
-function prayerFileName(title: string) {
-  const slug = title.toLowerCase().replace(/[^a-z0-9а-яёіїєґ]+/gi, '-').replace(/^-|-$/g, '') || 'prayer';
-  return `${slug}.txt`;
-}
-
-function preferredSpeechVoice(locale: keyof typeof speechLang) {
-  if (!('speechSynthesis' in window)) return null;
-
-  const lang = speechLang[locale].toLowerCase();
-  const language = lang.split('-')[0];
-  const voices = window.speechSynthesis.getVoices();
-  const localizedVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith(language));
-  const candidates = localizedVoices.length ? localizedVoices : voices;
-
-  return candidates.find((voice) => {
-    const name = voice.name.toLowerCase();
-    return preferredMaleVoiceNames.some((maleName) => name.includes(maleName));
-  }) || candidates.find((voice) => {
-    const name = voice.name.toLowerCase();
-    return voice.lang.toLowerCase().startsWith(language) && !likelyFemaleVoiceNames.some((femaleName) => name.includes(femaleName));
-  }) || null;
 }
 
 function prayerTitle(title: string, locale: keyof typeof uiText) {
@@ -355,6 +159,11 @@ function downloadFileName(title: string, image: string, prefix = 'qr') {
 
 function isPublicStorySection(label: string) {
   return !/(alt|prompt|source|источник|джерело|generation|генерац|не писать|do not write)/i.test(label);
+}
+
+function externalHref(value?: string) {
+  const trimmed = (value || '').trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : '';
 }
 
 function excerptParagraphs(value: string, maxParagraphs = 2, maxChars = 520) {
@@ -420,29 +229,32 @@ export function LocalizedIconGrid({ icons }: { icons: Icon[] }) {
   return <div className="icon-grid">{icons.map((icon) => <IconCard key={icon.id} icon={localizeIcon(icon, locale)} />)}</div>;
 }
 
-export function LocalizedPrayersList({ icons }: { icons: Icon[] }) {
+export function LocalizedBackendPrayersList({ prayers }: { prayers: Prayer[] }) {
   const { locale } = useI18n();
   const localeHref = useLocaleHref();
-  const items = icons.map((icon) => localizeIcon(icon, locale)).filter((icon) => icon.prayerText.trim());
   return (
     <div className="list-grid">
-      {items.map((icon) => {
-        const title = prayerTitle(icon.title, locale);
-        const image = imageForPrayer(icon);
+      {prayers.map((prayer) => {
+        const title = prayerTitle(prayer.title, locale);
+        const image = prayer.imageUrl || prayer.qrCodeUrl || '';
         return (
-          <article className="prayer-list-card" key={icon.id}>
-            <Link className="prayer-list-media" href={localeHref(`/prayers/${icon.slug}`)}>
-              <StableImage src={image} alt={title} width={720} height={720} />
-            </Link>
+          <article className="prayer-list-card" key={prayer.id}>
+            {image ? (
+              <Link className="prayer-list-media" href={localeHref(`/prayers/${prayer.slug}`)}>
+                <StableImage src={image} alt={title} width={720} height={720} />
+              </Link>
+            ) : null}
             <div className="prayer-list-copy">
-              <span>{icon.category || ui(locale, 'prayerCategory')}</span>
-              <Link href={localeHref(`/prayers/${icon.slug}`)}><strong>{title}</strong></Link>
-              <p>{textPreview(icon.prayerText, 190)}</p>
+              <span>{prayer.category || ui(locale, 'prayerCategory')}</span>
+              <Link href={localeHref(`/prayers/${prayer.slug}`)}><strong>{title}</strong></Link>
+              <p>{textPreview(prayer.text, 190)}</p>
               <div className="prayer-card-actions">
-                <AssetButton href={`/prayers/${icon.slug}`}>{ui(locale, 'readPrayer')}</AssetButton>
-                <AssetButton variant="dark" icon={<DownloadIcon />} href={image} download={downloadFileName(title, image)}>
-                  {ui(locale, 'downloadQr')}
-                </AssetButton>
+                <AssetButton href={`/prayers/${prayer.slug}`}>{ui(locale, 'readPrayer')}</AssetButton>
+                {image ? (
+                  <AssetButton variant="dark" icon={<DownloadIcon />} href={image} download={downloadFileName(title, image)}>
+                    {ui(locale, 'downloadQr')}
+                  </AssetButton>
+                ) : null}
               </div>
             </div>
           </article>
@@ -452,251 +264,33 @@ export function LocalizedPrayersList({ icons }: { icons: Icon[] }) {
   );
 }
 
-export function DailyPrayerCollection() {
+export function LocalizedBackendPrayerDetail({ prayer }: { prayer: Prayer }) {
   const { locale } = useI18n();
-  const content = dailyPrayerTexts[locale];
-  const [selectedPrayerIndex, setSelectedPrayerIndex] = useState(0);
-  const [savedIds, setSavedIds] = useState<string[]>([]);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [statusText, setStatusText] = useState('');
-  const [expandedPrayerIndex, setExpandedPrayerIndex] = useState<number | null>(null);
-  const [fullscreenStatus, setFullscreenStatus] = useState('');
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const selectedPrayer = content.prayers[selectedPrayerIndex] || content.prayers[0];
-  const expandedPrayer = expandedPrayerIndex === null ? null : content.prayers[expandedPrayerIndex];
-  const selectedPrayerId = `${locale}-${selectedPrayer.title}`;
-  const isSaved = savedIds.includes(selectedPrayerId);
-
-  useEffect(() => {
-    setSelectedPrayerIndex(todayPrayerIndex(content.prayers.length));
-    setSavedIds(savedPrayerIds());
-  }, [content.prayers.length, locale]);
-
-  useEffect(() => () => {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-  }, []);
-
-  useEffect(() => {
-    if (expandedPrayerIndex === null) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setExpandedPrayerIndex(null);
-        setFullscreenStatus('');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [expandedPrayerIndex]);
-
-  const selectPrayer = (index: number) => {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    setIsSpeaking(false);
-    setStatusText('');
-    setSelectedPrayerIndex(index);
-  };
-
-  const toggleSave = () => {
-    const nextSaved = isSaved
-      ? savedIds.filter((id) => id !== selectedPrayerId)
-      : [...savedIds, selectedPrayerId];
-    setSavedIds(nextSaved);
-    window.localStorage.setItem(DAILY_PRAYER_SAVE_KEY, JSON.stringify(nextSaved));
-  };
-
-  const sharePrayer = async () => {
-    const shareText = `${selectedPrayer.title}\n\n${selectedPrayer.text}`;
-    const shareUrl = `${window.location.origin}${window.location.pathname}#daily-prayer`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: selectedPrayer.title, text: shareText, url: shareUrl });
-        return;
-      }
-
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
-        setStatusText(content.shareDone);
-        window.setTimeout(() => setStatusText(''), 2600);
-      }
-    } catch {
-      setStatusText('');
-    }
-  };
-
-  const toggleListen = () => {
-    if (!('speechSynthesis' in window)) {
-      setStatusText(content.listenUnavailable);
-      return;
-    }
-
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(`${selectedPrayer.title}. ${selectedPrayer.text.replace(/\n+/g, '. ')}`);
-    const voice = preferredSpeechVoice(locale);
-    if (voice) utterance.voice = voice;
-    utterance.lang = speechLang[locale];
-    utterance.rate = 0.9;
-    utterance.pitch = 0.82;
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    utteranceRef.current = utterance;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-    setIsSpeaking(true);
-  };
-
-  const copyExpandedPrayer = async () => {
-    if (!expandedPrayer) return;
-
-    try {
-      await navigator.clipboard.writeText(`${expandedPrayer.title}\n\n${expandedPrayer.text}`);
-      setFullscreenStatus(content.copied);
-      window.setTimeout(() => setFullscreenStatus(''), 2400);
-    } catch {
-      setFullscreenStatus('');
-    }
-  };
-
-  const downloadExpandedPrayer = () => {
-    if (!expandedPrayer) return;
-
-    const blob = new Blob([`${expandedPrayer.title}\n\n${expandedPrayer.text}\n`], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = prayerFileName(expandedPrayer.title);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  return (
-    <section id="daily-prayer" className="daily-prayer-collection">
-      <div className="daily-prayer-intro">
-        <p className="eyebrow">{ui(locale, 'prayer')}</p>
-        <h2>{content.title}</h2>
-        <p className="daily-prayer-lead">{content.lead}</p>
-        <p>{content.intro}</p>
-      </div>
-      <article className="daily-prayer-reader">
-        <div className="daily-prayer-reader-head">
-          <div>
-            <span>{content.todayLabel}</span>
-            <h3>{content.dailyTitle}</h3>
-          </div>
-          <div className="daily-prayer-actions" aria-label={content.dailyTitle}>
-            <button type="button" onClick={toggleSave}>{isSaved ? content.saved : content.save}</button>
-            <button type="button" onClick={sharePrayer}>{content.share}</button>
-            <button type="button" onClick={toggleListen}>{isSpeaking ? content.stop : content.listen}</button>
-          </div>
-        </div>
-        <div className="daily-prayer-reader-body">
-          <p className="daily-prayer-reader-kicker">{String(selectedPrayerIndex + 1).padStart(2, '0')}</p>
-          <h3>{selectedPrayer.title}</h3>
-          <p>{selectedPrayer.text}</p>
-          {statusText ? <small>{statusText}</small> : null}
-        </div>
-      </article>
-      <div className="daily-prayer-picker" aria-label={content.choosePrayer}>
-        {content.prayers.map((prayer, index) => (
-          <button
-            key={prayer.title}
-            type="button"
-            className={index === selectedPrayerIndex ? 'active' : ''}
-            onClick={() => selectPrayer(index)}
-            aria-pressed={index === selectedPrayerIndex}
-          >
-            <span>{String(index + 1).padStart(2, '0')}</span>
-            {prayer.title}
-          </button>
-        ))}
-      </div>
-      <div className="daily-prayer-section-label">
-        <span>{content.allPrayers}</span>
-      </div>
-      <div className="daily-prayer-grid">
-        {content.prayers.map((prayer, index) => (
-          <article
-            className="daily-prayer-card"
-            key={prayer.title}
-            onClick={() => {
-              setExpandedPrayerIndex(index);
-              setFullscreenStatus('');
-            }}
-          >
-            <span>{String(index + 1).padStart(2, '0')}</span>
-            <h3>{prayer.title}</h3>
-            <p>{prayer.text}</p>
-          </article>
-        ))}
-      </div>
-      <div className="daily-prayer-footer">
-        <p>{content.closing}</p>
-        <small>{content.subscribe}</small>
-      </div>
-      {expandedPrayer ? (
-        <div className="daily-prayer-fullscreen" role="dialog" aria-modal="true" aria-labelledby="daily-prayer-fullscreen-title">
-          <article className="daily-prayer-fullscreen-panel">
-            <div className="daily-prayer-fullscreen-top">
-              <span>{String((expandedPrayerIndex ?? 0) + 1).padStart(2, '0')}</span>
-              <button
-                type="button"
-                className="daily-prayer-fullscreen-close"
-                onClick={() => {
-                  setExpandedPrayerIndex(null);
-                  setFullscreenStatus('');
-                }}
-              >
-                {content.close}
-              </button>
-            </div>
-            <div className="daily-prayer-fullscreen-reader">
-              <h3 id="daily-prayer-fullscreen-title">{expandedPrayer.title}</h3>
-              <p>{expandedPrayer.text}</p>
-              {fullscreenStatus ? <small>{fullscreenStatus}</small> : null}
-            </div>
-            <div className="daily-prayer-fullscreen-actions">
-              <button type="button" onClick={copyExpandedPrayer}>{content.copy}</button>
-              <button type="button" onClick={downloadExpandedPrayer}>{content.download}</button>
-            </div>
-          </article>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-export function LocalizedPrayerDetail({ icon }: { icon: Icon }) {
-  const { locale } = useI18n();
-  const item = localizeIcon(icon, locale);
+  const image = prayer.imageUrl || prayer.qrCodeUrl || '';
   return (
     <main className="read-page sacred-read-page">
       <section className="read-hero">
-        <p className="eyebrow">{item.category}</p>
-        <h1>{prayerTitle(item.title, locale)}</h1>
-        <p>{item.shortDescription}</p>
+        <p className="eyebrow">{prayer.category || ui(locale, 'prayer')}</p>
+        <h1>{prayerTitle(prayer.title, locale)}</h1>
+        {prayer.seoDescription ? <p>{prayer.seoDescription}</p> : null}
       </section>
-      <article className="sacred-panel prayer-panel prayer-reader-panel">
-        <div className="prayer-panel-layout">
-          <figure className="prayer-panel-image"><StableImage src={imageForPrayer(item)} alt={item.title} width={720} height={720} /></figure>
-          <div className="prayer-panel-copy">
-            <span>{ui(locale, 'prayer')}</span>
-            <div className="reader-text prayer-reader"><DisplayText text={item.prayerText} /></div>
-            {item.audioUrl ? <audio controls src={item.audioUrl} /> : null}
+      <article className="sacred-panel prayer-reader-panel">
+        {image ? (
+          <div className="prayer-panel-layout">
+            <figure className="prayer-panel-image"><StableImage src={image} alt={prayer.title} width={720} height={720} /></figure>
+            <div className="prayer-panel-copy">
+              <span>{ui(locale, 'prayer')}</span>
+              <div className="reader-text prayer-reader"><DisplayText text={prayer.text} /></div>
+              {prayer.audioUrl ? <audio controls src={prayer.audioUrl} /> : null}
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <span>{ui(locale, 'prayer')}</span>
+            <div className="reader-text prayer-reader"><DisplayText text={prayer.text} /></div>
+            {prayer.audioUrl ? <audio controls src={prayer.audioUrl} /> : null}
+          </>
+        )}
       </article>
     </main>
   );
@@ -727,26 +321,118 @@ export function LocalizedSaintDetail({ icon }: { icon: Icon }) {
   );
 }
 
-export function LocalizedGospelPage({ icons }: { icons: Icon[] }) {
-  const { locale } = useI18n();
-  const item = icons.map((icon) => localizeIcon(icon, locale)).find((icon) => icon.gospelText.trim()) || localizeIcon(icons[0], locale);
-  const sections = sectionsFromText(item?.gospelText);
-  const reference = sections.find((section) => /чтение|reading|зачало|reference|євангел/i.test(section.label))?.label || ui(locale, 'gospelDay');
+function ChurchGallery({ title, images }: { title: string; images: string[] }) {
+  const { t } = useI18n();
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  if (!images.length) return null;
+  const active = activeIndex === null ? null : images[activeIndex] || null;
+
   return (
-    <main className="read-page sacred-read-page">
-      <section className="read-hero">
-        <p className="eyebrow">{item?.calendarDate || ''}</p>
-        <h1>{ui(locale, 'gospelDay')}</h1>
-        <p>{reference}</p>
-      </section>
-      <article className="sacred-panel prayer-panel"><span>{ui(locale, 'gospelDay')}</span><div className="reader-text"><DisplayText text={item?.gospelText} /></div></article>
-      {item?.shortDescription ? <article className="sacred-panel"><span>{ui(locale, 'explanation')}</span><div className="reader-text"><p>{item.shortDescription}</p></div></article> : null}
-    </main>
+    <>
+      <div className="church-gallery-grid">
+        {images.map((image, index) => (
+          <figure className={`church-gallery-card${index === 0 ? ' featured' : ''}`} key={`${image}-${index}`}>
+            <button className="church-gallery-open" type="button" onClick={() => setActiveIndex(index)}>
+              <StableImage src={image} alt={`${title} ${index + 1}`} width={900} height={675} />
+              <span><SvgIcon name="zoom" size={16} />{t('zoomImage')}</span>
+            </button>
+          </figure>
+        ))}
+      </div>
+
+      {active ? (
+        <div className="icon-lightbox" role="dialog" aria-modal="true" aria-label={title}>
+          <button className="icon-lightbox-backdrop" type="button" onClick={() => setActiveIndex(null)} aria-label={t('close')} />
+          <div className="icon-lightbox-panel">
+            <button className="icon-lightbox-close" type="button" onClick={() => setActiveIndex(null)}>{t('close')}</button>
+            <StableImage src={active} alt={title} width={1200} height={900} loading="eager" />
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
-export function LocalizedChurchesPage({ icons, fallbackChurches }: { icons: Icon[]; fallbackChurches: Church[] }) {
+export function LocalizedChurchesPage({ icons, fallbackChurches, churchInfo }: { icons: Icon[]; fallbackChurches: Church[]; churchInfo: ChurchInfoDto | null }) {
   const { locale, t } = useI18n();
+  const translation = churchInfo?.translations[locale] || churchInfo?.translations.uk;
+
+  if (churchInfo && churchInfo.status === 'published' && translation?.title) {
+    const contactHref = externalHref(churchInfo.phoneOrSite);
+    const storyTitle = translation.dedication?.match(/[«"]([^»"]+)[»"]/)?.[1] || translation.title;
+    const galleryImages = uniqueImages([churchInfo.imageUrl, ...(churchInfo.galleryImages || [])]);
+    const factCards: Array<{ key: string; label: string; value?: string; icon: LucideIcon; href?: string }> = [
+      { key: 'address', label: ui(locale, 'address'), value: churchInfo.address, icon: MapPin, href: churchInfo.mapsUrl },
+      { key: 'schedule', label: ui(locale, 'schedule'), value: translation.schedule, icon: Clock3 },
+      { key: 'priest', label: ui(locale, 'priest'), value: translation.priest, icon: UserRound },
+      { key: 'priest-phone', label: ui(locale, 'priestPhone'), value: churchInfo.priestPhone, icon: Phone },
+      { key: 'phone', label: ui(locale, 'phoneSite'), value: churchInfo.phoneOrSite, icon: Phone, href: contactHref },
+      { key: 'shrines', label: ui(locale, 'shrines'), value: translation.shrines, icon: Sparkles }
+    ].filter((item) => item.value?.trim());
+
+    return (
+      <main className="page church-profile-page">
+        <section className="church-profile-hero">
+          <div className="church-profile-copy">
+            <p className="eyebrow">{t('churchesPageEyebrow')}</p>
+            <h1>{translation.title}</h1>
+            {translation.dedication ? <p className="church-dedication">{ui(locale, 'dedicatedTo')}: {translation.dedication}</p> : null}
+            {translation.description ? <p className="detail-lead">{textPreview(translation.description, 260)}</p> : null}
+            {churchInfo.mapsUrl || contactHref ? (
+              <div className="detail-actions">
+                {churchInfo.mapsUrl ? <AssetButton variant="dark" href={churchInfo.mapsUrl} target="_blank" rel="noreferrer">{ui(locale, 'openMap')}</AssetButton> : null}
+                {contactHref ? <AssetButton href={contactHref} target="_blank" rel="noreferrer">{ui(locale, 'phoneSite')}</AssetButton> : null}
+              </div>
+            ) : null}
+          </div>
+          <aside className="church-profile-visual" aria-label={translation.title}>
+            {churchInfo.imageUrl ? (
+              <figure className="church-profile-image"><StableImage src={churchInfo.imageUrl} alt={translation.title} width={900} height={900} loading="eager" /></figure>
+            ) : (
+              <div className="church-logo-panel">
+                <BrandLogo className="church-profile-logo" size={150} />
+                <span>{translation.title}</span>
+              </div>
+            )}
+          </aside>
+        </section>
+
+        {factCards.length ? (
+          <dl className="church-profile-facts">
+            {factCards.map(({ key, label, value, icon: Icon, href }) => (
+              <div className="church-fact-card" key={key}>
+                <dt><Icon size={22} strokeWidth={1.8} aria-hidden="true" /><span>{label}</span></dt>
+                <dd>{href ? <a href={href} target="_blank" rel="noreferrer">{value}</a> : <DisplayText text={value} />}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+
+        {galleryImages.length ? (
+          <section className="church-gallery-section">
+            <div className="section-head">
+              <p className="eyebrow">{ui(locale, 'gallery')}</p>
+              <h2>{storyTitle}</h2>
+            </div>
+            <ChurchGallery title={translation.title} images={galleryImages} />
+          </section>
+        ) : null}
+
+        {translation.description ? (
+          <section className="church-story-section">
+            <div className="section-head">
+              <p className="eyebrow">{ui(locale, 'aboutChurch')}</p>
+              <h2>{storyTitle}</h2>
+            </div>
+            <div className="church-story-content">
+              <DisplayText text={translation.description} />
+            </div>
+          </section>
+        ) : null}
+      </main>
+    );
+  }
+
   const fromIcons = icons.map((icon) => churchFromIcon(localizeIcon(icon, locale))).filter(hasChurchFields);
   const items = fromIcons.length ? fromIcons : fallbackChurches;
   return (
@@ -764,6 +450,8 @@ export function LocalizedChurchesPage({ icons, fallbackChurches }: { icons: Icon
               <dl className="church-facts">
                 {church.address ? <><dt>{ui(locale, 'address')}</dt><dd>{church.address}</dd></> : null}
                 {church.schedule ? <><dt>{ui(locale, 'schedule')}</dt><dd>{church.schedule}</dd></> : null}
+                {church.priest ? <><dt>{ui(locale, 'priest')}</dt><dd>{church.priest}</dd></> : null}
+                {church.priestPhone ? <><dt>{ui(locale, 'priestPhone')}</dt><dd>{church.priestPhone}</dd></> : null}
                 {church.phoneOrSite ? <><dt>{ui(locale, 'phoneSite')}</dt><dd>{church.phoneOrSite}</dd></> : null}
                 {church.shrines ? <><dt>{ui(locale, 'shrines')}</dt><dd>{church.shrines}</dd></> : null}
               </dl>

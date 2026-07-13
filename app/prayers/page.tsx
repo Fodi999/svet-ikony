@@ -1,4 +1,4 @@
-import { DailyPrayerCollection, LocalizedPrayersList } from '@/components/site/LocalizedContent';
+import { LocalizedBackendPrayersList } from '@/components/site/LocalizedContent';
 import { T } from '@/components/site/TranslatedText';
 import { publicApi } from '@/lib/api';
 import { pageMetadata } from '@/lib/seo';
@@ -8,12 +8,11 @@ export const metadata = pageMetadata({ title: 'Православные моли
 
 export default async function PrayersPage() {
   const locale = await getRequestLocale();
-  const icons = await publicApi.icons(locale);
+  const prayers = await publicApi.prayers(locale);
   return (
     <main className="page">
       <section className="page-hero"><p className="eyebrow"><T k="prayersPageEyebrow" /></p><h1><T k="prayersPageTitle" /></h1></section>
-      <DailyPrayerCollection />
-      <LocalizedPrayersList icons={icons} />
+      <LocalizedBackendPrayersList prayers={prayers} />
     </main>
   );
 }

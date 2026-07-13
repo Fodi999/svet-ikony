@@ -5,10 +5,7 @@
 .slavonic-page {
   min-height: 100vh;
   padding: clamp(42px, 5vw, 92px) clamp(18px, 5vw, 72px);
-  background:
-    radial-gradient(circle at 82% 10%, rgba(214, 168, 79, .12), transparent 28%),
-    linear-gradient(180deg, rgba(214, 168, 79, .06), transparent 260px),
-    var(--background);
+  background: var(--background);
   color: var(--text);
 }
 
@@ -57,7 +54,7 @@
   font-weight: 700;
   font-size: clamp(38px, 5.8vw, 96px);
   line-height: 1.02;
-  letter-spacing: -.01em;
+  letter-spacing: 0;
   text-wrap: balance;
 }
 
@@ -165,8 +162,8 @@
   transform: translateY(-3px);
   border-color: var(--gold-light);
   background:
-    radial-gradient(circle at 50% 38%, rgba(214, 168, 79, .18), transparent 52%),
-    linear-gradient(135deg, rgba(214, 168, 79, .14), transparent 48%),
+    linear-gradient(135deg, rgba(205, 164, 90, .13), transparent 48%),
+    linear-gradient(160deg, rgba(127, 141, 101, .1), transparent 64%),
     rgba(35, 30, 21, .98);
   box-shadow: var(--shadow-sm), 0 0 0 1px rgba(214, 168, 79, .18);
 }
@@ -189,13 +186,6 @@
   font-size: 11px;
   font-weight: 900;
   line-height: 1;
-}
-
-.slavonic-tile__ornament {
-  width: 34px;
-  height: 7px;
-  background: var(--ornament-divider) center / contain no-repeat;
-  opacity: .58;
 }
 
 .slavonic-tile strong {

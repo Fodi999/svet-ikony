@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { publicApi } from '@/lib/api';
+import { getRequestLocale } from '@/lib/serverLocale';
 import { pageMetadata } from '@/lib/seo';
 
 type Props = {
@@ -21,21 +23,24 @@ function Paragraphs({ text }: { text?: string }) {
 export async function generateMetadata({ params, searchParams }: Props) {
   const { slug } = await params;
   const token = (await searchParams)?.preview_token;
-  const result = await publicApi.churchPrayer(slug, token);
+  const locale = await getRequestLocale();
+  const result = await publicApi.churchPrayer(slug, token, locale);
   const prayer = result?.prayer;
   return pageMetadata({
     title: prayer?.title,
     description: prayer?.text?.slice(0, 180),
-    path: `/church/prayers/${slug}`
+    path: `/church/prayers/${slug}`,
+    locale
   });
 }
 
 export default async function ChurchPrayerPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const token = (await searchParams)?.preview_token;
-  const result = await publicApi.churchPrayer(slug, token);
+  const locale = await getRequestLocale();
+  const result = await publicApi.churchPrayer(slug, token, locale);
   const prayer = result?.prayer;
-  if (!prayer) return <main className="page"><h1>Молитва не найдена</h1></main>;
+  if (!prayer) notFound();
   const date = result?.calendarDay?.dateNewStyle || result?.calendarDay?.dateOldStyle;
   return (
     <main className="read-page sacred-read-page">
@@ -49,7 +54,7 @@ export default async function ChurchPrayerPage({ params, searchParams }: Props) 
           <audio controls src={prayer.audioUrl}>Ваш браузер не поддерживает аудио.</audio>
         </section>
       ) : null}
-      <article className="sacred-panel prayer-panel prayer-reader-panel">
+      <article className="sacred-panel prayer-reader-panel">
         <span>Молитва</span>
         <div className="reader-text prayer-reader"><Paragraphs text={prayer.text} /></div>
       </article>

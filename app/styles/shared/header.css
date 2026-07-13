@@ -3,7 +3,8 @@
    ============================================================ */
 
 .site-header {
-  position: relative;
+  position: sticky;
+  top: 10px;
   z-index: 1000;
   width: calc(100% - clamp(24px, 4vw, 72px));
   max-width: 1840px;
@@ -13,15 +14,19 @@
   grid-template-columns: minmax(270px, 360px) minmax(0, 1fr) auto;
   align-items: center;
   gap: clamp(14px, 2.4vw, 34px);
-  padding: 4px clamp(18px, 5vw, 72px);
+  padding: 5px clamp(16px, 4vw, 48px);
   border: 1px solid var(--border-soft);
-  border-radius: 18px;
-  background:
-    linear-gradient(90deg, rgba(214, 168, 79, .16), transparent 32%),
-    rgba(11, 11, 10, .9);
+  border-radius: var(--radius-md);
+  background: rgba(11, 12, 10, .94);
   color: var(--text);
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(18px) saturate(1.08);
+  overflow: clip;
+  isolation: isolate;
+}
+
+.site-header::before {
+  content: none;
 }
 
 .brand {
@@ -37,34 +42,24 @@
 
 .brand-logo-mark {
   position: relative;
-  display: block;
-  width: 78px;
-  height: 106px;
-  flex: 0 0 78px;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  overflow: hidden;
 }
 
 .brand-logo {
   display: block;
   width: 100%;
   height: 100%;
-  opacity: 0;
+  object-fit: contain;
+  opacity: 1;
 }
 
 .brand-logo-mark::after {
-  position: absolute;
-  inset: 0;
-  content: '';
-  background: linear-gradient(105deg, #fff8e8 5%, #d6a84f 28%, #fff 48%, #b8842b 68%, #fff3cf 92%);
-  background-size: 260% 100%;
-  -webkit-mask: url('/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg') center / contain no-repeat;
-  mask: url('/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg') center / contain no-repeat;
-  pointer-events: none;
-  animation: logo-shimmer 5s ease-in-out infinite;
-}
-
-@keyframes logo-shimmer {
-  0%, 100% { background-position: 100% 50%; }
-  50% { background-position: 0 50%; }
+  content: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -121,10 +116,10 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  border: 1px solid var(--border-gold);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-full);
   padding: 4px;
-  background: rgba(5, 5, 5, .22);
+  background: rgba(5, 5, 5, .18);
 }
 
 .main-nav a {
@@ -150,8 +145,8 @@
 }
 
 .main-nav a.active {
-  border-color: var(--gold);
-  background: var(--gold);
+  border-color: var(--gold-light);
+  background: var(--gold-light);
   color: var(--background);
 }
 
@@ -167,7 +162,7 @@
   min-height: 40px;
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--border-gold);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-full);
   padding: 3px;
   background: rgba(5, 5, 5, .24);
@@ -193,7 +188,7 @@
 }
 
 .language-switch button.active {
-  background: var(--gold);
+  background: var(--gold-light);
   color: var(--background);
 }
 
@@ -250,8 +245,8 @@
   }
 
   .brand-logo-mark {
-    width: 58px;
-    height: 80px;
+    width: 54px;
+    height: 54px;
     flex-basis: 58px;
   }
 
@@ -284,7 +279,7 @@
     width: calc(100% - 12px);
     margin-top: 6px;
     min-height: auto;
-    border-radius: 13px;
+    border-radius: var(--radius-md);
     padding: 4px 10px;
     gap: 10px;
   }
@@ -296,7 +291,7 @@
 
   .brand-logo-mark {
     width: 48px;
-    height: 66px;
+    height: 48px;
     flex-basis: 48px;
   }
 
@@ -360,7 +355,7 @@
 
   .brand-logo-mark {
     width: 42px;
-    height: 58px;
+    height: 42px;
     flex-basis: 42px;
   }
 

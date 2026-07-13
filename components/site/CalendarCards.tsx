@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type { Icon } from '@/lib/types';
 import type { TranslationKey } from '@/lib/i18n';
+import { BrandLogo } from './BrandLogo';
 import { useLocaleHref } from './LanguageProvider';
 import { StableImage } from './StableImage';
 import { SvgIcon } from './SvgIcon';
@@ -70,13 +71,23 @@ function DayStatusMarks({ item }: { item: CalendarDay }) {
   );
 }
 
+function prayerHref(item: CalendarDay, detailHref: string) {
+  if (!item.prayerSlug) return '/prayers';
+  return detailHref.startsWith('/church/') ? `/church/prayers/${item.prayerSlug}` : `/prayers/${item.prayerSlug}`;
+}
+
+function gospelHref(item: CalendarDay, detailHref: string) {
+  if (!item.gospelSlug || item.gospelSlug === 'today') return '/gospel';
+  return detailHref.startsWith('/church/') ? `/church/gospel/${item.gospelSlug}` : `/gospel/${item.gospelSlug}`;
+}
+
 function DayLinks({ item, detailHref, ariaLabel, labels }: { item: CalendarDay; detailHref: string; ariaLabel: string; labels: DayActionLabels }) {
   const localeHref = useLocaleHref();
 
   return (
     <nav className="day-links" aria-label={ariaLabel}>
-      <Link href={localeHref(item.prayerSlug ? `/prayers/${item.prayerSlug}` : '/prayers')}>{labels.prayers}</Link>
-      <Link href={localeHref(item.gospelSlug && item.gospelSlug !== 'today' ? `/gospel/${item.gospelSlug}` : '/gospel')}>{labels.gospel}</Link>
+      <Link href={localeHref(prayerHref(item, detailHref))}>{labels.prayers}</Link>
+      <Link href={localeHref(gospelHref(item, detailHref))}>{labels.gospel}</Link>
       <Link href={localeHref(detailHref)}>{labels.more}</Link>
     </nav>
   );
@@ -87,8 +98,8 @@ function ListPanelLinks({ item, detailHref, ariaLabel, labels }: { item: Calenda
 
   return (
     <nav className="list-panel-links" aria-label={ariaLabel}>
-      <Link href={localeHref(item.prayerSlug ? `/prayers/${item.prayerSlug}` : '/prayers')}>{labels.prayers}</Link>
-      <Link href={localeHref(item.gospelSlug && item.gospelSlug !== 'today' ? `/gospel/${item.gospelSlug}` : '/gospel')}>{labels.gospel}</Link>
+      <Link href={localeHref(prayerHref(item, detailHref))}>{labels.prayers}</Link>
+      <Link href={localeHref(gospelHref(item, detailHref))}>{labels.gospel}</Link>
       <Link href={localeHref(detailHref)}>{labels.more}</Link>
     </nav>
   );
@@ -100,7 +111,8 @@ export function CalendarFeatureCard({ eyebrow, title, date, oldDate, note, link 
   return (
     <aside className="calendar-hero-card calendar-feature">
       <p>{eyebrow}</p>
-      <strong><span className="gold-cross"><SvgIcon name="orthodox-cross" size={17} /></span> {title}</strong>
+      <span className="gold-cross"><BrandLogo size={96} /></span>
+      <strong>{title}</strong>
       <span>{date}{oldDate ? <><br />{oldDate}</> : null}</span>
       {note ? <em>{note}</em> : null}
       <Link href={localeHref(link.href)}>{link.label}<SvgIcon name="arrow-right" size={16} /></Link>
@@ -141,21 +153,25 @@ export function CalendarInfoCard({ eyebrow, title, links }: { eyebrow: string; t
   );
 }
 
-export function CalendarGridDay(props: DayCommonProps & { todayLabel: string; outOfMonthLabel?: string }) {
-  const { item, imageUrl, detailHref, isToday, dateLabel, todayLabel, iconFallbackAlt, openDayLabel, dayLinksLabel, monthGenitiveLabel, outOfMonthLabel, actionLabels } = props;
+export function CalendarGridDay(props: DayCommonProps & { todayLabel: string }) {
+  const { item, imageUrl, detailHref, isToday, dateLabel, todayLabel, iconFallbackAlt, openDayLabel, dayLinksLabel, monthGenitiveLabel, actionLabels } = props;
   const localeHref = useLocaleHref();
   const hasContent = Boolean(item.label);
+  const hasImage = Boolean(imageUrl);
   const className = `calendar-day day-kind-${item.kind}${item.textOnly ? ' text-only' : ''}${isToday ? ' today' : ''}${item.outOfMonth ? ' out-of-month' : ''}`;
+
+  if (item.outOfMonth) {
+    return <div className={className} aria-hidden="true" />;
+  }
 
   return (
     <article className={className}>
       <div className="day-number">
         {item.day}
-        {item.outOfMonth && outOfMonthLabel ? <small>{outOfMonthLabel}</small> : null}
         <DayStatusMarks item={item} />
       </div>
       {isToday ? <span className="today-badge">{todayLabel}</span> : null}
-      {!item.outOfMonth && hasContent && imageUrl ? (
+      {hasContent && hasImage ? (
         <Link className="day-image-link" href={localeHref(detailHref)} aria-label={`${openDayLabel} ${item.label || iconFallbackAlt}`}>
           <StableImage src={imageUrl} alt={item.icon?.title || item.label || iconFallbackAlt} width={360} height={640} />
         </Link>
@@ -164,13 +180,11 @@ export function CalendarGridDay(props: DayCommonProps & { todayLabel: string; ou
         <div className="day-event">
           <div className="day-copy">
             <Link className="day-title-link" href={localeHref(detailHref)}>{item.label}</Link>
-            <span>{item.note}</span>
-            {dateLabel ? <span className="day-date-note">{dateLabel}</span> : null}
-            {item.description ? <em>{item.description}</em> : null}
+            {!hasImage ? <span>{item.note}</span> : null}
+            {!hasImage && dateLabel ? <span className="day-date-note">{dateLabel}</span> : null}
+            {!hasImage && item.description ? <em>{item.description}</em> : null}
           </div>
-          {!item.outOfMonth ? (
-            <DayLinks item={item} detailHref={detailHref} ariaLabel={`${dayLinksLabel} ${item.day} ${monthGenitiveLabel}`} labels={actionLabels} />
-          ) : null}
+          <DayLinks item={item} detailHref={detailHref} ariaLabel={`${dayLinksLabel} ${item.day} ${monthGenitiveLabel}`} labels={actionLabels} />
         </div>
       ) : null}
     </article>

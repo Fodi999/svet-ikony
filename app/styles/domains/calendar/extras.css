@@ -14,7 +14,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: clamp(18px, 2.7vw, 50px);
-  margin-top: clamp(54px, 7vw, 120px);
+  margin-top: clamp(38px, 5vw, 78px);
   border-top: 1px solid var(--border-gold);
   padding-top: 22px;
 }
@@ -29,7 +29,8 @@
   border-radius: var(--radius-md);
   padding: clamp(18px, 2vw, 28px);
   background:
-    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 48%),
+    linear-gradient(135deg, rgba(205, 164, 90, .06), transparent 48%),
+    linear-gradient(160deg, rgba(83, 108, 130, .055), transparent 64%),
     var(--surface);
   color: var(--text);
   overflow: hidden;
@@ -39,7 +40,7 @@
 .calendar-service-grid a:hover {
   border-color: var(--gold);
   background: var(--surface-soft);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .calendar-service-grid a::before {
@@ -49,7 +50,8 @@
   right: 10px;
   width: 28px;
   height: 28px;
-  background: var(--ornament-corner) center / contain no-repeat;
+  border-top: 1px solid var(--gold);
+  border-right: 1px solid var(--gold);
   opacity: .5;
   pointer-events: none;
 }

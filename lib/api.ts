@@ -1,7 +1,39 @@
-import { churches, dashboard, gospelToday, icons, prayers, qrPages, saints, seoPages } from './fallbackData';
 import { publicApiPrefix, publicApiUrl } from './config';
 import { churchFromIcon, imageForPrayer } from './iconContent';
-import type { CalendarDay, CalendarDayKind, Church, ChurchArticleDto, ChurchIconDto, ChurchPrayerDto, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSitemapItem, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
+import type { CalendarDay, CalendarDayKind, Church, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchInfoDto, ChurchPrayerDto, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSitemapItem, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
+
+const emptyDashboard: Dashboard = {
+  publishedPages: 0,
+  icons: 0,
+  prayers: 0,
+  qrPages: 0,
+  qrScans: 0,
+  latestPages: [],
+  seo: []
+};
+
+const emptySiteContent: SiteContent = {
+  icons: [],
+  prayers: [],
+  gospel: [],
+  saints: [],
+  pages: [],
+  qrPages: [],
+  churches: [],
+  dashboard: emptyDashboard
+};
+
+function emptyGospelReading(date = new Date().toISOString().slice(0, 10)): GospelReading {
+  return {
+    id: `gospel-${date}`,
+    date,
+    title: '',
+    reference: '',
+    text: '',
+    explanation: '',
+    status: 'published'
+  };
+}
 
 function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
@@ -86,9 +118,9 @@ function normalizeIcon(item: Partial<Icon>, index: number): Icon {
     title,
     shortDescription: normalizeString(item.shortDescription) || normalizeString(item.seoDescription) || normalizeString(item.fullDescription).slice(0, 220),
     fullDescription: normalizeString(item.fullDescription) || normalizeString(item.shortDescription),
-    imageUrl: normalizeString(item.imageUrl) || '/images/kazan-icon.svg',
+    imageUrl: normalizeString(item.imageUrl),
     imageUrls: normalizeStringArray(item.imageUrls),
-    qrCodeUrl: normalizeString(item.qrCodeUrl) || '/images/qr-code.svg',
+    qrCodeUrl: normalizeString(item.qrCodeUrl),
     category: normalizeString(item.category) || 'Православная икона',
     saintName: normalizeString(item.saintName),
     prayerText: normalizeString(item.prayerText),
@@ -137,9 +169,9 @@ function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, articl
     title: item.title,
     shortDescription: compactText(description, 220),
     fullDescription: normalizeString(article?.content) || description,
-    imageUrl: normalizeString(item.imageUrl) || '/images/kazan-icon.svg',
+    imageUrl: normalizeString(item.imageUrl),
     imageUrls: normalizeString(item.imageUrl) ? [item.imageUrl] : [],
-    qrCodeUrl: '/images/qr-code.svg',
+    qrCodeUrl: '',
     category: normalizeString(item.feastName) || 'Православная икона',
     saintName: normalizeString(item.saintName),
     prayerText: normalizeString(prayer?.text),
@@ -153,7 +185,8 @@ function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, articl
     calendarDate: undefined,
     translations: {},
     createdAt: item.createdAt || now,
-    updatedAt: item.updatedAt || now
+    updatedAt: item.updatedAt || now,
+    source: 'church'
   };
 }
 
@@ -170,7 +203,8 @@ function prayerFromChurchDto(item: ChurchPrayerDto, icon?: ChurchIconDto): Praye
     qrCodeUrl: normalizeString(item.qrCodeUrl) || undefined,
     seoTitle: item.title,
     seoDescription: compactText(item.text, 180),
-    status: item.status === 'published' ? 'published' : 'draft'
+    status: item.status === 'published' ? 'published' : 'draft',
+    source: 'church'
   };
 }
 
@@ -219,7 +253,7 @@ function calendarDayFromChurchPage(page: PublicChurchContentPage): CalendarDay {
     imageUrl: icon?.imageUrl || '',
     iconSlug: icon?.slug || '',
     prayerSlug: prayer?.slug || '',
-    gospelSlug: '',
+    gospelSlug: page.gospel[0]?.slug || '',
     detailHref: date ? `/church/calendar/${date}` : `/church/articles/${article?.slug || ''}`,
     current: date === new Date().toISOString().slice(0, 10),
     feast: page.calendarDay.dayType === 'feast',
@@ -257,24 +291,6 @@ function mergeChurchMonthContent(content: SiteContent, monthPages: PublicChurchC
   };
 }
 
-function prayersFromIcons(items: Icon[]): Prayer[] {
-  return items
-    .filter((icon) => icon.prayerText.trim())
-    .map((icon) => ({
-      id: `prayer-${icon.slug}`,
-      slug: icon.slug,
-      title: icon.title.toLowerCase().includes('молит') ? icon.title : `Молитва: ${icon.title}`,
-      text: icon.prayerText,
-      category: icon.category || 'Молитвы перед иконой',
-      imageUrl: prayerImageFromIcon(icon),
-      relatedIcon: icon.slug,
-      audioUrl: '',
-      seoTitle: `Молитва перед ${icon.title}`,
-      seoDescription: compactText(icon.prayerText, 180),
-      status: 'published'
-    }));
-}
-
 function saintsFromIcons(items: Icon[]): Saint[] {
   return items
     .filter((icon) => icon.saintName.trim() || icon.lifeText.trim())
@@ -287,7 +303,7 @@ function saintsFromIcons(items: Icon[]): Saint[] {
       feastDay: '',
       imageUrl: icon.imageUrl,
       relatedIcons: [icon.slug],
-      prayers: icon.prayerText.trim() ? [icon.slug] : [],
+      prayers: [],
       seoTitle: `${icon.saintName || icon.title}: житие и день памяти`,
       seoDescription: compactText(icon.lifeText || icon.shortDescription || icon.fullDescription, 180),
       status: 'published'
@@ -341,34 +357,34 @@ function normalizeSiteContent(value: unknown): SiteContent {
   const hasPages = Array.isArray(source.pages);
   const hasQrPages = Array.isArray(source.qrPages);
   const hasChurches = Array.isArray(source.churches);
-  const normalizedIcons = hasIcons ? source.icons!.map(normalizeIcon).filter((item) => item.slug && item.title) : icons;
-  const normalizedPrayers = hasPrayers ? source.prayers!.map(normalizePrayer).filter((item) => item.slug && item.title) : prayers;
-  const publicIcons = hasIcons ? published(normalizedIcons) : icons;
+  const normalizedIcons = hasIcons ? source.icons!.map(normalizeIcon).filter((item) => item.slug && item.title) : [];
+  const normalizedPrayers = hasPrayers ? source.prayers!.map(normalizePrayer).filter((item) => item.slug && item.title) : [];
+  const publicIcons = hasIcons ? published(normalizedIcons) : [];
   const normalizedPublicPrayers = hasPrayers ? published(normalizedPrayers).map((prayer) => {
     const icon = publicIcons.find((item) => item.slug === prayer.relatedIcon || item.slug === prayer.slug);
     return icon && !prayer.imageUrl ? { ...prayer, imageUrl: prayerImageFromIcon(icon), relatedIcon: prayer.relatedIcon || icon.slug } : prayer;
-  }) : prayers;
-  const normalizedGospel = hasGospel ? (source.gospel as GospelReading[]).filter((item) => item.status === 'published') : [gospelToday];
+  }) : [];
+  const normalizedGospel = hasGospel ? (source.gospel as GospelReading[]).filter((item) => item.status === 'published') : [];
   const derivedGospel = gospelFromIcons(publicIcons);
-  const normalizedSaints = hasSaints ? (source.saints as Saint[]).filter((item) => item.status === 'published') : saints;
+  const normalizedSaints = hasSaints ? (source.saints as Saint[]).filter((item) => item.status === 'published') : [];
   const normalizedPages = hasPages ? (source.pages!.map((item) => ({
     ...item,
     blocks: normalizeStringArray(item.blocks),
     faq: Array.isArray(item.faq) ? item.faq : []
-  })) as SeoPage[]).filter((item) => item.status === 'published') : seoPages;
-  const normalizedQrPages = hasQrPages ? (source.qrPages as QrPage[]).filter((item) => item.active) : qrPages;
-  const normalizedChurches = hasChurches ? (source.churches as Church[]).filter((item) => item.status === 'published') : churches;
+  })) as SeoPage[]).filter((item) => item.status === 'published') : [];
+  const normalizedQrPages = hasQrPages ? (source.qrPages as QrPage[]).filter((item) => item.active) : [];
+  const normalizedChurches = hasChurches ? (source.churches as Church[]).filter((item) => item.status === 'published') : [];
 
   return {
     icons: publicIcons,
-    prayers: hasPrayers ? mergeBySlug(normalizedPublicPrayers, prayersFromIcons(publicIcons)) : prayers,
-    gospel: derivedGospel.length ? derivedGospel : (normalizedGospel.length ? normalizedGospel : [gospelToday]),
+    prayers: hasPrayers ? normalizedPublicPrayers : [],
+    gospel: derivedGospel.length ? derivedGospel : normalizedGospel,
     saints: mergeBySlug(normalizedSaints, saintsFromIcons(publicIcons)),
     pages: normalizedPages,
     qrPages: normalizedQrPages,
     churches: mergeBySlug(normalizedChurches, churchesFromIcons(publicIcons)),
     calendar: source.calendar,
-    dashboard: source.dashboard || dashboard
+    dashboard: source.dashboard || emptyDashboard
   };
 }
 
@@ -382,9 +398,10 @@ async function apiGet<T>(path: string, fallback: T): Promise<T> {
   }
 }
 
-async function churchApiGet<T>(path: string, fallback: T, previewToken?: string): Promise<T> {
+async function churchApiGet<T>(path: string, fallback: T, previewToken?: string, language?: SiteLocale): Promise<T> {
   const query = new URLSearchParams();
   if (previewToken) query.set('preview_token', previewToken);
+  if (language) query.set('language', language);
   const suffix = query.toString() ? `${path.includes('?') ? '&' : '?'}${query.toString()}` : '';
   return apiGet<T>(path + suffix, fallback);
 }
@@ -410,10 +427,10 @@ export const publicApi = {
     if (params?.month) query.set('month', String(params.month));
     if (params?.locale) query.set('locale', params.locale);
     const suffix = query.toString() ? `?${query.toString()}` : '';
-    const normalized = normalizeSiteContent(await apiGet<SiteContent>(`/api/content${suffix}`, { icons, prayers, gospel: [gospelToday], saints, pages: seoPages, qrPages, churches, dashboard }));
+    const normalized = normalizeSiteContent(await apiGet<SiteContent>(`/api/content${suffix}`, emptySiteContent));
     const year = Number(params?.year) || Number(normalized.calendar?.hero?.year) || new Date().getFullYear();
     const month = Number(params?.month) || monthIndexFromCalendarTitle(normalized.calendar?.hero?.monthTitle) || new Date().getMonth() + 1;
-    const monthPages = await publicApi.churchCalendarMonth(year, month);
+    const monthPages = await publicApi.churchCalendarMonth(year, month, undefined, params?.locale);
     return mergeChurchMonthContent(normalized, monthPages);
   },
   icons: async (locale?: SiteLocale) => (await publicApi.content({ locale })).icons,
@@ -422,42 +439,45 @@ export const publicApi = {
   saint: async (slug: string, locale?: SiteLocale) => (await publicApi.saints(locale)).find((item) => item.slug === slug) || null,
   prayers: async (locale?: SiteLocale) => (await publicApi.content({ locale })).prayers,
   prayer: async (slug: string, locale?: SiteLocale) => (await publicApi.prayers(locale)).find((item) => item.slug === slug) || null,
-  churchCalendarDay: async (date: string, previewToken?: string) => churchApiGet<PublicChurchContentPage | null>(`/api/church/calendar/${date}`, null, previewToken),
-  churchCalendarMonth: async (year: string | number, month: string | number, previewToken?: string) => churchApiGet<PublicChurchContentPage[]>(`/api/church/calendar?year=${encodeURIComponent(String(year))}&month=${encodeURIComponent(String(month))}`, [], previewToken),
-  churchToday: async (previewToken?: string) => churchApiGet<PublicChurchContentPage | null>('/api/church/calendar/today', null, previewToken),
-  churchIcon: async (slug: string, previewToken?: string) => {
-    const page = await churchApiGet<PublicChurchIconPage | null>(`/api/church/icons/${slug}`, null, previewToken);
+  churchCalendarDay: async (date: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchContentPage | null>(`/api/church/calendar/${date}`, null, previewToken, locale),
+  churchCalendarMonth: async (year: string | number, month: string | number, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchContentPage[]>(`/api/church/calendar?year=${encodeURIComponent(String(year))}&month=${encodeURIComponent(String(month))}`, [], previewToken, locale),
+  churchToday: async (previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchContentPage | null>('/api/church/calendar/today', null, previewToken, locale),
+  churchIcon: async (slug: string, previewToken?: string, locale?: SiteLocale) => {
+    const page = await churchApiGet<PublicChurchIconPage | null>(`/api/church/icons/${slug}`, null, previewToken, locale);
     if (!page) return null;
     return {
       ...page,
       iconView: iconFromChurchDto(page.icon, page.prayers[0], page.articles[0])
     };
   },
-  churchPrayer: async (slug: string, previewToken?: string) => churchApiGet<PublicChurchPrayerPage | null>(`/api/church/prayers/${slug}`, null, previewToken),
-  churchArticle: async (slug: string, previewToken?: string) => {
-    const result = await churchApiGet<PublicChurchArticlePage | null>(`/api/church/articles/${slug}`, null, previewToken);
+  churchPrayer: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchPrayerPage | null>(`/api/church/prayers/${slug}`, null, previewToken, locale),
+  churchArticle: async (slug: string, previewToken?: string, locale?: SiteLocale) => {
+    const result = await churchApiGet<PublicChurchArticlePage | null>(`/api/church/articles/${slug}`, null, previewToken, locale);
     return result ? { ...result, pageView: seoPageFromChurchArticle(result.article) } : null;
   },
+  churchGospel: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchGospelPage | null>(`/api/church/gospel/${slug}`, null, previewToken, locale),
+  churchGospelList: async (locale?: SiteLocale) => churchApiGet<ChurchGospelDto[]>('/api/church/gospel', [], undefined, locale),
   churchSitemap: async () => churchApiGet<PublicChurchSitemapItem[]>('/api/church/sitemap', []),
-  gospelToday: async (locale?: SiteLocale) => (await publicApi.content({ locale })).gospel[0] ?? gospelToday,
-  gospelByDate: async (date: string, locale?: SiteLocale) => (await publicApi.content({ locale })).gospel.find((item) => item.date === date) ?? { ...gospelToday, date },
+  churchInfo: async () => churchApiGet<ChurchInfoDto | null>('/api/church/info', null),
+  gospelToday: async (locale?: SiteLocale) => (await publicApi.content({ locale })).gospel[0] ?? emptyGospelReading(),
+  gospelByDate: async (date: string, locale?: SiteLocale) => (await publicApi.content({ locale })).gospel.find((item) => item.date === date) ?? emptyGospelReading(date),
   seoPage: async (slug: string, locale?: SiteLocale) => (await publicApi.content({ locale })).pages.find((item) => item.slug === slug) || null,
   qrPage: async (qrId: string, locale?: SiteLocale) => (await publicApi.content({ locale })).qrPages.find((item) => item.qrId === qrId) || null,
-  scanQr: (qrId: string) => apiSend(`/api/qr/${qrId}/scan`, 'POST', undefined, { ok: true }),
+  scanQr: (qrId: string) => apiSend(`/api/qr/${qrId}/scan`, 'POST', undefined, { ok: false }),
   churches: async (locale?: SiteLocale) => (await publicApi.content({ locale })).churches
 };
 
 export const adminApi = {
-  dashboard: () => apiGet<Dashboard>('/api/admin/dashboard', dashboard),
-  icons: () => apiGet<Icon[]>('/api/admin/icons', icons),
-  createIcon: (payload: Partial<Icon>) => apiSend('/api/admin/icons', 'POST', payload, { ...icons[0], ...payload }),
-  updateIcon: (id: string, payload: Partial<Icon>) => apiSend(`/api/admin/icons/${id}`, 'PUT', payload, { ...icons[0], ...payload, id }),
-  deleteIcon: (id: string) => apiSend(`/api/admin/icons/${id}`, 'DELETE', undefined, { ok: true }),
-  saints: () => apiGet<Saint[]>('/api/admin/saints', saints),
-  prayers: () => apiGet<Prayer[]>('/api/admin/prayers', prayers),
-  gospel: () => apiGet<GospelReading[]>('/api/admin/gospel', [gospelToday]),
-  pages: () => apiGet<SeoPage[]>('/api/admin/pages', seoPages),
-  qrPages: () => apiGet<QrPage[]>('/api/admin/qr-pages', qrPages),
-  churches: () => apiGet<Church[]>('/api/admin/churches', churches),
-  seoOverview: () => apiGet('/api/admin/seo/overview', dashboard.seo)
+  dashboard: () => apiGet<Dashboard>('/api/admin/dashboard', emptyDashboard),
+  icons: () => apiGet<Icon[]>('/api/admin/icons', []),
+  createIcon: (payload: Partial<Icon>) => apiSend('/api/admin/icons', 'POST', payload, normalizeIcon(payload, 0)),
+  updateIcon: (id: string, payload: Partial<Icon>) => apiSend(`/api/admin/icons/${id}`, 'PUT', payload, normalizeIcon({ ...payload, id }, 0)),
+  deleteIcon: (id: string) => apiSend(`/api/admin/icons/${id}`, 'DELETE', undefined, { ok: false }),
+  saints: () => apiGet<Saint[]>('/api/admin/saints', []),
+  prayers: () => apiGet<Prayer[]>('/api/admin/prayers', []),
+  gospel: () => apiGet<GospelReading[]>('/api/admin/gospel', []),
+  pages: () => apiGet<SeoPage[]>('/api/admin/pages', []),
+  qrPages: () => apiGet<QrPage[]>('/api/admin/qr-pages', []),
+  churches: () => apiGet<Church[]>('/api/admin/churches', []),
+  seoOverview: () => apiGet('/api/admin/seo/overview', emptyDashboard.seo)
 };

@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { AssetButton } from '@/components/site/AssetButton';
 import { StableImage } from '@/components/site/StableImage';
 import { publicApi } from '@/lib/api';
+import { getRequestLocale } from '@/lib/serverLocale';
 import { pageMetadata } from '@/lib/seo';
 
 type Props = {
@@ -23,25 +25,28 @@ function Paragraphs({ text }: { text?: string }) {
 export async function generateMetadata({ params, searchParams }: Props) {
   const { date } = await params;
   const token = (await searchParams)?.preview_token;
-  const content = await publicApi.churchCalendarDay(date, token);
+  const locale = await getRequestLocale();
+  const content = await publicApi.churchCalendarDay(date, token, locale);
   const day = content?.calendarDay;
   const image = content?.icons[0]?.imageUrl;
   return pageMetadata({
     title: day?.title,
     description: day?.description,
     path: `/church/calendar/${date}`,
-    image
+    image,
+    locale
   });
 }
 
 export default async function ChurchCalendarDayPage({ params, searchParams }: Props) {
   const { date } = await params;
   const token = (await searchParams)?.preview_token;
-  const content = await publicApi.churchCalendarDay(date, token);
+  const locale = await getRequestLocale();
+  const content = await publicApi.churchCalendarDay(date, token, locale);
 
-  if (!content) return <main className="page"><h1>Материал не найден</h1></main>;
+  if (!content) notFound();
 
-  const { calendarDay, icons, prayers, articles } = content;
+  const { calendarDay, icons, prayers, articles, gospel } = content;
   const heroIcon = icons[0];
 
   return (
@@ -59,6 +64,7 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
           <div className="detail-actions">
             {icons[0] ? <AssetButton variant="dark" href={`/church/icons/${icons[0].slug}`}>Икона</AssetButton> : null}
             {prayers[0] ? <AssetButton href={`/church/prayers/${prayers[0].slug}`}>Молитва</AssetButton> : null}
+            {gospel[0] ? <AssetButton href={`/church/gospel/${gospel[0].slug}`}>Евангелие</AssetButton> : null}
           </div>
         </div>
       </section>
@@ -73,7 +79,7 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
       ) : null}
 
       {prayers.map((prayer) => (
-        <article key={prayer.id} className="sacred-panel prayer-panel">
+        <article key={prayer.id} className="sacred-panel">
           <span>{prayer.prayerType}</span>
           <h2>{prayer.title}</h2>
           <div className="reader-text"><Paragraphs text={prayer.text} /></div>
@@ -87,6 +93,17 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
           <div className="reader-text"><Paragraphs text={article.content} /></div>
           <div className="detail-actions">
             <AssetButton href={`/church/articles/${article.slug}`}>Открыть статью</AssetButton>
+          </div>
+        </article>
+      ))}
+
+      {gospel.map((item) => (
+        <article key={item.id} className="sacred-panel">
+          <span>{item.reference || 'Евангелие'}</span>
+          <h2>{item.title}</h2>
+          <div className="reader-text"><Paragraphs text={item.explanation || item.text} /></div>
+          <div className="detail-actions">
+            <AssetButton href={`/church/gospel/${item.slug}`}>Читать Евангелие</AssetButton>
           </div>
         </article>
       ))}

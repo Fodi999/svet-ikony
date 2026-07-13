@@ -17,11 +17,10 @@ export default async function HomePage({ searchParams }: { searchParams?: Promis
     month: firstParam(params?.month),
     locale
   });
-  const gospel = content.gospel[0] ?? await publicApi.gospelToday(locale);
   return (
     <main className="calendar-shell">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('Organization', { name: 'ikona.link', url: 'https://ikona.link' })) }} />
-      <CalendarView icons={content.icons} prayers={content.prayers} gospel={gospel} pages={content.pages} calendar={content.calendar} />
+      <CalendarView icons={content.icons} prayers={content.prayers} pages={content.pages} calendar={content.calendar} />
     </main>
   );
 }

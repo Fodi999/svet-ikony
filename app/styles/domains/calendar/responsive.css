@@ -1,20 +1,12 @@
-@media (min-width: 1281px) {
-  .calendar-grid {
-    column-count: 7;
-  }
-}
-
 @media (max-width: 1280px) {
   .month-block {
     overflow: visible;
   }
 
-  .calendar-grid {
-    column-count: 4;
-  }
-
   .calendar-hero {
     grid-template-columns: 1fr 1fr;
+    align-items: start;
+    gap: 18px;
   }
 
   .calendar-hero > div:first-child {
@@ -33,8 +25,8 @@
 
   .calendar-hero {
     grid-template-columns: 1fr;
-    gap: 12px;
-    padding-bottom: 18px;
+    gap: 16px;
+    padding-bottom: 26px;
   }
 
   .calendar-hero h1 {
@@ -106,17 +98,19 @@
     width: min(290px, calc(100vw - 28px));
   }
 
-  .calendar-grid {
-    column-count: 3;
-  }
-
   .calendar-hero-card {
     min-height: auto;
-    padding: 15px;
+    padding: 16px;
+  }
+
+  .calendar-feature strong {
+    font-size: clamp(20px, 4.8vw, 28px);
+    line-height: 1.12;
   }
 
   .calendar-icon-day {
-    min-height: 220px;
+    min-height: 360px;
+    aspect-ratio: 4 / 5.25;
   }
 
   .calendar-service-grid {
@@ -165,9 +159,26 @@
 
   .calendar-feature strong,
   .calendar-icon-day strong {
-    font-size: clamp(22px, 7vw, 32px);
-    line-height: 1.08;
+    font-size: clamp(19px, 5vw, 25px);
+    line-height: 1.12;
     overflow-wrap: anywhere;
+  }
+
+  .calendar-icon-day strong {
+    max-width: 15ch;
+    -webkit-line-clamp: 5;
+  }
+
+  .calendar-feature strong {
+    padding-right: 48px;
+  }
+
+  .gold-cross {
+    top: 16px;
+    right: 14px;
+    width: 66px;
+    height: 66px;
+    opacity: .34;
   }
 
   .calendar-info p,
@@ -233,11 +244,7 @@
   }
 
   .calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 6px;
-    column-count: auto;
-    column-gap: 0;
     background: transparent;
   }
 

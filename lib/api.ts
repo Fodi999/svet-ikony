@@ -344,8 +344,15 @@ export const publicApi = {
     const normalized = normalizeSiteContent(await apiGet<SiteContent>(`/api/content${suffix}`, emptySiteContent));
     const year = Number(params?.year) || Number(normalized.calendar?.hero?.year) || new Date().getFullYear();
     const month = Number(params?.month) || monthIndexFromCalendarTitle(normalized.calendar?.hero?.monthTitle) || new Date().getMonth() + 1;
-    const monthPages = await publicApi.churchCalendarMonth(year, month, undefined, params?.locale);
-    return mergeChurchMonthContent(normalized, monthPages);
+    const [monthPages, allPrayers] = await Promise.all([
+      publicApi.churchCalendarMonth(year, month, undefined, params?.locale),
+      publicApi.churchPrayerList(params?.locale)
+    ]);
+    const merged = mergeChurchMonthContent(normalized, monthPages);
+    return {
+      ...merged,
+      prayers: mergeBySlug(merged.prayers, allPrayers.filter((item) => item.status === 'published').map((item) => prayerFromChurchDto(item)))
+    };
   },
   icons: async (locale?: SiteLocale) => (await publicApi.content({ locale })).icons,
   icon: async (slug: string, locale?: SiteLocale) => (await publicApi.icons(locale)).find((item) => item.slug === slug) || null,
@@ -365,6 +372,7 @@ export const publicApi = {
     };
   },
   churchPrayer: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchPrayerPage | null>(`/api/church/prayers/${slug}`, null, previewToken, locale),
+  churchPrayerList: async (locale?: SiteLocale) => churchApiGet<ChurchPrayerDto[]>('/api/church/prayers', [], undefined, locale),
   churchArticle: async (slug: string, previewToken?: string, locale?: SiteLocale) => {
     const result = await churchApiGet<PublicChurchArticlePage | null>(`/api/church/articles/${slug}`, null, previewToken, locale);
     return result ? { ...result, pageView: seoPageFromChurchArticle(result.article) } : null;

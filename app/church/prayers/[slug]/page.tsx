@@ -58,6 +58,14 @@ export default async function ChurchPrayerPage({ params, searchParams }: Props) 
         <span>Молитва</span>
         <div className="reader-text prayer-reader"><Paragraphs text={prayer.text} /></div>
       </article>
+      {prayer.qrCodeUrl ? (
+        <section className="sacred-panel prayer-qr-panel">
+          <span>QR-код молитвы</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={prayer.qrCodeUrl} alt={`QR-код: ${prayer.title}`} width={220} height={220} />
+          <a href={prayer.qrCodeUrl} download={`qr-${slug}.png`}>Скачать QR</a>
+        </section>
+      ) : null}
       <section className="related-section">
         <div className="section-head"><p className="eyebrow">Связь материала</p><h2>Икона и день календаря</h2></div>
         <div className="mini-grid">

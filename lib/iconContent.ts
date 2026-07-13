@@ -1,5 +1,5 @@
 
-import type { Church, Icon, SiteLocale } from './types';
+import type { Icon, SiteLocale } from './types';
 
 export type StructuredSection = { label: string; value: string };
 
@@ -138,45 +138,4 @@ export function findSection(text: string | undefined, aliases: string[]) {
 
 export function imageForPrayer(icon: Icon) {
   return icon.imageUrls?.[1] || icon.imageUrls?.[0] || icon.imageUrl;
-}
-
-export function churchFromIcon(icon: Icon): Church {
-  const source = `${icon.fullDescription}\n\n${icon.historyText}`;
-  const title = findSection(source, ['Название храма', 'Назва храму', 'Church name']) || icon.title;
-  const city = findSection(source, ['Страна / город', 'Країна / місто', 'Country / city']) || 'Онлайн';
-  const address = findSection(source, ['Адрес', 'Адреса', 'Address']) || 'Уточняется';
-  const mapsUrl = findSection(source, ['Google Maps ссылка', 'Google Maps посилання', 'Google Maps link']);
-  const schedule = findSection(source, ['Расписание богослужений', 'Розклад богослужінь', 'Service schedule']) || 'Расписание уточняется в храме.';
-  const phoneOrSite = findSection(source, ['Телефон / сайт', 'Phone / website']);
-  const description = findSection(source, ['Краткое описание', 'Короткий опис', 'Short description']) || icon.shortDescription || icon.fullDescription;
-  const dedication = findSection(source, ['Кому посвящен', 'Кому посвящён', 'Кому присвячений', 'Dedicated to']) || icon.saintName || icon.category;
-  const shrines = findSection(source, ['Святыни / иконы / мощи', 'Святині / ікони / мощі', 'Shrines / icons / relics']);
-  const churchImage = findSection(source, ['Фото храма', 'Фото храму', 'Church photo']);
-  const priest = findSection(source, ['Настоятель', 'Rector', 'Priest']);
-  const priestPhone = findSection(source, ['Телефон настоятеля', "Rector's phone", 'Priest phone']);
-  return {
-    id: `church-${icon.slug}`,
-    slug: icon.slug,
-    title,
-    city,
-    address,
-    description,
-    schedule,
-    mapsUrl,
-    phoneOrSite,
-    dedication,
-    shrines,
-    priest,
-    priestPhone,
-    imageUrl: churchImage || icon.imageUrl,
-    donationUrl: '',
-    relatedIcons: [icon.slug],
-    seoTitle: title,
-    seoDescription: textPreview(description, 180),
-    status: 'published'
-  };
-}
-
-export function hasChurchFields(church: Church) {
-  return Boolean(church.address && church.address !== 'Уточняется' || church.mapsUrl || church.phoneOrSite || church.shrines || church.schedule);
 }

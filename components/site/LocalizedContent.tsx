@@ -13,7 +13,7 @@ import { useI18n, useLocaleHref } from './LanguageProvider';
 import { StableImage } from './StableImage';
 import { SvgIcon } from './SvgIcon';
 import { absoluteSiteUrl } from '@/lib/site';
-import type { ChurchInfoDto, Icon, Prayer } from '@/lib/types';
+import type { ChurchInfoDto, Icon, Prayer, Saint } from '@/lib/types';
 import { imageForPrayer, localizeIcon, paragraphsFromText, sectionsFromText, textPreview, translateSectionLabel } from '@/lib/iconContent';
 
 
@@ -296,25 +296,21 @@ export function LocalizedBackendPrayerDetail({ prayer }: { prayer: Prayer }) {
   );
 }
 
-export function LocalizedSaintsList({ icons }: { icons: Icon[] }) {
-  const { locale } = useI18n();
+export function LocalizedSaintsList({ saints }: { saints: Saint[] }) {
   const localeHref = useLocaleHref();
-  const items = icons.map((icon) => localizeIcon(icon, locale)).filter((icon) => icon.saintName.trim() || icon.lifeText.trim());
-  return <div className="list-grid">{items.map((icon) => <Link key={icon.id} href={localeHref(`/saints/${icon.slug}`)}><span>{icon.calendarDate || icon.category}</span><strong>{icon.saintName || icon.title}</strong><p>{textPreview(icon.lifeText || icon.shortDescription || icon.fullDescription, 180)}</p></Link>)}</div>;
+  return <div className="list-grid">{saints.map((saint) => <Link key={saint.id} href={localeHref(`/saints/${saint.slug}`)}><span>{saint.feastDay}</span><strong>{saint.name}</strong><p>{textPreview(saint.shortDescription || saint.biography, 180)}</p></Link>)}</div>;
 }
 
-export function LocalizedSaintDetail({ icon }: { icon: Icon }) {
-  const { locale } = useI18n();
-  const item = localizeIcon(icon, locale);
+export function LocalizedSaintDetail({ saint }: { saint: Saint }) {
   return (
     <main className="detail-page">
       <section className="sacred-detail-hero">
-        <figure className="sacred-image-frame"><StableImage src={item.imageUrl} alt={item.saintName || item.title} width={800} height={1000} loading="eager" /></figure>
+        {saint.imageUrl ? <figure className="sacred-image-frame"><StableImage src={saint.imageUrl} alt={saint.name} width={800} height={1000} loading="eager" /></figure> : null}
         <div className="sacred-hero-copy">
-          <p className="eyebrow">{item.calendarDate || item.category}</p>
-          <h1>{item.saintName || item.title}</h1>
-          <p className="detail-lead">{item.shortDescription}</p>
-          <div className="soft-note reader-text"><DisplayText text={item.lifeText || item.fullDescription} /></div>
+          <p className="eyebrow">{saint.feastDay}</p>
+          <h1>{saint.name}</h1>
+          {saint.shortDescription ? <p className="detail-lead">{saint.shortDescription}</p> : null}
+          <div className="soft-note reader-text"><DisplayText text={saint.biography} /></div>
         </div>
       </section>
     </main>

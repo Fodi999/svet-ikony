@@ -61,7 +61,7 @@
 }
 
 .list-day-number i.red {
-  background: #e52e2e;
+  background: var(--wine);
 }
 
 .list-day-heading {

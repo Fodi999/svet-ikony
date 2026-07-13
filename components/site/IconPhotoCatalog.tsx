@@ -25,7 +25,6 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
   const itemsSignature = useMemo(() => items.map((item) => `${item.kind}:${item.image}`).join('|'), [items]);
   const active = activeIndex === null ? null : items[activeIndex] || null;
   const fileBaseName = title.toLowerCase().replace(/[^a-z0-9а-яё]+/gi, '-').replace(/^-|-$/g, '') || 'icon';
-  const qrFileName = `qr-${fileBaseName}.svg`;
 
   useEffect(() => {
     setActiveIndex(null);
@@ -35,7 +34,7 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
   function imageFileName(item: IconPhotoCatalogItem, index: number) {
     const extension = item.image.split('?')[0]?.split('.').pop()?.toLowerCase();
     const safeExtension = extension && extension.length <= 5 ? extension : 'jpg';
-    if (item.kind === 'qr') return qrFileName;
+    if (item.kind === 'qr') return `qr-${fileBaseName}.${safeExtension}`;
     return `${fileBaseName}-${String(index + 1).padStart(2, '0')}.${safeExtension}`;
   }
 
@@ -88,7 +87,7 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
               <strong>{active.label}</strong>
               {active.kind === 'qr' ? (
                 <div className="icon-lightbox-actions">
-                  <a href={active.image} download={qrFileName}>{t('downloadQr')}</a>
+                  <a href={active.image} download={imageFileName(active, activeIndex ?? 0)}>{t('downloadQr')}</a>
                   <a href={iconUrl}>{t('openIconPage')}</a>
                 </div>
               ) : null}

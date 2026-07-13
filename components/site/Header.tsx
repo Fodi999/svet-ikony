@@ -3,9 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { stripLocaleFromPathname } from '@/lib/i18n';
+import { BrandLogo } from './BrandLogo';
 import { LanguageSwitch, useI18n, useLocaleHref } from './LanguageProvider';
-
-const logoSrc = '/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg';
 
 const nav = [
   ['navIcons', '/icons'],
@@ -26,7 +25,7 @@ export function Header() {
     <header className="site-header">
       <Link className="brand" href={localeHref('/')}>
         <span className="brand-logo-mark">
-          <img className="brand-logo" src={logoSrc} alt={t('brand')} />
+          <BrandLogo className="brand-logo" size={58} />
         </span>
         <span className="brand-copy">
           <small>{t('portal')}</small>

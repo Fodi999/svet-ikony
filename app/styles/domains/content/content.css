@@ -14,7 +14,7 @@ textarea {
   border-radius: var(--radius-sm);
   padding: 14px 16px;
   background:
-    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 46%),
+    linear-gradient(135deg, rgba(205, 164, 90, .06), transparent 46%),
     var(--surface);
   color: var(--text);
 }
@@ -118,7 +118,8 @@ textarea {
   min-height: 132px;
   padding: 18px;
   background:
-    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 46%),
+    linear-gradient(135deg, rgba(205, 164, 90, .055), transparent 46%),
+    linear-gradient(160deg, rgba(127, 141, 101, .05), transparent 62%),
     var(--surface);
 }
 
@@ -127,7 +128,7 @@ textarea {
   max-width: 100%;
   color: var(--text);
   font-family: var(--font-display);
-  font-size: 48px;
+  font-size: 42px;
   line-height: .95;
   white-space: nowrap;
 }
@@ -135,7 +136,7 @@ textarea {
 .icons-catalog-stats dd {
   width: 100%;
   margin: 0;
-  color: var(--muted);
+  color: var(--quiet);
   font-size: 10px;
   font-weight: 900;
   line-height: 1.16;
@@ -176,6 +177,27 @@ textarea {
   outline: none;
 }
 
+.icons-search-control {
+  position: relative;
+  display: block;
+}
+
+.icons-search-logo {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  opacity: .72;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.icons-search-control input {
+  padding-left: 52px;
+}
+
 .icons-toolbar input:focus,
 .icons-select-button:focus-visible {
   border-color: var(--gold);
@@ -200,7 +222,8 @@ textarea {
   border-radius: var(--radius-sm);
   padding: 0 16px;
   background:
-    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 46%),
+    linear-gradient(135deg, rgba(205, 164, 90, .06), transparent 46%),
+    linear-gradient(160deg, rgba(127, 141, 101, .05), transparent 62%),
     var(--surface);
   color: var(--text);
   cursor: pointer;
@@ -262,7 +285,7 @@ textarea {
 
 .icons-select-menu button:hover,
 .icons-select-menu button.active {
-  background: rgba(214, 168, 79, .14);
+  background: rgba(205, 164, 90, .14);
   color: var(--gold-light);
 }
 
@@ -310,7 +333,8 @@ textarea {
   border-bottom: 1px solid var(--border-gold);
   padding: clamp(16px, 2.2vw, 34px);
   background:
-    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .16) 42%, transparent 56%),
+    linear-gradient(110deg, transparent 0 28%, rgba(232, 203, 132, .13) 42%, transparent 56%),
+    linear-gradient(160deg, rgba(127, 141, 101, .09), transparent 62%),
     var(--surface-soft);
   background-size: 220% 100%, 100% 100%;
   overflow: hidden;
@@ -328,7 +352,7 @@ textarea {
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(110deg, transparent 0 28%, rgba(241, 209, 138, .14) 42%, transparent 56%),
+    linear-gradient(110deg, transparent 0 28%, rgba(232, 203, 132, .12) 42%, transparent 56%),
     var(--surface-soft);
   background-size: 220% 100%, 100% 100%;
   animation: imageSkeleton 1.4s ease-in-out infinite;
@@ -345,6 +369,13 @@ textarea {
   object-fit: contain;
   border-radius: var(--radius-xs);
   box-shadow: var(--shadow-sm);
+  transition: transform var(--speed) var(--ease), filter var(--speed) var(--ease);
+}
+
+.icon-card:hover img,
+.icon-card:focus-within img {
+  filter: saturate(1.04) contrast(1.02);
+  transform: scale(1.01);
 }
 
 .icon-card-copy {
@@ -366,7 +397,7 @@ textarea {
 .icon-card h3 {
   margin: 0;
   font-size: clamp(22px, 2vw, 32px);
-  line-height: 1.05;
+  line-height: 1.08;
   text-wrap: balance;
 }
 
@@ -462,8 +493,8 @@ textarea {
 .daily-prayer-collection {
   display: grid;
   gap: clamp(22px, 3vw, 42px);
-  border-top: 1px solid rgba(184, 132, 43, .48);
-  border-bottom: 1px solid rgba(184, 132, 43, .38);
+  border-top: 1px solid rgba(205, 164, 90, .36);
+  border-bottom: 1px solid rgba(127, 141, 101, .24);
   padding: clamp(28px, 5vw, 72px) 0;
 }
 
@@ -493,7 +524,7 @@ textarea {
 }
 
 .daily-prayer-intro .daily-prayer-lead {
-  color: var(--gold-light);
+  color: var(--text);
   font-size: clamp(21px, 2vw, 32px);
   line-height: 1.35;
 }
@@ -566,7 +597,7 @@ textarea {
 
 .daily-prayer-reader-body p {
   margin: 0;
-  color: var(--muted);
+  color: #ddd4c2;
   font-family: var(--font-serif);
   font-size: clamp(22px, 2vw, 30px);
   line-height: 1.72;
@@ -1230,6 +1261,339 @@ textarea {
    Каталог храмов
    ------------------------------------------------------------ */
 
+.church-profile-page {
+  max-width: 1480px;
+  margin-inline: auto;
+  display: grid;
+  gap: clamp(28px, 4vw, 58px);
+}
+
+.church-profile-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 440px);
+  gap: clamp(28px, 5vw, 86px);
+  align-items: center;
+  border-bottom: 1px solid var(--border-gold);
+  padding-bottom: clamp(28px, 4vw, 60px);
+}
+
+.church-profile-copy {
+  min-width: 0;
+  max-width: 900px;
+  display: grid;
+  gap: 18px;
+}
+
+.church-profile-copy h1 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 88px;
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: 0;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.church-profile-copy .detail-lead {
+  max-width: 780px;
+  color: var(--muted);
+}
+
+.church-profile-visual {
+  min-width: 0;
+  align-self: stretch;
+  display: grid;
+  align-items: center;
+}
+
+.church-profile-image,
+.church-logo-panel {
+  min-width: 0;
+  min-height: 360px;
+  margin: 0;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, rgba(205, 164, 90, .09), transparent 45%),
+    linear-gradient(160deg, rgba(127, 141, 101, .08), transparent 62%),
+    var(--surface);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.church-profile-image {
+  aspect-ratio: 1 / 1;
+}
+
+.church-profile-image img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.church-logo-panel {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  padding: 34px;
+  text-align: center;
+}
+
+.church-profile-logo {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+}
+
+.church-logo-panel span {
+  max-width: 260px;
+  color: var(--gold-light);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.church-profile-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 14px;
+  margin: 0;
+}
+
+.church-fact-card {
+  min-width: 0;
+  min-height: 156px;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 22px;
+  background:
+    linear-gradient(135deg, rgba(205, 164, 90, .06), transparent 48%),
+    var(--surface);
+}
+
+.church-fact-card dt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--gold-light);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.church-fact-card svg {
+  flex: 0 0 auto;
+  color: var(--gold-deep);
+}
+
+.church-fact-card dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-size: 21px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.church-fact-card dd p {
+  margin: 0 0 8px;
+}
+
+.church-fact-card dd p:last-child {
+  margin-bottom: 0;
+}
+
+.church-fact-card a {
+  color: inherit;
+  text-decoration-color: var(--gold-deep);
+  text-underline-offset: 4px;
+}
+
+.church-gallery-section {
+  display: grid;
+  gap: clamp(18px, 2.5vw, 34px);
+  border-top: 1px solid var(--border-gold);
+  padding-top: clamp(28px, 4vw, 58px);
+}
+
+.church-gallery-section .section-head {
+  max-width: 720px;
+  margin: 0;
+}
+
+.church-gallery-section .section-head h2 {
+  color: var(--text);
+  font-size: clamp(36px, 4vw, 70px);
+  line-height: 1.04;
+}
+
+.church-gallery-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, .65fr);
+  grid-auto-rows: minmax(190px, 1fr);
+  gap: clamp(12px, 1.5vw, 20px);
+}
+
+.church-gallery-card {
+  min-width: 0;
+  min-height: 220px;
+  margin: 0;
+}
+
+.church-gallery-card.featured {
+  grid-row: span 2;
+  min-height: clamp(420px, 42vw, 680px);
+}
+
+.church-gallery-open {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  display: block;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 0;
+  background:
+    linear-gradient(135deg, rgba(205, 164, 90, .08), transparent 48%),
+    var(--surface);
+  overflow: hidden;
+  cursor: zoom-in;
+  box-shadow: var(--shadow-sm);
+}
+
+.church-gallery-open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, transparent 56%, rgba(0, 0, 0, .42));
+  pointer-events: none;
+}
+
+.church-gallery-open img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+  transition: filter var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+
+.church-gallery-open:hover img,
+.church-gallery-open:focus-visible img {
+  filter: saturate(1.06) contrast(1.04);
+  transform: scale(1.018);
+}
+
+.church-gallery-open span {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
+  padding: 9px 13px;
+  background: rgba(11, 11, 10, .78);
+  color: var(--gold-light);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+
+.church-gallery-open:hover span,
+.church-gallery-open:focus-visible span {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.church-story-section {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 70px);
+  align-items: start;
+  border-top: 1px solid var(--border-gold);
+  padding-top: clamp(28px, 4vw, 58px);
+}
+
+.church-story-section .section-head {
+  position: sticky;
+  top: 110px;
+  margin: 0;
+}
+
+.church-story-section .section-head h2 {
+  max-width: 320px;
+  color: var(--text);
+  font-size: 48px;
+  line-height: 1.04;
+}
+
+.church-story-content {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(14px, 1.6vw, 24px);
+  max-width: none;
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-size: clamp(22px, 1.45vw, 30px);
+  line-height: 1.52;
+}
+
+.church-story-content p {
+  min-width: 0;
+  margin: 0;
+  border-left: 3px solid var(--gold-deep);
+  border-radius: var(--radius-xs);
+  padding: clamp(16px, 1.7vw, 26px);
+  background:
+    linear-gradient(135deg, rgba(205, 164, 90, .075), transparent 46%),
+    var(--surface);
+  color: #ddd4c2;
+  box-shadow: inset 0 0 0 1px rgba(205, 164, 90, .12);
+  break-inside: avoid;
+}
+
+.church-story-content p:first-child,
+.church-story-content p:nth-child(2),
+.church-story-content p:nth-child(3) {
+  color: var(--text);
+  font-size: clamp(24px, 1.65vw, 34px);
+  line-height: 1.42;
+}
+
+.church-story-content p:first-child {
+  grid-column: 1 / -1;
+  border-left-color: var(--gold-light);
+  color: var(--gold-light);
+  font-family: var(--font-display);
+  font-size: clamp(34px, 3vw, 58px);
+  line-height: 1.08;
+}
+
 .church-directory {
   display: grid;
   gap: clamp(18px, 2.4vw, 34px);
@@ -1288,12 +1652,8 @@ textarea {
   font-size: clamp(30px, 3.6vw, 58px);
   font-weight: 700;
   line-height: 1.05;
-  background:
-    linear-gradient(110deg, var(--text) 0%, var(--text) 28%, var(--gold-light) 46%, var(--gold) 54%, var(--text) 72%, var(--text) 100%);
-  background-size: 260% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  background: none;
+  -webkit-text-fill-color: currentColor;
 }
 
 .church-directory-copy p { color: var(--muted); }
@@ -1529,7 +1889,46 @@ textarea {
 }
 
 @media (max-width: 820px) {
+  .church-profile-hero,
+  .church-story-section,
   .church-directory-card { grid-template-columns: 1fr; }
+
+  .church-profile-copy h1 {
+    font-size: 56px;
+  }
+
+  .church-profile-visual {
+    order: -1;
+  }
+
+  .church-profile-image,
+  .church-logo-panel {
+    min-height: 280px;
+  }
+
+  .church-story-section .section-head {
+    position: static;
+  }
+
+  .church-story-section .section-head h2 {
+    max-width: none;
+    font-size: 34px;
+  }
+
+  .church-story-content {
+    grid-template-columns: 1fr;
+    font-size: 20px;
+  }
+
+  .church-gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .church-gallery-card,
+  .church-gallery-card.featured {
+    grid-row: auto;
+    min-height: 320px;
+  }
 
   .church-directory-media,
   .church-directory-media img {
@@ -1592,6 +1991,77 @@ textarea {
 }
 
 @media (max-width: 520px) {
+  .church-profile-page {
+    gap: 24px;
+  }
+
+  .church-profile-hero {
+    gap: 22px;
+    padding-bottom: 28px;
+  }
+
+  .church-profile-copy {
+    gap: 14px;
+  }
+
+  .church-profile-copy h1 {
+    font-size: 42px;
+    line-height: 1.06;
+  }
+
+  .church-logo-panel {
+    min-height: 230px;
+    padding: 24px;
+  }
+
+  .church-profile-logo {
+    width: 118px;
+    height: 118px;
+  }
+
+  .church-fact-card {
+    min-height: 0;
+    padding: 18px;
+  }
+
+  .church-fact-card dd {
+    font-size: 19px;
+  }
+
+  .church-story-content {
+    font-size: 19px;
+    line-height: 1.62;
+  }
+
+  .church-gallery-section {
+    gap: 16px;
+    padding-top: 28px;
+  }
+
+  .church-gallery-card,
+  .church-gallery-card.featured {
+    min-height: 240px;
+  }
+
+  .church-gallery-open span {
+    opacity: 1;
+    transform: none;
+  }
+
+  .church-story-content p {
+    padding: 16px;
+  }
+
+  .church-story-content p:first-child,
+  .church-story-content p:nth-child(2),
+  .church-story-content p:nth-child(3) {
+    font-size: 22px;
+  }
+
+  .church-story-content p:first-child {
+    font-size: 32px;
+  }
+
   .list-grid strong,
   .icon-card h3,
   .content-feature-grid h3 {

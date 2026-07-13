@@ -1,9 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { BrandLogo } from './BrandLogo';
 import { useI18n, useLocaleHref } from './LanguageProvider';
-
-const logoSrc = '/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg';
 
 export function Footer() {
   const { t } = useI18n();
@@ -22,9 +21,7 @@ export function Footer() {
     {
       title: t('forChurches'),
       links: [
-        { href: '/churches', label: t('navChurches') },
-        { href: '/p/pravoslavnaya-ikona-s-qr-kodom', label: t('seoPage') },
-        { href: '/qr/home-001', label: t('qrExample') }
+        { href: '/churches', label: t('navChurches') }
       ]
     }
   ];
@@ -34,7 +31,7 @@ export function Footer() {
       <div className="site-footer-main">
         <div className="site-footer-brand">
           <Link className="footer-logo-link" href={localeHref('/')} aria-label={t('home')}>
-            <img className="footer-logo" src={logoSrc} alt={t('brand')} />
+            <BrandLogo className="footer-logo" size={54} />
           </Link>
           <small>{t('portal')}</small>
           <strong>{t('brand')}</strong>

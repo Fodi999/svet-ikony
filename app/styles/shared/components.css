@@ -30,7 +30,7 @@
   border: 1px solid var(--border-gold);
   border-radius: var(--radius-sm);
   padding: 0 18px;
-  background: rgba(214, 168, 79, .08);
+  background: rgba(205, 164, 90, .08);
   color: var(--gold-light);
   font-family: var(--font-ui);
   font-size: 13px;
@@ -65,7 +65,7 @@
 .list-panel-links a:hover,
 .icon-lightbox-close:hover {
   border-color: var(--gold);
-  background: var(--gold);
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
   color: var(--background);
 }
 
@@ -79,7 +79,7 @@
 .slavonic-primary-action,
 .slavonic-listen {
   border-color: var(--gold);
-  background: var(--gold);
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
   color: var(--background);
 }
 
@@ -162,7 +162,8 @@
   border: 1px solid var(--border-gold);
   border-radius: var(--radius-md);
   background:
-    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 46%),
+    linear-gradient(135deg, rgba(205, 164, 90, .065), transparent 44%),
+    linear-gradient(160deg, rgba(127, 141, 101, .055), transparent 60%),
     var(--surface);
   color: var(--text);
   overflow: hidden;
@@ -179,30 +180,12 @@
 .calendar-hero-card:focus-within {
   border-color: var(--gold);
   background:
-    linear-gradient(135deg, rgba(214, 168, 79, .12), transparent 46%),
+    linear-gradient(135deg, rgba(205, 164, 90, .095), transparent 44%),
+    linear-gradient(160deg, rgba(127, 141, 101, .075), transparent 60%),
     var(--surface-soft);
 }
 
 /* Угловой орнамент на карточках */
-.icon-card::before,
-.content-feature-grid article::before,
-.faq details::before,
-.sacred-panel::before,
-.list-grid > a::before,
-.church-directory-card::before,
-.daily-prayer-card::before {
-  content: "";
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2;
-  width: 28px;
-  height: 28px;
-  background: var(--ornament-corner) center / contain no-repeat;
-  opacity: .48;
-  pointer-events: none;
-}
-
 /* ------------------------------------------------------------
    Футер
    ------------------------------------------------------------ */
@@ -213,9 +196,7 @@
   isolation: isolate;
   padding: 0 clamp(18px, 5vw, 72px);
   border-top: 1px solid var(--border-soft);
-  background:
-    linear-gradient(135deg, rgba(184, 132, 43, .1), transparent 34%),
-    var(--background);
+  background: var(--background);
   color: var(--text);
 }
 
@@ -235,27 +216,23 @@
 
 .footer-logo-link {
   position: relative;
-  width: min(100%, 130px);
-  display: block;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
 }
 
 .footer-logo {
   display: block;
   width: 100%;
-  height: auto;
-  opacity: 0;
+  height: 100%;
+  object-fit: contain;
+  opacity: 1;
 }
 
 .footer-logo-link::after {
-  position: absolute;
-  inset: 0;
-  content: '';
-  background: linear-gradient(105deg, #fff8e8 5%, #d6a84f 28%, #fff 48%, #b8842b 68%, #fff3cf 92%);
-  background-size: 260% 100%;
-  -webkit-mask: url('/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg') center / contain no-repeat;
-  mask: url('/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg') center / contain no-repeat;
-  pointer-events: none;
-  animation: logo-shimmer 5s ease-in-out infinite;
+  content: none;
 }
 
 .footer-cross {
@@ -301,10 +278,15 @@
 }
 
 .site-footer-nav {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(18px, 3vw, 42px);
   align-content: start;
+}
+
+.site-footer-nav::before {
+  content: none;
 }
 
 .site-footer-nav section {
@@ -450,6 +432,10 @@
   .site-footer-nav {
     grid-template-columns: 1fr;
     gap: 22px;
+  }
+
+  .site-footer-nav::before {
+    content: none;
   }
 
   .site-footer-nav section { padding-left: 16px; }

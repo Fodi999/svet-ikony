@@ -12,10 +12,11 @@ const CORE_URLS = [
   '/pwa/app-icon-512.png',
   '/pwa/app-icon-maskable-512.png',
   '/pwa/apple-touch-icon.png',
-  '/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg',
-  '/icons/orthodox-cross.svg',
-  '/ornaments/page-border.svg',
-  '/ornaments/section-divider.svg'
+  '/favicon.ico',
+  '/favicon-32.png',
+  '/favicon-512.png',
+  '/apple-touch-icon.png',
+  '/Image-12-июл.-2026-г._-12_33_55.svg'
 ];
 
 const PAGE_URLS = [
@@ -117,10 +118,12 @@ function shouldHandleRequest(request, url) {
 function isCoreAsset(url) {
   return (
     url.pathname === '/manifest.webmanifest' ||
-    url.pathname === '/icon.svg' ||
-    url.pathname.startsWith('/pwa/') ||
-    url.pathname.startsWith('/icons/') ||
-    url.pathname.startsWith('/ornaments/')
+    url.pathname === '/favicon.ico' ||
+    url.pathname === '/favicon-32.png' ||
+    url.pathname === '/favicon-512.png' ||
+    url.pathname === '/apple-touch-icon.png' ||
+    url.pathname === '/Image-12-июл.-2026-г._-12_33_55.svg' ||
+    url.pathname.startsWith('/pwa/')
   );
 }
 

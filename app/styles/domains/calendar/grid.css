@@ -5,10 +5,12 @@
 .calendar-grid {
   width: 100%;
   min-width: 0;
-  column-count: 7;
-  column-gap: 14px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
   background:
-    linear-gradient(180deg, rgba(214, 168, 79, .07), rgba(11, 11, 10, .18)),
+    linear-gradient(180deg, rgba(205, 164, 90, .045), rgba(11, 12, 10, .16)),
     var(--background);
 }
 
@@ -38,13 +40,12 @@
   min-height: 72px;
   display: grid;
   gap: 8px;
-  break-inside: avoid;
-  margin: 0 0 14px;
   border: 1px solid var(--border-gold);
   border-radius: var(--radius-sm);
   padding: 0;
   background:
-    linear-gradient(135deg, rgba(214, 168, 79, .08), transparent 50%),
+    linear-gradient(135deg, rgba(205, 164, 90, .055), transparent 50%),
+    linear-gradient(160deg, rgba(127, 141, 101, .045), transparent 60%),
     var(--surface);
   color: var(--text);
   overflow: clip;
@@ -74,9 +75,9 @@
 
 /* Цветовая маркировка типа дня */
 .calendar-day.day-kind-feast::before { background: var(--gold-deep); }
-.calendar-day.day-kind-fast::before { background: #9a2f3a; }
-.calendar-day.day-kind-gospel::before { background: #516d91; }
-.calendar-day.day-kind-prayer::before { background: #697762; }
+.calendar-day.day-kind-fast::before { background: var(--wine); }
+.calendar-day.day-kind-gospel::before { background: var(--blue); }
+.calendar-day.day-kind-prayer::before { background: var(--olive); }
 .calendar-day.day-kind-quiet::before { background: var(--border-gold); }
 
 .calendar-day.today::before {
@@ -85,13 +86,15 @@
 }
 
 .calendar-day.out-of-month {
-  background: rgba(21, 19, 15, .58);
-  color: rgba(201, 194, 179, .72);
+  min-height: 0;
+  border: 0;
+  background: none;
   box-shadow: none;
+  pointer-events: none;
 }
 
 .calendar-day.out-of-month::before {
-  opacity: .38;
+  display: none;
 }
 
 .calendar-day:has(.day-event):not(:has(.day-image-link)) {
@@ -168,10 +171,6 @@
   color: var(--text);
 }
 
-.calendar-day.out-of-month .day-event {
-  display: none;
-}
-
 /* Постерные дни с изображением */
 .day-image-link {
   position: relative;
@@ -198,13 +197,13 @@
   height: 68%;
   pointer-events: none;
   background: linear-gradient(180deg, transparent 0%, rgba(20, 14, 9, .42) 38%, rgba(12, 8, 5, .86) 100%);
-  opacity: 0;
+  opacity: .84;
   transition: opacity var(--speed) var(--ease);
 }
 
 .calendar-grid .calendar-day:has(.day-image-link):hover::after,
 .calendar-grid .calendar-day:has(.day-image-link):focus-within::after {
-  opacity: 1;
+  opacity: .96;
 }
 
 .calendar-grid .calendar-day:has(.day-image-link) .day-image-link {
@@ -334,9 +333,9 @@
   overflow-wrap: anywhere;
 }
 
-.day-kind-fast .day-copy span { color: #f0b0bb; }
-.day-kind-gospel .day-copy span { color: #b9d3f2; }
-.day-kind-prayer .day-copy span { color: #c5dfbb; }
+.day-kind-fast .day-copy span { color: #efbac0; }
+.day-kind-gospel .day-copy span { color: #bfd4e6; }
+.day-kind-prayer .day-copy span { color: #d0ddc3; }
 
 .day-copy em {
   display: block;

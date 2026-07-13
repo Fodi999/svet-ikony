@@ -41,6 +41,9 @@ export type Icon = {
   translations?: Partial<Record<SiteLocale, IconTranslation>>;
   createdAt: string;
   updatedAt: string;
+  /** Set when this icon comes from the church_content system, where its page lives at
+   * /church/icons/[slug] rather than /icons/[slug]. */
+  source?: 'church';
 };
 
 export type Saint = {
@@ -72,6 +75,9 @@ export type Prayer = {
   seoTitle?: string;
   seoDescription?: string;
   status: Status;
+  /** Set when this prayer comes from the church_content system, where it has its own
+   * slug/page at /church/prayers/[slug] rather than living at /prayers/[iconSlug]. */
+  source?: 'church';
 };
 
 export type GospelReading = {
@@ -136,6 +142,8 @@ export type Church = {
   phoneOrSite?: string;
   dedication?: string;
   shrines?: string;
+  priest?: string;
+  priestPhone?: string;
   imageUrl?: string;
   relatedIcons: string[];
   seoTitle?: string;
@@ -295,11 +303,53 @@ export type ChurchArticleDto = {
   updatedAt: string;
 };
 
+export type ChurchInfoTranslation = {
+  title: string;
+  description: string;
+  schedule: string;
+  dedication: string;
+  shrines: string;
+  priest: string;
+};
+
+export type ChurchInfoDto = {
+  id: string;
+  siteId: string;
+  address: string;
+  mapsUrl: string;
+  phoneOrSite: string;
+  priestPhone: string;
+  imageUrl: string;
+  galleryImages: string[];
+  translations: Partial<Record<SiteLocale, ChurchInfoTranslation>>;
+  status: ChurchContentStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ChurchGospelDto = {
+  id: string;
+  siteId: string;
+  iconId?: string | null;
+  calendarDayId?: string | null;
+  slug: string;
+  title: string;
+  reference: string;
+  text: string;
+  explanation: string;
+  language: SiteLocale;
+  status: ChurchContentStatus;
+  isGlobal: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type PublicChurchContentPage = {
   calendarDay: ChurchCalendarDayDto;
   icons: ChurchIconDto[];
   prayers: ChurchPrayerDto[];
   articles: ChurchArticleDto[];
+  gospel: ChurchGospelDto[];
 };
 
 export type PublicChurchIconPage = {
@@ -307,6 +357,7 @@ export type PublicChurchIconPage = {
   calendarDay?: ChurchCalendarDayDto | null;
   prayers: ChurchPrayerDto[];
   articles: ChurchArticleDto[];
+  gospel: ChurchGospelDto[];
 };
 
 export type PublicChurchPrayerPage = {
@@ -321,8 +372,14 @@ export type PublicChurchArticlePage = {
   calendarDay?: ChurchCalendarDayDto | null;
 };
 
+export type PublicChurchGospelPage = {
+  gospel: ChurchGospelDto;
+  icon?: ChurchIconDto | null;
+  calendarDay?: ChurchCalendarDayDto | null;
+};
+
 export type PublicChurchSitemapItem = {
-  kind: 'calendar' | 'icon' | 'prayer' | 'article';
+  kind: 'calendar' | 'icon' | 'prayer' | 'article' | 'gospel';
   slug: string;
   date?: string | null;
   updatedAt: string;

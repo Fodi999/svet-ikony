@@ -283,7 +283,6 @@ export function SlavonicAlphabetPage() {
           {slavonicLetters.map((item, index) => (
             <button key={`${item.letter}-${item.name}`} type="button" className={`slavonic-tile ${item.tone}`} onClick={() => setSelected(item)}>
               <span className="slavonic-tile__number" aria-label={`${copy.numberLabel} ${index + 1}`}>{String(index + 1).padStart(2, '0')}</span>
-              <span className="slavonic-tile__ornament" aria-hidden="true" />
               <strong>{item.letter}</strong>
               <small>{item.name}</small>
             </button>

@@ -6,8 +6,6 @@ import { LanguageProvider } from '@/components/site/LanguageProvider';
 import { PWAInstallPrompt } from '@/components/site/PWAInstallPrompt';
 import { siteUrl } from '@/lib/site';
 
-const logoUrl = '/ChatGPT-Image-10-%D0%B8%D1%8E%D0%BB.-2026-%D0%B3._-11_04_35.svg?v=3';
-
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   applicationName: 'Молитва біля ікони',
@@ -16,14 +14,14 @@ export const metadata: Metadata = {
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
-      { url: logoUrl, type: 'image/svg+xml' },
-      { url: '/pwa/app-icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/pwa/app-icon-512.png', sizes: '512x512', type: 'image/png' }
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-512.png', sizes: '512x512', type: 'image/png' }
     ],
-    shortcut: logoUrl,
+    shortcut: '/favicon.ico',
     apple: [
-      { url: '/pwa/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-      { url: '/pwa/app-icon-512.png', sizes: '512x512', type: 'image/png' }
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/favicon-512.png', sizes: '512x512', type: 'image/png' }
     ]
   },
   appleWebApp: {
@@ -55,7 +53,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="uk">
       <head>
-        <link rel="apple-touch-icon" sizes="180x180" href="/pwa/apple-touch-icon.png" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link
           rel="apple-touch-startup-image"
           href="/pwa/apple-splash-1290-2796.png"

@@ -51,7 +51,7 @@ function CalendarFallbackPage({ day, page, locale }: { day?: CalendarDay; page?:
           <h1>{title}</h1>
           {description ? <p className="detail-lead">{description}</p> : null}
           <div className="detail-actions">
-            <AssetButton variant="dark" href={day?.prayerSlug ? `/prayers/${day.prayerSlug}` : '/prayers'}>{translate(locale, 'readPrayer')}</AssetButton>
+            <AssetButton variant="dark" href={day?.prayerSlug ? (day.detailHref?.startsWith('/church/') ? `/church/prayers/${day.prayerSlug}` : `/prayers/${day.prayerSlug}`) : '/prayers'}>{translate(locale, 'readPrayer')}</AssetButton>
             <AssetButton href="/icons">{translate(locale, 'allIcons')}</AssetButton>
           </div>
         </div>

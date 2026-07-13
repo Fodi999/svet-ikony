@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { LocalizedIconDetail } from '@/components/site/LocalizedContent';
 import { publicApi } from '@/lib/api';
+import { getRequestLocale } from '@/lib/serverLocale';
 import { pageMetadata } from '@/lib/seo';
 
 type Props = {
@@ -14,22 +16,25 @@ export const revalidate = 0;
 export async function generateMetadata({ params, searchParams }: Props) {
   const { slug } = await params;
   const token = (await searchParams)?.preview_token;
-  const page = await publicApi.churchIcon(slug, token);
+  const locale = await getRequestLocale();
+  const page = await publicApi.churchIcon(slug, token, locale);
   const icon = page?.iconView;
   return pageMetadata({
     title: icon?.seoTitle || icon?.title,
     description: icon?.seoDescription || icon?.shortDescription,
     path: `/church/icons/${slug}`,
     image: icon?.imageUrl,
-    keywords: icon?.seoKeywords
+    keywords: icon?.seoKeywords,
+    locale
   });
 }
 
 export default async function ChurchIconPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const token = (await searchParams)?.preview_token;
-  const page = await publicApi.churchIcon(slug, token);
-  if (!page) return <main className="page"><h1>Икона не найдена</h1></main>;
+  const locale = await getRequestLocale();
+  const page = await publicApi.churchIcon(slug, token, locale);
+  if (!page) notFound();
   const date = page.calendarDay?.dateNewStyle || page.calendarDay?.dateOldStyle;
   return (
     <>
@@ -40,6 +45,7 @@ export default async function ChurchIconPage({ params, searchParams }: Props) {
           {date ? <Link href={`/church/calendar/${date}`}>{page.calendarDay?.title || date}<small>День календаря</small></Link> : null}
           {page.prayers.map((prayer) => <Link key={prayer.id} href={`/church/prayers/${prayer.slug}`}>{prayer.title}<small>{prayer.prayerType}</small></Link>)}
           {page.articles.map((article) => <Link key={article.id} href={`/church/articles/${article.slug}`}>{article.title}<small>Статья</small></Link>)}
+          {page.gospel.map((item) => <Link key={item.id} href={`/church/gospel/${item.slug}`}>{item.title}<small>Евангелие</small></Link>)}
         </div>
       </section>
     </>

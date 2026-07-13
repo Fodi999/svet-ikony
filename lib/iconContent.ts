@@ -152,6 +152,8 @@ export function churchFromIcon(icon: Icon): Church {
   const dedication = findSection(source, ['Кому посвящен', 'Кому посвящён', 'Кому присвячений', 'Dedicated to']) || icon.saintName || icon.category;
   const shrines = findSection(source, ['Святыни / иконы / мощи', 'Святині / ікони / мощі', 'Shrines / icons / relics']);
   const churchImage = findSection(source, ['Фото храма', 'Фото храму', 'Church photo']);
+  const priest = findSection(source, ['Настоятель', 'Rector', 'Priest']);
+  const priestPhone = findSection(source, ['Телефон настоятеля', "Rector's phone", 'Priest phone']);
   return {
     id: `church-${icon.slug}`,
     slug: icon.slug,
@@ -164,6 +166,8 @@ export function churchFromIcon(icon: Icon): Church {
     phoneOrSite,
     dedication,
     shrines,
+    priest,
+    priestPhone,
     imageUrl: churchImage || icon.imageUrl,
     donationUrl: '',
     relatedIcons: [icon.slug],

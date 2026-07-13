@@ -458,7 +458,7 @@ export const publicApi = {
   churchGospel: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchGospelPage | null>(`/api/church/gospel/${slug}`, null, previewToken, locale),
   churchGospelList: async (locale?: SiteLocale) => churchApiGet<ChurchGospelDto[]>('/api/church/gospel', [], undefined, locale),
   churchSitemap: async () => churchApiGet<PublicChurchSitemapItem[]>('/api/church/sitemap', []),
-  churchInfo: async () => churchApiGet<ChurchInfoDto | null>('/api/church/info', null),
+  churchInfo: async (locale?: SiteLocale) => churchApiGet<ChurchInfoDto | null>('/api/church/info', null, undefined, locale),
   gospelToday: async (locale?: SiteLocale) => (await publicApi.content({ locale })).gospel[0] ?? emptyGospelReading(),
   gospelByDate: async (date: string, locale?: SiteLocale) => (await publicApi.content({ locale })).gospel.find((item) => item.date === date) ?? emptyGospelReading(date),
   seoPage: async (slug: string, locale?: SiteLocale) => (await publicApi.content({ locale })).pages.find((item) => item.slug === slug) || null,

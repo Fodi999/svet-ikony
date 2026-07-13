@@ -1,5 +1,4 @@
 import { publicApiPrefix, publicApiUrl } from './config';
-import { churchFromIcon, imageForPrayer } from './iconContent';
 import type { CalendarDay, CalendarDayKind, Church, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchInfoDto, ChurchPrayerDto, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSitemapItem, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
 
 const emptyDashboard: Dashboard = {
@@ -23,18 +22,6 @@ const emptySiteContent: SiteContent = {
   dashboard: emptyDashboard
 };
 
-function emptyGospelReading(date = new Date().toISOString().slice(0, 10)): GospelReading {
-  return {
-    id: `gospel-${date}`,
-    date,
-    title: '',
-    reference: '',
-    text: '',
-    explanation: '',
-    status: 'published'
-  };
-}
-
 function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -44,7 +31,7 @@ function normalizeStringArray(value: unknown) {
 }
 
 function normalizeStatus(value: unknown) {
-  return value === 'draft' ? 'draft' : 'published';
+  return value === 'published' || value === 'draft' ? value : 'draft';
 }
 
 function normalizeTranslation(value: unknown): IconTranslation {
@@ -96,24 +83,12 @@ function compactText(value: string, limit: number) {
   return normalized.length > limit ? `${normalized.slice(0, limit - 1).trim()}…` : normalized;
 }
 
-function firstTextLine(value: string, fallback: string) {
-  return value.split(/\n{2,}|\n/).map((line) => line.trim()).find(Boolean) || fallback;
-}
-
-function prayerImageFromIcon(icon: Icon) {
-  return imageForPrayer(icon);
-}
-
-function gospelReferenceFromText(value: string) {
-  return value.match(/\(([^()]*?(?:Мф|Мк|Лк|Ин|Деян|Рим|Кор|Гал|Еф|Флп|Кол|Фес|Тим|Тит|Евр|Пет|Иак|Иуд|Отк)[^()]*)\)/i)?.[1]?.trim() || 'Чтение дня';
-}
-
 function normalizeIcon(item: Partial<Icon>, index: number): Icon {
-  const title = normalizeString(item.title) || `Икона ${index + 1}`;
-  const slug = normalizeString(item.slug) || title.toLowerCase().replace(/[^a-zа-я0-9]+/gi, '-').replace(/^-+|-+$/g, '') || `icon-${index + 1}`;
+  const title = normalizeString(item.title);
+  const slug = normalizeString(item.slug);
   const now = new Date().toISOString();
   return {
-    id: normalizeString(item.id) || `icon-${slug}`,
+    id: normalizeString(item.id) || slug || `icon-${index + 1}`,
     slug,
     title,
     shortDescription: normalizeString(item.shortDescription) || normalizeString(item.seoDescription) || normalizeString(item.fullDescription).slice(0, 220),
@@ -121,7 +96,7 @@ function normalizeIcon(item: Partial<Icon>, index: number): Icon {
     imageUrl: normalizeString(item.imageUrl),
     imageUrls: normalizeStringArray(item.imageUrls),
     qrCodeUrl: normalizeString(item.qrCodeUrl),
-    category: normalizeString(item.category) || 'Православная икона',
+    category: normalizeString(item.category),
     saintName: normalizeString(item.saintName),
     prayerText: normalizeString(item.prayerText),
     gospelText: normalizeString(item.gospelText),
@@ -141,14 +116,14 @@ function normalizeIcon(item: Partial<Icon>, index: number): Icon {
 }
 
 function normalizePrayer(item: Partial<Prayer>, index: number): Prayer {
-  const title = normalizeString(item.title) || `Молитва ${index + 1}`;
-  const slug = normalizeString(item.slug) || title.toLowerCase().replace(/[^a-zа-я0-9]+/gi, '-').replace(/^-+|-+$/g, '') || `prayer-${index + 1}`;
+  const title = normalizeString(item.title);
+  const slug = normalizeString(item.slug);
   return {
-    id: normalizeString(item.id) || `prayer-${slug}`,
+    id: normalizeString(item.id) || slug || `prayer-${index + 1}`,
     slug,
     title,
     text: normalizeString(item.text),
-    category: normalizeString(item.category) || 'Молитвы',
+    category: normalizeString(item.category),
     imageUrl: normalizeString(item.imageUrl) || undefined,
     relatedSaint: normalizeString(item.relatedSaint),
     relatedIcon: normalizeString(item.relatedIcon),
@@ -172,7 +147,7 @@ function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, articl
     imageUrl: normalizeString(item.imageUrl),
     imageUrls: normalizeString(item.imageUrl) ? [item.imageUrl] : [],
     qrCodeUrl: '',
-    category: normalizeString(item.feastName) || 'Православная икона',
+    category: normalizeString(item.feastName),
     saintName: normalizeString(item.saintName),
     prayerText: normalizeString(prayer?.text),
     gospelText: '',
@@ -196,7 +171,7 @@ function prayerFromChurchDto(item: ChurchPrayerDto, icon?: ChurchIconDto): Praye
     slug: item.slug,
     title: item.title,
     text: item.text,
-    category: item.prayerType || 'Молитвы',
+    category: normalizeString(item.prayerType),
     imageUrl: icon?.imageUrl || undefined,
     relatedIcon: icon?.slug || undefined,
     audioUrl: normalizeString(item.audioUrl) || undefined,
@@ -291,63 +266,6 @@ function mergeChurchMonthContent(content: SiteContent, monthPages: PublicChurchC
   };
 }
 
-function saintsFromIcons(items: Icon[]): Saint[] {
-  return items
-    .filter((icon) => icon.saintName.trim() || icon.lifeText.trim())
-    .map((icon) => ({
-      id: `saint-${icon.slug}`,
-      slug: icon.slug,
-      name: icon.saintName || icon.title,
-      shortDescription: icon.shortDescription || firstTextLine(icon.lifeText, icon.title),
-      biography: icon.lifeText || icon.fullDescription || icon.historyText,
-      feastDay: '',
-      imageUrl: icon.imageUrl,
-      relatedIcons: [icon.slug],
-      prayers: [],
-      seoTitle: `${icon.saintName || icon.title}: житие и день памяти`,
-      seoDescription: compactText(icon.lifeText || icon.shortDescription || icon.fullDescription, 180),
-      status: 'published'
-    }));
-}
-
-function gospelFromIcons(items: Icon[]): GospelReading[] {
-  return items
-    .filter((icon) => icon.gospelText.trim())
-    .map((icon) => ({
-      id: `gospel-${icon.slug}`,
-      date: icon.calendarDate || new Date().toISOString().slice(0, 10),
-      title: `Евангелие: ${icon.title}`,
-      reference: gospelReferenceFromText(icon.gospelText),
-      text: icon.gospelText,
-      explanation: icon.shortDescription || icon.fullDescription || 'Чтение дня помогает соединить молитву перед образом с внимательным словом Евангелия.',
-      seoTitle: `Евангелие дня: ${icon.title}`,
-      seoDescription: compactText(icon.gospelText, 180),
-      status: 'published'
-    }));
-}
-
-function churchesFromIcons(items: Icon[]): Church[] {
-  const generated = items.map(churchFromIcon).filter((church) => church.title && church.description);
-  if (generated.length) return generated;
-  if (!items.length) return [];
-  const source = items[0];
-  return [{
-    id: 'church-svet-ikony-qr',
-    slug: 'svet-ikony-dlya-hramov',
-    title: 'Свет Иконы для храмов',
-    city: 'Онлайн',
-    address: 'QR-страницы православных икон',
-    description: source.historyText || source.fullDescription || 'Храм может подключить QR-страницы икон, чтобы прихожане открывали молитву, житие святого, Евангелие дня и историю образа рядом со святыней.',
-    schedule: 'Подключение и наполнение страниц настраивается в админке.',
-    donationUrl: '',
-    imageUrl: source.imageUrl,
-    relatedIcons: items.map((item) => item.slug),
-    seoTitle: 'QR-иконы и молитвенные страницы для храмов',
-    seoDescription: 'Материалы для храмов: QR-страницы икон, молитвы, жития, Евангелие дня и описание святынь.',
-    status: 'published'
-  }];
-}
-
 function normalizeSiteContent(value: unknown): SiteContent {
   const source = value && typeof value === 'object' ? value as Partial<SiteContent> : {};
   const hasIcons = Array.isArray(source.icons);
@@ -360,12 +278,8 @@ function normalizeSiteContent(value: unknown): SiteContent {
   const normalizedIcons = hasIcons ? source.icons!.map(normalizeIcon).filter((item) => item.slug && item.title) : [];
   const normalizedPrayers = hasPrayers ? source.prayers!.map(normalizePrayer).filter((item) => item.slug && item.title) : [];
   const publicIcons = hasIcons ? published(normalizedIcons) : [];
-  const normalizedPublicPrayers = hasPrayers ? published(normalizedPrayers).map((prayer) => {
-    const icon = publicIcons.find((item) => item.slug === prayer.relatedIcon || item.slug === prayer.slug);
-    return icon && !prayer.imageUrl ? { ...prayer, imageUrl: prayerImageFromIcon(icon), relatedIcon: prayer.relatedIcon || icon.slug } : prayer;
-  }) : [];
+  const normalizedPublicPrayers = hasPrayers ? published(normalizedPrayers) : [];
   const normalizedGospel = hasGospel ? (source.gospel as GospelReading[]).filter((item) => item.status === 'published') : [];
-  const derivedGospel = gospelFromIcons(publicIcons);
   const normalizedSaints = hasSaints ? (source.saints as Saint[]).filter((item) => item.status === 'published') : [];
   const normalizedPages = hasPages ? (source.pages!.map((item) => ({
     ...item,
@@ -378,11 +292,11 @@ function normalizeSiteContent(value: unknown): SiteContent {
   return {
     icons: publicIcons,
     prayers: hasPrayers ? normalizedPublicPrayers : [],
-    gospel: derivedGospel.length ? derivedGospel : normalizedGospel,
-    saints: mergeBySlug(normalizedSaints, saintsFromIcons(publicIcons)),
+    gospel: normalizedGospel,
+    saints: normalizedSaints,
     pages: normalizedPages,
     qrPages: normalizedQrPages,
-    churches: mergeBySlug(normalizedChurches, churchesFromIcons(publicIcons)),
+    churches: normalizedChurches,
     calendar: source.calendar,
     dashboard: source.dashboard || emptyDashboard
   };
@@ -459,8 +373,6 @@ export const publicApi = {
   churchGospelList: async (locale?: SiteLocale) => churchApiGet<ChurchGospelDto[]>('/api/church/gospel', [], undefined, locale),
   churchSitemap: async () => churchApiGet<PublicChurchSitemapItem[]>('/api/church/sitemap', []),
   churchInfo: async (locale?: SiteLocale) => churchApiGet<ChurchInfoDto | null>('/api/church/info', null, undefined, locale),
-  gospelToday: async (locale?: SiteLocale) => (await publicApi.content({ locale })).gospel[0] ?? emptyGospelReading(),
-  gospelByDate: async (date: string, locale?: SiteLocale) => (await publicApi.content({ locale })).gospel.find((item) => item.date === date) ?? emptyGospelReading(date),
   seoPage: async (slug: string, locale?: SiteLocale) => (await publicApi.content({ locale })).pages.find((item) => item.slug === slug) || null,
   qrPage: async (qrId: string, locale?: SiteLocale) => (await publicApi.content({ locale })).qrPages.find((item) => item.qrId === qrId) || null,
   scanQr: (qrId: string) => apiSend(`/api/qr/${qrId}/scan`, 'POST', undefined, { ok: false }),

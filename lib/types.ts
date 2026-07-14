@@ -59,6 +59,8 @@ export type Saint = {
   seoTitle?: string;
   seoDescription?: string;
   status: Status;
+  updatedAt?: string;
+  source?: 'church';
 };
 
 export type Prayer = {
@@ -262,6 +264,7 @@ export type ChurchIconDto = {
   feastName: string;
   description: string;
   language: SiteLocale;
+  translationGroupId: string;
   status: ChurchContentStatus;
   isGlobal: boolean;
   createdAt: string;
@@ -278,12 +281,42 @@ export type ChurchPrayerDto = {
   text: string;
   audioUrl: string;
   qrCodeUrl: string;
+  imageUrl: string;
+  source: string;
+  sourceUrl: string;
+  note: string;
   language: SiteLocale;
   prayerType: string;
+  translationGroupId: string;
   status: ChurchContentStatus;
   isGlobal: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ChurchSaintDto = {
+  id: string;
+  siteId: string;
+  iconId?: string | null;
+  calendarDayId?: string | null;
+  slug: string;
+  name: string;
+  shortDescription: string;
+  biography: string;
+  feastDay: string;
+  imageUrl: string;
+  language: SiteLocale;
+  translationGroupId: string;
+  status: ChurchContentStatus;
+  isGlobal: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ChurchTranslationRef = {
+  language: SiteLocale;
+  slug: string;
+  title: string;
 };
 
 export type ChurchArticleDto = {
@@ -352,18 +385,34 @@ export type PublicChurchContentPage = {
   gospel: ChurchGospelDto[];
 };
 
+/** `icon` is null when the translation group exists but has no published
+ * record in the requested language; `translations` lists what is available. */
 export type PublicChurchIconPage = {
-  icon: ChurchIconDto;
+  icon: ChurchIconDto | null;
   calendarDay?: ChurchCalendarDayDto | null;
   prayers: ChurchPrayerDto[];
   articles: ChurchArticleDto[];
   gospel: ChurchGospelDto[];
+  translations: ChurchTranslationRef[];
 };
 
+/** `prayer` is null when the translation group exists but has no published
+ * record in the requested language; `translations` lists what is available. */
 export type PublicChurchPrayerPage = {
-  prayer: ChurchPrayerDto;
+  prayer: ChurchPrayerDto | null;
   icon?: ChurchIconDto | null;
   calendarDay?: ChurchCalendarDayDto | null;
+  translations: ChurchTranslationRef[];
+};
+
+/** `saint` is null when the translation group exists but has no published
+ * record in the requested language; `translations` lists what is available. */
+export type PublicChurchSaintPage = {
+  saint: ChurchSaintDto | null;
+  icon?: ChurchIconDto | null;
+  calendarDay?: ChurchCalendarDayDto | null;
+  prayers: ChurchPrayerDto[];
+  translations: ChurchTranslationRef[];
 };
 
 export type PublicChurchArticlePage = {
@@ -379,7 +428,7 @@ export type PublicChurchGospelPage = {
 };
 
 export type PublicChurchSitemapItem = {
-  kind: 'calendar' | 'icon' | 'prayer' | 'article' | 'gospel';
+  kind: 'calendar' | 'icon' | 'prayer' | 'article' | 'gospel' | 'saint';
   slug: string;
   date?: string | null;
   updatedAt: string;

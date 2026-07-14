@@ -71,9 +71,8 @@ function DayStatusMarks({ item }: { item: CalendarDay }) {
   );
 }
 
-function prayerHref(item: CalendarDay, detailHref: string) {
-  if (!item.prayerSlug) return '/prayers';
-  return detailHref.startsWith('/church/') ? `/church/prayers/${item.prayerSlug}` : `/prayers/${item.prayerSlug}`;
+function prayerHref(item: CalendarDay) {
+  return item.prayerSlug ? `/prayers/${item.prayerSlug}` : '/prayers';
 }
 
 function gospelHref(item: CalendarDay, detailHref: string) {
@@ -86,7 +85,7 @@ function DayLinks({ item, detailHref, ariaLabel, labels }: { item: CalendarDay; 
 
   return (
     <nav className="day-links" aria-label={ariaLabel}>
-      <Link href={localeHref(prayerHref(item, detailHref))}>{labels.prayers}</Link>
+      <Link href={localeHref(prayerHref(item))}>{labels.prayers}</Link>
       <Link href={localeHref(gospelHref(item, detailHref))}>{labels.gospel}</Link>
       <Link href={localeHref(detailHref)}>{labels.more}</Link>
     </nav>
@@ -98,7 +97,7 @@ function ListPanelLinks({ item, detailHref, ariaLabel, labels }: { item: Calenda
 
   return (
     <nav className="list-panel-links" aria-label={ariaLabel}>
-      <Link href={localeHref(prayerHref(item, detailHref))}>{labels.prayers}</Link>
+      <Link href={localeHref(prayerHref(item))}>{labels.prayers}</Link>
       <Link href={localeHref(gospelHref(item, detailHref))}>{labels.gospel}</Link>
       <Link href={localeHref(detailHref)}>{labels.more}</Link>
     </nav>

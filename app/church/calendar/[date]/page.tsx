@@ -62,7 +62,7 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
           <h1>{calendarDay.title}</h1>
           {calendarDay.description ? <p className="detail-lead">{calendarDay.description}</p> : null}
           <div className="detail-actions">
-            {icons[0] ? <AssetButton variant="dark" href={`/church/icons/${icons[0].slug}`}>Икона</AssetButton> : null}
+            {icons[0] ? <AssetButton variant="dark" href={`/icons/${icons[0].slug}`}>Икона</AssetButton> : null}
             {prayers[0] ? <AssetButton href={`/church/prayers/${prayers[0].slug}`}>Молитва</AssetButton> : null}
             {gospel[0] ? <AssetButton href={`/church/gospel/${gospel[0].slug}`}>Евангелие</AssetButton> : null}
           </div>
@@ -73,7 +73,7 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
         <section className="related-section">
           <div className="section-head"><p className="eyebrow">Иконы</p><h2>Связанные образы</h2></div>
           <div className="mini-grid">
-            {icons.map((icon) => <Link key={icon.id} href={`/church/icons/${icon.slug}`}>{icon.title}<small>{icon.saintName || icon.feastName}</small></Link>)}
+            {icons.map((icon) => <Link key={icon.id} href={`/icons/${icon.slug}`}>{icon.title}<small>{icon.saintName || icon.feastName}</small></Link>)}
           </div>
         </section>
       ) : null}

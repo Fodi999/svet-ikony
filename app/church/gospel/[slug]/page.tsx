@@ -61,7 +61,7 @@ export default async function ChurchGospelPage({ params, searchParams }: Props) 
       <section className="related-section">
         <div className="section-head"><p className="eyebrow">Связь материала</p><h2>Икона и день календаря</h2></div>
         <div className="mini-grid">
-          {result?.icon ? <Link href={`/church/icons/${result.icon.slug}`}>{result.icon.title}<small>Икона</small></Link> : null}
+          {result?.icon ? <Link href={`/icons/${result.icon.slug}`}>{result.icon.title}<small>Икона</small></Link> : null}
           {date ? <Link href={`/church/calendar/${date}`}>{result?.calendarDay?.title || date}<small>День календаря</small></Link> : null}
         </div>
       </section>

@@ -59,7 +59,7 @@ export default async function ChurchArticlePage({ params, searchParams }: Props)
         <div className="section-head"><p className="eyebrow">Связь материала</p><h2>День и икона</h2></div>
         <div className="mini-grid">
           {date ? <Link href={`/church/calendar/${date}`}>{result?.calendarDay?.title || date}<small>День календаря</small></Link> : null}
-          {result?.icon ? <Link href={`/church/icons/${result.icon.slug}`}>{result.icon.title}<small>Икона</small></Link> : null}
+          {result?.icon ? <Link href={`/icons/${result.icon.slug}`}>{result.icon.title}<small>Икона</small></Link> : null}
         </div>
       </section>
     </main>

@@ -88,7 +88,7 @@ function slugFromHref(href?: string) {
 }
 
 function pageHrefForDay(item: CalendarDay, pages: SeoPage[] = []) {
-  if (item.icon?.source === 'church') return item.detailHref || `/church/icons/${item.icon.slug}`;
+  if (item.icon?.source === 'church') return item.detailHref || `/icons/${item.icon.slug}`;
 
   const hrefSlug = slugFromHref(item.detailHref);
   const hasIconPage = Boolean(item.icon?.slug);
@@ -529,7 +529,7 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
           eyebrow={t('todayIcon')}
           title={heroToday?.label || localizedHeroText(hero?.iconDayTitle || iconOfDay?.title, 'iconOfDay', t)}
           dateText={`${heroTodayDate}${heroTodayOldDate ? ` / ${heroTodayOldDate}` : ''}`}
-          link={{ href: prayerOfDay ? (prayerOfDay.source === 'church' ? `/church/prayers/${prayerOfDay.slug}` : `/prayers/${prayerOfDay.slug}`) : '/prayers', label: t('openPrayer') }}
+          link={{ href: prayerOfDay ? `/prayers/${prayerOfDay.slug}` : '/prayers', label: t('openPrayer') }}
         />
         <CalendarInfoCard eyebrow={t('information')} title={t('catalog')} links={navigationTips} />
       </section>

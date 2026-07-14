@@ -503,3 +503,72 @@
     letter-spacing: .04em;
   }
 }
+
+/* ------------------------------------------------------------
+   Хлебные крошки и кнопка «назад» на страницах материалов.
+   ------------------------------------------------------------ */
+
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+}
+
+.breadcrumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.breadcrumbs a {
+  color: var(--gold-light);
+  text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+  color: var(--gold);
+  text-decoration: underline;
+}
+
+.breadcrumbs li[aria-current='page'] span {
+  display: inline-block;
+  max-width: 46ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.breadcrumbs svg {
+  flex-shrink: 0;
+  opacity: .6;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  color: var(--gold-light);
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: var(--gold);
+  text-decoration: underline;
+}

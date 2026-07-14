@@ -1,17 +1,34 @@
+import { Breadcrumbs } from '@/components/site/Breadcrumbs';
 import { IconsCatalog } from '@/components/site/IconsCatalog';
 import { T } from '@/components/site/TranslatedText';
 import { publicApi } from '@/lib/api';
+import { translate } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
 
-export const metadata = pageMetadata({ title: 'Православные иконы с QR-страницами', description: 'Каталог православных икон с молитвами, житиями и духовными материалами.', path: '/icons' });
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export async function generateMetadata() {
+  const locale = await getRequestLocale();
+  return pageMetadata({
+    title: translate(locale, 'iconsPageTitle'),
+    description: translate(locale, 'iconsPageLead'),
+    path: '/icons',
+    locale
+  });
+}
 
 export default async function IconsPage() {
   const locale = await getRequestLocale();
   const icons = await publicApi.icons(locale);
-  const categories = Array.from(new Set(icons.map((icon) => icon.category)));
+  const categories = Array.from(new Set(icons.map((icon) => icon.category).filter(Boolean)));
   return (
     <main className="page icons-page">
+      <Breadcrumbs
+        items={[{ href: '/', label: translate(locale, 'home') }]}
+        current={translate(locale, 'navIcons')}
+      />
       <section className="page-hero icons-catalog-hero">
         <div>
           <p className="eyebrow"><T k="catalog" /></p>

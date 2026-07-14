@@ -1,5 +1,5 @@
 import { publicApiPrefix, publicApiUrl } from './config';
-import type { CalendarDay, CalendarDayKind, Church, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchInfoDto, ChurchPrayerDto, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSitemapItem, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
+import type { CalendarDay, CalendarDayKind, Church, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchInfoDto, ChurchPrayerDto, ChurchSaintDto, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
 
 const emptyDashboard: Dashboard = {
   publishedPages: 0,
@@ -53,7 +53,7 @@ const prayerTypeLabels: Record<SiteLocale, Record<string, string>> = {
   }
 };
 
-function prayerTypeLabel(prayerType: string, locale: SiteLocale) {
+export function prayerTypeLabel(prayerType: string, locale: SiteLocale) {
   return prayerTypeLabels[locale]?.[prayerType] || normalizeString(prayerType);
 }
 
@@ -166,8 +166,21 @@ function normalizePrayer(item: Partial<Prayer>, index: number): Prayer {
   };
 }
 
+/** The admin stores the extra icon photos (front shot, angles) as a trailing
+ * "Дополнительные фото:" text block inside the description. */
+const extraPhotosBlockPattern = /\n*Дополнительные фото:[\s\S]*$/i;
+
+function iconExtraPhotos(description: string) {
+  const block = description.match(extraPhotosBlockPattern)?.[0] || '';
+  return Array.from(block.matchAll(/https?:\/\/\S+/g), (match) => match[0]);
+}
+
 function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, article?: ChurchArticleDto): Icon {
-  const description = normalizeString(item.description) || normalizeString(article?.seoDescription) || normalizeString(article?.content);
+  const rawDescription = normalizeString(item.description);
+  const extraPhotos = iconExtraPhotos(rawDescription);
+  const cleanDescription = rawDescription.replace(extraPhotosBlockPattern, '').trim();
+  const description = cleanDescription || normalizeString(article?.seoDescription) || normalizeString(article?.content);
+  const imageUrls = Array.from(new Set([normalizeString(item.imageUrl), ...extraPhotos].filter(Boolean)));
   const now = new Date().toISOString();
   return {
     id: item.id,
@@ -176,7 +189,7 @@ function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, articl
     shortDescription: compactText(description, 220),
     fullDescription: normalizeString(article?.content) || description,
     imageUrl: normalizeString(item.imageUrl),
-    imageUrls: normalizeString(item.imageUrl) ? [item.imageUrl] : [],
+    imageUrls,
     qrCodeUrl: '',
     category: normalizeString(item.feastName),
     saintName: normalizeString(item.saintName),
@@ -203,13 +216,32 @@ function prayerFromChurchDto(item: ChurchPrayerDto, icon?: ChurchIconDto): Praye
     title: item.title,
     text: item.text,
     category: prayerTypeLabel(item.prayerType, item.language),
-    imageUrl: icon?.imageUrl || undefined,
+    imageUrl: normalizeString(item.imageUrl) || icon?.imageUrl || undefined,
     relatedIcon: icon?.slug || undefined,
     audioUrl: normalizeString(item.audioUrl) || undefined,
     qrCodeUrl: normalizeString(item.qrCodeUrl) || undefined,
     seoTitle: item.title,
     seoDescription: compactText(item.text, 180),
     status: item.status === 'published' ? 'published' : 'draft',
+    source: 'church'
+  };
+}
+
+function saintFromChurchDto(item: ChurchSaintDto, icon?: ChurchIconDto): Saint {
+  return {
+    id: item.id,
+    slug: item.slug,
+    name: item.name,
+    shortDescription: normalizeString(item.shortDescription),
+    biography: normalizeString(item.biography),
+    feastDay: normalizeString(item.feastDay),
+    imageUrl: normalizeString(item.imageUrl) || normalizeString(icon?.imageUrl),
+    relatedIcons: icon?.slug ? [icon.slug] : [],
+    prayers: [],
+    seoTitle: item.name,
+    seoDescription: compactText(item.shortDescription || item.biography, 180),
+    status: item.status === 'published' ? 'published' : 'draft',
+    updatedAt: item.updatedAt,
     source: 'church'
   };
 }
@@ -385,12 +417,22 @@ export const publicApi = {
       prayers: mergeBySlug(merged.prayers, allPrayers.filter((item) => item.status === 'published').map((item) => prayerFromChurchDto(item)))
     };
   },
-  icons: async (locale?: SiteLocale) => (await publicApi.content({ locale })).icons,
-  icon: async (slug: string, locale?: SiteLocale) => (await publicApi.icons(locale)).find((item) => item.slug === slug) || null,
-  saints: async (locale?: SiteLocale) => (await publicApi.content({ locale })).saints,
-  saint: async (slug: string, locale?: SiteLocale) => (await publicApi.saints(locale)).find((item) => item.slug === slug) || null,
-  prayers: async (locale?: SiteLocale) => (await publicApi.content({ locale })).prayers,
-  prayer: async (slug: string, locale?: SiteLocale) => (await publicApi.prayers(locale)).find((item) => item.slug === slug) || null,
+  icons: async (locale?: SiteLocale) => {
+    const items = await publicApi.churchIconList(locale);
+    return items.filter((item) => item.status === 'published').map((item) => iconFromChurchDto(item));
+  },
+  saints: async (locale?: SiteLocale) => {
+    const items = await publicApi.churchSaintList(locale);
+    return items.filter((item) => item.status === 'published').map((item) => saintFromChurchDto(item));
+  },
+  saint: async (slug: string, locale?: SiteLocale) => {
+    const page = await publicApi.churchSaint(slug, undefined, locale);
+    return page?.saint ? saintFromChurchDto(page.saint, page.icon || undefined) : null;
+  },
+  prayers: async (locale?: SiteLocale) => {
+    const items = await publicApi.churchPrayerList(locale);
+    return items.filter((item) => item.status === 'published').map((item) => prayerFromChurchDto(item));
+  },
   churchCalendarDay: async (date: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchContentPage | null>(`/api/church/calendar/${date}`, null, previewToken, locale),
   churchCalendarMonth: async (year: string | number, month: string | number, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchContentPage[]>(`/api/church/calendar?year=${encodeURIComponent(String(year))}&month=${encodeURIComponent(String(month))}`, [], previewToken, locale),
   churchToday: async (previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchContentPage | null>('/api/church/calendar/today', null, previewToken, locale),
@@ -399,11 +441,14 @@ export const publicApi = {
     if (!page) return null;
     return {
       ...page,
-      iconView: iconFromChurchDto(page.icon, page.prayers[0], page.articles[0])
+      iconView: page.icon ? iconFromChurchDto(page.icon, page.prayers[0], page.articles[0]) : null
     };
   },
+  churchIconList: async (locale?: SiteLocale) => churchApiGet<ChurchIconDto[]>('/api/church/icons', [], undefined, locale),
   churchPrayer: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchPrayerPage | null>(`/api/church/prayers/${slug}`, null, previewToken, locale),
   churchPrayerList: async (locale?: SiteLocale) => churchApiGet<ChurchPrayerDto[]>('/api/church/prayers', [], undefined, locale),
+  churchSaint: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchSaintPage | null>(`/api/church/saints/${slug}`, null, previewToken, locale),
+  churchSaintList: async (locale?: SiteLocale) => churchApiGet<ChurchSaintDto[]>('/api/church/saints', [], undefined, locale),
   churchArticle: async (slug: string, previewToken?: string, locale?: SiteLocale) => {
     const result = await churchApiGet<PublicChurchArticlePage | null>(`/api/church/articles/${slug}`, null, previewToken, locale);
     return result ? { ...result, pageView: seoPageFromChurchArticle(result.article) } : null;

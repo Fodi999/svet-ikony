@@ -19,7 +19,7 @@ export default async function HomePage({ searchParams }: { searchParams?: Promis
   });
   return (
     <main className="calendar-shell">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('Organization', { name: 'ikona.link', url: 'https://ikona.link' })) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('Organization', { name: 'svetikony.com', url: 'https://svetikony.com' })) }} />
       <CalendarView icons={content.icons} prayers={content.prayers} pages={content.pages} calendar={content.calendar} />
     </main>
   );

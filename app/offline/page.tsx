@@ -3,7 +3,7 @@ import { pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
   title: 'Немає з’єднання',
-  description: 'Офлайн-сторінка православного порталу ikona.link.',
+  description: 'Офлайн-сторінка православного порталу svetikony.com.',
   path: '/offline'
 });
 

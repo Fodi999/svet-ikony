@@ -10,7 +10,7 @@ export function pageMetadata(input: {
   keywords?: string;
   locale?: Locale;
 }): Metadata {
-  const title = input.title || 'ikona.link | Молитва біля ікони';
+  const title = input.title || 'svetikony.com | Молитва біля ікони';
   const description = input.description || 'Православні QR-сторінки ікон з молитвами, житіями та духовними матеріалами.';
   const path = input.path || '/';
   const localizedPath = (locale: Locale) => (path === '/' ? `/${locale}` : `/${locale}${path}`);
@@ -27,7 +27,7 @@ export function pageMetadata(input: {
       title,
       description,
       url,
-      siteName: 'ikona.link',
+      siteName: 'svetikony.com',
       type: 'website',
       images: input.image ? [{ url: input.image }] : undefined
     }

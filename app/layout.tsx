@@ -9,7 +9,7 @@ import { siteUrl } from '@/lib/site';
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   applicationName: 'Молитва біля ікони',
-  title: 'ikona.link | Молитва біля ікони',
+  title: 'svetikony.com | Молитва біля ікони',
   description: 'Православні QR-сторінки ікон з молитвами, житіями та духовними матеріалами.',
   manifest: '/manifest.webmanifest',
   icons: {

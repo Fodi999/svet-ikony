@@ -1,5 +1,5 @@
 import { publicApiPrefix, publicApiUrl } from './config';
-import type { CalendarDay, CalendarDayKind, Church, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchInfoDto, ChurchPrayerDto, ChurchSaintDto, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
+import type { CalendarDay, CalendarDayKind, Church, ChurchAlphabetLetterDto, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchInfoDto, ChurchPrayerDto, ChurchSaintDto, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchAlphabetPage, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
 
 const emptyDashboard: Dashboard = {
   publishedPages: 0,
@@ -449,6 +449,8 @@ export const publicApi = {
   churchPrayerList: async (locale?: SiteLocale) => churchApiGet<ChurchPrayerDto[]>('/api/church/prayers', [], undefined, locale),
   churchSaint: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchSaintPage | null>(`/api/church/saints/${slug}`, null, previewToken, locale),
   churchSaintList: async (locale?: SiteLocale) => churchApiGet<ChurchSaintDto[]>('/api/church/saints', [], undefined, locale),
+  churchAlphabetLetter: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchAlphabetPage | null>(`/api/church/alphabet/${slug}`, null, previewToken, locale),
+  churchAlphabetList: async (locale?: SiteLocale) => churchApiGet<ChurchAlphabetLetterDto[]>('/api/church/alphabet', [], undefined, locale),
   churchArticle: async (slug: string, previewToken?: string, locale?: SiteLocale) => {
     const result = await churchApiGet<PublicChurchArticlePage | null>(`/api/church/articles/${slug}`, null, previewToken, locale);
     return result ? { ...result, pageView: seoPageFromChurchArticle(result.article) } : null;

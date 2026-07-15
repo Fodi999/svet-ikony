@@ -319,6 +319,30 @@ export type ChurchTranslationRef = {
   title: string;
 };
 
+export type ChurchAlphabetLetterDto = {
+  id: string;
+  siteId: string;
+  slug: string;
+  letter: string;
+  sortOrder: number;
+  name: string;
+  shortDescription: string;
+  fullText: string;
+  numericValue?: number | null;
+  modernEquivalent: string;
+  color: string;
+  cardImageUrl: string;
+  mainImageUrl: string;
+  seoTitle: string;
+  seoDescription: string;
+  language: SiteLocale;
+  translationGroupId: string;
+  status: ChurchContentStatus;
+  isGlobal: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ChurchArticleDto = {
   id: string;
   siteId: string;
@@ -412,6 +436,13 @@ export type PublicChurchSaintPage = {
   icon?: ChurchIconDto | null;
   calendarDay?: ChurchCalendarDayDto | null;
   prayers: ChurchPrayerDto[];
+  translations: ChurchTranslationRef[];
+};
+
+/** `letter` is null when the translation group exists but has no published
+ * record in the requested language; `translations` lists what is available. */
+export type PublicChurchAlphabetPage = {
+  letter: ChurchAlphabetLetterDto | null;
   translations: ChurchTranslationRef[];
 };
 

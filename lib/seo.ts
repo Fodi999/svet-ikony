@@ -34,7 +34,7 @@ export function pageMetadata(input: {
   };
 }
 
-export function jsonLd(type: 'Organization' | 'Article' | 'IconPage', data: Record<string, unknown>) {
+export function jsonLd(type: 'Organization' | 'Article' | 'IconPage' | 'Product', data: Record<string, unknown>) {
   const schemaType = type === 'IconPage' ? 'Article' : type;
   return {
     '@context': 'https://schema.org',

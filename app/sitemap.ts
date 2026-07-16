@@ -4,7 +4,7 @@ import { locales, withLocale } from '@/lib/i18n';
 import { siteUrl } from '@/lib/site';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [saints, churches, churchItems, iconsAndPrayersByLocale, alphabetByLocale] = await Promise.all([
+  const [saints, churches, churchItems, iconsAndPrayersByLocale, alphabetByLocale, products] = await Promise.all([
     publicApi.saints(),
     publicApi.churches(),
     publicApi.churchSitemap(),
@@ -16,9 +16,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     Promise.all(locales.map(async (locale) => ({
       locale,
       letters: await publicApi.churchAlphabetList(locale)
-    })))
+    }))),
+    publicApi.products()
   ]);
-  const staticPages = ['', '/icons', '/prayers', '/saints', '/gospel', '/churches', '/staroslavyanskaya-azbuka'];
+  const staticPages = ['', '/icons', '/shop', '/prayers', '/saints', '/gospel', '/churches', '/staroslavyanskaya-azbuka'];
   const localized = (path: string) => locales.map((locale) => ({ url: `${siteUrl}${withLocale(path || '/', locale)}`, lastModified: new Date() }));
   const churchPath = (kind: string, slug: string) => {
     if (kind === 'calendar') return `/church/calendar/${slug}`;
@@ -44,6 +45,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...churches.filter((item) => item.status === 'published').flatMap((item) => locales.map((locale) => ({ url: `${siteUrl}${withLocale(`/churches#${item.slug}`, locale)}`, lastModified: new Date() }))),
     ...churchItems.filter((item) => item.kind !== 'prayer' && item.kind !== 'icon').flatMap((item) => locales.map((locale) => ({
       url: `${siteUrl}${withLocale(churchPath(item.kind, item.slug), locale)}`,
+      lastModified: item.updatedAt
+    }))),
+    ...products.flatMap((item) => locales.map((locale) => ({
+      url: `${siteUrl}${withLocale(`/shop/${item.slug}`, locale)}`,
       lastModified: item.updatedAt
     })))
   ];

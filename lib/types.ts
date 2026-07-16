@@ -44,6 +44,13 @@ export type Icon = {
   /** Set when this icon comes from the church_content system, where its page lives at
    * /church/icons/[slug] rather than /icons/[slug]. */
   source?: 'church';
+  orderEnabled?: boolean;
+  orderBlockText?: string;
+  productionTime?: string;
+  priceCents?: number | null;
+  currency?: string;
+  consecrationAvailable?: boolean;
+  translationGroupId?: string;
 };
 
 export type Saint = {
@@ -267,8 +274,128 @@ export type ChurchIconDto = {
   translationGroupId: string;
   status: ChurchContentStatus;
   isGlobal: boolean;
+  orderEnabled: boolean;
+  orderBlockText: string;
+  productionTime: string;
+  priceCents?: number | null;
+  currency: string;
+  consecrationAvailable: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ProductStockStatus = 'available' | 'made_to_order' | 'unavailable';
+
+/** @deprecated kept as an alias while older call sites still reference it */
+export type ChurchIconOrderOptionDto = ChurchProductDto;
+
+export type ChurchProductDto = {
+  id: string;
+  siteId: string;
+  slug: string;
+  nameUk: string;
+  nameRu: string;
+  nameEn: string;
+  description: string;
+  categoryId?: string | null;
+  linkedIconTranslationGroupId?: string | null;
+  fullDescriptionUk: string;
+  fullDescriptionRu: string;
+  fullDescriptionEn: string;
+  galleryUrls: string[];
+  photoUrl: string;
+  priceCents: number;
+  currency: string;
+  productionTime: string;
+  consecrationAvailable: boolean;
+  stockStatus: ProductStockStatus;
+  featured: boolean;
+  seoTitleUk: string;
+  seoTitleRu: string;
+  seoTitleEn: string;
+  seoDescriptionUk: string;
+  seoDescriptionRu: string;
+  seoDescriptionEn: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ChurchIconProductCategoryDto = ChurchProductCategoryDto;
+
+export type ChurchProductCategoryDto = {
+  id: string;
+  siteId: string;
+  slug: string;
+  nameUk: string;
+  nameRu: string;
+  nameEn: string;
+  descriptionUk: string;
+  descriptionRu: string;
+  descriptionEn: string;
+  imageUrl: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LinkedIconRef = {
+  translationGroupId: string;
+  translations: ChurchTranslationRef[];
+};
+
+export type PublicProductPage = {
+  product: ChurchProductDto;
+  linkedIcon?: LinkedIconRef | null;
+  related: ChurchProductDto[];
+};
+
+export type CreateIconOrderItemInput = {
+  optionId: string;
+  quantity?: number;
+};
+
+export type CreateIconOrderPayload = {
+  iconId: string;
+  customerName: string;
+  contactMethod: 'phone' | 'email';
+  contactValue: string;
+  preferredContactChannel?: string;
+  country?: string;
+  city?: string;
+  consecrationRequested?: boolean;
+  comment?: string;
+  consentGiven: boolean;
+  items?: CreateIconOrderItemInput[];
+  /** Honeypot: must stay empty; real visitors never see this field. */
+  website?: string;
+};
+
+export type CreateProductOrderItemInput = {
+  productId: string;
+  quantity?: number;
+};
+
+export type CreateProductOrderPayload = {
+  productSlug: string;
+  customerName: string;
+  contactMethod: 'phone' | 'email';
+  contactValue: string;
+  preferredContactChannel?: string;
+  country?: string;
+  city?: string;
+  consecrationRequested?: boolean;
+  comment?: string;
+  consentGiven: boolean;
+  items?: CreateProductOrderItemInput[];
+  /** Honeypot: must stay empty; real visitors never see this field. */
+  website?: string;
+};
+
+export type CreateIconOrderResponse = {
+  orderNumber: string;
 };
 
 export type ChurchPrayerDto = {

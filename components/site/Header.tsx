@@ -8,6 +8,7 @@ import { LanguageSwitch, useI18n, useLocaleHref } from './LanguageProvider';
 
 const nav = [
   ['navIcons', '/icons'],
+  ['navShop', '/shop'],
   ['navPrayers', '/prayers'],
   ['navSaints', '/saints'],
   ['navGospel', '/gospel'],

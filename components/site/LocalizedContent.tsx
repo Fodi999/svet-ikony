@@ -10,6 +10,7 @@ import { IconCard } from './IconCard';
 import { AssetButton } from './AssetButton';
 import { BackLink, Breadcrumbs } from './Breadcrumbs';
 import { BrandLogo } from './BrandLogo';
+import { IconOrderLink } from './IconOrderLink';
 import { useI18n, useLocaleHref } from './LanguageProvider';
 import { PrayerQr } from './PrayerQr';
 import { StableImage } from './StableImage';
@@ -520,7 +521,7 @@ export function LocalizedIconDetail({ icon, related }: { icon: Icon; related: Ic
           <h1>{iconTitle}</h1>
           <p className="detail-lead">{item.shortDescription || textPreview(item.fullDescription, 220)}</p>
           <div className="sacred-meta">{item.saintName ? <span>{item.saintName}</span> : null}<span>{item.status === 'published' ? ui(locale, 'published') : ui(locale, 'draft')}</span></div>
-          <div className="detail-actions"><AssetButton variant="dark" href="#prayer">{ui(locale, 'readPrayer')}</AssetButton><AssetButton href="/churches">{ui(locale, 'forChurches')}</AssetButton></div>
+          <div className="detail-actions"><AssetButton variant="dark" href="#prayer">{ui(locale, 'readPrayer')}</AssetButton><AssetButton href="/churches">{ui(locale, 'forChurches')}</AssetButton><IconOrderLink icon={item} /></div>
         </div>
       </section>
       <IconStory text={item.fullDescription} images={photoImages.length ? photoImages : [item.imageUrl]} />

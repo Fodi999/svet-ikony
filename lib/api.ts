@@ -1,5 +1,5 @@
 import { publicApiPrefix, publicApiUrl } from './config';
-import type { CalendarDay, CalendarDayKind, Church, ChurchAlphabetLetterDto, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchInfoDto, ChurchPrayerDto, ChurchSaintDto, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchAlphabetPage, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
+import type { CalendarDay, CalendarDayKind, Church, ChurchAlphabetLetterDto, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchIconOrderOptionDto, ChurchIconProductCategoryDto, ChurchInfoDto, ChurchPrayerDto, ChurchProductCategoryDto, ChurchProductDto, ChurchSaintDto, CreateIconOrderPayload, CreateIconOrderResponse, CreateProductOrderPayload, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchAlphabetPage, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, PublicProductPage, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
 
 const emptyDashboard: Dashboard = {
   publishedPages: 0,
@@ -205,7 +205,14 @@ function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, articl
     translations: {},
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
-    source: 'church'
+    source: 'church',
+    orderEnabled: item.orderEnabled,
+    orderBlockText: item.orderBlockText,
+    productionTime: item.productionTime,
+    priceCents: item.priceCents,
+    currency: item.currency,
+    consecrationAvailable: item.consecrationAvailable,
+    translationGroupId: item.translationGroupId
   };
 }
 
@@ -383,6 +390,21 @@ async function churchApiGet<T>(path: string, fallback: T, previewToken?: string,
   return apiGet<T>(path + suffix, fallback);
 }
 
+/** Unlike apiSend, this rejects on a non-ok response instead of silently
+ * returning a fallback, so callers (e.g. the order form) can show the user
+ * a real validation error instead of a swallowed failure. */
+async function apiPostOrThrow<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${publicApiUrl}${publicApiPrefix}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) {
+    throw new Error(response.status === 429 ? 'rate_limited' : 'invalid_request');
+  }
+  return await response.json() as T;
+}
+
 async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown, fallback?: T): Promise<T> {
   try {
     const response = await fetch(`${publicApiUrl}${publicApiPrefix}${path}`, {
@@ -462,7 +484,23 @@ export const publicApi = {
   seoPage: async (slug: string, locale?: SiteLocale) => (await publicApi.content({ locale })).pages.find((item) => item.slug === slug) || null,
   qrPage: async (qrId: string, locale?: SiteLocale) => (await publicApi.content({ locale })).qrPages.find((item) => item.qrId === qrId) || null,
   scanQr: (qrId: string) => apiSend(`/api/qr/${qrId}/scan`, 'POST', undefined, { ok: false }),
-  churches: async (locale?: SiteLocale) => (await publicApi.content({ locale })).churches
+  churches: async (locale?: SiteLocale) => (await publicApi.content({ locale })).churches,
+  iconOrderOptions: () => apiGet<ChurchIconOrderOptionDto[]>('/api/church/icon-order-options', []),
+  iconProductCategories: () => apiGet<ChurchIconProductCategoryDto[]>('/api/church/icon-product-categories', []),
+  createIconOrder: (payload: CreateIconOrderPayload) => apiPostOrThrow<CreateIconOrderResponse>('/api/church/icon-orders', payload),
+
+  products: (params?: { category?: string; search?: string; featured?: boolean; linkedIconGroupId?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.category) query.set('category', params.category);
+    if (params?.search) query.set('search', params.search);
+    if (params?.featured !== undefined) query.set('featured', String(params.featured));
+    if (params?.linkedIconGroupId) query.set('linkedIconGroupId', params.linkedIconGroupId);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return apiGet<ChurchProductDto[]>(`/api/church/products${suffix}`, []);
+  },
+  productBySlug: (slug: string) => apiGet<PublicProductPage | null>(`/api/church/products/${slug}`, null),
+  productCategories: () => apiGet<ChurchProductCategoryDto[]>('/api/church/product-categories', []),
+  createProductOrder: (payload: CreateProductOrderPayload) => apiPostOrThrow<CreateIconOrderResponse>('/api/church/product-orders', payload)
 };
 
 export const adminApi = {

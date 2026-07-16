@@ -1,0 +1,307 @@
+/* ============================================================
+   Замовлення ікони — модальна форма
+   ============================================================ */
+
+.icon-order-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(5, 5, 5, .72);
+  backdrop-filter: blur(10px);
+  overflow-y: auto;
+}
+
+.icon-order-modal {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(860px, calc(100vh - 36px));
+  overflow-y: auto;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  box-shadow: var(--shadow-lg);
+  padding: clamp(24px, 5vw, 40px);
+}
+
+.icon-order-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
+  background: rgba(11, 11, 10, .78);
+  color: var(--gold-light);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.icon-order-close:hover,
+.icon-order-close:focus-visible {
+  border-color: var(--gold);
+  color: var(--text);
+}
+
+.icon-order-modal h2 {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(22px, 3vw, 30px);
+}
+
+.icon-order-icon-name {
+  margin: 0 0 4px;
+  color: var(--gold-light);
+  font-family: var(--font-serif);
+  font-size: 15px;
+}
+
+.icon-order-block-text {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.icon-order-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 18px;
+}
+
+.icon-order-meta div {
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-xs);
+  padding: 8px 12px;
+  background: rgba(214, 168, 79, .06);
+}
+
+.icon-order-meta dt {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.icon-order-meta dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.icon-order-modal form {
+  display: grid;
+  gap: 14px;
+}
+
+.icon-order-modal label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.icon-order-modal input[type="text"],
+.icon-order-modal input[type="tel"],
+.icon-order-modal input[type="email"],
+.icon-order-modal input:not([type]),
+.icon-order-modal textarea {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xs);
+  background: rgba(11, 11, 10, .5);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: var(--font-ui);
+}
+
+.icon-order-modal textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.icon-order-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.icon-order-contact-method {
+  display: flex;
+  gap: 18px;
+}
+
+.icon-order-contact-method label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.icon-order-options {
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.icon-order-options legend {
+  padding: 0 6px;
+  color: var(--gold-light);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.icon-order-category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.icon-order-category-tabs button {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-full);
+  background: rgba(11, 11, 10, .5);
+  color: var(--muted);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color var(--speed) var(--ease), color var(--speed) var(--ease), background var(--speed) var(--ease);
+}
+
+.icon-order-category-tabs button:hover,
+.icon-order-category-tabs button:focus-visible {
+  border-color: var(--gold);
+  color: var(--text);
+}
+
+.icon-order-category-tabs button.is-active {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  color: #1a1305;
+}
+
+.icon-order-option-search {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xs);
+  background: rgba(11, 11, 10, .5);
+  color: var(--text);
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: var(--font-ui);
+  margin-bottom: 2px;
+}
+
+.icon-order-no-options {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.icon-order-option {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+
+.icon-order-option img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: var(--radius-xs);
+}
+
+.icon-order-checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.icon-order-honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.icon-order-error {
+  margin: 0;
+  color: #ff6b6b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.icon-order-submit {
+  border: none;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  color: #1a1305;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform var(--speed) var(--ease), box-shadow var(--speed) var(--ease);
+}
+
+.icon-order-submit:hover,
+.icon-order-submit:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.icon-order-submit:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.icon-order-success {
+  display: grid;
+  gap: 14px;
+  padding: 20px 0;
+}
+
+.icon-order-success h2 {
+  color: var(--gold-light);
+}
+
+.icon-order-success p {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .icon-order-modal {
+    padding: 20px 16px;
+  }
+
+  .icon-order-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}

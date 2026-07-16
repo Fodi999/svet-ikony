@@ -1,0 +1,293 @@
+/* ============================================================
+   Магазин — каталог товарів і картки товару
+   ============================================================ */
+
+.shop-search-field {
+  display: grid;
+  gap: 8px;
+  max-width: 480px;
+  margin: clamp(22px, 3vw, 38px) 0 0;
+}
+
+.shop-search-field span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.shop-search-field input {
+  min-height: 56px;
+  font-size: 16px;
+  font-weight: 700;
+  outline: none;
+}
+
+.shop-search-field input:focus {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(214, 168, 79, .38);
+}
+
+.shop-category-rail {
+  display: flex;
+  gap: clamp(10px, 1.4vw, 16px);
+  overflow-x: auto;
+  margin: clamp(18px, 2.5vw, 30px) 0 0;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+}
+
+.shop-category-tile {
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: 96px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.shop-category-tile-photo {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border: 2px solid var(--border-gold);
+  border-radius: var(--radius-full);
+  background: var(--surface-soft);
+  overflow: hidden;
+  transition: border-color var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+
+.shop-category-tile-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.shop-category-tile-photo--all {
+  background: linear-gradient(135deg, rgba(214, 168, 79, .28), rgba(127, 141, 101, .18));
+}
+
+.shop-category-tile b {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  transition: color var(--speed) var(--ease);
+}
+
+.shop-category-tile:hover .shop-category-tile-photo {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.shop-category-tile.active .shop-category-tile-photo {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(214, 168, 79, .22);
+}
+
+.shop-category-tile.active b {
+  color: var(--gold-light);
+}
+
+.product-gallery {
+  display: grid;
+  gap: 14px;
+}
+
+.product-gallery-main {
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  aspect-ratio: 4 / 5;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: clamp(18px, 2.6vw, 40px);
+  background:
+    linear-gradient(110deg, transparent 0 28%, rgba(232, 203, 132, .13) 42%, transparent 56%),
+    linear-gradient(160deg, rgba(127, 141, 101, .09), transparent 62%),
+    var(--surface-soft);
+  overflow: hidden;
+}
+
+.product-gallery-main img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-sm);
+}
+
+.product-gallery-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.product-gallery-thumbs button {
+  width: 72px;
+  height: 72px;
+  border: 2px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  padding: 0;
+  background: var(--surface-soft);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color var(--speed) var(--ease);
+}
+
+.product-gallery-thumbs img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-gallery-thumbs button:hover {
+  border-color: var(--gold-light);
+}
+
+.product-gallery-thumbs button.active {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(214, 168, 79, .22);
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 0;
+}
+
+.product-card {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  text-decoration: none;
+  transition: border-color var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+
+.product-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.product-card figure {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 5;
+  margin: 0;
+  border-bottom: 1px solid var(--border-gold);
+  padding: clamp(16px, 2.2vw, 34px);
+  background:
+    linear-gradient(160deg, rgba(127, 141, 101, .09), transparent 62%),
+    var(--surface-soft);
+  overflow: hidden;
+}
+
+.product-card img {
+  display: block;
+  width: 100%;
+  max-width: min(100%, 380px);
+  height: clamp(220px, 28vw, 420px);
+  object-fit: contain;
+  border-radius: var(--radius-xs);
+}
+
+.product-card-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  background: rgba(11, 11, 10, .78);
+  color: var(--gold-light);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.product-card-copy {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: clamp(16px, 2vw, 22px);
+}
+
+.product-card-copy h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(17px, 1.6vw, 21px);
+  line-height: 1.2;
+}
+
+.product-card-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.product-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.product-card-footer b {
+  color: var(--gold-light);
+  font-size: 17px;
+}
+
+.product-card-footer small {
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+@media (max-width: 960px) {
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shop-category-tile {
+    width: 76px;
+  }
+
+  .shop-category-tile-photo {
+    width: 66px;
+    height: 66px;
+  }
+
+  .product-gallery-thumbs button {
+    width: 60px;
+    height: 60px;
+  }
+}

@@ -417,8 +417,33 @@ export type ChurchPrayerDto = {
   translationGroupId: string;
   status: ChurchContentStatus;
   isGlobal: boolean;
+  visualizerEnabled: boolean;
+  visualizerImageUrl: string;
+  particleCountDesktop: number;
+  particleCountMobile: number;
+  particleSize: number;
+  particleColorMode: PrayerParticleColorMode;
+  backgroundColor: string;
+  audioReactivity: number;
+  sceneTimeline: PrayerSceneTimeline;
+  subtitleCues: PrayerSubtitleCue[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type PrayerParticleColorMode = 'silver_gold' | 'gold' | 'silver' | 'warm_white';
+
+export type PrayerSceneTimeline = {
+  idle: number;
+  assemble: number;
+  reveal: number;
+  dissolve: number;
+};
+
+export type PrayerSubtitleCue = {
+  start: number;
+  end: number;
+  text: string;
 };
 
 export type ChurchSaintDto = {

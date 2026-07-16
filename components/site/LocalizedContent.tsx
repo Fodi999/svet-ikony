@@ -2,8 +2,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { Clock3, MapPin, Phone, Sparkles, UserRound } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { BookOpen, CalendarDays, ChevronRight, Clock3, Cross, Headphones, HeartHandshake, MapPin, Phone, Sparkles, UserRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { IconPhotoCatalog, type IconPhotoCatalogItem } from './IconPhotoCatalog';
 import { IconCard } from './IconCard';
@@ -12,6 +12,8 @@ import { BackLink, Breadcrumbs } from './Breadcrumbs';
 import { BrandLogo } from './BrandLogo';
 import { IconOrderLink } from './IconOrderLink';
 import { useI18n, useLocaleHref } from './LanguageProvider';
+import { PrayerAudioBar } from './prayer-mode/PrayerAudioBar';
+import { PrayerVisualizerCanvas } from './prayer-mode/PrayerVisualizerCanvas';
 import { PrayerQr } from './PrayerQr';
 import { StableImage } from './StableImage';
 import { SvgIcon } from './SvgIcon';
@@ -52,7 +54,14 @@ const uiText = {
     iconPage: 'Страница иконы',
     prayerCategory: 'Молитва',
     downloadQr: 'Скачать QR',
-    gallery: 'Фотогалерея'
+    gallery: 'Фотогалерея',
+    openPrayerMode: 'Открыть режим молитвы',
+    closePrayerMode: 'Закрыть',
+    prayerModeActive: 'Режим молитвы активен',
+    playAudio: 'Воспроизвести',
+    pauseAudio: 'Пауза',
+    volumeLabel: 'Громкость',
+    enableSoundHint: 'Включите звук для полного погружения в молитву'
   },
   uk: {
     prayer: 'Молитва',
@@ -85,7 +94,14 @@ const uiText = {
     iconPage: 'Сторінка ікони',
     prayerCategory: 'Молитва',
     downloadQr: 'Завантажити QR',
-    gallery: 'Фотогалерея'
+    gallery: 'Фотогалерея',
+    openPrayerMode: 'Відкрити режим молитви',
+    closePrayerMode: 'Закрити',
+    prayerModeActive: 'Режим молитви активний',
+    playAudio: 'Відтворити',
+    pauseAudio: 'Пауза',
+    volumeLabel: 'Гучність',
+    enableSoundHint: 'Увімкніть звук для повного занурення в молитву'
   },
   en: {
     prayer: 'Prayer',
@@ -118,7 +134,14 @@ const uiText = {
     iconPage: 'Icon page',
     prayerCategory: 'Prayer',
     downloadQr: 'Download QR',
-    gallery: 'Photo gallery'
+    gallery: 'Photo gallery',
+    openPrayerMode: 'Open prayer mode',
+    closePrayerMode: 'Close',
+    prayerModeActive: 'Prayer mode active',
+    playAudio: 'Play',
+    pauseAudio: 'Pause',
+    volumeLabel: 'Volume',
+    enableSoundHint: 'Turn on sound for full immersion in prayer'
   }
 } as const;
 
@@ -274,49 +297,146 @@ export function LocalizedChurchPrayerDetail({ prayer, icon, calendarDay, categor
   const title = prayerTitle(prayer.title, locale);
   const publicUrl = absoluteSiteUrl(localeHref(`/prayers/${prayer.slug}`));
   const date = calendarDay?.dateNewStyle || calendarDay?.dateOldStyle;
+  const visualizerImage = prayer.visualizerImageUrl || image;
+  const canUseVisualizer = Boolean(visualizerImage || prayer.visualizerEnabled);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [visualizerOn, setVisualizerOn] = useState(canUseVisualizer);
+
+  function getAnalyser(): AnalyserNode | null {
+    return null;
+  }
+
+  function toggleVisualizer() {
+    setVisualizerOn((current) => !current);
+  }
+
   return (
     <main className="read-page sacred-read-page">
       <Breadcrumbs
         items={[{ href: '/', label: t('home') }, { href: '/prayers', label: t('navPrayers') }]}
         current={title}
       />
-      <section className="read-hero">
-        <p className="eyebrow">{categoryLabel}</p>
-        <h1>{title}</h1>
+      <section className="read-hero prayer-mode-hero">
+        <div>
+          <p className="eyebrow">{categoryLabel}</p>
+          <h1>{title}</h1>
+        </div>
+        {canUseVisualizer ? (
+          <AssetButton variant="dark" onClick={toggleVisualizer} icon={<Headphones size={16} aria-hidden="true" />}>
+            {visualizerOn ? ui(locale, 'prayerModeActive') : ui(locale, 'openPrayerMode')}
+          </AssetButton>
+        ) : null}
       </section>
-      <article className="sacred-panel prayer-reader-panel">
-        {image ? (
-          <div className="prayer-panel-layout">
-            <figure className="prayer-panel-image"><StableImage src={image} alt={title} width={720} height={720} /></figure>
-            <div className="prayer-panel-copy">
+
+      <div className={`prayer-mode-layout${visualizerOn ? ' prayer-mode-layout--split' : ''}`}>
+        <article className="sacred-panel prayer-reader-panel">
+          {image ? (
+            <div className="prayer-panel-layout">
+              <figure className="prayer-panel-image"><StableImage src={image} alt={title} width={720} height={720} /></figure>
+              <div className="prayer-panel-copy">
+                <span>{ui(locale, 'prayer')}</span>
+                <div className="reader-text prayer-reader"><DisplayText text={prayer.text} /></div>
+              </div>
+            </div>
+          ) : (
+            <>
               <span>{ui(locale, 'prayer')}</span>
               <div className="reader-text prayer-reader"><DisplayText text={prayer.text} /></div>
-              {prayer.audioUrl ? <audio controls src={prayer.audioUrl} /> : null}
-            </div>
-          </div>
-        ) : (
-          <>
-            <span>{ui(locale, 'prayer')}</span>
-            <div className="reader-text prayer-reader"><DisplayText text={prayer.text} /></div>
-            {prayer.audioUrl ? <audio controls src={prayer.audioUrl} /> : null}
-          </>
-        )}
-      </article>
-      <PrayerQr
-        url={publicUrl}
-        label={ui(locale, 'qrCode')}
-        downloadLabel={ui(locale, 'downloadQr')}
-        downloadName={downloadFileName(title, 'qr.png')}
-      />
-      {icon || date ? (
-        <section className="related-section">
-          <div className="section-head"><p className="eyebrow">{t('calendarMaterial')}</p><h2>{t('churchCalendar')}</h2></div>
-          <div className="mini-grid">
-            {icon ? <Link href={localeHref(`/icons/${icon.slug}`)}>{icon.title}<small>{ui(locale, 'iconPage')}</small></Link> : null}
-            {date ? <Link href={localeHref(`/church/calendar/${date}`)}>{calendarDay?.title || date}<small>{t('churchCalendar')}</small></Link> : null}
-          </div>
-        </section>
+            </>
+          )}
+        </article>
+
+        {visualizerOn ? (
+          <PrayerVisualizerCanvas
+            title={title}
+            audioRef={audioRef}
+            getAnalyser={getAnalyser}
+            imageUrl={visualizerImage}
+            backgroundColor={prayer.backgroundColor}
+            particleCountDesktop={prayer.particleCountDesktop}
+            particleCountMobile={prayer.particleCountMobile}
+            particleSize={prayer.particleSize}
+            particleColorMode={prayer.particleColorMode}
+            audioReactivity={prayer.audioReactivity}
+            sceneTimeline={prayer.sceneTimeline}
+            subtitleCues={prayer.subtitleCues}
+            prayerText={prayer.text}
+          />
+        ) : null}
+      </div>
+
+      {prayer.audioUrl ? (
+        <div className="prayer-audio-block">
+          {/* No `controls` attribute: this element has no visible UI of its
+             own — PrayerAudioBar below is the one shared transport for both
+             plain reading and prayer mode. */}
+          <audio ref={audioRef} src={prayer.audioUrl} preload="metadata" />
+          <PrayerAudioBar
+            audioRef={audioRef}
+            playLabel={ui(locale, 'playAudio')}
+            pauseLabel={ui(locale, 'pauseAudio')}
+            volumeLabel={ui(locale, 'volumeLabel')}
+          />
+          {visualizerOn ? <p className="prayer-audio-hint">{ui(locale, 'enableSoundHint')}</p> : null}
+        </div>
       ) : null}
+
+      <section className="prayer-info-strip">
+        <article className="prayer-info-about">
+          <span className="prayer-info-icon"><Cross size={24} aria-hidden="true" /></span>
+          <div>
+            <h2>{icon?.title || title}</h2>
+            <p>{textPreview(prayer.text, 230)}</p>
+            {icon ? (
+              <Link href={localeHref(`/icons/${icon.slug}`)} className="prayer-info-link">
+                {ui(locale, 'iconPage')} <ChevronRight size={15} aria-hidden="true" />
+              </Link>
+            ) : null}
+          </div>
+        </article>
+
+        <article className="prayer-info-related">
+          <h2>{ui(locale, 'furtherReading')}</h2>
+          <div className="prayer-info-links">
+            {icon ? (
+              <Link href={localeHref(`/icons/${icon.slug}`)}>
+                <BookOpen size={15} aria-hidden="true" />
+                <span>{icon.title}</span>
+              </Link>
+            ) : null}
+            {date ? (
+              <Link href={localeHref(`/church/calendar/${date}`)}>
+                <CalendarDays size={15} aria-hidden="true" />
+                <span>{calendarDay?.title || date}</span>
+              </Link>
+            ) : null}
+            <Link href={localeHref('/prayers')}>
+              <BookOpen size={15} aria-hidden="true" />
+              <span>{t('navPrayers')}</span>
+            </Link>
+          </div>
+        </article>
+
+        <article className="prayer-info-support">
+          <div>
+            <h2>{ui(locale, 'forChurches')}</h2>
+            <p>{t('churchesFeatureDonationsText')}</p>
+            <Link href={localeHref('/churches')} className="prayer-info-link">
+              {ui(locale, 'forChurches')} <ChevronRight size={15} aria-hidden="true" />
+            </Link>
+          </div>
+          <div className="prayer-info-qr">
+            <HeartHandshake size={18} aria-hidden="true" />
+            <PrayerQr
+              url={publicUrl}
+              label={ui(locale, 'qrCode')}
+              downloadLabel={ui(locale, 'downloadQr')}
+              downloadName={downloadFileName(title, 'qr.png')}
+            />
+          </div>
+        </article>
+      </section>
       <BackLink href="/prayers" label={t('navPrayers')} />
     </main>
   );

@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
-import type { PrayerParticleColorMode, PrayerSceneTimeline, PrayerSubtitleCue } from '@/lib/types';
-import { buildAmbientParticles, buildParticlesFromImage, type ParticleField } from './buildParticlesFromImage';
+import type { PrayerSceneTimeline, PrayerSubtitleCue, PrayerVisualizerAssetDto } from '@/lib/types';
+import { loadParticleMap } from './particleMapFormat';
 import { particleFragmentShader, particleVertexShader } from './particleShaders';
 
 type Props = {
@@ -12,16 +12,20 @@ type Props = {
   getAnalyser: () => AnalyserNode | null;
   imageUrl: string;
   backgroundColor: string;
-  particleCountDesktop: number;
-  particleCountMobile: number;
   particleSize: number;
-  particleColorMode: PrayerParticleColorMode;
   audioReactivity: number;
   sceneTimeline: PrayerSceneTimeline;
   subtitleCues: PrayerSubtitleCue[];
   /** Full prayer text, used to auto-generate subtitle lines when the admin
    * hasn't configured any explicit cues (see buildAutoSubtitleCues below). */
   prayerText: string;
+  /**
+   * Backend-preprocessed particle maps — the ONLY source of particle data.
+   * This component never samples `imageUrl` or generates particles itself;
+   * when this isn't `ready`, it shows the static fallback image instead of
+   * rendering a scene (see the render section below).
+   */
+  visualizerAsset?: PrayerVisualizerAssetDto | null;
 };
 
 /**
@@ -72,12 +76,40 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+/** Rough, best-effort "this device would struggle with 70k particles" check —
+ * used only to pick the low-power prepared map tier; never blocks rendering. */
+function isLowPowerDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+  if (nav.connection?.saveData) return true;
+  if (typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 2) return true;
+  if (typeof nav.hardwareConcurrency === 'number' && nav.hardwareConcurrency <= 2) return true;
+  return false;
+}
+
 function findCue(cues: PrayerSubtitleCue[], time: number): PrayerSubtitleCue | undefined {
   return cues.find((cue) => time >= cue.start && time < cue.end);
 }
 
+/** Picks which prepared tier to download for this device. Returns '' if the
+ * asset isn't ready or has no map for the picked tier. */
+function pickMapUrl(asset: PrayerVisualizerAssetDto | null | undefined): string {
+  if (!asset || asset.processingStatus !== 'ready') return '';
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const lowPower = isLowPowerDevice();
+  return (lowPower && asset.lowPowerMapUrl) || (isMobile && asset.mobileMapUrl) || asset.desktopMapUrl || '';
+}
+
 /**
- * The particle scene itself — canvas + current subtitle line, nothing else.
+ * Pure renderer: downloads the backend-prepared binary particle map for this
+ * device tier, uploads it to the GPU as-is, and animates it (assemble →
+ * reveal → hold → dissolve, audio-reactive size, subtitle sync). It never
+ * decodes/samples the source photo, computes a color, or generates a
+ * particle — all of that happens exactly once, server-side (see
+ * `assistant/src/application/prayer_visualizer.rs`). If no `ready` map is
+ * available yet (still processing, failed, or never configured), this shows
+ * the plain fallback image instead of trying to render anything.
+ *
  * Playback controls live in the page's single shared PrayerAudioBar; this
  * component only reads audioRef/getAnalyser to drive the animation, it never
  * writes to them.
@@ -88,14 +120,12 @@ export function PrayerVisualizerCanvas({
   getAnalyser,
   imageUrl,
   backgroundColor,
-  particleCountDesktop,
-  particleCountMobile,
   particleSize,
-  particleColorMode,
   audioReactivity,
   sceneTimeline,
   subtitleCues,
-  prayerText
+  prayerText,
+  visualizerAsset
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -107,6 +137,9 @@ export function PrayerVisualizerCanvas({
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [webglReady, setWebglReady] = useState(false);
+  // Whether a prepared map has actually been downloaded and a scene built —
+  // controls the canvas/fallback-image crossfade below.
+  const [hasScene, setHasScene] = useState(false);
 
   useEffect(() => {
     function onFullscreenChange() {
@@ -120,10 +153,16 @@ export function PrayerVisualizerCanvas({
     setWebglReady(supportsWebGL2() && !prefersReducedMotion());
   }, []);
 
-  // The WebGL scene itself: set up once, torn down on unmount. Skipped
-  // entirely for the no-WebGL2 / reduced-motion fallback (static image only).
+  const mapUrl = pickMapUrl(visualizerAsset);
+
+  // The WebGL scene itself: set up once a prepared map is available, torn
+  // down on unmount/change. Skipped entirely for no-WebGL2/reduced-motion,
+  // and whenever there's no ready map — the fallback image covers both cases.
   useEffect(() => {
-    if (!webglReady) return;
+    if (!webglReady || !mapUrl) {
+      setHasScene(false);
+      return;
+    }
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -134,16 +173,10 @@ export function PrayerVisualizerCanvas({
     let rafId = 0;
 
     void (async () => {
+      const field = await loadParticleMap(mapUrl);
+      if (disposed || !field) return;
+
       const THREE = await import('three');
-
-      const isMobile = window.innerWidth < 768;
-      const maxCount = Math.max(1000, Math.round(isMobile ? particleCountMobile : particleCountDesktop));
-
-      let field: ParticleField | null = null;
-      if (imageUrl) {
-        field = await buildParticlesFromImage(imageUrl, maxCount, particleColorMode);
-      }
-      if (!field) field = buildAmbientParticles(Math.min(maxCount, 6000), particleColorMode);
       if (disposed) return;
 
       const scene = new THREE.Scene();
@@ -156,16 +189,35 @@ export function PrayerVisualizerCanvas({
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setSize(rect.width || 1, rect.height || 1, false);
       renderer.setClearColor(new THREE.Color(backgroundColor || '#000000'), 1);
+      // Explicit, version-independent defaults rather than relying on
+      // whatever this Three.js build's defaults happen to be — our particle
+      // aColor values are already "display-ready" (graded server-side, not
+      // scene-referred linear light), so no tone-mapping curve should touch them.
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.NoToneMapping;
+      renderer.toneMappingExposure = 1;
 
       let bgMesh: import('three').Mesh | null = null;
       let bgMaterial: import('three').MeshBasicMaterial | null = null;
-      // Reuse the same CORS-safe blob: URL the particle sampler already
-      // fetched, rather than the original remote URL — loading the original
-      // URL again here could hit the browser's plain (non-CORS) <img> cache
-      // entry for it (see loadImageCors in buildParticlesFromImage.ts).
-      const textureSource = field.objectUrl || imageUrl;
+      // The small backend-prepared fallback WebP doubles as this decorative
+      // background wash — no client-side image fetch/CORS handling needed
+      // since nothing here reads pixel data, only displays it.
+      const rawTextureSource = visualizerAsset?.processingStatus === 'ready' ? visualizerAsset.fallbackImageUrl : '';
+      // The plain fallback <img> (rendered below, same component) loads this
+      // exact URL as a no-cors image. THREE.TextureLoader loads it with
+      // crossOrigin, and the browser's HTTP cache is keyed by URL alone —
+      // sharing the URL across both request modes can serve the crossorigin
+      // load from the plain load's cached opaque response. A distinct query
+      // suffix keeps them in separate cache entries (same fix already used
+      // for the source-image sampler before this refactor removed it).
+      const textureSource = rawTextureSource ? `${rawTextureSource}${rawTextureSource.includes('?') ? '&' : '?'}tex=1` : '';
       if (textureSource) {
         const texture = new THREE.TextureLoader().load(textureSource);
+        // Explicit sRGB tag: an untagged texture defaults to "linear" in
+        // recent Three versions, which — combined with outputColorSpace —
+        // would otherwise apply an unwanted extra gamma pass to an already
+        // display-ready (sRGB-encoded) photo and darken it further.
+        texture.colorSpace = THREE.SRGBColorSpace;
         const bgGeometry = new THREE.PlaneGeometry(field.width * 1.05, field.height * 1.05);
         bgMaterial = new THREE.MeshBasicMaterial({
           map: texture,
@@ -195,7 +247,13 @@ export function PrayerVisualizerCanvas({
         uAudioLevel: { value: 0 },
         uPointSize: { value: particleSize },
         uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
-        uOrbit: { value: 0 }
+        uOrbit: { value: 0 },
+        // A custom ShaderMaterial writes gl_FragColor directly, so Three's
+        // renderer.toneMappingExposure (which only affects materials built
+        // from Three's own shader chunks) has no effect here — this uniform
+        // is the actual exposure control for the particle system, a render-
+        // time display setting, not a re-derivation of the backend's colors.
+        uExposure: { value: 1.2 }
       };
 
       const material = new THREE.ShaderMaterial({
@@ -209,44 +267,6 @@ export function PrayerVisualizerCanvas({
 
       const points = new THREE.Points(geometry, material);
       scene.add(points);
-
-      const ambientField = buildAmbientParticles(Math.min(isMobile ? 900 : 1800, Math.max(500, Math.round(maxCount * 0.08))), particleColorMode);
-      const ambientGeometry = new THREE.BufferGeometry();
-      const ambientPositions = ambientField.targets.slice();
-      for (let i = 0; i < ambientField.count; i++) {
-        const side = ambientField.randoms[i];
-        const ringX = field.width * (side < 0.5 ? -0.64 : 0.64) + (Math.random() - 0.5) * field.width * 0.42;
-        const ringY = (Math.random() - 0.5) * field.height * 1.22;
-        ambientPositions[i * 3] = ringX;
-        ambientPositions[i * 3 + 1] = ringY;
-        ambientPositions[i * 3 + 2] = (Math.random() - 0.5) * 0.35;
-      }
-      ambientGeometry.setAttribute('position', new THREE.BufferAttribute(ambientPositions.slice(), 3));
-      ambientGeometry.setAttribute('aStart', new THREE.BufferAttribute(ambientPositions, 3));
-      ambientGeometry.setAttribute('aTarget', new THREE.BufferAttribute(ambientPositions, 3));
-      ambientGeometry.setAttribute('aColor', new THREE.BufferAttribute(ambientField.colors, 3));
-      ambientGeometry.setAttribute('aRandom', new THREE.BufferAttribute(ambientField.randoms, 1));
-
-      const ambientUniforms = {
-        uTime: { value: 0 },
-        uProgress: { value: 1 },
-        uDissolve: { value: 0 },
-        uOpacity: { value: 0 },
-        uAudioLevel: { value: 0 },
-        uPointSize: { value: particleSize * 0.82 },
-        uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
-        uOrbit: { value: 1 }
-      };
-      const ambientMaterial = new THREE.ShaderMaterial({
-        vertexShader: particleVertexShader,
-        fragmentShader: particleFragmentShader,
-        uniforms: ambientUniforms,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-      });
-      const ambientPoints = new THREE.Points(ambientGeometry, ambientMaterial);
-      scene.add(ambientPoints);
 
       resizeObserver = new ResizeObserver(() => {
         if (!renderer || !container) return;
@@ -303,10 +323,8 @@ export function PrayerVisualizerCanvas({
         uniforms.uProgress.value = progress;
         uniforms.uDissolve.value = dissolveAmount;
         uniforms.uOpacity.value = opacity;
-        ambientUniforms.uTime.value = uniforms.uTime.value;
-        ambientUniforms.uOpacity.value = Math.min(0.52, Math.max(0, progress - 0.35) * 0.9);
         if (bgMaterial) {
-          const revealOpacity = progress >= 1 ? Math.min(0.34, Math.max(0, opacity - 0.5) * 0.72) : 0;
+          const revealOpacity = progress >= 1 ? Math.min(0.42, Math.max(0, opacity - 0.5) * 0.84) : 0;
           bgMaterial.opacity = revealOpacity;
         }
 
@@ -344,6 +362,7 @@ export function PrayerVisualizerCanvas({
         rafId = requestAnimationFrame(tick);
       }
 
+      setHasScene(true);
       rafId = requestAnimationFrame(tick);
 
       // Stash disposables on the effect closure for cleanup below.
@@ -352,9 +371,6 @@ export function PrayerVisualizerCanvas({
         resizeObserver?.disconnect();
         geometry.dispose();
         material.dispose();
-        ambientGeometry.dispose();
-        ambientMaterial.dispose();
-        if (field.objectUrl) URL.revokeObjectURL(field.objectUrl);
         if (bgMesh) {
           bgMesh.geometry.dispose();
           bgMaterial?.map?.dispose();
@@ -368,9 +384,10 @@ export function PrayerVisualizerCanvas({
       disposed = true;
       cleanupRef.current?.();
       cleanupRef.current = null;
+      setHasScene(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [webglReady, imageUrl]);
+  }, [webglReady, mapUrl]);
 
   function toggleFullscreen() {
     const container = containerRef.current;
@@ -379,15 +396,18 @@ export function PrayerVisualizerCanvas({
     else void container.requestFullscreen();
   }
 
+  const fallbackSrc = (visualizerAsset?.processingStatus === 'ready' && visualizerAsset.fallbackImageUrl) || imageUrl;
+
   return (
     <div className="prayer-visualizer-panel" ref={containerRef} style={{ background: backgroundColor || '#000000' }}>
-      {!webglReady ? (
+      {webglReady && mapUrl ? (
+        <canvas ref={canvasRef} className="prayer-mode-canvas" style={{ visibility: hasScene ? 'visible' : 'hidden' }} />
+      ) : null}
+      {!hasScene ? (
         <div className="prayer-mode-fallback">
-          {imageUrl ? <img src={imageUrl} alt={title} /> : null}
+          {fallbackSrc ? <img src={fallbackSrc} alt={title} /> : null}
         </div>
-      ) : (
-        <canvas ref={canvasRef} className="prayer-mode-canvas" />
-      )}
+      ) : null}
       <p className="prayer-mode-subtitle" ref={subtitleRef} />
       <button type="button" className="prayer-visualizer-fullscreen" onClick={toggleFullscreen} aria-label="Повний екран">
         {isFullscreen ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}

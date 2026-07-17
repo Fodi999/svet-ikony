@@ -1,5 +1,5 @@
 import { publicApiPrefix, publicApiUrl } from './config';
-import type { CalendarDay, CalendarDayKind, Church, ChurchAlphabetLetterDto, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchIconOrderOptionDto, ChurchIconProductCategoryDto, ChurchInfoDto, ChurchPrayerDto, ChurchProductCategoryDto, ChurchProductDto, ChurchSaintDto, CreateIconOrderPayload, CreateIconOrderResponse, CreateProductOrderPayload, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchAlphabetPage, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, PublicProductPage, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
+import type { CalendarDay, CalendarDayKind, Church, ChurchAlphabetLetterDto, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchIconOrderOptionDto, ChurchIconProductCategoryDto, ChurchInfoDto, ChurchPrayerDto, ChurchProductCategoryDto, ChurchProductDto, ChurchSaintDto, CreateIconOrderPayload, CreateIconOrderResponse, CreateProductOrderPayload, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchAlphabetPage, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, PublicProductPage, PrayerVisualizerAssetDto, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
 
 const emptyDashboard: Dashboard = {
   publishedPages: 0,
@@ -469,6 +469,9 @@ export const publicApi = {
   churchIconList: async (locale?: SiteLocale) => churchApiGet<ChurchIconDto[]>('/api/church/icons', [], undefined, locale),
   churchPrayer: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchPrayerPage | null>(`/api/church/prayers/${slug}`, null, previewToken, locale),
   churchPrayerList: async (locale?: SiteLocale) => churchApiGet<ChurchPrayerDto[]>('/api/church/prayers', [], undefined, locale),
+  /** `null` means "not processed yet" — callers fall back to client-side particle sampling. */
+  churchPrayerVisualizerAsset: async (slug: string, locale?: SiteLocale) =>
+    churchApiGet<PrayerVisualizerAssetDto | null>(`/api/church/prayers/${slug}/visualizer`, null, undefined, locale),
   churchSaint: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchSaintPage | null>(`/api/church/saints/${slug}`, null, previewToken, locale),
   churchSaintList: async (locale?: SiteLocale) => churchApiGet<ChurchSaintDto[]>('/api/church/saints', [], undefined, locale),
   churchAlphabetLetter: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchAlphabetPage | null>(`/api/church/alphabet/${slug}`, null, previewToken, locale),

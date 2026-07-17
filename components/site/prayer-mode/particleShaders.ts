@@ -54,6 +54,7 @@ export const particleFragmentShader = /* glsl */ `
 precision mediump float;
 
 uniform float uOpacity;
+uniform float uExposure;
 varying vec3 vColor;
 varying float vAudioLevel;
 
@@ -66,7 +67,14 @@ void main() {
   // dot; the old full-gaussian falloff (0.5 -> 0.0) made every point a soft
   // haze that, once many overlapped under additive blending, muddied the
   // whole silhouette into fog instead of a sharp image.
-  float alpha = smoothstep(0.5, 0.32, dist) * uOpacity * (0.78 + vAudioLevel * 0.35);
-  gl_FragColor = vec4(vColor, alpha);
+  // Base alpha floor raised from 0.78 to 0.95 — at full uOpacity the
+  // assembled image was still visibly dim; this keeps the audio-reactive
+  // sparkle (+0.35) as a boost above an already-bright baseline instead of
+  // being most of the visible brightness.
+  float alpha = smoothstep(0.5, 0.32, dist) * uOpacity * (0.95 + vAudioLevel * 0.35);
+  // This material writes gl_FragColor directly, so none of Three's built-in
+  // tone-mapping/color-space shader chunks ever touch it — uExposure is the
+  // real (and only) exposure control for this shader.
+  gl_FragColor = vec4(vColor * uExposure, alpha);
 }
 `;

@@ -59,19 +59,11 @@
   overflow: hidden;
 }
 
-.prayer-visualizer-panel::before,
 .prayer-visualizer-panel::after {
   content: "";
   position: absolute;
   z-index: 1;
   pointer-events: none;
-}
-
-.prayer-visualizer-panel::before {
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(5, 5, 4, .08), rgba(5, 5, 4, .22)),
-    radial-gradient(circle at center, transparent 45%, rgba(0, 0, 0, .42) 100%);
 }
 
 .prayer-visualizer-panel::after {
@@ -81,6 +73,15 @@
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(233, 203, 132, .55), transparent);
   transform: translateX(-50%);
+}
+
+/* Both share the panel's first grid cell (rather than being placed into
+   separate rows) so the canvas and the fallback image can briefly coexist —
+   the fallback stays visible while a prepared map is downloading/parsing,
+   then the canvas takes over once a scene actually exists. */
+.prayer-mode-canvas,
+.prayer-mode-fallback {
+  grid-area: 1 / 1;
 }
 
 .prayer-mode-canvas {
@@ -103,7 +104,6 @@
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  filter: brightness(.55) saturate(.9);
 }
 
 .prayer-mode-subtitle {

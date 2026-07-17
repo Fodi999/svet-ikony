@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BookOpen, CalendarDays, ChevronRight, Clock3, Cross, Headphones, HeartHandshake, MapPin, Phone, Sparkles, UserRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { IconPhotoCatalog, type IconPhotoCatalogItem } from './IconPhotoCatalog';
@@ -17,8 +17,9 @@ import { PrayerVisualizerCanvas } from './prayer-mode/PrayerVisualizerCanvas';
 import { PrayerQr } from './PrayerQr';
 import { StableImage } from './StableImage';
 import { SvgIcon } from './SvgIcon';
+import { publicApi } from '@/lib/api';
 import { absoluteSiteUrl } from '@/lib/site';
-import type { ChurchCalendarDayDto, ChurchIconDto, ChurchInfoDto, ChurchPrayerDto, Icon, Prayer, Saint } from '@/lib/types';
+import type { ChurchCalendarDayDto, ChurchIconDto, ChurchInfoDto, ChurchPrayerDto, Icon, Prayer, PrayerVisualizerAssetDto, Saint } from '@/lib/types';
 import { imageForPrayer, localizeIcon, paragraphsFromText, sectionsFromText, textPreview, translateSectionLabel } from '@/lib/iconContent';
 
 
@@ -302,6 +303,18 @@ export function LocalizedChurchPrayerDetail({ prayer, icon, calendarDay, categor
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [visualizerOn, setVisualizerOn] = useState(canUseVisualizer);
+  const [visualizerAsset, setVisualizerAsset] = useState<PrayerVisualizerAssetDto | null>(null);
+
+  useEffect(() => {
+    if (!canUseVisualizer) return;
+    let cancelled = false;
+    void publicApi.churchPrayerVisualizerAsset(prayer.slug, locale).then((asset) => {
+      if (!cancelled) setVisualizerAsset(asset);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [canUseVisualizer, prayer.slug, locale]);
 
   function getAnalyser(): AnalyserNode | null {
     return null;
@@ -354,14 +367,12 @@ export function LocalizedChurchPrayerDetail({ prayer, icon, calendarDay, categor
             getAnalyser={getAnalyser}
             imageUrl={visualizerImage}
             backgroundColor={prayer.backgroundColor}
-            particleCountDesktop={prayer.particleCountDesktop}
-            particleCountMobile={prayer.particleCountMobile}
             particleSize={prayer.particleSize}
-            particleColorMode={prayer.particleColorMode}
             audioReactivity={prayer.audioReactivity}
             sceneTimeline={prayer.sceneTimeline}
             subtitleCues={prayer.subtitleCues}
             prayerText={prayer.text}
+            visualizerAsset={visualizerAsset}
           />
         ) : null}
       </div>

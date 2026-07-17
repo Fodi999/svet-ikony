@@ -446,6 +446,33 @@ export type PrayerSubtitleCue = {
   text: string;
 };
 
+export type PrayerVisualizerProcessingStatus = 'pending' | 'processing' | 'ready' | 'failed';
+
+/**
+ * Backend-preprocessed particle maps for the prayer-mode visualizer — see
+ * `church_prayer_visualizer_assets` on the backend. When `processingStatus`
+ * is `ready`, the frontend fetches the tier-appropriate `*MapUrl` binary
+ * buffer instead of sampling the source image itself in the browser.
+ */
+export type PrayerVisualizerAssetDto = {
+  id: string;
+  prayerId: string;
+  sourceImageUrl: string;
+  desktopMapUrl: string;
+  mobileMapUrl: string;
+  lowPowerMapUrl: string;
+  fallbackImageUrl: string;
+  thumbnailUrl: string;
+  desktopParticleCount: number;
+  mobileParticleCount: number;
+  lowPowerParticleCount: number;
+  processingStatus: PrayerVisualizerProcessingStatus;
+  processingError: string;
+  processingVersion: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ChurchSaintDto = {
   id: string;
   siteId: string;

@@ -3,6 +3,9 @@ attribute vec3 aStart;
 attribute vec3 aTarget;
 attribute vec3 aColor;
 attribute float aRandom;
+attribute float aAlpha;
+attribute float aSize;
+attribute float aReveal;
 
 uniform float uTime;
 uniform float uProgress;
@@ -14,6 +17,7 @@ uniform float uOrbit;
 
 varying vec3 vColor;
 varying float vAudioLevel;
+varying float vAlpha;
 
 void main() {
   vec3 drift = vec3(
@@ -22,7 +26,15 @@ void main() {
     0.0
   );
 
-  float eased = uProgress * uProgress * (3.0 - 2.0 * uProgress);
+  // Stagger per-particle assembly using the backend-baked reveal order:
+  // aReveal=0 (silhouette/contours) finishes assembling early, aReveal=1
+  // (highlights) finishes last — producing the silhouette -> face -> detail
+  // -> color -> highlights progressive reveal without any client-side image
+  // classification. This is pure animation timing over backend-supplied
+  // data, computed the same way for every particle.
+  float staggerWidth = 0.42;
+  float localProgress = clamp((uProgress - aReveal * (1.0 - staggerWidth)) / staggerWidth, 0.0, 1.0);
+  float eased = localProgress * localProgress * (3.0 - 2.0 * localProgress);
   vec3 assembled = mix(aStart + drift, aTarget, eased);
 
   vec3 dissolveDir = normalize(aStart - aTarget + vec3(0.0001));
@@ -43,9 +55,13 @@ void main() {
 
   vColor = aColor;
   vAudioLevel = uAudioLevel;
+  vAlpha = aAlpha;
 
   vec4 mvPosition = modelViewMatrix * vec4(finalPos, 1.0);
-  gl_PointSize = uPointSize * uPixelRatio * (0.55 + 0.45 * eased) * (1.0 + uAudioLevel * 0.6) * mix(1.0, 0.72, uOrbit);
+  // aSize is the backend-baked per-particle size (contours/face/highlights
+  // read larger, flat-fill dust reads smaller) — the client never computes
+  // this, it only applies it alongside the existing assemble/audio scaling.
+  gl_PointSize = uPointSize * aSize * uPixelRatio * (0.55 + 0.45 * eased) * (1.0 + uAudioLevel * 0.6) * mix(1.0, 0.72, uOrbit);
   gl_Position = projectionMatrix * mvPosition;
 }
 `;
@@ -57,6 +73,7 @@ uniform float uOpacity;
 uniform float uExposure;
 varying vec3 vColor;
 varying float vAudioLevel;
+varying float vAlpha;
 
 void main() {
   vec2 centered = gl_PointCoord - vec2(0.5);
@@ -70,8 +87,10 @@ void main() {
   // Base alpha floor raised from 0.78 to 0.95 — at full uOpacity the
   // assembled image was still visibly dim; this keeps the audio-reactive
   // sparkle (+0.35) as a boost above an already-bright baseline instead of
-  // being most of the visible brightness.
-  float alpha = smoothstep(0.5, 0.32, dist) * uOpacity * (0.95 + vAudioLevel * 0.35);
+  // being most of the visible brightness. vAlpha is the backend-baked
+  // per-particle opacity (contours/face/highlights read more opaque, flat
+  // fill dust dimmer) layered on top of that.
+  float alpha = smoothstep(0.5, 0.32, dist) * uOpacity * (0.95 + vAudioLevel * 0.35) * vAlpha;
   // This material writes gl_FragColor directly, so none of Three's built-in
   // tone-mapping/color-space shader chunks ever touch it — uExposure is the
   // real (and only) exposure control for this shader.

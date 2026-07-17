@@ -238,6 +238,9 @@ export function PrayerVisualizerCanvas({
       geometry.setAttribute('aTarget', new THREE.BufferAttribute(field.targets, 3));
       geometry.setAttribute('aColor', new THREE.BufferAttribute(field.colors, 3));
       geometry.setAttribute('aRandom', new THREE.BufferAttribute(field.randoms, 1));
+      geometry.setAttribute('aAlpha', new THREE.BufferAttribute(field.alphas, 1));
+      geometry.setAttribute('aSize', new THREE.BufferAttribute(field.sizes, 1));
+      geometry.setAttribute('aReveal', new THREE.BufferAttribute(field.reveal, 1));
 
       const uniforms = {
         uTime: { value: 0 },
@@ -253,7 +256,7 @@ export function PrayerVisualizerCanvas({
         // from Three's own shader chunks) has no effect here — this uniform
         // is the actual exposure control for the particle system, a render-
         // time display setting, not a re-derivation of the backend's colors.
-        uExposure: { value: 1.2 }
+        uExposure: { value: 1.45 }
       };
 
       const material = new THREE.ShaderMaterial({

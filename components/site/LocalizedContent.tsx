@@ -367,7 +367,6 @@ export function LocalizedChurchPrayerDetail({ prayer, icon, calendarDay, categor
             getAnalyser={getAnalyser}
             imageUrl={visualizerImage}
             backgroundColor={prayer.backgroundColor}
-            particleSize={prayer.particleSize}
             audioReactivity={prayer.audioReactivity}
             sceneTimeline={prayer.sceneTimeline}
             subtitleCues={prayer.subtitleCues}

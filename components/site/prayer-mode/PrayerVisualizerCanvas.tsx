@@ -12,7 +12,6 @@ type Props = {
   getAnalyser: () => AnalyserNode | null;
   imageUrl: string;
   backgroundColor: string;
-  particleSize: number;
   audioReactivity: number;
   sceneTimeline: PrayerSceneTimeline;
   subtitleCues: PrayerSubtitleCue[];
@@ -120,7 +119,6 @@ export function PrayerVisualizerCanvas({
   getAnalyser,
   imageUrl,
   backgroundColor,
-  particleSize,
   audioReactivity,
   sceneTimeline,
   subtitleCues,
@@ -176,7 +174,12 @@ export function PrayerVisualizerCanvas({
       const field = await loadParticleMap(mapUrl);
       if (disposed || !field) return;
 
-      const THREE = await import('three');
+      const [THREE, { EffectComposer }, { RenderPass }, { UnrealBloomPass }] = await Promise.all([
+        import('three'),
+        import('three/addons/postprocessing/EffectComposer.js'),
+        import('three/addons/postprocessing/RenderPass.js'),
+        import('three/addons/postprocessing/UnrealBloomPass.js')
+      ]);
       if (disposed) return;
 
       const scene = new THREE.Scene();
@@ -197,41 +200,6 @@ export function PrayerVisualizerCanvas({
       renderer.toneMapping = THREE.NoToneMapping;
       renderer.toneMappingExposure = 1;
 
-      let bgMesh: import('three').Mesh | null = null;
-      let bgMaterial: import('three').MeshBasicMaterial | null = null;
-      // The small backend-prepared fallback WebP doubles as this decorative
-      // background wash — no client-side image fetch/CORS handling needed
-      // since nothing here reads pixel data, only displays it.
-      const rawTextureSource = visualizerAsset?.processingStatus === 'ready' ? visualizerAsset.fallbackImageUrl : '';
-      // The plain fallback <img> (rendered below, same component) loads this
-      // exact URL as a no-cors image. THREE.TextureLoader loads it with
-      // crossOrigin, and the browser's HTTP cache is keyed by URL alone —
-      // sharing the URL across both request modes can serve the crossorigin
-      // load from the plain load's cached opaque response. A distinct query
-      // suffix keeps them in separate cache entries (same fix already used
-      // for the source-image sampler before this refactor removed it).
-      const textureSource = rawTextureSource ? `${rawTextureSource}${rawTextureSource.includes('?') ? '&' : '?'}tex=1` : '';
-      if (textureSource) {
-        const texture = new THREE.TextureLoader().load(textureSource);
-        // Explicit sRGB tag: an untagged texture defaults to "linear" in
-        // recent Three versions, which — combined with outputColorSpace —
-        // would otherwise apply an unwanted extra gamma pass to an already
-        // display-ready (sRGB-encoded) photo and darken it further.
-        texture.colorSpace = THREE.SRGBColorSpace;
-        const bgGeometry = new THREE.PlaneGeometry(field.width * 1.05, field.height * 1.05);
-        bgMaterial = new THREE.MeshBasicMaterial({
-          map: texture,
-          transparent: true,
-          opacity: 0,
-          color: new THREE.Color(0x7a6442),
-          depthWrite: false
-        });
-        bgMaterial.blending = THREE.NormalBlending;
-        bgMesh = new THREE.Mesh(bgGeometry, bgMaterial);
-        bgMesh.position.z = -0.15;
-        scene.add(bgMesh);
-      }
-
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(field.starts.slice(), 3));
       geometry.setAttribute('aStart', new THREE.BufferAttribute(field.starts, 3));
@@ -241,6 +209,11 @@ export function PrayerVisualizerCanvas({
       geometry.setAttribute('aAlpha', new THREE.BufferAttribute(field.alphas, 1));
       geometry.setAttribute('aSize', new THREE.BufferAttribute(field.sizes, 1));
       geometry.setAttribute('aReveal', new THREE.BufferAttribute(field.reveal, 1));
+      geometry.setAttribute('aShape', new THREE.BufferAttribute(field.shapes, 1));
+      geometry.setAttribute('aAspect', new THREE.BufferAttribute(field.aspects, 1));
+      geometry.setAttribute('aRotation', new THREE.BufferAttribute(field.rotations, 1));
+      geometry.setAttribute('aSoftness', new THREE.BufferAttribute(field.softness, 1));
+      geometry.setAttribute('aGlow', new THREE.BufferAttribute(field.glow, 1));
 
       const uniforms = {
         uTime: { value: 0 },
@@ -248,7 +221,10 @@ export function PrayerVisualizerCanvas({
         uDissolve: { value: 0 },
         uOpacity: { value: 0 },
         uAudioLevel: { value: 0 },
-        uPointSize: { value: particleSize },
+        // Both baked into the PVM map server-side, derived from the source
+        // image itself (particle density/detail → base size, mean luminance
+        // → exposure) — never a manual admin setting.
+        uPointSize: { value: field.basePointSize },
         uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
         uOrbit: { value: 0 },
         // A custom ShaderMaterial writes gl_FragColor directly, so Three's
@@ -256,7 +232,7 @@ export function PrayerVisualizerCanvas({
         // from Three's own shader chunks) has no effect here — this uniform
         // is the actual exposure control for the particle system, a render-
         // time display setting, not a re-derivation of the backend's colors.
-        uExposure: { value: 1.45 }
+        uExposure: { value: field.autoExposure }
       };
 
       const material = new THREE.ShaderMaterial({
@@ -271,6 +247,37 @@ export function PrayerVisualizerCanvas({
       const points = new THREE.Points(geometry, material);
       scene.add(points);
 
+      // Screen-space bloom: lets the brightest particles (baked-server-side
+      // "glow" — highlight points, gilding, catchlights) physically bleed
+      // light onto neighboring pixels instead of just being a brighter dot,
+      // so the scene reads as genuinely lit rather than merely bright. The
+      // threshold is tuned above the typical splat/streak brightness so
+      // flat volume fill stays crisp and only real highlights bloom.
+      //
+      // UnrealBloomPass runs ~13 extra fullscreen passes (highpass extract +
+      // 5 blur mip levels x2 directions + composite), which is effectively
+      // free on any real GPU but is skipped entirely on devices already
+      // flagged as low-power (see isLowPowerDevice — same signal used to
+      // pick the low-power particle-map tier) so weak hardware falls back to
+      // the plain, cheaper render path instead of a bloom that would fight
+      // the device for frame time.
+      const bloomEnabled = !isLowPowerDevice();
+      // Bloom is a blurred effect by nature, so it doesn't need to match the
+      // renderer's full (up to 2x) device pixel ratio — the composer is
+      // deliberately capped at 1x, which cuts the blur passes' pixel count
+      // by up to 4x on retina displays with no visible softness loss, since
+      // UnrealBloomPass already downsamples internally for its blur mips.
+      const composer = bloomEnabled ? new EffectComposer(renderer) : null;
+      const bloomPass = bloomEnabled
+        ? new UnrealBloomPass(new THREE.Vector2(rect.width || 1, rect.height || 1), 0.75, 0.55, 0.42)
+        : null;
+      if (composer && bloomPass) {
+        composer.setPixelRatio(1);
+        composer.setSize(rect.width || 1, rect.height || 1);
+        composer.addPass(new RenderPass(scene, camera));
+        composer.addPass(bloomPass);
+      }
+
       resizeObserver = new ResizeObserver(() => {
         if (!renderer || !container) return;
         const box = container.getBoundingClientRect();
@@ -279,6 +286,8 @@ export function PrayerVisualizerCanvas({
         camera.right = nextAspect;
         camera.updateProjectionMatrix();
         renderer.setSize(box.width || 1, box.height || 1, false);
+        composer?.setSize(box.width || 1, box.height || 1);
+        bloomPass?.setSize(box.width || 1, box.height || 1);
       });
       resizeObserver.observe(container);
 
@@ -326,10 +335,6 @@ export function PrayerVisualizerCanvas({
         uniforms.uProgress.value = progress;
         uniforms.uDissolve.value = dissolveAmount;
         uniforms.uOpacity.value = opacity;
-        if (bgMaterial) {
-          const revealOpacity = progress >= 1 ? Math.min(0.42, Math.max(0, opacity - 0.5) * 0.84) : 0;
-          bgMaterial.opacity = revealOpacity;
-        }
 
         const analyser = getAnalyser();
         if (analyser) {
@@ -345,7 +350,8 @@ export function PrayerVisualizerCanvas({
           uniforms.uAudioLevel.value = 0;
         }
 
-        renderer.render(scene, camera);
+        if (composer) composer.render();
+        else renderer.render(scene, camera);
 
         if (audio) {
           if (!subtitleCues.length && !autoCuesRef.current && Number.isFinite(audio.duration) && audio.duration > 0) {
@@ -374,11 +380,8 @@ export function PrayerVisualizerCanvas({
         resizeObserver?.disconnect();
         geometry.dispose();
         material.dispose();
-        if (bgMesh) {
-          bgMesh.geometry.dispose();
-          bgMaterial?.map?.dispose();
-          bgMaterial?.dispose();
-        }
+        bloomPass?.dispose();
+        composer?.dispose();
         renderer?.dispose();
       };
     })();

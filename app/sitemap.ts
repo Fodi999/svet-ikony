@@ -33,7 +33,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Icon and prayer URLs are listed per locale so only languages that
     // actually have a published translation end up in the sitemap.
     ...iconsAndPrayersByLocale.flatMap(({ locale, icons, prayers }) => [
-      ...icons.map((item) => ({ url: `${siteUrl}${withLocale(`/icons/${item.slug}`, locale)}`, lastModified: item.updatedAt })),
+      ...icons.map((item) => ({ url: `${siteUrl}${withLocale(`/icons/${item.slug}`, locale)}`, lastModified: new Date(item.updatedAt) })),
       ...prayers.map((item) => ({ url: `${siteUrl}${withLocale(`/prayers/${item.slug}`, locale)}`, lastModified: new Date() }))
     ]),
     ...saints.filter((item) => item.status === 'published').flatMap((item) => locales.map((locale) => ({ url: `${siteUrl}${withLocale(`/saints/${item.slug}`, locale)}`, lastModified: new Date() }))),
@@ -41,15 +41,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // actually have a published translation end up in the sitemap.
     ...alphabetByLocale.flatMap(({ locale, letters }) => letters
       .filter((item) => item.status === 'published')
-      .map((item) => ({ url: `${siteUrl}${withLocale(`/staroslavyanskaya-azbuka/${item.slug}`, locale)}`, lastModified: item.updatedAt }))),
+      .map((item) => ({ url: `${siteUrl}${withLocale(`/staroslavyanskaya-azbuka/${item.slug}`, locale)}`, lastModified: new Date(item.updatedAt) }))),
     ...churches.filter((item) => item.status === 'published').flatMap((item) => locales.map((locale) => ({ url: `${siteUrl}${withLocale(`/churches#${item.slug}`, locale)}`, lastModified: new Date() }))),
     ...churchItems.filter((item) => item.kind !== 'prayer' && item.kind !== 'icon').flatMap((item) => locales.map((locale) => ({
       url: `${siteUrl}${withLocale(churchPath(item.kind, item.slug), locale)}`,
-      lastModified: item.updatedAt
+      lastModified: new Date(item.updatedAt)
     }))),
     ...products.flatMap((item) => locales.map((locale) => ({
       url: `${siteUrl}${withLocale(`/shop/${item.slug}`, locale)}`,
-      lastModified: item.updatedAt
+      lastModified: new Date(item.updatedAt)
     })))
   ];
 }

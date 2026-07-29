@@ -20,5 +20,18 @@
       "binding": "WORKER_SELF_REFERENCE",
       "service": "svet-ikony"
     }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "svetikony-production",
+      "database_id": "6d92cd43-d7f4-45ec-945c-c7a7ae1f3098"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "svetikony-media"
+    }
   ]
 }

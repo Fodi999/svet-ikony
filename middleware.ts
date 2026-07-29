@@ -9,6 +9,11 @@ function isPublicPath(pathname: string) {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/images') ||
+    // Stage 2D: GET/HEAD /media/* (app/media/[...key]/route.ts) serves R2
+    // objects directly — it must never be locale-redirected/rewritten like
+    // a content page, or every media URL would 404 behind a `/uk/media/...`
+    // redirect first.
+    pathname.startsWith('/media') ||
     pathname === '/favicon.ico' ||
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
@@ -42,5 +47,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next|api).*)']
+  matcher: ['/((?!_next|api|media).*)']
 };

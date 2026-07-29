@@ -1,0 +1,12 @@
+import { NextRequest } from 'next/server';
+import { withErrors } from '@/lib/d1/errors';
+import { listGospel } from '@/lib/d1/repositories/gospel';
+
+/** Public — no admin auth. Stage 2E cutover: replaces old Koyeb `GET /api/church/gospel`. */
+export async function GET(request: NextRequest) {
+  return withErrors(async () => {
+    const { searchParams } = new URL(request.url);
+    const gospel = await listGospel({ language: searchParams.get('language') ?? undefined });
+    return Response.json(gospel);
+  });
+}

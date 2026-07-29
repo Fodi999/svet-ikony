@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { CalendarContent, CalendarServiceCard as CalendarService, Icon, Prayer, SeoPage } from '@/lib/types';
+import type { CalendarContent, CalendarServiceCard as CalendarService, Icon, Prayer, PublicChurchContentPage, SeoPage } from '@/lib/types';
 import { useI18n } from './LanguageProvider';
-import { publicApiPrefix, publicApiUrl } from '@/lib/config';
+import { buildCalendarHero, calendarDayFromChurchPage } from '@/lib/api';
 import { type TranslationKey } from '@/lib/i18n';
 import {
   CalendarFeatureCard,
@@ -227,19 +227,22 @@ function formatCalendarDate(date: Date, locale: string) {
   return new Intl.DateTimeFormat(localeCode, { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
 }
 
-async function fetchCalendarContent(year: number, monthIndex: number, locale: string, signal: AbortSignal) {
-  const query = new URLSearchParams({
-    year: String(year),
-    month: String(monthIndex + 1),
-    locale
-  });
-  const response = await fetch(`${publicApiUrl}${publicApiPrefix}/api/content?${query.toString()}`, {
-    cache: 'no-store',
-    signal
-  });
+/**
+ * Stage 2E: was a direct fetch to the old Koyeb backend's `/api/content`
+ * (an aggregate SiteContent with a `calendar` field). That endpoint had no
+ * D1 equivalent (see lib/api.ts's own doc comment on `apiGet`), so this now
+ * calls this same Worker's local `/api/church/calendar` (relative URL —
+ * this runs in the browser, same-origin is exactly right) and composes a
+ * `CalendarContent` client-side with the same helpers `publicApi.content()`
+ * uses server-side, so both code paths produce an identical shape.
+ */
+async function fetchCalendarContent(year: number, monthIndex: number, locale: string, signal: AbortSignal): Promise<CalendarContent | undefined> {
+  const month = monthIndex + 1;
+  const query = new URLSearchParams({ year: String(year), month: String(month), language: locale });
+  const response = await fetch(`/api/church/calendar?${query.toString()}`, { cache: 'no-store', signal });
   if (!response.ok) throw new Error('Calendar content is not available');
-  const content = await response.json() as { calendar?: CalendarContent };
-  return content.calendar;
+  const pages = (await response.json()) as PublicChurchContentPage[];
+  return { hero: buildCalendarHero(year, month), days: pages.map(calendarDayFromChurchPage), services: [] };
 }
 
 function localizedHeroTitle(title: string | undefined, t: (key: TranslationKey) => string) {

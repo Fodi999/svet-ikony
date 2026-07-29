@@ -1,0 +1,78 @@
+import { describe, expect, it } from 'vitest';
+import { buildCalendarHero, calendarDayFromChurchPage, monthIndexFromCalendarTitle } from './api';
+import type { PublicChurchContentPage } from './types';
+
+describe('buildCalendarHero / monthIndexFromCalendarTitle round-trip', () => {
+  it('produces a monthTitle that parses back to the same month for every month of the year', () => {
+    for (let month = 1; month <= 12; month++) {
+      const hero = buildCalendarHero(2026, month);
+      expect(monthIndexFromCalendarTitle(hero.monthTitle)).toBe(month);
+    }
+  });
+
+  it('carries the requested year', () => {
+    expect(buildCalendarHero(2027, 3).year).toBe('2027');
+  });
+
+  it('leaves the never-rendered fields blank rather than inventing values', () => {
+    const hero = buildCalendarHero(2026, 1);
+    expect(hero.title).toBe('');
+    expect(hero.featureTitle).toBe('');
+    expect(hero.iconDayIconSlug).toBe('');
+  });
+});
+
+function samplePage(overrides: Partial<PublicChurchContentPage['calendarDay']> = {}): PublicChurchContentPage {
+  return {
+    calendarDay: {
+      id: 'day-1',
+      siteId: 'site-1',
+      dateOldStyle: null,
+      dateNewStyle: '2026-08-19',
+      calendarType: 'both',
+      title: 'Преображення',
+      dayType: 'feast',
+      description: 'desc',
+      rank: 1,
+      status: 'published',
+      isGlobal: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      ...overrides,
+    },
+    icons: [],
+    prayers: [],
+    articles: [],
+    gospel: [],
+  };
+}
+
+describe('calendarDayFromChurchPage', () => {
+  it('derives the day number from the new-style date', () => {
+    const day = calendarDayFromChurchPage(samplePage());
+    expect(day.day).toBe('19');
+    expect(day.gregorianDate).toBe('2026-08-19');
+  });
+
+  it('marks a feast day as a feast', () => {
+    const day = calendarDayFromChurchPage(samplePage({ dayType: 'feast' }));
+    expect(day.feast).toBe(true);
+  });
+
+  it('falls back to old-style date when new-style is absent', () => {
+    const day = calendarDayFromChurchPage(samplePage({ dateNewStyle: null, dateOldStyle: '2026-08-06' }));
+    expect(day.day).toBe('06');
+    expect(day.julianDate).toBe('2026-08-06');
+  });
+
+  it('builds detailHref from the date, matching the church-calendar route', () => {
+    const day = calendarDayFromChurchPage(samplePage());
+    expect(day.detailHref).toBe('/church/calendar/2026-08-19');
+  });
+
+  it('is textOnly when no icon is attached', () => {
+    const day = calendarDayFromChurchPage(samplePage());
+    expect(day.textOnly).toBe(true);
+    expect(day.imageUrl).toBe('');
+  });
+});

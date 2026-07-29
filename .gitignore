@@ -6,6 +6,12 @@ out
 *.log
 .DS_Store
 .open-next
+.wrangler
 .dev.vars
-cloudflare-env.d.ts
+/cloudflare-env.d.ts
+worker-configuration.d.ts
 tsconfig.tsbuildinfo
+
+# Postgres -> D1 data migration: real customer/order data, never committed
+scripts/d1-migration/export/
+scripts/d1-migration/import-sql/

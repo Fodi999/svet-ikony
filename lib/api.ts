@@ -1,5 +1,5 @@
-import { publicApiPrefix, publicApiUrl } from './config';
-import type { CalendarDay, CalendarDayKind, Church, ChurchAlphabetLetterDto, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchIconOrderOptionDto, ChurchIconProductCategoryDto, ChurchInfoDto, ChurchPrayerDto, ChurchProductCategoryDto, ChurchProductDto, ChurchSaintDto, CreateIconOrderPayload, CreateIconOrderResponse, CreateProductOrderPayload, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchAlphabetPage, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, PublicProductPage, PrayerVisualizerAssetDto, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
+import { absoluteSiteUrl } from './site';
+import type { CalendarDay, CalendarDayKind, CalendarHero, Church, ChurchAlphabetLetterDto, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchIconOrderOptionDto, ChurchIconProductCategoryDto, ChurchInfoDto, ChurchPrayerDto, ChurchProductCategoryDto, ChurchProductDto, ChurchSaintDto, CreateIconOrderPayload, CreateIconOrderResponse, CreateProductOrderPayload, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchAlphabetPage, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, PublicProductPage, PrayerVisualizerAssetDto, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
 
 const emptyDashboard: Dashboard = {
   publishedPages: 0,
@@ -281,7 +281,7 @@ function calendarKindFromChurch(dayType: string): CalendarDayKind {
   return 'quiet';
 }
 
-function calendarDayFromChurchPage(page: PublicChurchContentPage): CalendarDay {
+export function calendarDayFromChurchPage(page: PublicChurchContentPage): CalendarDay {
   const date = page.calendarDay.dateNewStyle || page.calendarDay.dateOldStyle || '';
   const dayNumber = date.split('-')[2] || '01';
   const icon = page.icons[0];
@@ -307,13 +307,48 @@ function calendarDayFromChurchPage(page: PublicChurchContentPage): CalendarDay {
   };
 }
 
-function monthIndexFromCalendarTitle(title?: string) {
+export function monthIndexFromCalendarTitle(title?: string) {
   const normalized = normalizeString(title).toLowerCase();
   const index = monthNames.findIndex((month) => normalized.includes(month));
   return index >= 0 ? index + 1 : undefined;
 }
 
-function mergeChurchMonthContent(content: SiteContent, monthPages: PublicChurchContentPage[]): SiteContent {
+/**
+ * Stage 2E: `hero.monthTitle` is never displayed directly — both this file
+ * (`monthIndexFromCalendarTitle`) and `CalendarView.tsx`
+ * (`monthIndexFromTitle`) only ever parse a Russian month-name substring
+ * back out of it (a pre-existing convention independent of the site's
+ * actual uk/ru/en locale), so building it from the same `monthNames` stems
+ * used for parsing keeps that round-trip working without inventing a new
+ * format.
+ */
+export function buildCalendarHero(year: number, month: number): CalendarHero {
+  return {
+    year: String(year),
+    title: '',
+    monthTitle: `${monthNames[month - 1] || ''}${year}`,
+    prevLabel: '',
+    prevHref: '',
+    nextLabel: '',
+    nextHref: '',
+    featureTitle: '',
+    featureNote: '',
+    featureDate: '',
+    featureHref: '',
+    iconDayTitle: '',
+    iconDayIconSlug: '',
+    iconDayDate: '',
+    iconDayPrayerSlug: '',
+    infoPrimary: '',
+    infoSecondary: '',
+    todayDate: '',
+    todayGospel: '',
+    todayPrayerTitle: '',
+    todayHref: ''
+  };
+}
+
+function mergeChurchMonthContent(content: SiteContent, monthPages: PublicChurchContentPage[], year: number, month: number): SiteContent {
   if (!monthPages.length) return content;
   const churchIcons = monthPages
     .map((page) => page.icons[0] ? iconFromChurchDto(page.icons[0], page.prayers[0], page.articles[0]) : null)
@@ -322,17 +357,20 @@ function mergeChurchMonthContent(content: SiteContent, monthPages: PublicChurchC
   const churchPages = monthPages.flatMap((page) => page.articles.map(seoPageFromChurchArticle));
   const churchDays = monthPages.map(calendarDayFromChurchPage);
   const byDay = new Map(churchDays.map((day) => [day.day, day]));
+  // `content.calendar` only ever comes from the old (now-removed) `/api/content`
+  // aggregation, so it's always undefined post-cutover — build a fresh
+  // calendar from the D1-backed `churchDays` instead of giving up on it.
   const calendar = content.calendar
     ? { ...content.calendar, days: content.calendar.days.map((day) => byDay.get(day.day) || day) }
-    : undefined;
-  const existingDays = new Set(content.calendar?.days.map((day) => day.day) || []);
+    : { hero: buildCalendarHero(year, month), days: [], services: [] };
+  const existingDays = new Set(calendar.days.map((day) => day.day));
   const appendedDays = churchDays.filter((day) => !existingDays.has(day.day));
   return {
     ...content,
     icons: mergeBySlug(churchIcons, content.icons),
     prayers: mergeBySlug(churchPrayers, content.prayers),
     pages: mergeBySlug(churchPages, content.pages),
-    calendar: calendar ? { ...calendar, days: [...calendar.days, ...appendedDays] } : calendar
+    calendar: { ...calendar, days: [...calendar.days, ...appendedDays] }
   };
 }
 
@@ -372,9 +410,19 @@ function normalizeSiteContent(value: unknown): SiteContent {
   };
 }
 
+/**
+ * Stage 2E: every request is now self-referencing (this same Worker's own
+ * `/api/church/**` D1 routes — see app/api/church/**), not a separate
+ * Koyeb origin. `/api/content` (the old legacy CMS aggregation endpoint)
+ * has no D1 equivalent and no longer exists as a route at all; a request
+ * for it 404s and this already falls back to `fallback`, so callers of
+ * that one path (`publicApi.content()`) degrade gracefully without any
+ * special-casing here — see that function's own doc comment for what part
+ * of its result is affected.
+ */
 async function apiGet<T>(path: string, fallback: T): Promise<T> {
   try {
-    const response = await fetch(`${publicApiUrl}${publicApiPrefix}${path}`, { cache: 'no-store' });
+    const response = await fetch(absoluteSiteUrl(path), { cache: 'no-store' });
     if (!response.ok) return fallback;
     return await response.json() as T;
   } catch {
@@ -394,7 +442,7 @@ async function churchApiGet<T>(path: string, fallback: T, previewToken?: string,
  * returning a fallback, so callers (e.g. the order form) can show the user
  * a real validation error instead of a swallowed failure. */
 async function apiPostOrThrow<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${publicApiUrl}${publicApiPrefix}${path}`, {
+  const response = await fetch(absoluteSiteUrl(path), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -407,7 +455,7 @@ async function apiPostOrThrow<T>(path: string, body: unknown): Promise<T> {
 
 async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown, fallback?: T): Promise<T> {
   try {
-    const response = await fetch(`${publicApiUrl}${publicApiPrefix}${path}`, {
+    const response = await fetch(absoluteSiteUrl(path), {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined
@@ -433,7 +481,7 @@ export const publicApi = {
       publicApi.churchCalendarMonth(year, month, undefined, params?.locale),
       publicApi.churchPrayerList(params?.locale)
     ]);
-    const merged = mergeChurchMonthContent(normalized, monthPages);
+    const merged = mergeChurchMonthContent(normalized, monthPages, year, month);
     return {
       ...merged,
       prayers: mergeBySlug(merged.prayers, allPrayers.filter((item) => item.status === 'published').map((item) => prayerFromChurchDto(item)))

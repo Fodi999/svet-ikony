@@ -1,0 +1,24 @@
+// @opennextjs/cloudflare's getCloudflareContext() types its `env` against
+// the global `CloudflareEnv` interface (declared in its own
+// cloudflare-context.d.ts). That's a different interface than wrangler
+// types' generated `Env` (worker-configuration.d.ti, from `d1_databases` in
+// wrangler.jsonc) — the two don't merge on their own, so the D1 binding and
+// admin JWT secret are declared here too via the same interface-merging
+// mechanism.
+declare global {
+  interface CloudflareEnv {
+    DB: D1Database;
+    /** Set via `wrangler secret put` in production, `.dev.vars` locally —
+     * never in wrangler.jsonc's plaintext `vars`. */
+    ADMIN_JWT_SECRET?: string;
+    JWT_SECRET?: string;
+    /** Declared in wrangler.jsonc's `r2_buckets` (Stage 2D). Production
+     * binds the real `svetikony-media` bucket; local `next dev` gets
+     * Wrangler/Miniflare's own simulated local R2 storage automatically —
+     * nothing here ever points at production unless `--remote` is passed,
+     * which nothing in this project does. */
+    MEDIA_BUCKET: R2Bucket;
+  }
+}
+
+export {};

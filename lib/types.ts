@@ -251,8 +251,13 @@ export type ChurchCalendarDayDto = {
   dateNewStyle?: string | null;
   calendarType: string;
   title: string;
+  slug?: string;
+  language?: string;
+  translationGroupId?: string;
   dayType: string;
   description: string;
+  history?: string;
+  imageUrl?: string;
   rank: number;
   status: ChurchContentStatus;
   isGlobal: boolean;

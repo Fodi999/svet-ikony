@@ -72,6 +72,25 @@ export function validateMediaKey(key: string): boolean {
 }
 
 /**
+ * Some modules (church_prayers.audio_url/image_url) store the resolved
+ * absolute `/media/...` URL directly in the field, unlike Calendar Day's
+ * imageId which stores the bare key — `resolveMediaUrl()` only ever adds a
+ * single leading slash + site origin on top of the key, never a second
+ * `media/` segment (see that function's own doc comment), so recovering
+ * the key is always "everything from the last `media/` marker onward,
+ * with `media/` re-added". Anything that doesn't contain that marker
+ * (external URL, empty string, a Stage-1 mock path) yields undefined —
+ * this must never invent a key for a value nothing here ever produced.
+ */
+export function extractMediaKeyFromValue(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const marker = '/media/';
+  const index = value.indexOf(marker);
+  if (index === -1) return undefined;
+  return `media/${value.slice(index + marker.length)}`;
+}
+
+/**
  * Reconstructs the R2 key from a `GET /media/*` route's catch-all params.
  * Next.js's file-based routing (app/media/[...key]/route.ts) already
  * consumes the literal `/media` path segment before `params.key` is

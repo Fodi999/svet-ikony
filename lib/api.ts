@@ -1,3 +1,4 @@
+import { resolveMediaUrl } from '@/lib/media/resolver';
 import { absoluteSiteUrl } from './site';
 import type { CalendarDay, CalendarDayKind, CalendarHero, Church, ChurchAlphabetLetterDto, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchIconOrderOptionDto, ChurchIconProductCategoryDto, ChurchInfoDto, ChurchPrayerDto, ChurchProductCategoryDto, ChurchProductDto, ChurchSaintDto, CreateIconOrderPayload, CreateIconOrderResponse, CreateProductOrderPayload, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchAlphabetPage, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, PublicProductPage, PrayerVisualizerAssetDto, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
 
@@ -287,6 +288,12 @@ export function calendarDayFromChurchPage(page: PublicChurchContentPage): Calend
   const icon = page.icons[0];
   const prayer = page.prayers[0];
   const article = page.articles[0];
+  // The calendar day's own photo (Stage 2H's church_calendar_days.imageUrl,
+  // uploaded via the admin's Calendar Day "Медіа" tab) takes priority over
+  // a related icon's image — that fallback predates this field existing at
+  // all and only still applies to days with no photo of their own.
+  const ownImageUrl = resolveMediaUrl(page.calendarDay.imageUrl);
+  const imageUrl = ownImageUrl || icon?.imageUrl || '';
   return {
     id: page.calendarDay.id,
     day: dayNumber.padStart(2, '0'),
@@ -295,14 +302,14 @@ export function calendarDayFromChurchPage(page: PublicChurchContentPage): Calend
     label: page.calendarDay.title,
     note: icon?.saintName || icon?.feastName || page.calendarDay.dayType,
     kind: calendarKindFromChurch(page.calendarDay.dayType),
-    imageUrl: icon?.imageUrl || '',
+    imageUrl,
     iconSlug: icon?.slug || '',
     prayerSlug: prayer?.slug || '',
     gospelSlug: page.gospel[0]?.slug || '',
     detailHref: date ? `/church/calendar/${date}` : `/church/articles/${article?.slug || ''}`,
     current: date === new Date().toISOString().slice(0, 10),
     feast: page.calendarDay.dayType === 'feast',
-    textOnly: !icon?.imageUrl,
+    textOnly: !imageUrl,
     description: page.calendarDay.description || article?.seoDescription || article?.content || ''
   };
 }

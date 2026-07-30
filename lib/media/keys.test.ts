@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildR2KeyFromRouteSegments, generateMediaKey, isAllowedModule, isAllowedPurpose, isSafeEntityId, validateMediaKey } from './keys';
+import { buildR2KeyFromRouteSegments, extractMediaKeyFromValue, generateMediaKey, isAllowedModule, isAllowedPurpose, isSafeEntityId, validateMediaKey } from './keys';
 
 describe('generateMediaKey', () => {
   it('produces the expected shape for a valid image upload', () => {
@@ -132,5 +132,29 @@ describe('buildR2KeyFromRouteSegments', () => {
     const key = generateMediaKey({ module: 'articles', entityId: 'article-1', purpose: 'cover', mimeType: 'image/png' });
     const segments = key.split('/').slice(1); // drop the leading "media" segment, same as Next's routing does
     expect(buildR2KeyFromRouteSegments(segments)).toBe(key);
+  });
+});
+
+describe('extractMediaKeyFromValue', () => {
+  it('extracts the bare key from a resolved absolute media URL (church_prayers.audio_url/image_url shape)', () => {
+    expect(extractMediaKeyFromValue('http://localhost:3001/media/prayers/x/audio/00000000-0000-4000-8000-000000000000.mp3')).toBe(
+      'media/prayers/x/audio/00000000-0000-4000-8000-000000000000.mp3',
+    );
+  });
+
+  it('extracts the bare key from a production https URL', () => {
+    expect(extractMediaKeyFromValue('https://svetikony.com/media/alphabet/x/card/00000000-0000-4000-8000-000000000000.jpg')).toBe(
+      'media/alphabet/x/card/00000000-0000-4000-8000-000000000000.jpg',
+    );
+  });
+
+  it('returns undefined for an external URL with no /media/ marker', () => {
+    expect(extractMediaKeyFromValue('https://example.com/some/other/path.mp3')).toBeUndefined();
+  });
+
+  it('returns undefined for null/undefined/empty values', () => {
+    expect(extractMediaKeyFromValue(null)).toBeUndefined();
+    expect(extractMediaKeyFromValue(undefined)).toBeUndefined();
+    expect(extractMediaKeyFromValue('')).toBeUndefined();
   });
 });

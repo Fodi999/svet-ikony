@@ -75,4 +75,41 @@ describe('calendarDayFromChurchPage', () => {
     expect(day.textOnly).toBe(true);
     expect(day.imageUrl).toBe('');
   });
+
+  it('uses the calendar day\'s own photo (Stage 2H) over a related icon\'s image, resolving a bare R2 key to an absolute URL', () => {
+    const day = calendarDayFromChurchPage(
+      samplePage({ imageUrl: 'media/calendar/day-1/main/uuid.png' }),
+    );
+    expect(day.imageUrl).toContain('/media/calendar/day-1/main/uuid.png');
+    expect(day.textOnly).toBe(false);
+  });
+
+  it('falls back to a related icon\'s image when the calendar day has no photo of its own', () => {
+    const page = samplePage();
+    page.icons = [
+      {
+        id: 'icon-1',
+        siteId: 'site-1',
+        title: 'Ікона',
+        slug: 'icon-1',
+        imageUrl: 'https://example.com/icon.jpg',
+        saintName: '',
+        feastName: '',
+        description: '',
+        language: 'uk',
+        translationGroupId: 'group-1',
+        status: 'published',
+        isGlobal: false,
+        orderEnabled: false,
+        orderBlockText: '',
+        productionTime: '',
+        currency: 'UAH',
+        consecrationAvailable: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ];
+    const day = calendarDayFromChurchPage(page);
+    expect(day.imageUrl).toBe('https://example.com/icon.jpg');
+  });
 });

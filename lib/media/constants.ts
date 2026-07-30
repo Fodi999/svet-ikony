@@ -20,6 +20,7 @@ export const ALLOWED_MODULE_PURPOSES: Record<string, readonly string[]> = {
   saints: ['main'],
   articles: ['cover'],
   icons: ['main'],
+  calendar: ['main'], // church_calendar_days.imageId — admin's Calendar Day "Медіа" tab
   church: ['gallery'],
   categories: ['main'],
   products: ['photo', 'gallery'],

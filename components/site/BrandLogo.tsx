@@ -1,4 +1,4 @@
-const brandLogoSrc = '/Image-12-июл.-2026-г._-12_33_55.svg';
+const brandLogoSrc = '/brand-logo-mark.svg';
 
 export function BrandLogo({ className = '', size = 58 }: { className?: string; size?: number }) {
   return (

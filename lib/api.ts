@@ -101,6 +101,10 @@ const monthNames = [
   'январ', 'феврал', 'март', 'апрел', 'ма', 'июн', 'июл', 'август', 'сентябр', 'октябр', 'ноябр', 'декабр'
 ];
 
+const calendarHeroMonthTitles = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+];
+
 function mergeBySlug<T extends { slug: string }>(primary: T[], generated: T[]) {
   const seen = new Set<string>();
   return [...primary, ...generated].filter((item) => {
@@ -366,19 +370,15 @@ export function monthIndexFromCalendarTitle(title?: string) {
 }
 
 /**
- * Stage 2E: `hero.monthTitle` is never displayed directly — both this file
- * (`monthIndexFromCalendarTitle`) and `CalendarView.tsx`
- * (`monthIndexFromTitle`) only ever parse a Russian month-name substring
- * back out of it (a pre-existing convention independent of the site's
- * actual uk/ru/en locale), so building it from the same `monthNames` stems
- * used for parsing keeps that round-trip working without inventing a new
- * format.
+ * Stage 2E: `hero.monthTitle` is parsed back by both server and client
+ * calendar code. Keep it as a full Russian month name: the server accepts
+ * stems for legacy values, while the client matcher expects the full title.
  */
 export function buildCalendarHero(year: number, month: number): CalendarHero {
   return {
     year: String(year),
     title: '',
-    monthTitle: `${monthNames[month - 1] || ''}${year}`,
+    monthTitle: `${calendarHeroMonthTitles[month - 1] || ''} ${year}`,
     prevLabel: '',
     prevHref: '',
     nextLabel: '',

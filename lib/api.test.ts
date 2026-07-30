@@ -14,6 +14,10 @@ describe('buildCalendarHero / monthIndexFromCalendarTitle round-trip', () => {
     expect(buildCalendarHero(2027, 3).year).toBe('2027');
   });
 
+  it('uses a full month title that the client calendar can parse', () => {
+    expect(buildCalendarHero(2026, 12).monthTitle).toBe('Декабрь 2026');
+  });
+
   it('leaves the never-rendered fields blank rather than inventing values', () => {
     const hero = buildCalendarHero(2026, 1);
     expect(hero.title).toBe('');

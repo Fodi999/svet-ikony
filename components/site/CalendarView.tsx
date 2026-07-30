@@ -623,7 +623,7 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
                         itemKey={itemKey}
                         imageUrl={imageUrl}
                         detailHref={detailHref}
-                        isToday={item.day === today.day}
+                        isToday={isCurrentVisibleMonth && item.day === realTodayDay}
                         isExpanded={isExpanded}
                         onToggle={() => setExpandedDay((current) => current === itemKey ? '' : itemKey)}
                         dateLabel={dayDateLabel(item)}
@@ -647,7 +647,7 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
                         item={item}
                         imageUrl={imageUrl}
                         detailHref={detailHref}
-                        isToday={!item.outOfMonth && item.day === today.day}
+                        isToday={!item.outOfMonth && isCurrentVisibleMonth && item.day === realTodayDay}
                         dateLabel={dayDateLabel(item)}
                         todayLabel={t('today')}
                         iconFallbackAlt={t('iconOfDay')}

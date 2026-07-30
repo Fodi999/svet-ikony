@@ -308,6 +308,15 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  // useSearchParams() can return a new object reference on every render even
+  // when the actual query string hasn't changed. Putting that object
+  // straight into a dependency array made both sync effects below re-run
+  // (and re-fire router.replace()) far more often than the URL actually
+  // changed — the primitive string/values here are what the effects should
+  // actually depend on.
+  const searchParamsString = searchParams.toString();
+  const searchYear = searchParams.get('year');
+  const searchMonth = searchParams.get('month');
   const [filterOpen, setFilterOpen] = useState(false);
   const [filter, setFilter] = useState<FilterKind>('all');
   const [view, setView] = useState<ViewMode>('calendar');
@@ -383,8 +392,8 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
   }, [calendar, initialYear, locale, monthIndex, year]);
 
   useEffect(() => {
-    const queryYear = Number(searchParams.get('year'));
-    const queryMonth = Number(searchParams.get('month'));
+    const queryYear = Number(searchYear);
+    const queryMonth = Number(searchMonth);
     if (!Number.isFinite(queryYear) || !Number.isFinite(queryMonth) || queryMonth < 1 || queryMonth > 12) return;
 
     const nextMonthIndex = queryMonth - 1;
@@ -402,7 +411,7 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
     pendingLocalMonth.current = null;
     setYear(queryYear);
     setMonthIndex(nextMonthIndex);
-  }, [locale, monthIndex, searchParams, year]);
+  }, [locale, monthIndex, searchYear, searchMonth, year]);
 
   useEffect(() => {
     const key = calendarCacheKey(year, monthIndex, locale);
@@ -437,7 +446,7 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
       const adjacent = monthFromAbsolute(year * 12 + monthIndex + delta);
       const key = calendarCacheKey(adjacent.year, adjacent.monthIndex, locale);
       const cachedCalendar = calendarCache.current.get(key);
-      const href = queryForMonth(pathname, new URLSearchParams(searchParams.toString()), adjacent.year, adjacent.monthIndex);
+      const href = queryForMonth(pathname, new URLSearchParams(searchParamsString), adjacent.year, adjacent.monthIndex);
 
       router.prefetch(href);
 
@@ -458,7 +467,7 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
     });
 
     return () => controllers.forEach((controller) => controller.abort());
-  }, [icons, locale, monthIndex, pathname, router, searchParams, year]);
+  }, [icons, locale, monthIndex, pathname, router, searchParamsString, year]);
 
   useEffect(() => {
     const nextAbsolute = year * 12 + monthIndex;
@@ -473,19 +482,21 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
   }, [monthIndex, year]);
 
   useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    const nextYear = String(year);
-    const nextMonth = String(monthIndex + 1);
-    if (params.get('year') === nextYear && params.get('month') === nextMonth) {
+    const params = new URLSearchParams(searchParamsString);
+    params.set('year', String(year));
+    params.set('month', String(monthIndex + 1));
+    const nextSearch = params.toString();
+    // Compare the fully-resolved target query string, not individual keys —
+    // this is what actually stops a redundant router.replace() (and the RSC
+    // round-trip it triggers) from firing every time this effect re-runs
+    // for an unrelated reason (e.g. `locale` or `pathname` identity).
+    if (nextSearch === searchParamsString) {
       pendingLocalMonth.current = null;
       return;
     }
-    params.set('year', String(year));
-    params.set('month', String(monthIndex + 1));
     pendingLocalMonth.current = calendarCacheKey(year, monthIndex, locale);
-    const nextUrl = `${pathname}?${params.toString()}`;
-    router.replace(nextUrl, { scroll: false });
-  }, [locale, monthIndex, pathname, router, searchParams, year]);
+    router.replace(`${pathname}?${nextSearch}`, { scroll: false });
+  }, [locale, monthIndex, pathname, router, searchParamsString, year]);
 
   function moveMonth(delta: number) {
     const absoluteMonth = year * 12 + monthIndex + delta;

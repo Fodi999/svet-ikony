@@ -58,13 +58,6 @@ function monthFromAbsolute(absoluteMonth: number) {
   };
 }
 
-function queryForMonth(pathname: string, searchParams: URLSearchParams, year: number, monthIndex: number) {
-  const params = new URLSearchParams(searchParams.toString());
-  params.set('year', String(year));
-  params.set('month', String(monthIndex + 1));
-  return `${pathname}?${params.toString()}`;
-}
-
 function normalizeLookup(value?: string) {
   return (value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-яіїєґ0-9]+/gi, ' ').trim();
 }
@@ -446,9 +439,6 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
       const adjacent = monthFromAbsolute(year * 12 + monthIndex + delta);
       const key = calendarCacheKey(adjacent.year, adjacent.monthIndex, locale);
       const cachedCalendar = calendarCache.current.get(key);
-      const href = queryForMonth(pathname, new URLSearchParams(searchParamsString), adjacent.year, adjacent.monthIndex);
-
-      router.prefetch(href);
 
       if (cachedCalendar) {
         preloadImages(collectCalendarImageUrls(cachedCalendar, icons), preloadedImages.current);
@@ -467,7 +457,7 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
     });
 
     return () => controllers.forEach((controller) => controller.abort());
-  }, [icons, locale, monthIndex, pathname, router, searchParamsString, year]);
+  }, [icons, locale, monthIndex, year]);
 
   useEffect(() => {
     const nextAbsolute = year * 12 + monthIndex;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCalendarHero, calendarDayFromChurchPage, monthIndexFromCalendarTitle } from './api';
+import { buildCalendarHero, calendarDayFromChurchPage, dedupeCalendarDaysByDay, monthIndexFromCalendarTitle } from './api';
 import type { PublicChurchContentPage } from './types';
 
 describe('buildCalendarHero / monthIndexFromCalendarTitle round-trip', () => {
@@ -111,5 +111,33 @@ describe('calendarDayFromChurchPage', () => {
     ];
     const day = calendarDayFromChurchPage(page);
     expect(day.imageUrl).toBe('https://example.com/icon.jpg');
+  });
+});
+
+describe('dedupeCalendarDaysByDay', () => {
+  it('keeps the richer duplicate calendar day so an empty duplicate cannot remove a photo after hydration', () => {
+    const emptyDuplicate = calendarDayFromChurchPage(samplePage({
+      id: 'test-duplicate',
+      dateNewStyle: '2026-12-17',
+      title: 'Test after user report',
+      imageUrl: '',
+      description: '',
+    }));
+    const dayWithPhoto = calendarDayFromChurchPage(samplePage({
+      id: 'varvara',
+      dateNewStyle: '2026-12-17',
+      title: 'Свята великомучениця Варвара',
+      imageUrl: 'media/calendar/draft/main/ba711647-2228-4f24-8e8d-934b8ae08c59.png',
+      description: 'День пам’яті святої великомучениці Варвари',
+    }));
+
+    const [merged] = dedupeCalendarDaysByDay([dayWithPhoto, emptyDuplicate]);
+    const [mergedReversed] = dedupeCalendarDaysByDay([emptyDuplicate, dayWithPhoto]);
+
+    expect(merged.id).toBe('varvara');
+    expect(merged.imageUrl).toContain('/media/calendar/draft/main/ba711647-2228-4f24-8e8d-934b8ae08c59.png');
+    expect(merged.textOnly).toBe(false);
+    expect(mergedReversed.id).toBe('varvara');
+    expect(mergedReversed.imageUrl).toBe(merged.imageUrl);
   });
 });

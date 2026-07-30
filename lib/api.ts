@@ -314,6 +314,51 @@ export function calendarDayFromChurchPage(page: PublicChurchContentPage): Calend
   };
 }
 
+function calendarDayContentScore(day: CalendarDay) {
+  return [
+    day.imageUrl ? 1000 : 0,
+    day.iconSlug ? 100 : 0,
+    day.prayerSlug ? 40 : 0,
+    day.gospelSlug ? 30 : 0,
+    day.description ? 20 : 0,
+    day.label ? 10 : 0,
+    day.note ? 5 : 0
+  ].reduce((sum, value) => sum + value, 0);
+}
+
+function mergeCalendarDayDuplicate(primary: CalendarDay, fallback: CalendarDay): CalendarDay {
+  const imageUrl = primary.imageUrl || fallback.imageUrl;
+  return {
+    ...fallback,
+    ...primary,
+    imageUrl,
+    iconSlug: primary.iconSlug || fallback.iconSlug,
+    prayerSlug: primary.prayerSlug || fallback.prayerSlug,
+    gospelSlug: primary.gospelSlug || fallback.gospelSlug,
+    note: primary.note || fallback.note,
+    description: primary.description || fallback.description,
+    textOnly: !imageUrl
+  };
+}
+
+export function dedupeCalendarDaysByDay(days: CalendarDay[]): CalendarDay[] {
+  const byDay = new Map<string, CalendarDay>();
+  days.forEach((day) => {
+    const existing = byDay.get(day.day);
+    if (!existing) {
+      byDay.set(day.day, day);
+      return;
+    }
+
+    const dayScore = calendarDayContentScore(day);
+    const existingScore = calendarDayContentScore(existing);
+    const primary = dayScore > existingScore ? day : existing;
+    const fallback = primary === day ? existing : day;
+    byDay.set(day.day, mergeCalendarDayDuplicate(primary, fallback));
+  });
+  return Array.from(byDay.values()).sort((left, right) => Number(left.day) - Number(right.day));
+}
+
 export function monthIndexFromCalendarTitle(title?: string) {
   const normalized = normalizeString(title).toLowerCase();
   const index = monthNames.findIndex((month) => normalized.includes(month));
@@ -362,7 +407,7 @@ function mergeChurchMonthContent(content: SiteContent, monthPages: PublicChurchC
     .filter(Boolean) as Icon[];
   const churchPrayers = monthPages.flatMap((page) => page.prayers.map((prayer) => prayerFromChurchDto(prayer, page.icons.find((icon) => icon.id === prayer.iconId) || page.icons[0])));
   const churchPages = monthPages.flatMap((page) => page.articles.map(seoPageFromChurchArticle));
-  const churchDays = monthPages.map(calendarDayFromChurchPage);
+  const churchDays = dedupeCalendarDaysByDay(monthPages.map(calendarDayFromChurchPage));
   const byDay = new Map(churchDays.map((day) => [day.day, day]));
   // `content.calendar` only ever comes from the old (now-removed) `/api/content`
   // aggregation, so it's always undefined post-cutover — build a fresh

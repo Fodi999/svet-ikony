@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { CalendarContent, CalendarServiceCard as CalendarService, Icon, Prayer, PublicChurchContentPage, SeoPage } from '@/lib/types';
 import { useI18n } from './LanguageProvider';
-import { buildCalendarHero, calendarDayFromChurchPage } from '@/lib/api';
+import { buildCalendarHero, calendarDayFromChurchPage, dedupeCalendarDaysByDay } from '@/lib/api';
 import { type TranslationKey } from '@/lib/i18n';
 import {
   CalendarFeatureCard,
@@ -235,7 +235,7 @@ async function fetchCalendarContent(year: number, monthIndex: number, locale: st
   const response = await fetch(`/api/church/calendar?${query.toString()}`, { cache: 'no-store', signal });
   if (!response.ok) throw new Error('Calendar content is not available');
   const pages = (await response.json()) as PublicChurchContentPage[];
-  return { hero: buildCalendarHero(year, month), days: pages.map(calendarDayFromChurchPage), services: [] };
+  return { hero: buildCalendarHero(year, month), days: dedupeCalendarDaysByDay(pages.map(calendarDayFromChurchPage)), services: [] };
 }
 
 function localizedHeroTitle(title: string | undefined, t: (key: TranslationKey) => string) {

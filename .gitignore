@@ -9,7 +9,6 @@ out
 .wrangler
 .dev.vars
 /cloudflare-env.d.ts
-worker-configuration.d.ts
 tsconfig.tsbuildinfo
 
 # Postgres -> D1 data migration: real customer/order data, never committed

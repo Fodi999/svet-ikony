@@ -1,4 +1,4 @@
-const VERSION = '2026-07-10-pwa-v2';
+const VERSION = '2026-07-31-calendar-url-v1';
 const CORE_CACHE = `ikona-core-${VERSION}`;
 const STATIC_CACHE = `ikona-static-${VERSION}`;
 const IMAGE_CACHE = `ikona-images-${VERSION}`;
@@ -87,7 +87,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.pathname.startsWith('/_next/static/')) {
-    event.respondWith(cacheFirst(request, STATIC_CACHE));
+    event.respondWith(networkFirstAsset(request, STATIC_CACHE));
     return;
   }
 
@@ -156,6 +156,22 @@ async function cacheFirst(request, cacheName) {
     await cache.put(request, response.clone());
   }
   return response;
+}
+
+async function networkFirstAsset(request, cacheName) {
+  const cache = await caches.open(cacheName);
+
+  try {
+    const response = await fetch(request);
+    if (isCacheableResponse(response)) {
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    return Response.error();
+  }
 }
 
 async function staleWhileRevalidate(request, cacheName) {

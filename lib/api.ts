@@ -221,7 +221,7 @@ function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, articl
   };
 }
 
-function prayerFromChurchDto(item: ChurchPrayerDto, icon?: ChurchIconDto): Prayer {
+export function prayerFromChurchDto(item: ChurchPrayerDto, icon?: ChurchIconDto): Prayer {
   return {
     id: item.id,
     slug: item.slug,

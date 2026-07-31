@@ -1,5 +1,3 @@
-import { absoluteSiteUrl } from '@/lib/site';
-
 const HAS_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
 
 /**
@@ -10,14 +8,14 @@ const HAS_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
  *
  *  - null/undefined/"" -> undefined (render nothing, not a broken src)
  *  - absolute URL (has a scheme, or is protocol-relative "//host/...") ->
- *    left completely unchanged, whether it's an old-backend URL or a
- *    genuinely external one — this function does not know or care which,
- *    and must never try to "fix" or migrate it
+ *    left unchanged, except local/private-network `/media/*` URLs. Those
+ *    are converted back to same-origin `/media/*` so production HTTPS pages
+ *    never request `http://localhost` or another insecure LAN host.
  *  - a bare R2 object key (e.g. "media/prayers/<id>/audio/<uuid>.mp3",
  *    produced by lib/media/keys.ts) -> resolved to the public URL for
  *    GET /media/*. The key already contains its own leading `media/`
- *    segment, so this only ever adds a single leading slash + the site
- *    origin — never a second `media/` (see keys.ts's
+ *    segment, so this only ever adds a single leading slash — never a
+ *    second `media/` (see keys.ts's
  *    buildR2KeyFromRouteSegments for the matching route-side half of this
  *    contract, and resolver.test.ts for the explicit anti-`media/media/`
  *    regression test).
@@ -27,10 +25,42 @@ export function resolveMediaUrl(value: string | null | undefined): string | unde
   const trimmed = value.trim();
   if (!trimmed) return undefined;
 
-  if (HAS_SCHEME.test(trimmed) || trimmed.startsWith('//')) {
-    return trimmed;
+  if (HAS_SCHEME.test(trimmed)) {
+    return localMediaPath(trimmed) || trimmed;
+  }
+
+  if (trimmed.startsWith('//')) {
+    return localMediaPath(`https:${trimmed}`) || trimmed;
   }
 
   const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  return absoluteSiteUrl(path);
+  return path;
+}
+
+function localMediaPath(value: string) {
+  try {
+    const url = new URL(value);
+    if (!url.pathname.startsWith('/media/')) return '';
+    return isLocalOrPrivateHost(url.hostname) ? `${url.pathname}${url.search}${url.hash}` : '';
+  } catch {
+    return '';
+  }
+}
+
+function isLocalOrPrivateHost(hostname: string) {
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname.endsWith('.local')) {
+    return true;
+  }
+
+  if (hostname.startsWith('10.') || hostname.startsWith('192.168.')) {
+    return true;
+  }
+
+  const private172 = hostname.match(/^172\.(\d{1,2})\./);
+  if (private172) {
+    const second = Number(private172[1]);
+    return second >= 16 && second <= 31;
+  }
+
+  return false;
 }

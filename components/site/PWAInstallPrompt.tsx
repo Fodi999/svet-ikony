@@ -9,6 +9,7 @@ type BeforeInstallPromptEvent = Event & {
 
 const DISMISS_KEY = 'ikona-pwa-install-dismissed-at';
 const DISMISS_TTL = 1000 * 60 * 60 * 24 * 14;
+const SERVICE_WORKER_VERSION = '2026-07-31-cache-install-v2';
 
 const text = {
   uk: {
@@ -94,7 +95,7 @@ export function PWAInstallPrompt() {
       return;
     }
 
-    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((error) => {
+    navigator.serviceWorker.register(`/sw.js?v=${SERVICE_WORKER_VERSION}`, { scope: '/', updateViaCache: 'none' }).catch((error) => {
       console.warn('Service worker registration failed', error);
     });
   }, []);

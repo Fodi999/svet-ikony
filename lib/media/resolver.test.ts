@@ -23,15 +23,21 @@ describe('resolveMediaUrl', () => {
     expect(resolveMediaUrl('//cdn.example.com/foo.jpg')).toBe('//cdn.example.com/foo.jpg');
   });
 
-  it('resolves a bare R2 key to a single-slash public URL, never doubling media/media/', () => {
+  it('resolves a bare R2 key to a same-origin media path, never doubling media/media/', () => {
     const resolved = resolveMediaUrl('media/prayers/id/audio/file.mp3');
-    expect(resolved).toContain('/media/prayers/id/audio/file.mp3');
+    expect(resolved).toBe('/media/prayers/id/audio/file.mp3');
     expect(resolved).not.toContain('/media/media/');
   });
 
   it('handles a key with a leading slash without doubling it', () => {
     const resolved = resolveMediaUrl('/media/alphabet/x/card/file.webp');
-    expect(resolved).toContain('/media/alphabet/x/card/file.webp');
+    expect(resolved).toBe('/media/alphabet/x/card/file.webp');
     expect(resolved?.match(/\/media\//g)?.length).toBe(1);
+  });
+
+  it('converts localhost/private media URLs back to same-origin paths to avoid HTTPS mixed content', () => {
+    expect(resolveMediaUrl('http://localhost:3001/media/calendar/day/main/file.png')).toBe('/media/calendar/day/main/file.png');
+    expect(resolveMediaUrl('http://192.168.1.10/media/calendar/day/main/file.png')).toBe('/media/calendar/day/main/file.png');
+    expect(resolveMediaUrl('//localhost:3001/media/calendar/day/main/file.png')).toBe('/media/calendar/day/main/file.png');
   });
 });

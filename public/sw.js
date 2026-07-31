@@ -1,4 +1,4 @@
-const VERSION = '2026-07-31-calendar-url-v1';
+const VERSION = '2026-07-31-cache-install-v2';
 const CORE_CACHE = `ikona-core-${VERSION}`;
 const STATIC_CACHE = `ikona-static-${VERSION}`;
 const IMAGE_CACHE = `ikona-images-${VERSION}`;
@@ -15,8 +15,7 @@ const CORE_URLS = [
   '/favicon.ico',
   '/favicon-32.png',
   '/favicon-512.png',
-  '/apple-touch-icon.png',
-  '/Image-12-июл.-2026-г._-12_33_55.svg'
+  '/apple-touch-icon.png'
 ];
 
 const PAGE_URLS = [
@@ -51,10 +50,10 @@ const SENSITIVE_QUERY_PATTERN = /(?:token|secret|key|session|auth|password|code)
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const coreCache = await caches.open(CORE_CACHE);
-    await coreCache.addAll(CORE_URLS);
+    await cacheUrls(coreCache, CORE_URLS);
 
     const pageCache = await caches.open(PAGE_CACHE);
-    await Promise.allSettled([...OFFLINE_URLS, ...PAGE_URLS].map((url) => pageCache.add(url)));
+    await cacheUrls(pageCache, [...OFFLINE_URLS, ...PAGE_URLS]);
 
     await self.skipWaiting();
   })());
@@ -122,9 +121,17 @@ function isCoreAsset(url) {
     url.pathname === '/favicon-32.png' ||
     url.pathname === '/favicon-512.png' ||
     url.pathname === '/apple-touch-icon.png' ||
-    url.pathname === '/Image-12-июл.-2026-г._-12_33_55.svg' ||
     url.pathname.startsWith('/pwa/')
   );
+}
+
+async function cacheUrls(cache, urls) {
+  await Promise.allSettled(urls.map(async (url) => {
+    const response = await fetch(new Request(url, { cache: 'reload' }));
+    if (isCacheableResponse(response)) {
+      await cache.put(url, response);
+    }
+  }));
 }
 
 async function networkFirstPage(request) {

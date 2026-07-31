@@ -3,8 +3,10 @@ import { notFound } from 'next/navigation';
 import { AssetButton } from '@/components/site/AssetButton';
 import { StableImage } from '@/components/site/StableImage';
 import { publicApi } from '@/lib/api';
+import { resolveMediaUrl } from '@/lib/media/resolver';
 import { getRequestLocale } from '@/lib/serverLocale';
-import { pageMetadata } from '@/lib/seo';
+import { jsonLd, pageMetadata } from '@/lib/seo';
+import { siteUrl } from '@/lib/site';
 
 type Props = {
   params: Promise<{ date: string }>;
@@ -28,10 +30,10 @@ export async function generateMetadata({ params, searchParams }: Props) {
   const locale = await getRequestLocale();
   const content = await publicApi.churchCalendarDay(date, token, locale);
   const day = content?.calendarDay;
-  const image = content?.icons[0]?.imageUrl;
+  const image = resolveMediaUrl(day?.imageUrl) || content?.icons[0]?.imageUrl;
   return pageMetadata({
     title: day?.title,
-    description: day?.description,
+    description: day?.description || day?.history?.replace(/\s+/g, ' ').trim().slice(0, 180),
     path: `/church/calendar/${date}`,
     image,
     locale
@@ -48,30 +50,53 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
 
   const { calendarDay, icons, prayers, articles, gospel } = content;
   const heroIcon = icons[0];
+  const heroImageUrl = resolveMediaUrl(calendarDay.imageUrl) || heroIcon?.imageUrl || '';
+  const heroImageAlt = calendarDay.imageUrl ? calendarDay.title : heroIcon?.title || calendarDay.title;
+  const canonicalUrl = `${siteUrl}/${locale}/church/calendar/${date}`;
+  const structuredData = jsonLd('Article', {
+    headline: calendarDay.title,
+    description: calendarDay.description || calendarDay.history?.replace(/\s+/g, ' ').trim().slice(0, 180),
+    image: heroImageUrl ? [heroImageUrl] : undefined,
+    datePublished: calendarDay.createdAt,
+    dateModified: calendarDay.updatedAt,
+    inLanguage: locale,
+    mainEntityOfPage: canonicalUrl,
+    temporalCoverage: calendarDay.dateNewStyle || calendarDay.dateOldStyle || date,
+    about: calendarDay.title
+  });
 
   return (
     <main className="read-page sacred-read-page">
-      <section className={heroIcon?.imageUrl ? 'sacred-detail-hero' : 'read-hero'}>
-        {heroIcon?.imageUrl ? (
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <section className={heroImageUrl ? 'sacred-detail-hero' : 'read-hero'}>
+        {heroImageUrl ? (
           <figure className="sacred-image-frame">
-            <StableImage src={heroIcon.imageUrl} alt={heroIcon.title} width={800} height={1000} loading="eager" />
+            <StableImage src={heroImageUrl} alt={heroImageAlt} width={800} height={1000} loading="eager" />
           </figure>
         ) : null}
         <div className="sacred-hero-copy">
-          <p className="eyebrow">{calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}</p>
+          <p className="eyebrow">Дата церковного календаря: <time dateTime={calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}>{calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}</time></p>
           <h1>{calendarDay.title}</h1>
           {calendarDay.description ? <p className="detail-lead">{calendarDay.description}</p> : null}
           <div className="detail-actions">
-            {icons[0] ? <AssetButton variant="dark" href={`/icons/${icons[0].slug}`}>Икона</AssetButton> : null}
+            {icons[0] ? <AssetButton variant="dark" href={`/icons/${icons[0].slug}`}>Ікона</AssetButton> : null}
             {prayers[0] ? <AssetButton href={`/church/prayers/${prayers[0].slug}`}>Молитва</AssetButton> : null}
-            {gospel[0] ? <AssetButton href={`/church/gospel/${gospel[0].slug}`}>Евангелие</AssetButton> : null}
+            {gospel[0] ? <AssetButton href={`/church/gospel/${gospel[0].slug}`}>Євангеліє</AssetButton> : null}
           </div>
         </div>
       </section>
 
+      {calendarDay.history ? (
+        <article className="sacred-panel">
+          <span>Історична довідка</span>
+          <h2>Житіє і пам’ять</h2>
+          <div className="reader-text"><Paragraphs text={calendarDay.history} /></div>
+        </article>
+      ) : null}
+
       {icons.length ? (
         <section className="related-section">
-          <div className="section-head"><p className="eyebrow">Иконы</p><h2>Связанные образы</h2></div>
+          <div className="section-head"><p className="eyebrow">Ікони</p><h2>Пов’язані образи</h2></div>
           <div className="mini-grid">
             {icons.map((icon) => <Link key={icon.id} href={`/icons/${icon.slug}`}>{icon.title}<small>{icon.saintName || icon.feastName}</small></Link>)}
           </div>
@@ -92,7 +117,7 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
           <h2>{article.title}</h2>
           <div className="reader-text"><Paragraphs text={article.content} /></div>
           <div className="detail-actions">
-            <AssetButton href={`/church/articles/${article.slug}`}>Открыть статью</AssetButton>
+            <AssetButton href={`/church/articles/${article.slug}`}>Відкрити статтю</AssetButton>
           </div>
         </article>
       ))}
@@ -103,7 +128,7 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
           <h2>{item.title}</h2>
           <div className="reader-text"><Paragraphs text={item.explanation || item.text} /></div>
           <div className="detail-actions">
-            <AssetButton href={`/church/gospel/${item.slug}`}>Читать Евангелие</AssetButton>
+            <AssetButton href={`/church/gospel/${item.slug}`}>Читати Євангеліє</AssetButton>
           </div>
         </article>
       ))}

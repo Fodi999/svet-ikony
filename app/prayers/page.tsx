@@ -22,14 +22,23 @@ export async function generateMetadata() {
 export default async function PrayersPage() {
   const locale = await getRequestLocale();
   const prayers = await publicApi.prayers(locale);
+  const countLabel = locale === 'en'
+    ? `${prayers.length} ${prayers.length === 1 ? 'prayer' : 'prayers'}`
+    : locale === 'uk'
+      ? `${prayers.length} ${prayers.length === 1 ? 'молитва' : 'молитов'}`
+      : `${prayers.length} ${prayers.length === 1 ? 'молитва' : 'молитв'}`;
   return (
-    <main className="page">
+    <main className="page prayers-page">
       <Breadcrumbs
         items={[{ href: '/', label: translate(locale, 'home') }]}
         current={translate(locale, 'navPrayers')}
       />
-      <section className="page-hero"><p className="eyebrow"><T k="prayersPageEyebrow" /></p><h1><T k="prayersPageTitle" /></h1></section>
-      <LocalizedBackendPrayersList prayers={prayers} />
+      <section className="page-hero">
+        <p className="eyebrow"><T k="prayersPageEyebrow" /></p>
+        <h1><T k="prayersPageTitle" /></h1>
+        <p>{prayers.length ? countLabel : translate(locale, 'prayersPageDescription')}</p>
+      </section>
+      {prayers.length ? <LocalizedBackendPrayersList prayers={prayers} /> : <p className="calendar-empty">{translate(locale, 'noDays')}</p>}
     </main>
   );
 }

@@ -20,6 +20,7 @@ import { SvgIcon } from './SvgIcon';
 type DayKind = CalendarDay['kind'];
 type FilterKind = 'all' | DayKind;
 type ViewMode = 'calendar' | 'list';
+type CalendarPosition = { year: number; monthIndex: number };
 
 const months = [
   { key: 'monthJanuary', ruTitle: 'Январь', days: 31 },
@@ -56,6 +57,13 @@ function monthFromAbsolute(absoluteMonth: number) {
     year: Math.floor(absoluteMonth / 12),
     monthIndex: ((absoluteMonth % 12) + 12) % 12
   };
+}
+
+function parseCalendarQueryPosition(yearValue: string | null, monthValue: string | null): CalendarPosition | null {
+  const queryYear = Number(yearValue);
+  const queryMonth = Number(monthValue);
+  if (!Number.isFinite(queryYear) || !Number.isFinite(queryMonth) || queryMonth < 1 || queryMonth > 12) return null;
+  return { year: queryYear, monthIndex: queryMonth - 1 };
 }
 
 function normalizeLookup(value?: string) {
@@ -209,6 +217,14 @@ function monthIndexFromTitle(title?: string) {
   return index >= 0 ? index : 0;
 }
 
+function calendarPositionFromContent(calendar: CalendarContent | undefined): CalendarPosition {
+  const today = new Date();
+  return {
+    year: Number(calendar?.hero?.year) || today.getFullYear(),
+    monthIndex: calendar?.hero?.monthTitle ? monthIndexFromTitle(calendar.hero.monthTitle) : today.getMonth()
+  };
+}
+
 function dayDateLabel(item: CalendarDay) {
   if (item.gregorianDate && item.julianDate) return `${item.gregorianDate} / ${item.julianDate} ст. ст.`;
   if (item.julianDate) return `${item.julianDate} ст. ст.`;
@@ -315,9 +331,9 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
   const [view, setView] = useState<ViewMode>('calendar');
   const [expandedDay, setExpandedDay] = useState('');
   const [activeCalendar, setActiveCalendar] = useState(calendar);
-  const initialYear = Number(calendar?.hero?.year) || new Date().getFullYear();
-  const [year, setYear] = useState(initialYear);
-  const [monthIndex, setMonthIndex] = useState(() => monthIndexFromTitle(calendar?.hero?.monthTitle));
+  const initialPosition = parseCalendarQueryPosition(searchYear, searchMonth) ?? calendarPositionFromContent(calendar);
+  const [year, setYear] = useState(initialPosition.year);
+  const [monthIndex, setMonthIndex] = useState(initialPosition.monthIndex);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [monthTransition, setMonthTransition] = useState(false);
   const [monthDirection, setMonthDirection] = useState<'next' | 'prev'>('next');
@@ -375,22 +391,19 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
 
   useEffect(() => {
     if (!calendar) return;
-    const calendarYear = Number(calendar.hero?.year) || initialYear;
-    const calendarMonthIndex = monthIndexFromTitle(calendar.hero?.monthTitle);
+    const { year: calendarYear, monthIndex: calendarMonthIndex } = calendarPositionFromContent(calendar);
     const key = calendarCacheKey(calendarYear, calendarMonthIndex, locale);
     calendarCache.current.set(key, calendar);
     if (calendarYear === year && calendarMonthIndex === monthIndex) {
       setActiveCalendar((current) => current === calendar ? current : calendar);
     }
-  }, [calendar, initialYear, locale, monthIndex, year]);
+  }, [calendar, locale, monthIndex, year]);
 
   useEffect(() => {
-    const queryYear = Number(searchYear);
-    const queryMonth = Number(searchMonth);
-    if (!Number.isFinite(queryYear) || !Number.isFinite(queryMonth) || queryMonth < 1 || queryMonth > 12) return;
+    const queryPosition = parseCalendarQueryPosition(searchYear, searchMonth);
+    if (!queryPosition) return;
 
-    const nextMonthIndex = queryMonth - 1;
-    const queryKey = calendarCacheKey(queryYear, nextMonthIndex, locale);
+    const queryKey = calendarCacheKey(queryPosition.year, queryPosition.monthIndex, locale);
     const stateKey = calendarCacheKey(year, monthIndex, locale);
     if (queryKey === stateKey) {
       pendingLocalMonth.current = null;
@@ -399,11 +412,11 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
     if (pendingLocalMonth.current === stateKey) return;
 
     const currentAbsolute = year * 12 + monthIndex;
-    const nextAbsolute = queryYear * 12 + nextMonthIndex;
+    const nextAbsolute = queryPosition.year * 12 + queryPosition.monthIndex;
     setMonthDirection(nextAbsolute >= currentAbsolute ? 'next' : 'prev');
     pendingLocalMonth.current = null;
-    setYear(queryYear);
-    setMonthIndex(nextMonthIndex);
+    setYear(queryPosition.year);
+    setMonthIndex(queryPosition.monthIndex);
   }, [locale, monthIndex, searchYear, searchMonth, year]);
 
   useEffect(() => {
@@ -484,9 +497,15 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
       pendingLocalMonth.current = null;
       return;
     }
-    pendingLocalMonth.current = calendarCacheKey(year, monthIndex, locale);
+
+    const stateKey = calendarCacheKey(year, monthIndex, locale);
+    const queryPosition = parseCalendarQueryPosition(searchYear, searchMonth);
+    const queryKey = queryPosition ? calendarCacheKey(queryPosition.year, queryPosition.monthIndex, locale) : null;
+    if (queryKey && queryKey !== stateKey && pendingLocalMonth.current !== stateKey) return;
+
+    pendingLocalMonth.current = stateKey;
     router.replace(`${pathname}?${nextSearch}`, { scroll: false });
-  }, [locale, monthIndex, pathname, router, searchParamsString, year]);
+  }, [locale, monthIndex, pathname, router, searchMonth, searchParamsString, searchYear, year]);
 
   function moveMonth(delta: number) {
     const absoluteMonth = year * 12 + monthIndex + delta;

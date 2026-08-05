@@ -519,6 +519,29 @@ async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'DELETE', body?
   }
 }
 
+/**
+ * Stage 2J: church_order_options.photo_url/gallery_urls and
+ * icon_product_categories.image_url store bare R2 keys (same convention
+ * as Calendar Day's imageUrl, see calendarDayFromChurchPage above) — the
+ * Worker returns them unresolved, so every consumer must resolve them
+ * before use, exactly once, here, rather than each shop component
+ * reaching for resolveMediaUrl() itself and risking one being missed
+ * (which is exactly how this shipped broken the first time: ShopCatalog,
+ * ProductCard, ProductOrderModal, and the product detail page all read
+ * `photoUrl`/`imageUrl` directly as an <img src>).
+ */
+export function resolveProductImages(product: ChurchProductDto): ChurchProductDto {
+  return {
+    ...product,
+    photoUrl: resolveMediaUrl(product.photoUrl) ?? '',
+    galleryUrls: product.galleryUrls.map((url) => resolveMediaUrl(url)).filter((url): url is string => Boolean(url))
+  };
+}
+
+export function resolveCategoryImage(category: ChurchProductCategoryDto): ChurchProductCategoryDto {
+  return { ...category, imageUrl: resolveMediaUrl(category.imageUrl) ?? '' };
+}
+
 export const publicApi = {
   content: async (params?: { year?: string | number; month?: string | number; locale?: SiteLocale }) => {
     const query = new URLSearchParams();
@@ -592,17 +615,25 @@ export const publicApi = {
   iconProductCategories: () => apiGet<ChurchIconProductCategoryDto[]>('/api/church/icon-product-categories', []),
   createIconOrder: (payload: CreateIconOrderPayload) => apiPostOrThrow<CreateIconOrderResponse>('/api/church/icon-orders', payload),
 
-  products: (params?: { category?: string; search?: string; featured?: boolean; linkedIconGroupId?: string }) => {
+  products: async (params?: { category?: string; search?: string; featured?: boolean; linkedIconGroupId?: string }) => {
     const query = new URLSearchParams();
     if (params?.category) query.set('category', params.category);
     if (params?.search) query.set('search', params.search);
     if (params?.featured !== undefined) query.set('featured', String(params.featured));
     if (params?.linkedIconGroupId) query.set('linkedIconGroupId', params.linkedIconGroupId);
     const suffix = query.toString() ? `?${query.toString()}` : '';
-    return apiGet<ChurchProductDto[]>(`/api/church/products${suffix}`, []);
+    const products = await apiGet<ChurchProductDto[]>(`/api/church/products${suffix}`, []);
+    return products.map(resolveProductImages);
   },
-  productBySlug: (slug: string) => apiGet<PublicProductPage | null>(`/api/church/products/${slug}`, null),
-  productCategories: () => apiGet<ChurchProductCategoryDto[]>('/api/church/product-categories', []),
+  productBySlug: async (slug: string) => {
+    const page = await apiGet<PublicProductPage | null>(`/api/church/products/${slug}`, null);
+    if (!page) return page;
+    return { ...page, product: resolveProductImages(page.product), related: page.related.map(resolveProductImages) };
+  },
+  productCategories: async () => {
+    const categories = await apiGet<ChurchProductCategoryDto[]>('/api/church/product-categories', []);
+    return categories.map(resolveCategoryImage);
+  },
   createProductOrder: (payload: CreateProductOrderPayload) => apiPostOrThrow<CreateIconOrderResponse>('/api/church/product-orders', payload)
 };
 

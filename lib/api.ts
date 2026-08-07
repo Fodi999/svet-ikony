@@ -185,7 +185,9 @@ function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, articl
   const extraPhotos = iconExtraPhotos(rawDescription);
   const cleanDescription = rawDescription.replace(extraPhotosBlockPattern, '').trim();
   const description = cleanDescription || normalizeString(article?.seoDescription) || normalizeString(article?.content);
-  const imageUrls = Array.from(new Set([normalizeString(item.imageUrl), ...extraPhotos].filter(Boolean)));
+  const imageUrls = Array.from(new Set([normalizeString(item.imageUrl), ...extraPhotos].filter(Boolean)))
+    .map((url) => resolveMediaUrl(url))
+    .filter((url): url is string => Boolean(url));
   const now = new Date().toISOString();
   return {
     id: item.id,
@@ -193,7 +195,7 @@ function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, articl
     title: item.title,
     shortDescription: compactText(description, 220),
     fullDescription: normalizeString(article?.content) || description,
-    imageUrl: normalizeString(item.imageUrl),
+    imageUrl: resolveMediaUrl(item.imageUrl) ?? '',
     imageUrls,
     qrCodeUrl: '',
     category: normalizeString(item.feastName),
@@ -228,7 +230,7 @@ export function prayerFromChurchDto(item: ChurchPrayerDto, icon?: ChurchIconDto)
     title: item.title,
     text: item.text,
     category: prayerTypeLabel(item.prayerType, item.language),
-    imageUrl: normalizeString(item.imageUrl) || icon?.imageUrl || undefined,
+    imageUrl: resolveMediaUrl(item.imageUrl) || resolveMediaUrl(icon?.imageUrl) || undefined,
     relatedIcon: icon?.slug || undefined,
     audioUrl: normalizeString(item.audioUrl) || undefined,
     qrCodeUrl: normalizeString(item.qrCodeUrl) || undefined,
@@ -247,7 +249,7 @@ function saintFromChurchDto(item: ChurchSaintDto, icon?: ChurchIconDto): Saint {
     shortDescription: normalizeString(item.shortDescription),
     biography: normalizeString(item.biography),
     feastDay: normalizeString(item.feastDay),
-    imageUrl: normalizeString(item.imageUrl) || normalizeString(icon?.imageUrl),
+    imageUrl: resolveMediaUrl(item.imageUrl) || resolveMediaUrl(icon?.imageUrl) || '',
     relatedIcons: icon?.slug ? [icon.slug] : [],
     prayers: [],
     seoTitle: item.name,
@@ -297,7 +299,7 @@ export function calendarDayFromChurchPage(page: PublicChurchContentPage): Calend
   // a related icon's image — that fallback predates this field existing at
   // all and only still applies to days with no photo of their own.
   const ownImageUrl = resolveMediaUrl(page.calendarDay.imageUrl);
-  const imageUrl = ownImageUrl || icon?.imageUrl || '';
+  const imageUrl = ownImageUrl || resolveMediaUrl(icon?.imageUrl) || '';
   return {
     id: page.calendarDay.id,
     day: dayNumber.padStart(2, '0'),

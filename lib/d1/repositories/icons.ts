@@ -1,6 +1,6 @@
 import { d1All, d1First, d1Run } from '../db';
 import { ApiError } from '../errors';
-import { genId, IS_GLOBAL_DEFAULT, SVETIKONY_SITE_ID, toD1Bool } from '../mappers';
+import { fromD1Json, genId, IS_GLOBAL_DEFAULT, SVETIKONY_SITE_ID, toD1Bool, toD1Json } from '../mappers';
 
 /** Mirrors assistant/src/interfaces/http/church_content.rs
  * list_icons / get_icon (get_icon_row) / create_icon / update_icon /
@@ -12,6 +12,7 @@ type Row = {
   title: string;
   slug: string;
   image_url: string;
+  gallery_urls: string;
   saint_name: string;
   feast_name: string;
   description: string;
@@ -35,6 +36,7 @@ export type ChurchIconDto = {
   title: string;
   slug: string;
   imageUrl: string;
+  galleryUrls: string[];
   saintName: string;
   feastName: string;
   description: string;
@@ -57,6 +59,7 @@ export type ChurchIconPayload = Partial<{
   title: string;
   slug: string;
   imageUrl: string;
+  galleryUrls: string[];
   saintName: string;
   feastName: string;
   description: string;
@@ -79,6 +82,7 @@ function toDto(row: Row): ChurchIconDto {
     title: row.title,
     slug: row.slug,
     imageUrl: row.image_url,
+    galleryUrls: fromD1Json<string[]>(row.gallery_urls, []),
     saintName: row.saint_name,
     feastName: row.feast_name,
     description: row.description,
@@ -104,7 +108,7 @@ function toD1BoolRead(value: number): boolean {
 }
 
 const COLUMNS =
-  'id, calendar_day_id, title, slug, image_url, saint_name, feast_name, description, language, translation_group_id, status, order_enabled, order_block_text, production_time, price_cents, currency, consecration_available, created_at, updated_at';
+  'id, calendar_day_id, title, slug, image_url, gallery_urls, saint_name, feast_name, description, language, translation_group_id, status, order_enabled, order_block_text, production_time, price_cents, currency, consecration_available, created_at, updated_at';
 
 export async function listIcons(params: { calendarDayId?: string; language?: string } = {}) {
   const rows = await d1All<Row>(
@@ -137,16 +141,17 @@ export async function createIcon(payload: ChurchIconPayload): Promise<ChurchIcon
 
   const row = await d1First<Row>(
     `INSERT INTO church_icons
-       (calendar_day_id, title, slug, image_url, saint_name, feast_name, description, language,
+       (calendar_day_id, title, slug, image_url, gallery_urls, saint_name, feast_name, description, language,
         status, order_enabled, order_block_text, production_time, price_cents, currency, consecration_available,
         translation_group_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         COALESCE((SELECT translation_group_id FROM church_icons WHERE slug = ? LIMIT 1), ?))
      RETURNING ${COLUMNS}`,
     payload.calendarDayId ?? null,
     title,
     slug,
     payload.imageUrl ?? '',
+    toD1Json(payload.galleryUrls ?? []),
     payload.saintName ?? '',
     payload.feastName ?? '',
     payload.description ?? '',
@@ -170,7 +175,7 @@ export async function updateIcon(id: string, payload: ChurchIconPayload): Promis
 
   const row = await d1First<Row>(
     `UPDATE church_icons SET
-       calendar_day_id = ?, title = ?, slug = ?, image_url = ?, saint_name = ?, feast_name = ?,
+       calendar_day_id = ?, title = ?, slug = ?, image_url = ?, gallery_urls = ?, saint_name = ?, feast_name = ?,
        description = ?, language = ?, status = ?, order_enabled = ?, order_block_text = ?,
        production_time = ?, price_cents = ?, currency = ?, consecration_available = ?,
        translation_group_id = COALESCE(
@@ -183,6 +188,7 @@ export async function updateIcon(id: string, payload: ChurchIconPayload): Promis
     payload.title?.trim() || current.title,
     slug,
     payload.imageUrl ?? current.imageUrl,
+    toD1Json(payload.galleryUrls ?? current.galleryUrls),
     payload.saintName ?? current.saintName,
     payload.feastName ?? current.feastName,
     payload.description ?? current.description,

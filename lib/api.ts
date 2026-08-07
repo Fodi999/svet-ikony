@@ -185,7 +185,7 @@ function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, articl
   const extraPhotos = iconExtraPhotos(rawDescription);
   const cleanDescription = rawDescription.replace(extraPhotosBlockPattern, '').trim();
   const description = cleanDescription || normalizeString(article?.seoDescription) || normalizeString(article?.content);
-  const imageUrls = Array.from(new Set([normalizeString(item.imageUrl), ...extraPhotos].filter(Boolean)))
+  const imageUrls = Array.from(new Set([normalizeString(item.imageUrl), ...(item.galleryUrls ?? []), ...extraPhotos].filter(Boolean)))
     .map((url) => resolveMediaUrl(url))
     .filter((url): url is string => Boolean(url));
   const now = new Date().toISOString();

@@ -272,6 +272,7 @@ export type ChurchIconDto = {
   title: string;
   slug: string;
   imageUrl: string;
+  galleryUrls?: string[];
   saintName: string;
   feastName: string;
   description: string;

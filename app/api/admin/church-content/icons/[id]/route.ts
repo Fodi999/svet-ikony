@@ -31,10 +31,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     // Best-effort: the D1 delete above is the source of truth and has
     // already succeeded, so a failure here must not fail the request.
-    if (existing.imageUrl && validateMediaKey(existing.imageUrl)) {
+    const keys = new Set([existing.imageUrl, ...existing.galleryUrls]);
+    for (const key of keys) {
+      if (!validateMediaKey(key)) continue;
       try {
         const bucket = await getMediaBucket();
-        await bucket.delete(existing.imageUrl);
+        await bucket.delete(key);
       } catch {
         // Orphan cleanup is opportunistic; nothing to do if it fails.
       }

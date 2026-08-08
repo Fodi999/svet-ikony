@@ -59,7 +59,8 @@ export type Saint = {
   name: string;
   shortDescription: string;
   biography: string;
-  feastDay: string;
+  feastDayOldStyle: string;
+  feastDayNewStyle: string;
   imageUrl: string;
   relatedIcons: string[];
   prayers: string[];
@@ -488,7 +489,8 @@ export type ChurchSaintDto = {
   name: string;
   shortDescription: string;
   biography: string;
-  feastDay: string;
+  feastDayOldStyle: string;
+  feastDayNewStyle: string;
   imageUrl: string;
   language: SiteLocale;
   translationGroupId: string;

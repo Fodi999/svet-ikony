@@ -15,7 +15,16 @@ export function SaintCard({ saint }: { saint: Saint }) {
     <Link className="icon-card" href={localeHref(`/saints/${saint.slug}`)}>
       <figure>{saint.imageUrl ? <StableImage src={saint.imageUrl} alt={saint.name} width={640} height={800} /> : null}</figure>
       <div className="icon-card-copy">
-        {saint.feastDay ? <span>{formatFeastDay(saint.feastDay, locale)}</span> : null}
+        {saint.feastDayNewStyle || saint.feastDayOldStyle ? (
+          <div className="saint-feast-days">
+            {saint.feastDayNewStyle ? <span>{formatFeastDay(saint.feastDayNewStyle, locale)}</span> : null}
+            {saint.feastDayOldStyle ? (
+              <p className="saint-feast-old-style">
+                {formatFeastDay(saint.feastDayOldStyle, locale)} {t('saintOldStyleSuffix')}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         <h3>{saint.name}</h3>
         <p>{textPreview(saint.shortDescription || saint.biography, 160)}</p>
         <small>{t('saintReadLife')} →</small>

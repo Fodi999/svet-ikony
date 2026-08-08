@@ -33,7 +33,8 @@ export function SaintsCatalog({ saints }: { saints: Saint[] }) {
   const visibleSaints = useMemo(() => {
     const search = normalized(query);
     return saints.filter((saint) => {
-      const matchesDate = !targetMonthDay || saint.feastDay === targetMonthDay;
+      const matchesDate =
+        !targetMonthDay || saint.feastDayNewStyle === targetMonthDay || saint.feastDayOldStyle === targetMonthDay;
       const haystack = normalized([saint.name, saint.shortDescription, saint.biography].join(' '));
       return matchesDate && (!search || haystack.includes(search));
     });

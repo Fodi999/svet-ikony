@@ -370,6 +370,18 @@ textarea {
   cursor: pointer;
 }
 
+.saint-feast-days {
+  display: grid;
+  gap: 4px;
+}
+
+.saint-feast-old-style {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* ------------------------------------------------------------
    Карточки икон в каталоге
    ------------------------------------------------------------ */

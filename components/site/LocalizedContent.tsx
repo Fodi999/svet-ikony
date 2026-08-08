@@ -18,6 +18,7 @@ import { PrayerQr } from './PrayerQr';
 import { StableImage } from './StableImage';
 import { SvgIcon } from './SvgIcon';
 import { publicApi } from '@/lib/api';
+import { formatFeastDay } from '@/lib/dates';
 import { absoluteSiteUrl } from '@/lib/site';
 import type { ChurchCalendarDayDto, ChurchIconDto, ChurchInfoDto, ChurchPrayerDto, Icon, Prayer, PrayerVisualizerAssetDto, Saint } from '@/lib/types';
 import { imageForPrayer, localizeIcon, paragraphsFromText, sectionsFromText, textPreview, translateSectionLabel } from '@/lib/iconContent';
@@ -464,7 +465,16 @@ export function LocalizedSaintDetail({ saint }: { saint: Saint }) {
       <section className="sacred-detail-hero">
         {saint.imageUrl ? <figure className="sacred-image-frame"><StableImage src={saint.imageUrl} alt={saint.name} width={800} height={1000} loading="eager" /></figure> : null}
         <div className="sacred-hero-copy">
-          <p className="eyebrow">{saint.feastDay}</p>
+          {saint.feastDayNewStyle || saint.feastDayOldStyle ? (
+            <div className="saint-feast-days">
+              {saint.feastDayNewStyle ? <p className="eyebrow">{formatFeastDay(saint.feastDayNewStyle, locale)}</p> : null}
+              {saint.feastDayOldStyle ? (
+                <p className="saint-feast-old-style">
+                  {formatFeastDay(saint.feastDayOldStyle, locale)} {t('saintOldStyleSuffix')}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <h1>{saint.name}</h1>
           {saint.shortDescription ? <p className="detail-lead">{saint.shortDescription}</p> : null}
           <div className="soft-note reader-text"><DisplayText text={saint.biography} /></div>

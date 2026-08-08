@@ -14,7 +14,8 @@ type Row = {
   name: string;
   short_description: string;
   biography: string;
-  feast_day: string;
+  feast_day_old_style: string;
+  feast_day_new_style: string;
   image_url: string;
   language: string;
   translation_group_id: string;
@@ -32,7 +33,8 @@ export type ChurchSaintDto = {
   name: string;
   shortDescription: string;
   biography: string;
-  feastDay: string;
+  feastDayOldStyle: string;
+  feastDayNewStyle: string;
   imageUrl: string;
   language: string;
   translationGroupId: string;
@@ -49,7 +51,8 @@ export type ChurchSaintPayload = Partial<{
   name: string;
   shortDescription: string;
   biography: string;
-  feastDay: string;
+  feastDayOldStyle: string;
+  feastDayNewStyle: string;
   imageUrl: string;
   language: string;
   status: string;
@@ -66,7 +69,8 @@ function toDto(row: Row): ChurchSaintDto {
     name: row.name,
     shortDescription: row.short_description,
     biography: row.biography,
-    feastDay: row.feast_day,
+    feastDayOldStyle: row.feast_day_old_style,
+    feastDayNewStyle: row.feast_day_new_style,
     imageUrl: row.image_url,
     language: row.language,
     translationGroupId: row.translation_group_id,
@@ -78,7 +82,7 @@ function toDto(row: Row): ChurchSaintDto {
 }
 
 const COLUMNS =
-  'id, icon_id, calendar_day_id, slug, name, short_description, biography, feast_day, image_url, language, translation_group_id, status, created_at, updated_at';
+  'id, icon_id, calendar_day_id, slug, name, short_description, biography, feast_day_old_style, feast_day_new_style, image_url, language, translation_group_id, status, created_at, updated_at';
 
 export async function listSaints(params: { calendarDayId?: string; iconId?: string; language?: string } = {}) {
   const rows = await d1All<Row>(
@@ -113,9 +117,9 @@ export async function createSaint(payload: ChurchSaintPayload): Promise<ChurchSa
 
   const row = await d1First<Row>(
     `INSERT INTO church_saints
-       (icon_id, calendar_day_id, slug, name, short_description, biography, feast_day, image_url, language, status,
+       (icon_id, calendar_day_id, slug, name, short_description, biography, feast_day_old_style, feast_day_new_style, image_url, language, status,
         translation_group_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         COALESCE((SELECT translation_group_id FROM church_saints WHERE slug = ? LIMIT 1), ?))
      RETURNING ${COLUMNS}`,
     payload.iconId ?? null,
@@ -124,7 +128,8 @@ export async function createSaint(payload: ChurchSaintPayload): Promise<ChurchSa
     name,
     payload.shortDescription ?? '',
     payload.biography ?? '',
-    payload.feastDay ?? '',
+    payload.feastDayOldStyle ?? '',
+    payload.feastDayNewStyle ?? '',
     payload.imageUrl ?? '',
     payload.language ?? 'uk',
     payload.status ?? 'draft',
@@ -141,7 +146,7 @@ export async function updateSaint(id: string, payload: ChurchSaintPayload): Prom
   const row = await d1First<Row>(
     `UPDATE church_saints SET
        icon_id = ?, calendar_day_id = ?, slug = ?, name = ?, short_description = ?, biography = ?,
-       feast_day = ?, image_url = ?, language = ?, status = ?,
+       feast_day_old_style = ?, feast_day_new_style = ?, image_url = ?, language = ?, status = ?,
        translation_group_id = COALESCE(
          (SELECT other.translation_group_id FROM church_saints other WHERE other.slug = ? AND other.id != ? LIMIT 1),
          (SELECT translation_group_id FROM church_saints WHERE id = ?)
@@ -154,7 +159,8 @@ export async function updateSaint(id: string, payload: ChurchSaintPayload): Prom
     payload.name?.trim() || current.name,
     payload.shortDescription ?? current.shortDescription,
     payload.biography ?? current.biography,
-    payload.feastDay ?? current.feastDay,
+    payload.feastDayOldStyle ?? current.feastDayOldStyle,
+    payload.feastDayNewStyle ?? current.feastDayNewStyle,
     payload.imageUrl ?? current.imageUrl,
     payload.language ?? current.language,
     payload.status ?? current.status,

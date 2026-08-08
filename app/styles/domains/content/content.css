@@ -302,6 +302,75 @@ textarea {
 }
 
 /* ------------------------------------------------------------
+   Фільтр за датою памʼяті (сторінка «Святі»)
+   ------------------------------------------------------------ */
+
+.saints-toolbar {
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 480px);
+}
+
+.saints-date-filter {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.saints-date-filter > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.saints-date-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.saints-date-filter-buttons button,
+.saints-date-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  padding: 0 16px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color var(--speed) var(--ease), color var(--speed) var(--ease), background var(--speed) var(--ease);
+}
+
+.saints-date-filter-buttons button:hover,
+.saints-date-pill:hover {
+  border-color: var(--gold);
+  color: var(--text);
+}
+
+.saints-date-filter-buttons button.active,
+.saints-date-pill.active {
+  border-color: var(--gold);
+  background: rgba(205, 164, 90, .14);
+  color: var(--gold-light);
+}
+
+.saints-date-pill input[type="date"] {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------
    Карточки икон в каталоге
    ------------------------------------------------------------ */
 

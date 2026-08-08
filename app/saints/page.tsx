@@ -1,4 +1,4 @@
-import { LocalizedSaintsList } from '@/components/site/LocalizedContent';
+import { SaintsCatalog } from '@/components/site/SaintsCatalog';
 import { T } from '@/components/site/TranslatedText';
 import { publicApi } from '@/lib/api';
 import { translate } from '@/lib/i18n';
@@ -18,5 +18,5 @@ export async function generateMetadata() {
 export default async function SaintsPage() {
   const locale = await getRequestLocale();
   const saints = await publicApi.saints(locale);
-  return <main className="page"><section className="page-hero"><p className="eyebrow"><T k="saintsPageEyebrow" /></p><h1><T k="saintsPageTitle" /></h1></section><LocalizedSaintsList saints={saints} /></main>;
+  return <main className="page"><section className="page-hero"><p className="eyebrow"><T k="saintsPageEyebrow" /></p><h1><T k="saintsPageTitle" /></h1></section><SaintsCatalog saints={saints} /></main>;
 }

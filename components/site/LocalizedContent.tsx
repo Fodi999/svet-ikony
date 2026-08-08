@@ -452,11 +452,6 @@ export function LocalizedChurchPrayerDetail({ prayer, icon, calendarDay, categor
   );
 }
 
-export function LocalizedSaintsList({ saints }: { saints: Saint[] }) {
-  const localeHref = useLocaleHref();
-  return <div className="list-grid">{saints.map((saint) => <Link key={saint.id} href={localeHref(`/saints/${saint.slug}`)}><span>{saint.feastDay}</span><strong>{saint.name}</strong><p>{textPreview(saint.shortDescription || saint.biography, 180)}</p></Link>)}</div>;
-}
-
 export function LocalizedSaintDetail({ saint }: { saint: Saint }) {
   const { locale, t } = useI18n();
   const localeHref = useLocaleHref();

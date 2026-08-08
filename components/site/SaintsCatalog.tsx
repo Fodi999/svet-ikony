@@ -6,6 +6,7 @@ import { formatFeastDay, monthDayFromDate } from '@/lib/dates';
 import { BrandLogo } from './BrandLogo';
 import { useI18n } from './LanguageProvider';
 import { SaintCard } from './SaintCard';
+import { SaintDatePicker } from './SaintDatePicker';
 
 function normalized(value: string) {
   return value.toLowerCase().replace(/ё/g, 'е').trim();
@@ -26,7 +27,7 @@ export function SaintsCatalog({ saints }: { saints: Saint[] }) {
       tomorrow.setDate(tomorrow.getDate() + 1);
       return monthDayFromDate(tomorrow);
     }
-    if (dateFilter === 'custom' && customDate) return customDate.slice(5);
+    if (dateFilter === 'custom' && customDate) return customDate;
     return null;
   }, [dateFilter, customDate]);
 
@@ -39,6 +40,11 @@ export function SaintsCatalog({ saints }: { saints: Saint[] }) {
       return matchesDate && (!search || haystack.includes(search));
     });
   }, [saints, query, targetMonthDay]);
+
+  function resetDate() {
+    setDateFilter('all');
+    setCustomDate('');
+  }
 
   return (
     <>
@@ -59,7 +65,7 @@ export function SaintsCatalog({ saints }: { saints: Saint[] }) {
         <div className="saints-date-filter">
           <span>{t('saintFilterLabel')}</span>
           <div className="saints-date-filter-buttons">
-            <button type="button" className={dateFilter === 'all' ? 'active' : ''} onClick={() => setDateFilter('all')}>
+            <button type="button" className={dateFilter === 'all' ? 'active' : ''} onClick={resetDate}>
               {t('saintFilterAll')}
             </button>
             <button type="button" className={dateFilter === 'today' ? 'active' : ''} onClick={() => setDateFilter('today')}>
@@ -68,27 +74,28 @@ export function SaintsCatalog({ saints }: { saints: Saint[] }) {
             <button type="button" className={dateFilter === 'tomorrow' ? 'active' : ''} onClick={() => setDateFilter('tomorrow')}>
               {t('saintFilterTomorrow')}
             </button>
-            <label className={`saints-date-pill${dateFilter === 'custom' ? ' active' : ''}`}>
-              <span>{dateFilter === 'custom' && customDate ? formatFeastDay(customDate.slice(5), locale) : t('saintFilterCustom')}</span>
-              <input
-                type="date"
-                value={customDate}
-                onChange={(event) => {
-                  setCustomDate(event.target.value);
-                  setDateFilter('custom');
-                }}
-                aria-label={t('saintFilterCustom')}
-              />
-            </label>
+            <SaintDatePicker
+              value={dateFilter === 'custom' ? customDate : ''}
+              placeholder={t('saintFilterCustom')}
+              onChange={(monthDay) => {
+                setCustomDate(monthDay);
+                setDateFilter('custom');
+              }}
+            />
           </div>
         </div>
       </div>
 
       <section className="icons-catalog-section">
+        {targetMonthDay ? (
+          <h2 className="saints-filtered-heading">
+            {t('saintsPageEyebrow')} — {formatFeastDay(targetMonthDay, locale)}
+          </h2>
+        ) : null}
         {visibleSaints.length ? (
           <div className="icon-grid">{visibleSaints.map((saint) => <SaintCard key={saint.id} saint={saint} />)}</div>
         ) : (
-          <p className="icons-empty">{t('noSaintsFound')}</p>
+          <p className="icons-empty">{targetMonthDay ? t('noSaintsFoundForDate') : t('noSaintsFound')}</p>
         )}
       </section>
     </>

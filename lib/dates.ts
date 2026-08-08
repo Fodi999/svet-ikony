@@ -6,6 +6,13 @@ const LOCALE_CODES: Record<Locale, string> = {
   en: 'en-US'
 };
 
+/** BCP-47 tag for Intl.* calls elsewhere that need locale-aware
+ * formatting beyond what formatFeastDay covers (e.g. a month/year
+ * calendar header). */
+export function localeCode(locale: Locale): string {
+  return LOCALE_CODES[locale];
+}
+
 /**
  * Formats a "MM-DD" feast-day string (year-agnostic, matches
  * church_saints.feast_day) into a locale-aware "4 грудня" / "4 декабря" /

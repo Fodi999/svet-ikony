@@ -4,6 +4,7 @@ import { BackLink, Breadcrumbs } from '@/components/site/Breadcrumbs';
 import { LocalizedSaintDetail } from '@/components/site/LocalizedContent';
 import { publicApi } from '@/lib/api';
 import { localeNames, translate, withLocale } from '@/lib/i18n';
+import { resolveMediaUrl } from '@/lib/media/resolver';
 import { pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
 import type { Saint } from '@/lib/types';
@@ -32,7 +33,7 @@ export async function generateMetadata({ params, searchParams }: Props) {
     title: saint.name,
     description: (saint.shortDescription || saint.biography).replace(/\s+/g, ' ').trim().slice(0, 180),
     path: `/saints/${saint.slug}`,
-    image: saint.imageUrl || page?.icon?.imageUrl || undefined,
+    image: resolveMediaUrl(saint.imageUrl) || resolveMediaUrl(page?.icon?.imageUrl) || undefined,
     locale
   });
 }
@@ -78,7 +79,7 @@ export default async function SaintPage({ params, searchParams }: Props) {
     shortDescription: page.saint.shortDescription,
     biography: page.saint.biography,
     feastDay: page.saint.feastDay,
-    imageUrl: page.saint.imageUrl || page.icon?.imageUrl || '',
+    imageUrl: resolveMediaUrl(page.saint.imageUrl) || resolveMediaUrl(page.icon?.imageUrl) || '',
     relatedIcons: page.icon?.slug ? [page.icon.slug] : [],
     prayers: page.prayers.map((prayer) => prayer.slug),
     seoTitle: page.saint.name,

@@ -1,0 +1,30 @@
+/**
+ * Tailwind, scoped in deliberately. Importing plain "tailwindcss" pulls in
+ * Preflight (a global reset — zeroes margins, strips default <button>/
+ * <input> styling, etc.) which would fight every hand-written rule in
+ * app/styles/**. Importing theme.css + utilities.css directly skips
+ * Preflight entirely, so Tailwind utility classes are available (and only
+ * affect elements that actually use them) without touching the rest of
+ * the site's existing CSS system. This is the seed for migrating the site
+ * piece by piece — see components/ui/** for the first components ported
+ * (shadcn's Calendar/Popover/Button, used by SaintDatePicker).
+ */
+@layer theme, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+  --color-background: #141511;
+  --color-foreground: #f6f0e4;
+  --color-popover: #1b1c17;
+  --color-popover-foreground: #f6f0e4;
+  --color-primary: #cda45a;
+  --color-primary-foreground: #141511;
+  --color-muted: rgba(205, 164, 90, 0.14);
+  --color-muted-foreground: #c8bfad;
+  --color-border: rgba(205, 164, 90, 0.28);
+  --color-ring: #cda45a;
+  --radius-md: 6px;
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.45);
+}

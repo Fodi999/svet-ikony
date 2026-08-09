@@ -80,9 +80,15 @@ export default async function AlphabetLetterPage({ params, searchParams }: Props
       />
       <section className="sacred-detail-hero">
         {letter.mainImageUrl ? (
-          <figure className="sacred-image-frame slavonic-detail-frame"><StableImage src={letter.mainImageUrl} alt={letter.name} loading="eager" /></figure>
+          <figure className="sacred-image-frame block! aspect-auto!">
+            <StableImage src={letter.mainImageUrl} alt={letter.name} loading="eager" className="aspect-auto! h-auto! w-full! object-contain!" />
+          </figure>
         ) : (
-          <figure className="sacred-image-frame slavonic-letter-symbol" style={{ color: letter.color || undefined, borderColor: letter.color || undefined }} aria-hidden="true">
+          <figure
+            className="sacred-image-frame grid place-items-center bg-[rgba(29,26,19,.96)]! font-serif text-[clamp(72px,12vw,160px)] leading-none"
+            style={{ color: letter.color || undefined, borderColor: letter.color || undefined }}
+            aria-hidden="true"
+          >
             {letter.letter}
           </figure>
         )}
@@ -90,9 +96,19 @@ export default async function AlphabetLetterPage({ params, searchParams }: Props
           <p className="eyebrow">{translate(locale, 'alphabetPageEyebrow')} · {String(letter.sortOrder).padStart(2, '0')}</p>
           <h1>{letter.letter} — {letter.name}</h1>
           {letter.shortDescription ? <p className="detail-lead">{letter.shortDescription}</p> : null}
-          <dl className="slavonic-letter-meta">
-            {letter.modernEquivalent ? <div><dt>{translate(locale, 'alphabetModernSoundLabel')}</dt><dd>{letter.modernEquivalent}</dd></div> : null}
-            {letter.numericValue != null ? <div><dt>{translate(locale, 'alphabetNumericValueLabel')}</dt><dd>{letter.numericValue}</dd></div> : null}
+          <dl className="my-4.5 grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
+            {letter.modernEquivalent ? (
+              <div className="rounded-xs border border-gold/28 bg-gold/6 px-3.5 py-2.5">
+                <dt className="mb-1 font-sans text-xs font-bold text-muted-foreground uppercase">{translate(locale, 'alphabetModernSoundLabel')}</dt>
+                <dd className="font-serif text-lg text-foreground">{letter.modernEquivalent}</dd>
+              </div>
+            ) : null}
+            {letter.numericValue != null ? (
+              <div className="rounded-xs border border-gold/28 bg-gold/6 px-3.5 py-2.5">
+                <dt className="mb-1 font-sans text-xs font-bold text-muted-foreground uppercase">{translate(locale, 'alphabetNumericValueLabel')}</dt>
+                <dd className="font-serif text-lg text-foreground">{letter.numericValue}</dd>
+              </div>
+            ) : null}
           </dl>
           {letter.fullText ? <div className="soft-note reader-text"><p>{letter.fullText}</p></div> : null}
         </div>

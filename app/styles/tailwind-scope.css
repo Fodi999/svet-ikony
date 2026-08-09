@@ -27,4 +27,18 @@
   --color-ring: #cda45a;
   --radius-md: 6px;
   --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.45);
+
+  /* Added for the Slavonic-alphabet migration (Phase 1) — mirror
+     app/styles/shared/foundation.css's :root tokens by exact value.
+     --color-background/--color-popover above are intentionally NOT
+     touched even though they don't match foundation's --background
+     1:1 (they're tuned for the already-shipped Calendar/Popover) — use
+     --color-canvas for an accurate page-background instead. */
+  --color-canvas: #0b0c0a;
+  --color-gold: #cda45a;
+  --color-gold-light: #e9cb84;
+  --radius-xs: 4px;
+  --shadow-lg: 0 22px 58px rgba(0, 0, 0, 0.38);
+  --font-serif: Georgia, "Times New Roman", serif;
+  --ease-brand: cubic-bezier(0.2, 0.7, 0.3, 1);
 }

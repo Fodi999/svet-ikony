@@ -8,8 +8,7 @@
    Все старые классы кнопок замаплены на эту систему.
    ------------------------------------------------------------ */
 
-.btn,
-.icon-lightbox-close {
+.btn {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
@@ -34,8 +33,7 @@
 }
 
 .btn:hover,
-.btn:focus-visible,
-.icon-lightbox-close:hover {
+.btn:focus-visible {
   border-color: var(--gold);
   background: linear-gradient(180deg, var(--gold-light), var(--gold));
   color: var(--background);
@@ -75,9 +73,7 @@
 .card,
 .sacred-panel,
 .content-feature-grid article,
-.faq details,
-.list-grid > a,
-.list-grid .prayer-list-card {
+.faq details {
   position: relative;
   border: 1px solid var(--border-gold);
   border-radius: var(--radius-md);
@@ -91,9 +87,7 @@
 
 .card:hover,
 .content-feature-grid article:hover,
-.faq details:hover,
-.list-grid > a:hover,
-.list-grid .prayer-list-card:hover {
+.faq details:hover {
   border-color: var(--gold);
   background:
     linear-gradient(135deg, rgba(205, 164, 90, .095), transparent 44%),

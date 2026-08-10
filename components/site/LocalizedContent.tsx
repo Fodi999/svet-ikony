@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from 'react';
 import { BookOpen, CalendarDays, ChevronRight, Clock3, Cross, Headphones, HeartHandshake, MapPin, Phone, Sparkles, UserRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { IconPhotoCatalog, type IconPhotoCatalogItem } from './IconPhotoCatalog';
-import { IconCard } from './IconCard';
 import { AssetButton } from './AssetButton';
 import { BackLink, Breadcrumbs } from './Breadcrumbs';
 import { BrandLogo } from './BrandLogo';
@@ -157,13 +156,46 @@ function prayerTitle(title: string, locale: keyof typeof uiText) {
   return alreadyPrayer ? title : `${ui(locale, 'prayer')}: ${title}`;
 }
 
-function DisplayText({ text }: { text?: string }) {
+const dropCapClass =
+  "first-letter:float-left first-letter:mr-[.18em] first-letter:mt-[.07em] first-letter:text-gold-light first-letter:text-[3.1em] first-letter:leading-[.84]";
+
+// dropCap replicates prayer-mode.css's `.prayer-reader > p:first-of-type::first-letter` /
+// `.prayer-reader .structured-block:first-child p:first-of-type::first-letter` — a decorative
+// drop-cap that only applies to the prayer reader (LocalizedChurchPrayerDetail), never to
+// saint bios or church facts, so it's an explicit prop rather than an ambient CSS selector.
+function DisplayText({ text, dropCap }: { text?: string; dropCap?: boolean }) {
   const { locale } = useI18n();
   const sections = sectionsFromText(text);
   if (sections.length) {
-    return <div className="structured-blocks">{sections.map((section, sectionIndex) => <section key={`${section.label}-${sectionIndex}`} className="structured-block"><h3>{translateSectionLabel(section.label, locale)}</h3>{paragraphsFromText(section.value).map((part, partIndex) => <p key={`${section.label}-${partIndex}`}>{part}</p>)}</section>)}</div>;
+    return (
+      <div className="grid gap-[clamp(14px,1.6vw,22px)]">
+        {sections.map((section, sectionIndex) => (
+          <section key={`${section.label}-${sectionIndex}`} className="border-l-[3px] border-l-[#a97832] pl-[clamp(14px,1.6vw,20px)]">
+            <h3 className="mt-0 mx-0 mb-2 text-gold-light text-[13px] font-black tracking-[.1em] uppercase">
+              {translateSectionLabel(section.label, locale)}
+            </h3>
+            {paragraphsFromText(section.value).map((part, partIndex) => (
+              <p
+                key={`${section.label}-${partIndex}`}
+                className={`text-muted-foreground last:mb-0 ${dropCap && sectionIndex === 0 && partIndex === 0 ? dropCapClass : ''}`}
+              >
+                {part}
+              </p>
+            ))}
+          </section>
+        ))}
+      </div>
+    );
   }
-  return <>{paragraphsFromText(text).map((part, partIndex) => <p key={`${part.slice(0, 32)}-${partIndex}`}>{part}</p>)}</>;
+  return (
+    <>
+      {paragraphsFromText(text).map((part, partIndex) => (
+        <p key={`${part.slice(0, 32)}-${partIndex}`} className={dropCap && partIndex === 0 ? dropCapClass : undefined}>
+          {part}
+        </p>
+      ))}
+    </>
+  );
 }
 
 function uniqueImages(images: Array<string | undefined | null>) {
@@ -234,16 +266,36 @@ function IconStory({ text, images }: { text?: string; images: string[] }) {
   if (!sections.length) return null;
 
   return (
-    <section className="icon-story-flow">
+    <section className="grid gap-[clamp(18px,3vw,42px)] mt-[clamp(34px,5vw,78px)]">
       {sections.map((section, index) => {
         const image = images[index % images.length];
+        const isEven = index % 2 === 1;
         return (
-          <article className="icon-story-block" key={`${section.title}-${image || section.paragraphs.join('|').slice(0, 64)}`}>
-            {image ? <figure><StableImage src={image} alt={section.title} width={800} height={1000} /></figure> : null}
-            <div>
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <h2>{section.title}</h2>
-              {section.paragraphs.map((paragraph, paragraphIndex) => <p key={`${section.title}-${paragraphIndex}`}>{paragraph}</p>)}
+          <article
+            className="grid grid-cols-[minmax(260px,.92fr)_minmax(0,1.08fr)] gap-[clamp(20px,4vw,64px)] items-center border-b border-[rgba(232,211,169,.13)] pb-[clamp(22px,3vw,42px)] max-[900px]:gap-4"
+            key={`${section.title}-${image || section.paragraphs.join('|').slice(0, 64)}`}
+          >
+            {image ? (
+              <figure
+                className={`relative m-0 border border-gold/28 rounded-[8px] p-[clamp(10px,1.4vw,18px)] aspect-[4/5] overflow-hidden max-[900px]:max-h-[72vh] ${isEven ? 'order-2 max-[900px]:order-none' : ''}`}
+              >
+                <StableImage
+                  src={image}
+                  alt={section.title}
+                  width={800}
+                  height={1000}
+                  className="relative z-[1] block w-full h-full aspect-[4/5] object-contain max-[900px]:max-h-[72vh]"
+                />
+              </figure>
+            ) : null}
+            <div className="min-w-0 max-w-[760px]">
+              <span className="block mb-3 text-gold-light text-[12px] font-black tracking-[.16em] uppercase">{String(index + 1).padStart(2, '0')}</span>
+              <h2 className="mt-0 mx-0 mb-[clamp(12px,1.4vw,18px)] text-foreground font-serif text-[clamp(26px,2.8vw,48px)] font-bold leading-[1.05]">{section.title}</h2>
+              {section.paragraphs.map((paragraph, paragraphIndex) => (
+                <p key={`${section.title}-${paragraphIndex}`} className="mt-0 mx-0 mb-3.5 last:mb-0 text-muted-foreground font-serif text-[clamp(17px,1.45vw,22px)] leading-[1.5]">
+                  {paragraph}
+                </p>
+              ))}
             </div>
           </article>
         );
@@ -252,31 +304,37 @@ function IconStory({ text, images }: { text?: string; images: string[] }) {
   );
 }
 
-export function LocalizedIconGrid({ icons }: { icons: Icon[] }) {
-  const { locale } = useI18n();
-  return <div className="icon-grid">{icons.map((icon) => <IconCard key={icon.id} icon={localizeIcon(icon, locale)} />)}</div>;
-}
-
 export function LocalizedBackendPrayersList({ prayers }: { prayers: Prayer[] }) {
   const { locale } = useI18n();
   const localeHref = useLocaleHref();
   return (
-    <div className="list-grid">
+    <div className="grid grid-cols-3 gap-[clamp(14px,2vw,28px)] mt-[clamp(28px,4vw,58px)] max-[900px]:grid-cols-1 max-[900px]:gap-3 max-[900px]:mt-6">
       {prayers.map((prayer) => {
         const title = prayerTitle(prayer.title, locale);
         const image = prayer.imageUrl || '';
         return (
-          <article className="prayer-list-card" key={prayer.id}>
+          <article
+            className="relative min-w-0 grid grid-rows-[auto_1fr] gap-0 rounded-[8px] border border-gold/28 bg-[linear-gradient(135deg,rgba(205,164,90,.065),transparent_44%),linear-gradient(160deg,rgba(127,141,101,.055),transparent_60%),#141511] p-0 text-foreground overflow-hidden hover:border-gold hover:bg-[linear-gradient(135deg,rgba(205,164,90,.095),transparent_44%),linear-gradient(160deg,rgba(127,141,101,.075),transparent_60%),#1b1c16]"
+            key={prayer.id}
+          >
             {image ? (
-              <Link className="prayer-list-media" href={localeHref(`/prayers/${prayer.slug}`)}>
-                <StableImage src={image} alt={title} width={720} height={720} />
+              <Link className="relative block aspect-square border-0 border-b border-gold/28 p-[clamp(16px,2.4vw,34px)] overflow-hidden" href={localeHref(`/prayers/${prayer.slug}`)}>
+                <StableImage
+                  src={image}
+                  alt={title}
+                  width={720}
+                  height={720}
+                  className="relative z-[1] block w-full h-full max-h-[clamp(280px,28vw,520px)] aspect-square object-contain"
+                />
               </Link>
             ) : null}
-            <div className="prayer-list-copy">
-              <span>{prayer.category || ui(locale, 'prayerCategory')}</span>
-              <Link href={localeHref(`/prayers/${prayer.slug}`)}><strong>{title}</strong></Link>
-              <p>{textPreview(prayer.text, 190)}</p>
-              <div className="prayer-card-actions">
+            <div className="relative z-[1] min-w-0 grid content-start gap-3 p-[clamp(18px,2vw,28px)] max-[430px]:p-4">
+              <span className="text-gold-light">{prayer.category || ui(locale, 'prayerCategory')}</span>
+              <Link className="text-foreground no-underline" href={localeHref(`/prayers/${prayer.slug}`)}>
+                <strong className="text-foreground font-black">{title}</strong>
+              </Link>
+              <p className="text-muted-foreground">{textPreview(prayer.text, 190)}</p>
+              <div className="grid grid-cols-2 gap-2.5 items-center mt-1.5 max-[900px]:grid-cols-1">
                 <AssetButton href={localeHref(`/prayers/${prayer.slug}`)}>{ui(locale, 'readPrayer')}</AssetButton>
               </div>
             </div>
@@ -331,6 +389,9 @@ export function LocalizedChurchPrayerDetail({ prayer, icon, calendarDay, categor
         items={[{ href: '/', label: t('home') }, { href: '/prayers', label: t('navPrayers') }]}
         current={title}
       />
+      {/* prayer-mode-hero stays as a marker: prayer-mode.css's .prayer-mode-hero .asset-button
+          (the glow-pill variant) and .prayer-mode-hero h1 both target it via descendant
+          selectors, and it already carries the layout/typography this section needs. */}
       <section className="read-hero prayer-mode-hero">
         <div>
           <p className="eyebrow">{categoryLabel}</p>
@@ -378,7 +439,7 @@ export function LocalizedChurchPrayerDetail({ prayer, icon, calendarDay, categor
       </div>
 
       {prayer.audioUrl ? (
-        <div className="prayer-audio-block">
+        <div className="grid gap-2.5 w-[min(100%,1460px)] mt-2 mx-auto">
           {/* No `controls` attribute: this element has no visible UI of its
              own — PrayerAudioBar below is the one shared transport for both
              plain reading and prayer mode. */}
@@ -389,55 +450,74 @@ export function LocalizedChurchPrayerDetail({ prayer, icon, calendarDay, categor
             pauseLabel={ui(locale, 'pauseAudio')}
             volumeLabel={ui(locale, 'volumeLabel')}
           />
-          {visualizerOn ? <p className="prayer-audio-hint">{ui(locale, 'enableSoundHint')}</p> : null}
+          {visualizerOn ? (
+            <p className="m-0 text-gold-light font-serif text-[13px] text-center opacity-[.76]">{ui(locale, 'enableSoundHint')}</p>
+          ) : null}
         </div>
       ) : null}
 
-      <section className="prayer-info-strip">
-        <article className="prayer-info-about">
-          <span className="prayer-info-icon"><Cross size={24} aria-hidden="true" /></span>
+      <section className="grid grid-cols-[minmax(280px,1.05fr)_minmax(250px,.7fr)_minmax(310px,.86fr)] gap-0 mt-[22px] border border-gold/28 rounded-[8px] bg-[linear-gradient(135deg,rgba(205,164,90,.06),transparent_42%),rgba(14,15,12,.84)] shadow-[inset_0_0_0_1px_rgba(233,203,132,.04)] overflow-hidden w-full max-w-[1660px] mx-auto max-[900px]:grid-cols-1">
+        <article className="min-w-0 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3.5 p-[clamp(20px,2vw,30px)] max-[560px]:grid-cols-1">
+          <span className="size-16 grid place-items-center border border-gold/28 rounded-full bg-gold/9 text-gold-light max-[560px]:size-[54px]">
+            <Cross size={24} aria-hidden="true" />
+          </span>
           <div>
-            <h2>{icon?.title || title}</h2>
-            <p>{textPreview(prayer.text, 230)}</p>
+            <h2 className="m-0 text-[#ead9bd] font-serif text-[clamp(18px,1.35vw,24px)] font-bold leading-[1.18]">{icon?.title || title}</h2>
+            <p className="m-0 text-[rgba(232,222,204,.72)] font-serif text-[15px] leading-[1.48]">{textPreview(prayer.text, 230)}</p>
             {icon ? (
-              <Link href={localeHref(`/icons/${icon.slug}`)} className="prayer-info-link">
+              <Link
+                href={localeHref(`/icons/${icon.slug}`)}
+                className="inline-flex min-w-0 items-center gap-[9px] text-gold-light font-serif text-[15px] leading-[1.2] transition-colors duration-[180ms] ease-brand hover:text-foreground focus-visible:text-foreground"
+              >
                 {ui(locale, 'iconPage')} <ChevronRight size={15} aria-hidden="true" />
               </Link>
             ) : null}
           </div>
         </article>
 
-        <article className="prayer-info-related">
-          <h2>{ui(locale, 'furtherReading')}</h2>
-          <div className="prayer-info-links">
+        <article className="min-w-0 grid gap-3.5 p-[clamp(20px,2vw,30px)] max-[900px]:border-t max-[900px]:border-t-gold/28 border-l border-l-gold/28 max-[900px]:border-l-0">
+          <h2 className="m-0 text-[#ead9bd] font-serif text-[clamp(18px,1.35vw,24px)] font-bold leading-[1.18]">{ui(locale, 'furtherReading')}</h2>
+          <div className="grid gap-3">
             {icon ? (
-              <Link href={localeHref(`/icons/${icon.slug}`)}>
-                <BookOpen size={15} aria-hidden="true" />
+              <Link
+                href={localeHref(`/icons/${icon.slug}`)}
+                className="inline-flex min-w-0 items-center gap-[9px] text-gold-light font-serif text-[15px] leading-[1.2] transition-colors duration-[180ms] ease-brand hover:text-foreground focus-visible:text-foreground"
+              >
+                <BookOpen size={15} aria-hidden="true" className="flex-none text-gold-light" />
                 <span>{icon.title}</span>
               </Link>
             ) : null}
             {date ? (
-              <Link href={localeHref(`/church/calendar/${date}`)}>
-                <CalendarDays size={15} aria-hidden="true" />
+              <Link
+                href={localeHref(`/church/calendar/${date}`)}
+                className="inline-flex min-w-0 items-center gap-[9px] text-gold-light font-serif text-[15px] leading-[1.2] transition-colors duration-[180ms] ease-brand hover:text-foreground focus-visible:text-foreground"
+              >
+                <CalendarDays size={15} aria-hidden="true" className="flex-none text-gold-light" />
                 <span>{calendarDay?.title || date}</span>
               </Link>
             ) : null}
-            <Link href={localeHref('/prayers')}>
-              <BookOpen size={15} aria-hidden="true" />
+            <Link
+              href={localeHref('/prayers')}
+              className="inline-flex min-w-0 items-center gap-[9px] text-gold-light font-serif text-[15px] leading-[1.2] transition-colors duration-[180ms] ease-brand hover:text-foreground focus-visible:text-foreground"
+            >
+              <BookOpen size={15} aria-hidden="true" className="flex-none text-gold-light" />
               <span>{t('navPrayers')}</span>
             </Link>
           </div>
         </article>
 
-        <article className="prayer-info-support">
+        <article className="min-w-0 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3.5 p-[clamp(20px,2vw,30px)] max-[900px]:border-t max-[900px]:border-t-gold/28 border-l border-l-gold/28 max-[900px]:border-l-0 max-[560px]:grid-cols-1">
           <div>
-            <h2>{ui(locale, 'forChurches')}</h2>
-            <p>{t('churchesFeatureDonationsText')}</p>
-            <Link href={localeHref('/churches')} className="prayer-info-link">
+            <h2 className="m-0 text-[#ead9bd] font-serif text-[clamp(18px,1.35vw,24px)] font-bold leading-[1.18]">{ui(locale, 'forChurches')}</h2>
+            <p className="m-0 text-[rgba(232,222,204,.72)] font-serif text-[15px] leading-[1.48]">{t('churchesFeatureDonationsText')}</p>
+            <Link
+              href={localeHref('/churches')}
+              className="inline-flex min-w-0 items-center gap-[9px] text-gold-light font-serif text-[15px] leading-[1.2] transition-colors duration-[180ms] ease-brand hover:text-foreground focus-visible:text-foreground"
+            >
               {ui(locale, 'forChurches')} <ChevronRight size={15} aria-hidden="true" />
             </Link>
           </div>
-          <div className="prayer-info-qr">
+          <div className="grid justify-items-center gap-2 text-gold-light max-[560px]:justify-items-start">
             <HeartHandshake size={18} aria-hidden="true" />
             <PrayerQr
               url={publicUrl}
@@ -466,10 +546,10 @@ export function LocalizedSaintDetail({ saint }: { saint: Saint }) {
         {saint.imageUrl ? <figure className="sacred-image-frame"><StableImage src={saint.imageUrl} alt={saint.name} width={800} height={1000} loading="eager" /></figure> : null}
         <div className="sacred-hero-copy">
           {saint.feastDayNewStyle || saint.feastDayOldStyle ? (
-            <div className="saint-feast-days">
+            <div className="grid gap-1">
               {saint.feastDayNewStyle ? <p className="eyebrow">{formatFeastDay(saint.feastDayNewStyle, locale)}</p> : null}
               {saint.feastDayOldStyle ? (
-                <p className="saint-feast-old-style">
+                <p className="m-0 text-muted-foreground text-[13px] font-semibold">
                   {formatFeastDay(saint.feastDayOldStyle, locale)} {t('saintOldStyleSuffix')}
                 </p>
               ) : null}
@@ -502,23 +582,62 @@ function ChurchGallery({ title, images }: { title: string; images: string[] }) {
 
   return (
     <>
-      <div className="church-gallery-grid">
-        {images.map((image, index) => (
-          <figure className={`church-gallery-card${index === 0 ? ' featured' : ''}`} key={`${image}-${index}`}>
-            <button className="church-gallery-open" type="button" onClick={() => setActiveIndex(index)}>
-              <StableImage src={image} alt={`${title} ${index + 1}`} width={900} height={675} />
-              <span><SvgIcon name="zoom" size={16} />{t('zoomImage')}</span>
-            </button>
-          </figure>
-        ))}
+      <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(260px,.65fr)] auto-rows-[minmax(190px,1fr)] gap-[clamp(12px,1.5vw,20px)] max-[820px]:grid-cols-1">
+        {images.map((image, index) => {
+          const featured = index === 0;
+          return (
+            <figure
+              className={`min-w-0 m-0 max-[820px]:min-h-[320px] max-[520px]:min-h-[240px] ${
+                featured ? 'row-span-2 min-h-[clamp(420px,42vw,680px)] max-[820px]:row-auto' : 'min-h-[220px]'
+              }`}
+              key={`${image}-${index}`}
+            >
+              <button
+                className="group relative w-full h-full min-h-[inherit] block border border-gold/28 rounded-[8px] p-0 bg-[linear-gradient(135deg,rgba(205,164,90,.08),transparent_48%),#141511] overflow-hidden cursor-zoom-in shadow-[0_6px_18px_rgba(0,0,0,.18)] after:content-[''] after:absolute after:inset-0 after:z-[2] after:bg-[linear-gradient(180deg,transparent_56%,rgba(0,0,0,.42))] after:pointer-events-none"
+                type="button"
+                onClick={() => setActiveIndex(index)}
+              >
+                <StableImage
+                  src={image}
+                  alt={`${title} ${index + 1}`}
+                  width={900}
+                  height={675}
+                  className="relative z-[1] block w-full h-full min-h-[inherit] object-cover transition-[filter,transform] duration-[180ms] ease-brand group-hover:[filter:saturate(1.06)_contrast(1.04)] group-hover:scale-[1.018] group-focus-visible:[filter:saturate(1.06)_contrast(1.04)] group-focus-visible:scale-[1.018]"
+                />
+                <span className="absolute right-3.5 bottom-3.5 z-[3] inline-flex items-center gap-2 border border-gold/28 rounded-full py-[9px] px-[13px] bg-[rgba(11,11,10,.78)] text-gold-light text-[11px] font-black tracking-[.08em] uppercase opacity-0 translate-y-1 transition-[opacity,transform] duration-[180ms] ease-brand group-hover:opacity-100 group-hover:translate-y-0 group-focus-visible:opacity-100 group-focus-visible:translate-y-0 max-[520px]:opacity-100 max-[520px]:translate-y-0">
+                  <SvgIcon name="zoom" size={16} />
+                  {t('zoomImage')}
+                </span>
+              </button>
+            </figure>
+          );
+        })}
       </div>
 
       {active ? (
-        <div className="icon-lightbox" role="dialog" aria-modal="true" aria-label={title}>
-          <button className="icon-lightbox-backdrop" type="button" onClick={() => setActiveIndex(null)} aria-label={t('close')} />
-          <div className="icon-lightbox-panel">
-            <button className="icon-lightbox-close" type="button" onClick={() => setActiveIndex(null)}>{t('close')}</button>
-            <StableImage src={active} alt={title} width={1200} height={900} loading="eager" />
+        <div className="fixed inset-0 z-[2000] grid place-items-center p-[clamp(28px,4vw,56px)] max-[900px]:p-4" role="dialog" aria-modal="true" aria-label={title}>
+          <button
+            className="absolute inset-0 border-0 bg-[rgba(5,5,5,.84)]"
+            type="button"
+            onClick={() => setActiveIndex(null)}
+            aria-label={t('close')}
+          />
+          <div className="relative z-[1] w-[min(1180px,96vw)] max-h-[min(90vh,calc(100vh-56px))] border border-gold/28 rounded-[8px] bg-canvas grid grid-rows-[minmax(0,1fr)_auto] overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-14 before:z-0 before:pointer-events-none before:bg-[linear-gradient(110deg,transparent_0_28%,rgba(241,209,138,.13)_42%,transparent_56%),#141511] before:bg-[length:220%_100%,100%_100%] before:[animation:imageSkeleton_1.4s_ease-in-out_infinite]">
+            <button
+              className="absolute top-3 right-3 z-[2] inline-flex min-h-[38px] items-center justify-center gap-2 rounded-sm border border-gold/28 px-3 bg-[rgba(11,11,10,.78)] text-[13px] font-black tracking-[.06em] uppercase leading-[1.15] text-gold-light no-underline whitespace-nowrap cursor-pointer transition-[border-color,background,color] duration-[180ms] ease-brand hover:border-gold hover:bg-[linear-gradient(180deg,#e9cb84,#cda45a)] hover:text-canvas focus-visible:border-gold focus-visible:bg-[linear-gradient(180deg,#e9cb84,#cda45a)] focus-visible:text-canvas"
+              type="button"
+              onClick={() => setActiveIndex(null)}
+            >
+              {t('close')}
+            </button>
+            <StableImage
+              src={active}
+              alt={title}
+              width={1200}
+              height={900}
+              loading="eager"
+              className="relative z-[1] w-full h-full max-h-[calc(90vh-92px)] object-contain block max-[900px]:max-h-[calc(100vh-132px)]"
+            />
           </div>
         </div>
       ) : null}
@@ -550,12 +669,16 @@ export function LocalizedChurchesPage({ churchInfo }: { churchInfo: ChurchInfoDt
     ].filter((item) => item.value?.trim());
 
     return (
-      <main className="page church-profile-page">
-        <section className="church-profile-hero">
-          <div className="church-profile-copy">
+      <main className="page max-w-[1480px] mx-auto grid gap-[clamp(28px,4vw,58px)]">
+        <section className="grid grid-cols-[minmax(0,1fr)_minmax(300px,440px)] gap-[clamp(28px,5vw,86px)] items-center border-b border-gold/28 pb-[clamp(28px,4vw,60px)] max-[820px]:grid-cols-1 max-[520px]:gap-[22px] max-[520px]:pb-7">
+          <div className="min-w-0 max-w-[900px] grid gap-4.5 max-[520px]:gap-3.5">
             <p className="eyebrow">{t('churchesPageEyebrow')}</p>
-            <h1>{translation.title}</h1>
-            {translation.dedication ? <p className="church-dedication">{ui(locale, 'dedicatedTo')}: {translation.dedication}</p> : null}
+            <h1 className="m-0 text-foreground font-serif text-[88px] font-bold leading-[1.02] tracking-normal text-balance [overflow-wrap:anywhere] max-[820px]:text-[56px] max-[520px]:text-[42px] max-[520px]:leading-[1.06]">
+              {translation.title}
+            </h1>
+            {translation.dedication ? (
+              <p className="text-gold-light text-[12px] font-black tracking-[.1em] uppercase">{ui(locale, 'dedicatedTo')}: {translation.dedication}</p>
+            ) : null}
             {translation.description ? <p className="detail-lead">{textPreview(translation.description, 260)}</p> : null}
             {churchInfo.mapsUrl || contactHref ? (
               <div className="detail-actions">
@@ -564,46 +687,69 @@ export function LocalizedChurchesPage({ churchInfo }: { churchInfo: ChurchInfoDt
               </div>
             ) : null}
           </div>
-          <aside className="church-profile-visual" aria-label={translation.title}>
+          <aside className="min-w-0 self-stretch grid items-center" aria-label={translation.title}>
             {churchInfo.imageUrl ? (
-              <figure className="church-profile-image"><StableImage src={churchInfo.imageUrl} alt={translation.title} width={900} height={900} loading="eager" /></figure>
+              <figure className="min-w-0 min-h-[360px] m-0 border border-gold/28 rounded-[8px] bg-[linear-gradient(135deg,rgba(205,164,90,.09),transparent_45%),linear-gradient(160deg,rgba(127,141,101,.08),transparent_62%),#141511] shadow-[0_6px_18px_rgba(0,0,0,.18)] overflow-hidden aspect-square">
+                <StableImage
+                  src={churchInfo.imageUrl}
+                  alt={translation.title}
+                  width={900}
+                  height={900}
+                  loading="eager"
+                  className="w-full h-full block object-cover"
+                />
+              </figure>
             ) : (
-              <div className="church-logo-panel">
-                <BrandLogo className="church-profile-logo" size={150} />
-                <span>{translation.title}</span>
+              <div className="min-w-0 min-h-[360px] grid place-items-center content-center gap-4.5 p-[34px] text-center border border-gold/28 rounded-[8px] bg-[linear-gradient(135deg,rgba(205,164,90,.09),transparent_45%),linear-gradient(160deg,rgba(127,141,101,.08),transparent_62%),#141511] shadow-[0_6px_18px_rgba(0,0,0,.18)] overflow-hidden">
+                <BrandLogo className="size-[150px] object-contain" size={150} />
+                <span className="max-w-[260px] text-gold-light text-[13px] font-black tracking-[.08em] leading-[1.35] uppercase">{translation.title}</span>
               </div>
             )}
           </aside>
         </section>
 
         {factCards.length ? (
-          <dl className="church-profile-facts">
+          <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-3.5 m-0">
             {factCards.map(({ key, label, value, icon: Icon, href }) => (
-              <div className="church-fact-card" key={key}>
-                <dt><Icon size={22} strokeWidth={1.8} aria-hidden="true" /><span>{label}</span></dt>
-                <dd>{href ? <a href={href} target="_blank" rel="noreferrer">{value}</a> : <DisplayText text={value} />}</dd>
+              <div
+                className="min-w-0 min-h-[156px] max-[520px]:min-h-0 grid content-start gap-4.5 border border-[rgba(232,211,169,.13)] rounded-md p-[22px] max-[520px]:p-4.5 bg-[linear-gradient(135deg,rgba(205,164,90,.06),transparent_48%),#141511]"
+                key={key}
+              >
+                <dt className="flex items-center gap-2.5 text-gold-light text-[12px] font-black tracking-[.12em] uppercase">
+                  <Icon size={22} strokeWidth={1.8} aria-hidden="true" className="flex-none text-[#a97832]" />
+                  <span>{label}</span>
+                </dt>
+                <dd className="min-w-0 m-0 text-foreground font-serif text-[21px] max-[520px]:text-[19px] leading-[1.45] [overflow-wrap:anywhere] [&_p]:mt-0 [&_p]:mx-0 [&_p]:mb-2 [&_p:last-child]:mb-0">
+                  {href ? (
+                    <a className="text-inherit [text-decoration-color:#a97832] underline-offset-4" href={href} target="_blank" rel="noreferrer">
+                      {value}
+                    </a>
+                  ) : (
+                    <DisplayText text={value} />
+                  )}
+                </dd>
               </div>
             ))}
           </dl>
         ) : null}
 
         {galleryImages.length ? (
-          <section className="church-gallery-section">
-            <div className="section-head">
+          <section className="grid gap-[clamp(18px,2.5vw,34px)] border-t border-gold/28 pt-[clamp(28px,4vw,58px)] max-[520px]:gap-4 max-[520px]:pt-7">
+            <div className="section-head max-w-[720px] m-0!">
               <p className="eyebrow">{ui(locale, 'gallery')}</p>
-              <h2>{storyTitle}</h2>
+              <h2 className="text-foreground! text-[clamp(36px,4vw,70px)]! leading-[1.04]!">{storyTitle}</h2>
             </div>
             <ChurchGallery title={translation.title} images={galleryImages} />
           </section>
         ) : null}
 
         {translation.description ? (
-          <section className="church-story-section">
-            <div className="section-head">
+          <section className="grid grid-cols-[minmax(220px,320px)_minmax(0,1fr)] gap-[clamp(24px,4vw,70px)] items-start border-t border-gold/28 pt-[clamp(28px,4vw,58px)] max-[820px]:grid-cols-1">
+            <div className="section-head sticky! top-[110px] m-0! max-[820px]:static!">
               <p className="eyebrow">{ui(locale, 'aboutChurch')}</p>
-              <h2>{storyTitle}</h2>
+              <h2 className="max-w-[320px]! text-foreground! text-[48px]! leading-[1.04]! max-[820px]:max-w-none! max-[820px]:text-[34px]!">{storyTitle}</h2>
             </div>
-            <div className="church-story-content">
+            <div className="min-w-0 grid grid-cols-2 gap-[clamp(14px,1.6vw,24px)] max-w-none text-foreground font-serif text-[clamp(22px,1.45vw,30px)] leading-[1.52] max-[820px]:grid-cols-1 max-[820px]:text-[20px] max-[520px]:text-[19px] max-[520px]:leading-[1.62] [&>p]:min-w-0 [&>p]:m-0 [&>p]:border-l-[3px] [&>p]:border-l-[#a97832] [&>p]:rounded-xs [&>p]:p-[clamp(16px,1.7vw,26px)] max-[520px]:[&>p]:p-4 [&>p]:bg-[linear-gradient(135deg,rgba(205,164,90,.075),transparent_46%),#141511] [&>p]:text-[#ddd4c2] [&>p]:shadow-[inset_0_0_0_1px_rgba(205,164,90,.12)] [&>p]:[break-inside:avoid] [&>p:first-child]:text-[clamp(24px,1.65vw,34px)] [&>p:nth-child(2)]:text-[clamp(24px,1.65vw,34px)] [&>p:nth-child(3)]:text-[clamp(24px,1.65vw,34px)] [&>p:first-child]:leading-[1.42] [&>p:nth-child(2)]:leading-[1.42] [&>p:nth-child(3)]:leading-[1.42] max-[520px]:[&>p:first-child]:text-[22px] max-[520px]:[&>p:nth-child(2)]:text-[22px] max-[520px]:[&>p:nth-child(3)]:text-[22px] [&>p:first-child]:col-span-full [&>p:first-child]:border-l-gold-light [&>p:first-child]:text-gold-light [&>p:first-child]:text-[clamp(34px,3vw,58px)]! [&>p:first-child]:leading-[1.08]! max-[520px]:[&>p:first-child]:text-[32px]!">
               <DisplayText text={translation.description} />
             </div>
           </section>
@@ -613,7 +759,7 @@ export function LocalizedChurchesPage({ churchInfo }: { churchInfo: ChurchInfoDt
   }
 
   return (
-    <main className="page church-profile-page">
+    <main className="page max-w-[1480px] mx-auto grid gap-[clamp(28px,4vw,58px)]">
       <section className="page-hero">
         <p className="eyebrow">{t('churchesPageEyebrow')}</p>
         <h1>{t('churchesPageTitle')}</h1>
@@ -660,7 +806,15 @@ export function LocalizedIconDetail({ icon, related }: { icon: Icon; related: Ic
         </div>
       </section>
       <IconStory text={item.fullDescription} images={photoImages.length ? photoImages : [item.imageUrl]} />
-      {publicGalleryImages.length > 1 ? <section className="icon-photo-catalog"><div className="section-head"><p className="eyebrow">{ui(locale, 'photoQr')}</p><h2>{ui(locale, 'imageCatalog')}</h2></div><IconPhotoCatalog title={iconTitle} iconUrl={iconPageUrl} items={publicGalleryImages} /></section> : null}
+      {publicGalleryImages.length > 1 ? (
+        <section className="border-t border-gold/28 pt-[clamp(22px,3vw,42px)] max-[900px]:mt-7 max-[900px]:pt-[22px]">
+          <div className="section-head mb-[clamp(18px,2.5vw,30px)]!">
+            <p className="eyebrow">{ui(locale, 'photoQr')}</p>
+            <h2 className="text-foreground! text-[clamp(24px,2.8vw,42px)]! leading-[1.05]!">{ui(locale, 'imageCatalog')}</h2>
+          </div>
+          <IconPhotoCatalog title={iconTitle} iconUrl={iconPageUrl} items={publicGalleryImages} />
+        </section>
+      ) : null}
       <section className="sacred-content-grid">
         <article id="prayer" className="sacred-panel prayer-panel"><div className="prayer-panel-layout"><figure className="prayer-panel-image"><StableImage src={prayerImage} alt={`${ui(locale, 'prayer')}: ${iconTitle}`} width={720} height={720} /></figure><div className="prayer-panel-copy"><span>01</span><h2>{ui(locale, 'prayer')}</h2><div className="reader-text"><DisplayText text={item.prayerText} /></div>{item.audioUrl ? <audio controls src={item.audioUrl} /> : null}</div></div></article>
         <article className="sacred-panel"><span>02</span><h2>{ui(locale, 'gospel')}</h2><div className="reader-text"><DisplayText text={item.gospelText} /></div></article>

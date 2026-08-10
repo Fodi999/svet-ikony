@@ -103,14 +103,29 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
       </div>
 
       {active ? (
-        // .icon-lightbox/.icon-lightbox-backdrop/.icon-lightbox-panel/.icon-lightbox-close are
-        // kept as structural markers — content.css still fully styles them (unlayered, so it
-        // keeps winning), shared with LocalizedContent.tsx's own parallel lightbox (phase 7b).
-        <div className="icon-lightbox" role="dialog" aria-modal="true" aria-label={active.label}>
-          <button className="icon-lightbox-backdrop" type="button" onClick={() => setActiveIndex(null)} aria-label={t('close')} />
-          <div className="icon-lightbox-panel">
-            <button className="icon-lightbox-close" type="button" onClick={() => setActiveIndex(null)}>{t('close')}</button>
-            <StableImage src={active.image} alt={`${active.label}: ${title}`} width={1200} height={900} loading="eager" />
+        <div className="fixed inset-0 z-[2000] grid place-items-center p-[clamp(28px,4vw,56px)] max-[900px]:p-4" role="dialog" aria-modal="true" aria-label={active.label}>
+          <button
+            className="absolute inset-0 border-0 bg-[rgba(5,5,5,.84)]"
+            type="button"
+            onClick={() => setActiveIndex(null)}
+            aria-label={t('close')}
+          />
+          <div className="relative z-[1] w-[min(1180px,96vw)] max-h-[min(90vh,calc(100vh-56px))] border border-gold/28 rounded-[8px] bg-canvas grid grid-rows-[minmax(0,1fr)_auto] overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-14 before:z-0 before:pointer-events-none before:bg-[linear-gradient(110deg,transparent_0_28%,rgba(241,209,138,.13)_42%,transparent_56%),#141511] before:bg-[length:220%_100%,100%_100%] before:[animation:imageSkeleton_1.4s_ease-in-out_infinite]">
+            <button
+              className="absolute top-3 right-3 z-[2] inline-flex min-h-[38px] items-center justify-center gap-2 rounded-sm border border-gold/28 px-3 bg-[rgba(11,11,10,.78)] text-[13px] font-black tracking-[.06em] uppercase leading-[1.15] text-gold-light no-underline whitespace-nowrap cursor-pointer transition-[border-color,background,color] duration-[180ms] ease-brand hover:border-gold hover:bg-[linear-gradient(180deg,#e9cb84,#cda45a)] hover:text-canvas focus-visible:border-gold focus-visible:bg-[linear-gradient(180deg,#e9cb84,#cda45a)] focus-visible:text-canvas"
+              type="button"
+              onClick={() => setActiveIndex(null)}
+            >
+              {t('close')}
+            </button>
+            <StableImage
+              src={active.image}
+              alt={`${active.label}: ${title}`}
+              width={1200}
+              height={900}
+              loading="eager"
+              className="relative z-[1] w-full h-full max-h-[calc(90vh-92px)] object-contain block max-[900px]:max-h-[calc(100vh-132px)]"
+            />
             <div className="min-w-0 border-t border-gold/28 py-3 px-3.5 flex items-center justify-between gap-3 text-foreground">
               <strong className="text-foreground text-[13px] font-black uppercase">{active.label}</strong>
               {active.kind === 'qr' ? (

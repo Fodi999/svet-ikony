@@ -43,26 +43,10 @@
    only (no styling of its own left here), since the still-unmigrated
    .prayer-mode-layout--split rule above targets it externally. */
 
-/* ── Shared transport bar (used by both plain reading and prayer mode) ── */
-
-.prayer-audio-block {
-  display: grid;
-  gap: 10px;
-  width: min(100%, 1460px);
-  margin: 8px auto 0;
-}
-
-/* .prayer-audio-bar and its __BEM children were migrated to Tailwind
-   utilities directly on PrayerAudioBar.tsx (Phase 2) — see that file. */
-
-.prayer-audio-hint {
-  margin: 0;
-  color: var(--gold-light);
-  font-family: var(--font-serif);
-  font-size: 13px;
-  text-align: center;
-  opacity: .76;
-}
+/* .prayer-audio-block/.prayer-audio-hint were migrated to Tailwind utilities
+   directly on LocalizedChurchPrayerDetail (phase 7b) — see LocalizedContent.tsx.
+   .prayer-audio-bar and its __BEM children were migrated the same way on
+   PrayerAudioBar.tsx (phase 2) — see that file. */
 
 .sacred-read-page {
   position: relative;
@@ -162,8 +146,7 @@
   margin-bottom: clamp(16px, 1.8vw, 28px);
 }
 
-.prayer-reader > p:first-of-type::first-letter,
-.prayer-reader .structured-block:first-child p:first-of-type::first-letter {
+.prayer-reader > p:first-of-type::first-letter {
   float: left;
   margin: .07em .18em 0 0;
   color: var(--gold-light);
@@ -171,105 +154,8 @@
   line-height: .84;
 }
 
-.prayer-info-strip {
-  display: grid;
-  grid-template-columns: minmax(280px, 1.05fr) minmax(250px, .7fr) minmax(310px, .86fr);
-  gap: 0;
-  margin-top: 22px;
-  border: 1px solid var(--border-gold);
-  border-radius: var(--radius-md);
-  background:
-    linear-gradient(135deg, rgba(205, 164, 90, .06), transparent 42%),
-    rgba(14, 15, 12, .84);
-  box-shadow: inset 0 0 0 1px rgba(233, 203, 132, .04);
-  overflow: hidden;
-}
-
-.prayer-info-strip article {
-  min-width: 0;
-  display: grid;
-  gap: 14px;
-  padding: clamp(20px, 2vw, 30px);
-}
-
-.prayer-info-strip article + article {
-  border-left: 1px solid var(--border-gold);
-}
-
-.prayer-info-about {
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-}
-
-.prayer-info-icon {
-  width: 64px;
-  height: 64px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border-gold);
-  border-radius: 50%;
-  background: rgba(205, 164, 90, .09);
-  color: var(--gold-light);
-}
-
-.prayer-info-strip h2 {
-  margin: 0;
-  color: #ead9bd;
-  font-family: var(--font-serif);
-  font-size: clamp(18px, 1.35vw, 24px);
-  font-weight: 700;
-  line-height: 1.18;
-}
-
-.prayer-info-strip p {
-  margin: 0;
-  color: rgba(232, 222, 204, .72);
-  font-family: var(--font-serif);
-  font-size: 15px;
-  line-height: 1.48;
-}
-
-.prayer-info-link,
-.prayer-info-links a {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--gold-light);
-  font-family: var(--font-serif);
-  font-size: 15px;
-  line-height: 1.2;
-  transition: color var(--speed) var(--ease);
-}
-
-.prayer-info-link:hover,
-.prayer-info-link:focus-visible,
-.prayer-info-links a:hover,
-.prayer-info-links a:focus-visible {
-  color: var(--text);
-}
-
-.prayer-info-links {
-  display: grid;
-  gap: 12px;
-}
-
-.prayer-info-links a svg {
-  flex: 0 0 auto;
-  color: var(--gold-light);
-}
-
-.prayer-info-support {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
-
-.prayer-info-qr {
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-  color: var(--gold-light);
-}
+/* .prayer-info-strip and its children were migrated to Tailwind utilities
+   directly on LocalizedChurchPrayerDetail (phase 7b) — see LocalizedContent.tsx. */
 
 /* .prayer-qr-panel's effective styling (previously scoped under
    .prayer-info-qr) is now hand-written directly on PrayerQr.tsx's own
@@ -286,15 +172,6 @@
     grid-column: auto;
     grid-row: auto;
   }
-
-  .prayer-info-strip {
-    grid-template-columns: 1fr;
-  }
-
-  .prayer-info-strip article + article {
-    border-top: 1px solid var(--border-gold);
-    border-left: 0;
-  }
 }
 
 @media (max-width: 560px) {
@@ -309,19 +186,5 @@
   .prayer-reader-panel {
     min-height: 0;
     padding: 22px 18px;
-  }
-
-  .prayer-info-about,
-  .prayer-info-support {
-    grid-template-columns: 1fr;
-  }
-
-  .prayer-info-icon {
-    width: 54px;
-    height: 54px;
-  }
-
-  .prayer-info-qr {
-    justify-items: start;
   }
 }

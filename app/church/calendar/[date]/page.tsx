@@ -1,6 +1,27 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AssetButton } from '@/components/site/AssetButton';
+import {
+  DetailActions,
+  DetailHero,
+  Eyebrow,
+  Hero,
+  HeroCopy,
+  HeroTitle,
+  ImageFrame,
+  imageFrameImgClass,
+  Lead,
+  MiniGrid,
+  MiniGridLink,
+  MiniGridSmall,
+  Page,
+  Panel,
+  PanelLabel,
+  PanelTitle,
+  ReaderText,
+  RelatedSection,
+  SectionHead,
+  SectionHeadTitle
+} from '@/components/site/PageChrome';
 import { StableImage } from '@/components/site/StableImage';
 import { publicApi } from '@/lib/api';
 import { resolveMediaUrl } from '@/lib/media/resolver';
@@ -65,73 +86,89 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
     about: calendarDay.title
   });
 
+  const heroCopy = (
+    <HeroCopy>
+      <Eyebrow>
+        Дата церковного календаря: <time dateTime={calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}>{calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}</time>
+      </Eyebrow>
+      <HeroTitle>{calendarDay.title}</HeroTitle>
+      {calendarDay.description ? <Lead>{calendarDay.description}</Lead> : null}
+      <DetailActions>
+        {icons[0] ? <AssetButton variant="dark" href={`/icons/${icons[0].slug}`}>Ікона</AssetButton> : null}
+        {prayers[0] ? <AssetButton href={`/church/prayers/${prayers[0].slug}`}>Молитва</AssetButton> : null}
+        {gospel[0] ? <AssetButton href={`/church/gospel/${gospel[0].slug}`}>Євангеліє</AssetButton> : null}
+      </DetailActions>
+    </HeroCopy>
+  );
+
   return (
-    <main className="read-page sacred-read-page">
+    <Page className="sacred-read-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
-      <section className={heroImageUrl ? 'sacred-detail-hero' : 'read-hero'}>
-        {heroImageUrl ? (
-          <figure className="sacred-image-frame">
-            <StableImage src={heroImageUrl} alt={heroImageAlt} width={800} height={1000} loading="eager" />
-          </figure>
-        ) : null}
-        <div className="sacred-hero-copy">
-          <p className="eyebrow">Дата церковного календаря: <time dateTime={calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}>{calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}</time></p>
-          <h1>{calendarDay.title}</h1>
-          {calendarDay.description ? <p className="detail-lead">{calendarDay.description}</p> : null}
-          <div className="detail-actions">
-            {icons[0] ? <AssetButton variant="dark" href={`/icons/${icons[0].slug}`}>Ікона</AssetButton> : null}
-            {prayers[0] ? <AssetButton href={`/church/prayers/${prayers[0].slug}`}>Молитва</AssetButton> : null}
-            {gospel[0] ? <AssetButton href={`/church/gospel/${gospel[0].slug}`}>Євангеліє</AssetButton> : null}
-          </div>
-        </div>
-      </section>
+      {heroImageUrl ? (
+        <DetailHero>
+          <ImageFrame>
+            <StableImage src={heroImageUrl} alt={heroImageAlt} width={800} height={1000} loading="eager" className={imageFrameImgClass} />
+          </ImageFrame>
+          {heroCopy}
+        </DetailHero>
+      ) : (
+        <Hero>{heroCopy}</Hero>
+      )}
 
       {calendarDay.history ? (
-        <article className="sacred-panel">
-          <span>Історична довідка</span>
-          <h2>Житіє і пам’ять</h2>
-          <div className="reader-text"><Paragraphs text={calendarDay.history} /></div>
-        </article>
+        <Panel>
+          <PanelLabel>Історична довідка</PanelLabel>
+          <PanelTitle>Житіє і пам’ять</PanelTitle>
+          <ReaderText><Paragraphs text={calendarDay.history} /></ReaderText>
+        </Panel>
       ) : null}
 
       {icons.length ? (
-        <section className="related-section">
-          <div className="section-head"><p className="eyebrow">Ікони</p><h2>Пов’язані образи</h2></div>
-          <div className="mini-grid">
-            {icons.map((icon) => <Link key={icon.id} href={`/icons/${icon.slug}`}>{icon.title}<small>{icon.saintName || icon.feastName}</small></Link>)}
-          </div>
-        </section>
+        <RelatedSection>
+          <SectionHead>
+            <Eyebrow>Ікони</Eyebrow>
+            <SectionHeadTitle>Пов’язані образи</SectionHeadTitle>
+          </SectionHead>
+          <MiniGrid>
+            {icons.map((icon) => (
+              <MiniGridLink key={icon.id} href={`/icons/${icon.slug}`}>
+                {icon.title}
+                <MiniGridSmall>{icon.saintName || icon.feastName}</MiniGridSmall>
+              </MiniGridLink>
+            ))}
+          </MiniGrid>
+        </RelatedSection>
       ) : null}
 
       {prayers.map((prayer) => (
-        <article key={prayer.id} className="sacred-panel">
-          <span>{prayer.prayerType}</span>
-          <h2>{prayer.title}</h2>
-          <div className="reader-text"><Paragraphs text={prayer.text} /></div>
-        </article>
+        <Panel key={prayer.id}>
+          <PanelLabel>{prayer.prayerType}</PanelLabel>
+          <PanelTitle>{prayer.title}</PanelTitle>
+          <ReaderText><Paragraphs text={prayer.text} /></ReaderText>
+        </Panel>
       ))}
 
       {articles.map((article) => (
-        <article key={article.id} className="sacred-panel">
-          <span>Статья</span>
-          <h2>{article.title}</h2>
-          <div className="reader-text"><Paragraphs text={article.content} /></div>
-          <div className="detail-actions">
+        <Panel key={article.id}>
+          <PanelLabel>Статья</PanelLabel>
+          <PanelTitle>{article.title}</PanelTitle>
+          <ReaderText><Paragraphs text={article.content} /></ReaderText>
+          <DetailActions>
             <AssetButton href={`/church/articles/${article.slug}`}>Відкрити статтю</AssetButton>
-          </div>
-        </article>
+          </DetailActions>
+        </Panel>
       ))}
 
       {gospel.map((item) => (
-        <article key={item.id} className="sacred-panel">
-          <span>{item.reference || 'Евангелие'}</span>
-          <h2>{item.title}</h2>
-          <div className="reader-text"><Paragraphs text={item.explanation || item.text} /></div>
-          <div className="detail-actions">
+        <Panel key={item.id}>
+          <PanelLabel>{item.reference || 'Евангелие'}</PanelLabel>
+          <PanelTitle>{item.title}</PanelTitle>
+          <ReaderText><Paragraphs text={item.explanation || item.text} /></ReaderText>
+          <DetailActions>
             <AssetButton href={`/church/gospel/${item.slug}`}>Читати Євангеліє</AssetButton>
-          </div>
-        </article>
+          </DetailActions>
+        </Panel>
       ))}
-    </main>
+    </Page>
   );
 }

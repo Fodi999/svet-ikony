@@ -25,102 +25,6 @@ textarea {
 }
 
 /* ------------------------------------------------------------
-   Сетки контента
-   ------------------------------------------------------------ */
-
-.feature-grid,
-.content-feature-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(14px, 2vw, 28px);
-  margin-top: clamp(28px, 4vw, 58px);
-}
-
-.content-feature-grid article,
-.faq details {
-  padding: clamp(18px, 2vw, 30px);
-}
-
-.content-feature-grid h3 {
-  color: var(--text);
-  font-family: var(--font-ui);
-  font-weight: 900;
-  margin: 0 0 12px;
-  font-size: clamp(22px, 1.9vw, 32px);
-  line-height: 1.1;
-}
-
-.content-feature-grid p,
-.seo-text p {
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-.seo-text {
-  border-top: 1px solid var(--border-gold);
-  padding-top: clamp(22px, 3vw, 42px);
-}
-
-/* ------------------------------------------------------------
-   Каталог икон: герой, статистика, тулбар
-   ------------------------------------------------------------ */
-
-.icons-page { overflow: hidden; }
-
-.icons-catalog-hero {
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
-  align-items: end;
-  gap: clamp(24px, 5vw, 80px);
-}
-
-.icons-catalog-hero h1 { max-width: 980px; }
-
-.icons-catalog-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  margin: 0;
-  background: var(--border-gold);
-}
-
-.icons-catalog-stats div {
-  min-width: 0;
-  display: grid;
-  grid-template-rows: auto auto;
-  align-content: end;
-  justify-items: start;
-  gap: 12px;
-  min-height: 132px;
-  padding: 18px;
-  background:
-    linear-gradient(135deg, rgba(205, 164, 90, .055), transparent 46%),
-    linear-gradient(160deg, rgba(127, 141, 101, .05), transparent 62%),
-    var(--surface);
-}
-
-.icons-catalog-stats dt {
-  min-width: 0;
-  max-width: 100%;
-  color: var(--text);
-  font-family: var(--font-display);
-  font-size: 42px;
-  line-height: .95;
-  white-space: nowrap;
-}
-
-.icons-catalog-stats dd {
-  width: 100%;
-  margin: 0;
-  color: var(--quiet);
-  font-size: 10px;
-  font-weight: 900;
-  line-height: 1.16;
-  text-transform: uppercase;
-  overflow-wrap: anywhere;
-  text-wrap: balance;
-}
-
-/* ------------------------------------------------------------
    Панель молитвы с образом
    ------------------------------------------------------------ */
 
@@ -131,7 +35,9 @@ textarea {
    via compound selectors, and .prayer-panel-copy > span is layered with
    .prayer-reader-panel > span there too. Untangling that would mean
    rewriting the split-view grid positioning logic, out of proportion for
-   this migration phase — see phase 7b notes in the plan file. */
+   this migration phase — see phase 7b/8 notes in the plan file.
+   .prayer-reader-panel/.prayer-reader are also shared directly with
+   app/church/gospel/[slug]/page.tsx's own reading UI. */
 
 .prayer-panel-image::before {
   content: "";
@@ -247,12 +153,6 @@ textarea {
     padding: 28px 16px 46px;
   }
 
-  .icons-catalog-hero,
-  .feature-grid,
-  .content-feature-grid {
-    grid-template-columns: 1fr;
-  }
-
   .prayer-panel-layout { grid-template-columns: 1fr; }
 
   .prayer-panel-image,
@@ -266,13 +166,6 @@ textarea {
     padding-bottom: 30px;
   }
 
-  .icons-catalog-hero { align-items: start; }
-
-  .icons-catalog-stats div {
-    min-height: 104px;
-    padding: 14px;
-  }
-
   input,
   select,
   textarea {
@@ -281,20 +174,11 @@ textarea {
     font-size: 16px;
   }
 
-  .feature-grid,
-  .content-feature-grid {
-    gap: 12px;
-    margin-top: 24px;
-  }
-
-  .content-feature-grid article,
-  .faq details,
   .sacred-panel {
     padding: 16px;
   }
 
-  .detail-actions .asset-button,
-  .hero-actions .asset-button {
+  .detail-actions .asset-button {
     width: 100%;
   }
 
@@ -313,37 +197,17 @@ textarea {
     padding: 26px 12px 42px;
   }
 
-  .icons-catalog-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .icons-catalog-stats div {
-    min-height: 86px;
-    padding: 12px;
-  }
-
-  .icons-catalog-stats dt { font-size: 38px; }
-
   .sacred-image-frame,
-  .icon-detail-image,
   .prayer-panel-image {
     position: relative;
     top: auto;
     max-height: none;
   }
 
-  .detail-actions,
-  .hero-actions {
+  .detail-actions {
     display: grid;
     grid-template-columns: 1fr;
     align-items: stretch;
-  }
-}
-
-@media (max-width: 520px) {
-  .content-feature-grid h3 {
-    font-size: clamp(21px, 6vw, 30px);
-    line-height: 1.08;
   }
 }
 
@@ -359,20 +223,7 @@ textarea {
     padding-bottom: 22px;
   }
 
-  .icons-catalog-stats div {
-    min-height: 84px;
-    padding: 10px;
-  }
-
-  .icons-catalog-stats dt { font-size: 34px; }
-
-  .icons-catalog-stats dd {
-    font-size: 9px;
-    line-height: 1.12;
-  }
-
   .sacred-image-frame,
-  .icon-detail-image,
   .prayer-panel-image {
     padding: 10px;
   }

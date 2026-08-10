@@ -1,7 +1,27 @@
-import Link from 'next/link';
 import { BackLink, Breadcrumbs } from '@/components/site/Breadcrumbs';
 import { LocalizedIconDetail } from '@/components/site/LocalizedContent';
 import { AssetButton } from '@/components/site/AssetButton';
+import {
+  DetailActions,
+  DetailHero,
+  Eyebrow,
+  Hero,
+  HeroCopy,
+  HeroTitle,
+  ImageFrame,
+  imageFrameImgClass,
+  Lead,
+  MiniGrid,
+  MiniGridLink,
+  MiniGridSmall,
+  Page,
+  Panel,
+  PanelLabel,
+  ReaderText,
+  RelatedSection,
+  SectionHead,
+  SectionHeadTitle
+} from '@/components/site/PageChrome';
 import { StableImage } from '@/components/site/StableImage';
 import { publicApi } from '@/lib/api';
 import { getRequestLocale } from '@/lib/serverLocale';
@@ -35,31 +55,37 @@ function CalendarFallbackPage({ day, page, locale }: { day?: CalendarDay; page?:
   const imageUrl = page?.imageUrl || day?.imageUrl || '';
   const content = page?.content || day?.description || day?.note || '';
 
+  const heroCopy = (
+    <HeroCopy>
+      <Eyebrow>{page?.targetKeyword || day?.note || translate(locale, 'churchCalendar')}</Eyebrow>
+      <HeroTitle>{title}</HeroTitle>
+      {description ? <Lead>{description}</Lead> : null}
+      <DetailActions>
+        <AssetButton variant="dark" href={day?.prayerSlug ? `/prayers/${day.prayerSlug}` : '/prayers'}>{translate(locale, 'readPrayer')}</AssetButton>
+        <AssetButton href="/icons">{translate(locale, 'allIcons')}</AssetButton>
+      </DetailActions>
+    </HeroCopy>
+  );
+
   return (
-    <main className="read-page sacred-read-page">
-      <section className={imageUrl ? 'sacred-detail-hero' : 'read-hero'}>
-        {imageUrl ? (
-          <figure className="sacred-image-frame">
-            <StableImage src={imageUrl} alt={title} width={800} height={1000} loading="eager" />
-          </figure>
-        ) : null}
-        <div className="sacred-hero-copy">
-          <p className="eyebrow">{page?.targetKeyword || day?.note || translate(locale, 'churchCalendar')}</p>
-          <h1>{title}</h1>
-          {description ? <p className="detail-lead">{description}</p> : null}
-          <div className="detail-actions">
-            <AssetButton variant="dark" href={day?.prayerSlug ? `/prayers/${day.prayerSlug}` : '/prayers'}>{translate(locale, 'readPrayer')}</AssetButton>
-            <AssetButton href="/icons">{translate(locale, 'allIcons')}</AssetButton>
-          </div>
-        </div>
-      </section>
+    <Page className="sacred-read-page">
+      {imageUrl ? (
+        <DetailHero>
+          <ImageFrame>
+            <StableImage src={imageUrl} alt={title} width={800} height={1000} loading="eager" className={imageFrameImgClass} />
+          </ImageFrame>
+          {heroCopy}
+        </DetailHero>
+      ) : (
+        <Hero>{heroCopy}</Hero>
+      )}
       {content ? (
-        <article className="sacred-panel">
-          <span>{translate(locale, 'material')}</span>
-          <div className="reader-text"><Paragraphs text={content} /></div>
-        </article>
+        <Panel>
+          <PanelLabel>{translate(locale, 'material')}</PanelLabel>
+          <ReaderText><Paragraphs text={content} /></ReaderText>
+        </Panel>
       ) : null}
-    </main>
+    </Page>
   );
 }
 
@@ -109,15 +135,38 @@ export default async function IconPage({ params, searchParams }: Props) {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('IconPage', { headline: icon.title, description: icon.shortDescription, image: icon.imageUrl })) }} />
         <LocalizedIconDetail icon={icon} related={[]} />
         {hasRelated ? (
-          <section className="related-section">
-            <div className="section-head"><p className="eyebrow">{translate(locale, 'calendarMaterial')}</p><h2>{translate(locale, 'churchCalendar')}</h2></div>
-            <div className="mini-grid">
-              {date ? <Link href={withLocale(`/church/calendar/${date}`, locale)}>{page.calendarDay?.title || date}<small>{translate(locale, 'churchCalendar')}</small></Link> : null}
-              {page.prayers.map((prayer) => <Link key={prayer.id} href={withLocale(`/prayers/${prayer.slug}`, locale)}>{prayer.title}<small>{translate(locale, 'navPrayers')}</small></Link>)}
-              {page.articles.map((article) => <Link key={article.id} href={withLocale(`/church/articles/${article.slug}`, locale)}>{article.title}<small>{translate(locale, 'material')}</small></Link>)}
-              {page.gospel.map((item) => <Link key={item.id} href={withLocale(`/church/gospel/${item.slug}`, locale)}>{item.title}<small>{translate(locale, 'navGospel')}</small></Link>)}
-            </div>
-          </section>
+          <RelatedSection>
+            <SectionHead>
+              <Eyebrow>{translate(locale, 'calendarMaterial')}</Eyebrow>
+              <SectionHeadTitle>{translate(locale, 'churchCalendar')}</SectionHeadTitle>
+            </SectionHead>
+            <MiniGrid>
+              {date ? (
+                <MiniGridLink href={withLocale(`/church/calendar/${date}`, locale)}>
+                  {page.calendarDay?.title || date}
+                  <MiniGridSmall>{translate(locale, 'churchCalendar')}</MiniGridSmall>
+                </MiniGridLink>
+              ) : null}
+              {page.prayers.map((prayer) => (
+                <MiniGridLink key={prayer.id} href={withLocale(`/prayers/${prayer.slug}`, locale)}>
+                  {prayer.title}
+                  <MiniGridSmall>{translate(locale, 'navPrayers')}</MiniGridSmall>
+                </MiniGridLink>
+              ))}
+              {page.articles.map((article) => (
+                <MiniGridLink key={article.id} href={withLocale(`/church/articles/${article.slug}`, locale)}>
+                  {article.title}
+                  <MiniGridSmall>{translate(locale, 'material')}</MiniGridSmall>
+                </MiniGridLink>
+              ))}
+              {page.gospel.map((item) => (
+                <MiniGridLink key={item.id} href={withLocale(`/church/gospel/${item.slug}`, locale)}>
+                  {item.title}
+                  <MiniGridSmall>{translate(locale, 'navGospel')}</MiniGridSmall>
+                </MiniGridLink>
+              ))}
+            </MiniGrid>
+          </RelatedSection>
         ) : null}
       </>
     );
@@ -126,27 +175,28 @@ export default async function IconPage({ params, searchParams }: Props) {
   if (page) {
     const translations = page.translations || [];
     return (
-      <main className="page">
+      <Page>
         <Breadcrumbs
           items={[{ href: '/', label: translate(locale, 'home') }, { href: '/icons', label: translate(locale, 'navIcons') }]}
           current={translations[0]?.title || slug}
         />
-        <section className="page-hero">
-          <p className="eyebrow">{translate(locale, 'navIcons')}</p>
-          <h1>{translate(locale, 'iconNoTranslation')}</h1>
-          {translations.length ? <p>{translate(locale, 'prayerOpenIn')}</p> : null}
-        </section>
+        <Hero>
+          <Eyebrow>{translate(locale, 'navIcons')}</Eyebrow>
+          <HeroTitle>{translate(locale, 'iconNoTranslation')}</HeroTitle>
+          {translations.length ? <Lead>{translate(locale, 'prayerOpenIn')}</Lead> : null}
+        </Hero>
         {translations.length ? (
-          <div className="mini-grid">
+          <MiniGrid>
             {translations.map((item) => (
-              <Link key={item.language} href={withLocale(`/icons/${item.slug}`, item.language)}>
-                {item.title}<small>{localeNames[item.language]}</small>
-              </Link>
+              <MiniGridLink key={item.language} href={withLocale(`/icons/${item.slug}`, item.language)}>
+                {item.title}
+                <MiniGridSmall>{localeNames[item.language]}</MiniGridSmall>
+              </MiniGridLink>
             ))}
-          </div>
+          </MiniGrid>
         ) : null}
         <BackLink href="/icons" label={translate(locale, 'navIcons')} />
-      </main>
+      </Page>
     );
   }
 
@@ -156,7 +206,7 @@ export default async function IconPage({ params, searchParams }: Props) {
     const seoPage = content.pages.find((item) => item.slug === slug);
     const day = content.calendar?.days.find((item) => item.detailHref?.endsWith(`/${slug}`) || item.iconSlug === slug);
     if (seoPage || day) return <CalendarFallbackPage day={day} page={seoPage} locale={locale} />;
-    return <main className="page"><h1>{translate(locale, 'pageNotFound')}</h1></main>;
+    return <Page><h1>{translate(locale, 'pageNotFound')}</h1></Page>;
   }
   const related = content.icons.filter((item) => item.slug !== legacy.slug).slice(0, 3);
   return (

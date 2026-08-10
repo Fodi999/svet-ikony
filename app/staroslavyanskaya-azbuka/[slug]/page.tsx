@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BackLink, Breadcrumbs } from '@/components/site/Breadcrumbs';
+import { DetailHero, Eyebrow, Hero, HeroCopy, HeroTitle, ImageFrame, imageFrameImgClass, Lead, MiniGrid, MiniGridLink, MiniGridSmall, Page, SoftNote } from '@/components/site/PageChrome';
 import { StableImage } from '@/components/site/StableImage';
 import { publicApi } from '@/lib/api';
 import { localeNames, translate, withLocale } from '@/lib/i18n';
@@ -46,56 +46,57 @@ export default async function AlphabetLetterPage({ params, searchParams }: Props
   if (!page.letter) {
     const translations = page.translations || [];
     return (
-      <main className="page">
+      <Page>
         <Breadcrumbs
           items={[{ href: '/', label: translate(locale, 'home') }, { href: '/staroslavyanskaya-azbuka', label: translate(locale, 'navAlphabet') }]}
           current={translations[0]?.title || slug}
         />
-        <section className="page-hero">
-          <p className="eyebrow">{translate(locale, 'alphabetPageEyebrow')}</p>
-          <h1>{translate(locale, 'alphabetNoTranslation')}</h1>
-          {translations.length ? <p>{translate(locale, 'prayerOpenIn')}</p> : null}
-        </section>
+        <Hero>
+          <Eyebrow>{translate(locale, 'alphabetPageEyebrow')}</Eyebrow>
+          <HeroTitle>{translate(locale, 'alphabetNoTranslation')}</HeroTitle>
+          {translations.length ? <Lead>{translate(locale, 'prayerOpenIn')}</Lead> : null}
+        </Hero>
         {translations.length ? (
-          <div className="mini-grid">
+          <MiniGrid>
             {translations.map((item) => (
-              <Link key={item.language} href={withLocale(`/staroslavyanskaya-azbuka/${item.slug}`, item.language)}>
-                {item.title}<small>{localeNames[item.language]}</small>
-              </Link>
+              <MiniGridLink key={item.language} href={withLocale(`/staroslavyanskaya-azbuka/${item.slug}`, item.language)}>
+                {item.title}
+                <MiniGridSmall>{localeNames[item.language]}</MiniGridSmall>
+              </MiniGridLink>
             ))}
-          </div>
+          </MiniGrid>
         ) : null}
         <BackLink href="/staroslavyanskaya-azbuka" label={translate(locale, 'navAlphabet')} />
-      </main>
+      </Page>
     );
   }
 
   const letter = page.letter;
 
   return (
-    <main className="detail-page">
+    <Page>
       <Breadcrumbs
         items={[{ href: '/', label: translate(locale, 'home') }, { href: '/staroslavyanskaya-azbuka', label: translate(locale, 'navAlphabet') }]}
         current={letter.name}
       />
-      <section className="sacred-detail-hero">
+      <DetailHero>
         {letter.mainImageUrl ? (
-          <figure className="sacred-image-frame block! aspect-auto!">
-            <StableImage src={letter.mainImageUrl} alt={letter.name} loading="eager" className="aspect-auto! h-auto! w-full! object-contain!" />
-          </figure>
+          <ImageFrame className="block aspect-auto">
+            <StableImage src={letter.mainImageUrl} alt={letter.name} loading="eager" className="aspect-auto h-auto w-full object-contain" />
+          </ImageFrame>
         ) : (
-          <figure
-            className="sacred-image-frame grid place-items-center bg-[rgba(29,26,19,.96)]! font-serif text-[clamp(72px,12vw,160px)] leading-none"
+          <ImageFrame
+            className="bg-[rgba(29,26,19,.96)] font-serif text-[clamp(72px,12vw,160px)] leading-none"
             style={{ color: letter.color || undefined, borderColor: letter.color || undefined }}
             aria-hidden="true"
           >
             {letter.letter}
-          </figure>
+          </ImageFrame>
         )}
-        <div className="sacred-hero-copy">
-          <p className="eyebrow">{translate(locale, 'alphabetPageEyebrow')} · {String(letter.sortOrder).padStart(2, '0')}</p>
-          <h1>{letter.letter} — {letter.name}</h1>
-          {letter.shortDescription ? <p className="detail-lead">{letter.shortDescription}</p> : null}
+        <HeroCopy>
+          <Eyebrow>{translate(locale, 'alphabetPageEyebrow')} · {String(letter.sortOrder).padStart(2, '0')}</Eyebrow>
+          <HeroTitle>{letter.letter} — {letter.name}</HeroTitle>
+          {letter.shortDescription ? <Lead>{letter.shortDescription}</Lead> : null}
           <dl className="my-4.5 grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
             {letter.modernEquivalent ? (
               <div className="rounded-xs border border-gold/28 bg-gold/6 px-3.5 py-2.5">
@@ -110,10 +111,14 @@ export default async function AlphabetLetterPage({ params, searchParams }: Props
               </div>
             ) : null}
           </dl>
-          {letter.fullText ? <div className="soft-note reader-text"><p>{letter.fullText}</p></div> : null}
-        </div>
-      </section>
+          {letter.fullText ? (
+            <div className="border-l-[3px] border-l-gold py-3.5 pr-0 pl-4.5 bg-[linear-gradient(90deg,rgba(214,168,79,.12),transparent)] rounded-l-none rounded-r-xs max-w-[960px] text-muted-foreground font-serif text-[clamp(18px,1.45vw,24px)] leading-[1.6] [&>p]:mt-0 [&>p]:mx-0 [&>p]:mb-4 [&>p:last-child]:mb-0">
+              <p>{letter.fullText}</p>
+            </div>
+          ) : null}
+        </HeroCopy>
+      </DetailHero>
       <BackLink href="/staroslavyanskaya-azbuka" label={translate(locale, 'navAlphabet')} />
-    </main>
+    </Page>
   );
 }

@@ -1,4 +1,5 @@
 import { AssetButton } from '@/components/site/AssetButton';
+import { DetailHero, Eyebrow, HeroCopy, HeroTitle, imageFrameImgClass, Lead, Page, SoftNote } from '@/components/site/PageChrome';
 import { StableImage } from '@/components/site/StableImage';
 import { publicApi } from '@/lib/api';
 import { translate } from '@/lib/i18n';
@@ -19,6 +20,21 @@ export default async function QrPage({ params }: Props) {
   const qr = await publicApi.qrPage(qrId, locale);
   const allIcons = (await publicApi.content({ locale })).icons;
   const icon = allIcons.find((item) => item.id === qr?.iconId);
-  if (!qr || !icon || !qr.active) return <main className="page"><h1>{translate(locale, 'qrUnavailable')}</h1></main>;
-  return <main className="detail-page"><section className="icon-detail"><figure className="icon-detail-image"><StableImage src={icon.imageUrl} alt={icon.title} width={800} height={1000} loading="eager" /></figure><div><p className="eyebrow">{qr.location || 'QR'}</p><h1>{qr.title}</h1><p>{icon.shortDescription}</p><div className="soft-note">{qr.customPrayer || icon.prayerText}</div><AssetButton variant="dark" href={`/icons/${icon.slug}`}>{translate(locale, 'openFullIconPage')}</AssetButton></div></section></main>;
+  if (!qr || !icon || !qr.active) return <Page><h1>{translate(locale, 'qrUnavailable')}</h1></Page>;
+  return (
+    <Page>
+      <DetailHero>
+        <figure className="relative m-0 grid place-items-center aspect-[4/5] border border-gold/28 rounded-[8px] bg-[linear-gradient(110deg,transparent_0_28%,rgba(241,209,138,.16)_42%,transparent_56%),#1b1c16] bg-[length:220%_100%,100%_100%] overflow-hidden shadow-[0_6px_18px_rgba(0,0,0,.18)] max-[520px]:max-h-[68vh]">
+          <StableImage src={icon.imageUrl} alt={icon.title} width={800} height={1000} loading="eager" className={imageFrameImgClass} />
+        </figure>
+        <HeroCopy>
+          <Eyebrow>{qr.location || 'QR'}</Eyebrow>
+          <HeroTitle>{qr.title}</HeroTitle>
+          <Lead>{icon.shortDescription}</Lead>
+          <SoftNote>{qr.customPrayer || icon.prayerText}</SoftNote>
+          <AssetButton variant="dark" href={`/icons/${icon.slug}`}>{translate(locale, 'openFullIconPage')}</AssetButton>
+        </HeroCopy>
+      </DetailHero>
+    </Page>
+  );
 }

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { DetailActions, Eyebrow, Hero, HeroTitle, Lead, Page } from '@/components/site/PageChrome';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
@@ -12,12 +13,12 @@ export default function OfflinePage() {
     "inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-4.5 text-[13px] font-black tracking-[.06em] uppercase leading-[1.15] text-center no-underline whitespace-nowrap cursor-pointer transition-[border-color,background,color,transform] duration-[180ms] ease-brand max-[900px]:w-full";
 
   return (
-    <main className="page">
-      <section className="page-hero min-h-[62vh] content-center">
-        <p className="eyebrow">Offline</p>
-        <h1>Немає з’єднання</h1>
-        <p>Частина сторінок уже доступна з пам’яті застосунку. Коли інтернет повернеться, матеріали оновляться автоматично.</p>
-        <div className="hero-actions">
+    <Page>
+      <Hero className="min-h-[62vh] content-center">
+        <Eyebrow>Offline</Eyebrow>
+        <HeroTitle>Немає з’єднання</HeroTitle>
+        <Lead>Частина сторінок уже доступна з пам’яті застосунку. Коли інтернет повернеться, матеріали оновляться автоматично.</Lead>
+        <DetailActions>
           <Link
             className={`${sharedButtonClass} border-gold bg-[linear-gradient(180deg,#e9cb84,#cda45a)] text-canvas hover:border-gold-light hover:bg-gold-light hover:text-canvas focus-visible:border-gold-light focus-visible:bg-gold-light focus-visible:text-canvas`}
             href="/uk/prayers"
@@ -30,8 +31,8 @@ export default function OfflinePage() {
           >
             На головну
           </Link>
-        </div>
-      </section>
-    </main>
+        </DetailActions>
+      </Hero>
+    </Page>
   );
 }

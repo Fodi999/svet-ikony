@@ -1,5 +1,6 @@
 import { Breadcrumbs } from '@/components/site/Breadcrumbs';
 import { LocalizedBackendPrayersList } from '@/components/site/LocalizedContent';
+import { Eyebrow, Hero, HeroTitle, Lead, Page } from '@/components/site/PageChrome';
 import { T } from '@/components/site/TranslatedText';
 import { publicApi } from '@/lib/api';
 import { translate } from '@/lib/i18n';
@@ -28,17 +29,17 @@ export default async function PrayersPage() {
       ? `${prayers.length} ${prayers.length === 1 ? 'молитва' : 'молитов'}`
       : `${prayers.length} ${prayers.length === 1 ? 'молитва' : 'молитв'}`;
   return (
-    <main className="page prayers-page">
+    <Page>
       <Breadcrumbs
         items={[{ href: '/', label: translate(locale, 'home') }]}
         current={translate(locale, 'navPrayers')}
       />
-      <section className="page-hero">
-        <p className="eyebrow"><T k="prayersPageEyebrow" /></p>
-        <h1><T k="prayersPageTitle" /></h1>
-        <p>{prayers.length ? countLabel : translate(locale, 'prayersPageDescription')}</p>
-      </section>
+      <Hero>
+        <Eyebrow><T k="prayersPageEyebrow" /></Eyebrow>
+        <HeroTitle><T k="prayersPageTitle" /></HeroTitle>
+        <Lead>{prayers.length ? countLabel : translate(locale, 'prayersPageDescription')}</Lead>
+      </Hero>
       {prayers.length ? <LocalizedBackendPrayersList prayers={prayers} /> : <p className="m-0 border-t border-gold/28 py-6 text-muted-foreground text-[18px]">{translate(locale, 'noDays')}</p>}
-    </main>
+    </Page>
   );
 }

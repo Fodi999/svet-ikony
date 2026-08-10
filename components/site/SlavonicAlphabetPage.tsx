@@ -69,7 +69,7 @@ export function SlavonicAlphabetPage({ letters }: { letters: ChurchAlphabetLette
   const [showMessage, setShowMessage] = useState(false);
 
   return (
-    <main className="page min-h-screen bg-canvas px-[clamp(18px,5vw,72px)] py-[clamp(42px,5vw,92px)] text-foreground">
+    <main className="min-h-screen bg-canvas px-[clamp(18px,5vw,72px)] py-[clamp(42px,5vw,92px)] text-foreground">
       <section className="relative overflow-hidden border-b border-gold-light/15 pb-[clamp(34px,5vw,80px)]" aria-labelledby="slavonic-title">
         <div
           className="pointer-events-none absolute right-[clamp(8px,4vw,72px)] bottom-2 font-serif text-[clamp(92px,20vw,240px)] leading-[0.8] text-gold/8"
@@ -77,7 +77,7 @@ export function SlavonicAlphabetPage({ letters }: { letters: ChurchAlphabetLette
         >
           Ⰰ
         </div>
-        <p className="eyebrow relative z-10">{copy.eyebrow}</p>
+        <p className="relative z-10 text-gold-light text-[12px] font-black tracking-[.16em] uppercase max-[520px]:tracking-[.12em]">{copy.eyebrow}</p>
         <h1
           id="slavonic-title"
           className="relative z-10 my-3.5 max-w-[1180px] text-balance font-serif text-[clamp(38px,5.8vw,96px)] leading-[1.02] font-bold text-foreground"
@@ -151,7 +151,7 @@ export function SlavonicAlphabetPage({ letters }: { letters: ChurchAlphabetLette
           aria-labelledby="slavonic-message-title"
         >
           <div>
-            <p className="eyebrow">{copy.messageEyebrow}</p>
+            <p className="text-gold-light text-[12px] font-black tracking-[.16em] uppercase max-[520px]:tracking-[.12em]">{copy.messageEyebrow}</p>
             <h2 id="slavonic-message-title" className="my-2 font-serif text-[clamp(30px,4vw,60px)] leading-[1.02] font-bold text-foreground">
               {copy.messageTitle}
             </h2>

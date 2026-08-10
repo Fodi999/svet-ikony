@@ -219,8 +219,7 @@ main { min-height: 70vh; }
 .page-hero p,
 .read-hero p,
 .sacred-hero-copy .detail-lead,
-.detail-lead,
-.icon-detail > div > p:not(.eyebrow) {
+.detail-lead {
   max-width: 760px;
   margin: 0;
   color: var(--muted);
@@ -230,8 +229,7 @@ main { min-height: 70vh; }
 }
 
 .eyebrow,
-.sacred-panel > span,
-.content-feature-grid span {
+.sacred-panel > span {
   color: var(--gold-light);
   font-family: var(--font-ui);
   font-size: 12px;
@@ -244,15 +242,13 @@ main { min-height: 70vh; }
    Детальные страницы: герой с образом
    ------------------------------------------------------------ */
 
-.sacred-detail-hero,
-.icon-detail {
+.sacred-detail-hero {
   display: grid;
   grid-template-columns: minmax(280px, .86fr) minmax(0, 1.14fr);
   gap: clamp(28px, 5vw, 78px);
   align-items: start;
 }
 
-.icon-detail > div,
 .sacred-hero-copy {
   min-width: 0;
   display: grid;
@@ -260,9 +256,7 @@ main { min-height: 70vh; }
   gap: 18px;
 }
 
-.sacred-image-frame,
-.icon-detail-image,
-.icon-detail > img {
+.sacred-image-frame {
   position: relative;
   margin: 0;
   border: 1px solid var(--border-gold);
@@ -273,9 +267,6 @@ main { min-height: 70vh; }
   background-size: 220% 100%, 100% 100%;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
-}
-
-.sacred-image-frame {
   position: sticky;
   top: 110px;
   display: grid;
@@ -283,15 +274,7 @@ main { min-height: 70vh; }
   aspect-ratio: 4 / 5;
 }
 
-.icon-detail-image {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 4 / 5;
-}
-
-.sacred-image-frame img,
-.icon-detail-image img,
-.icon-detail > img {
+.sacred-image-frame img {
   position: relative;
   z-index: 1;
   width: 100%;
@@ -335,8 +318,7 @@ main { min-height: 70vh; }
 .soft-note p { margin: 0 0 12px; }
 .soft-note p:last-child { margin-bottom: 0; }
 
-.detail-actions,
-.hero-actions {
+.detail-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -361,8 +343,7 @@ main { min-height: 70vh; }
   padding: clamp(20px, 2.5vw, 36px);
 }
 
-.sacred-panel > span,
-.content-feature-grid span {
+.sacred-panel > span {
   display: block;
   margin-bottom: 18px;
 }
@@ -475,33 +456,12 @@ main { min-height: 70vh; }
   gap: 26px;
 }
 
-.content-feature-grid {
-  margin-top: 12px;
-}
-
-.faq {
-  display: grid;
-  gap: 10px;
-}
-
-.faq summary {
-  cursor: pointer;
-  font-family: var(--font-serif);
-  font-size: 22px;
-}
-
-.faq p {
-  color: var(--muted);
-  line-height: 1.5;
-}
-
 /* ------------------------------------------------------------
    Адаптив
    ------------------------------------------------------------ */
 
 @media (max-width: 900px) {
   .sacred-detail-hero,
-  .icon-detail,
   .sacred-content-grid,
   .mini-grid {
     grid-template-columns: 1fr;
@@ -511,8 +471,7 @@ main { min-height: 70vh; }
 
   .sacred-image-frame { position: static; }
 
-  .detail-actions,
-  .hero-actions {
+  .detail-actions {
     display: grid;
     grid-template-columns: 1fr;
     align-items: stretch;
@@ -538,22 +497,18 @@ main { min-height: 70vh; }
   .page-hero p,
   .read-hero p,
   .sacred-hero-copy .detail-lead,
-  .detail-lead,
-  .icon-detail > div > p:not(.eyebrow) {
+  .detail-lead {
     font-size: 17px;
   }
 
   .eyebrow,
-  .sacred-panel > span,
-  .content-feature-grid span {
+  .sacred-panel > span {
     letter-spacing: .12em;
   }
 
   .mini-grid a { min-height: 108px; }
 
-  .sacred-image-frame,
-  .icon-detail-image,
-  .icon-detail > img {
+  .sacred-image-frame {
     max-height: 68vh;
   }
 }

@@ -1,3 +1,4 @@
+import { Eyebrow, Hero, HeroTitle, Page } from '@/components/site/PageChrome';
 import { SaintsCatalog } from '@/components/site/SaintsCatalog';
 import { T } from '@/components/site/TranslatedText';
 import { publicApi } from '@/lib/api';
@@ -18,5 +19,13 @@ export async function generateMetadata() {
 export default async function SaintsPage() {
   const locale = await getRequestLocale();
   const saints = await publicApi.saints(locale);
-  return <main className="page"><section className="page-hero"><p className="eyebrow"><T k="saintsPageEyebrow" /></p><h1><T k="saintsPageTitle" /></h1></section><SaintsCatalog saints={saints} /></main>;
+  return (
+    <Page>
+      <Hero>
+        <Eyebrow><T k="saintsPageEyebrow" /></Eyebrow>
+        <HeroTitle><T k="saintsPageTitle" /></HeroTitle>
+      </Hero>
+      <SaintsCatalog saints={saints} />
+    </Page>
+  );
 }

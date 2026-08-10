@@ -1,5 +1,20 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import {
+  Eyebrow,
+  Hero,
+  HeroTitle,
+  Lead,
+  MiniGrid,
+  MiniGridLink,
+  MiniGridSmall,
+  Page,
+  Panel,
+  PanelLabel,
+  ReaderText,
+  RelatedSection,
+  SectionHead,
+  SectionHeadTitle
+} from '@/components/site/PageChrome';
 import { publicApi } from '@/lib/api';
 import { getRequestLocale } from '@/lib/serverLocale';
 import { pageMetadata } from '@/lib/seo';
@@ -45,23 +60,36 @@ export default async function ChurchArticlePage({ params, searchParams }: Props)
   if (!page) notFound();
   const date = result?.calendarDay?.dateNewStyle || result?.calendarDay?.dateOldStyle;
   return (
-    <main className="read-page sacred-read-page">
-      <section className="read-hero">
-        <p className="eyebrow">{page.targetKeyword}</p>
-        <h1>{page.h1}</h1>
-        {page.seoDescription ? <p>{page.seoDescription}</p> : null}
-      </section>
-      <article className="sacred-panel">
-        <span>Материал</span>
-        <div className="reader-text"><Paragraphs text={page.content} /></div>
-      </article>
-      <section className="related-section">
-        <div className="section-head"><p className="eyebrow">Связь материала</p><h2>День и икона</h2></div>
-        <div className="mini-grid">
-          {date ? <Link href={`/church/calendar/${date}`}>{result?.calendarDay?.title || date}<small>День календаря</small></Link> : null}
-          {result?.icon ? <Link href={`/icons/${result.icon.slug}`}>{result.icon.title}<small>Икона</small></Link> : null}
-        </div>
-      </section>
-    </main>
+    <Page className="sacred-read-page">
+      <Hero>
+        <Eyebrow>{page.targetKeyword}</Eyebrow>
+        <HeroTitle>{page.h1}</HeroTitle>
+        {page.seoDescription ? <Lead>{page.seoDescription}</Lead> : null}
+      </Hero>
+      <Panel>
+        <PanelLabel>Материал</PanelLabel>
+        <ReaderText><Paragraphs text={page.content} /></ReaderText>
+      </Panel>
+      <RelatedSection>
+        <SectionHead>
+          <Eyebrow>Связь материала</Eyebrow>
+          <SectionHeadTitle>День и икона</SectionHeadTitle>
+        </SectionHead>
+        <MiniGrid>
+          {date ? (
+            <MiniGridLink href={`/church/calendar/${date}`}>
+              {result?.calendarDay?.title || date}
+              <MiniGridSmall>День календаря</MiniGridSmall>
+            </MiniGridLink>
+          ) : null}
+          {result?.icon ? (
+            <MiniGridLink href={`/icons/${result.icon.slug}`}>
+              {result.icon.title}
+              <MiniGridSmall>Икона</MiniGridSmall>
+            </MiniGridLink>
+          ) : null}
+        </MiniGrid>
+      </RelatedSection>
+    </Page>
   );
 }

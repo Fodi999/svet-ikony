@@ -71,9 +71,7 @@
    ------------------------------------------------------------ */
 
 .card,
-.sacred-panel,
-.content-feature-grid article,
-.faq details {
+.sacred-panel {
   position: relative;
   border: 1px solid var(--border-gold);
   border-radius: var(--radius-md);
@@ -85,9 +83,7 @@
   overflow: hidden;
 }
 
-.card:hover,
-.content-feature-grid article:hover,
-.faq details:hover {
+.card:hover {
   border-color: var(--gold);
   background:
     linear-gradient(135deg, rgba(205, 164, 90, .095), transparent 44%),

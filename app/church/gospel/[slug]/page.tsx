@@ -1,5 +1,19 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import {
+  Eyebrow,
+  Hero,
+  HeroTitle,
+  MiniGrid,
+  MiniGridLink,
+  MiniGridSmall,
+  Page,
+  Panel,
+  PanelLabel,
+  ReaderText,
+  RelatedSection,
+  SectionHead,
+  SectionHeadTitle
+} from '@/components/site/PageChrome';
 import { publicApi } from '@/lib/api';
 import { getRequestLocale } from '@/lib/serverLocale';
 import { pageMetadata } from '@/lib/seo';
@@ -43,28 +57,46 @@ export default async function ChurchGospelPage({ params, searchParams }: Props) 
   if (!gospel) notFound();
   const date = result?.calendarDay?.dateNewStyle || result?.calendarDay?.dateOldStyle;
   return (
-    <main className="read-page sacred-read-page">
-      <section className="read-hero">
-        <p className="eyebrow">{gospel.reference || 'Євангеліє'}</p>
-        <h1>{gospel.title}</h1>
-      </section>
+    <Page className="sacred-read-page">
+      <Hero>
+        <Eyebrow>{gospel.reference || 'Євангеліє'}</Eyebrow>
+        <HeroTitle>{gospel.title}</HeroTitle>
+      </Hero>
+      {/* sacred-panel/reader-text stay literal here (not <Panel>/<ReaderText>):
+          prayer-reader-panel/prayer-reader add their own highlighted-reading
+          treatment on top (prayer-mode.css), kept as a marker since
+          LocalizedChurchPrayerDetail's split-visualizer layout also depends
+          on it via a compound selector — see phase 7b/8 notes in the plan. */}
       <article className="sacred-panel prayer-reader-panel">
         <span>Читання</span>
         <div className="reader-text prayer-reader"><Paragraphs text={gospel.text} /></div>
       </article>
       {gospel.explanation ? (
-        <article className="sacred-panel">
-          <span>Пояснення</span>
-          <div className="reader-text"><Paragraphs text={gospel.explanation} /></div>
-        </article>
+        <Panel>
+          <PanelLabel>Пояснення</PanelLabel>
+          <ReaderText><Paragraphs text={gospel.explanation} /></ReaderText>
+        </Panel>
       ) : null}
-      <section className="related-section">
-        <div className="section-head"><p className="eyebrow">Связь материала</p><h2>Икона и день календаря</h2></div>
-        <div className="mini-grid">
-          {result?.icon ? <Link href={`/icons/${result.icon.slug}`}>{result.icon.title}<small>Икона</small></Link> : null}
-          {date ? <Link href={`/church/calendar/${date}`}>{result?.calendarDay?.title || date}<small>День календаря</small></Link> : null}
-        </div>
-      </section>
-    </main>
+      <RelatedSection>
+        <SectionHead>
+          <Eyebrow>Связь материала</Eyebrow>
+          <SectionHeadTitle>Икона и день календаря</SectionHeadTitle>
+        </SectionHead>
+        <MiniGrid>
+          {result?.icon ? (
+            <MiniGridLink href={`/icons/${result.icon.slug}`}>
+              {result.icon.title}
+              <MiniGridSmall>Икона</MiniGridSmall>
+            </MiniGridLink>
+          ) : null}
+          {date ? (
+            <MiniGridLink href={`/church/calendar/${date}`}>
+              {result?.calendarDay?.title || date}
+              <MiniGridSmall>День календаря</MiniGridSmall>
+            </MiniGridLink>
+          ) : null}
+        </MiniGrid>
+      </RelatedSection>
+    </Page>
   );
 }

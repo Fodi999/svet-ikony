@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Eyebrow, Hero, HeroTitle, Lead, MiniGrid, MiniGridLink, MiniGridSmall, Page, RelatedSection, SectionHead, SectionHeadTitle } from '@/components/site/PageChrome';
 import { publicApi } from '@/lib/api';
 import { pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
@@ -45,28 +45,28 @@ export default async function GospelPage() {
   const groups = groupByBook(readings, t.other);
 
   return (
-    <main className="page">
-      <section className="page-hero">
-        <p className="eyebrow">{t.eyebrow}</p>
-        <h1>{t.title}</h1>
-        <p>{t.lead}</p>
-      </section>
+    <Page>
+      <Hero>
+        <Eyebrow>{t.eyebrow}</Eyebrow>
+        <HeroTitle>{t.title}</HeroTitle>
+        <Lead>{t.lead}</Lead>
+      </Hero>
 
       {groups.length ? groups.map(([book, items]) => (
-        <section key={book} className="related-section">
-          <div className="section-head">
-            <h2>{book}</h2>
-          </div>
-          <div className="mini-grid">
+        <RelatedSection key={book}>
+          <SectionHead>
+            <SectionHeadTitle>{book}</SectionHeadTitle>
+          </SectionHead>
+          <MiniGrid>
             {items.map((item) => (
-              <Link key={item.id} href={`/church/gospel/${item.slug}`}>
+              <MiniGridLink key={item.id} href={`/church/gospel/${item.slug}`}>
                 {item.title}
-                <small>{item.reference}</small>
-              </Link>
+                <MiniGridSmall>{item.reference}</MiniGridSmall>
+              </MiniGridLink>
             ))}
-          </div>
-        </section>
+          </MiniGrid>
+        </RelatedSection>
       )) : <p className="m-0 border-t border-gold/28 py-6 text-muted-foreground text-[18px]">{t.empty}</p>}
-    </main>
+    </Page>
   );
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Breadcrumbs } from '@/components/site/Breadcrumbs';
+import { DetailActions, DetailHero, Eyebrow, HeroCopy, HeroTitle, Lead, Page, Panel, PanelLabel, ReaderText, RelatedSection, SectionHead } from '@/components/site/PageChrome';
 import { ProductCard } from '@/components/site/ProductCard';
 import { ProductGallery } from '@/components/site/ProductGallery';
 import { ProductOrderTrigger } from '@/components/site/ProductOrderModal';
@@ -86,9 +87,9 @@ export default async function ProductPage({ params }: Props) {
 
   if (!page) {
     return (
-      <main className="page">
+      <Page>
         <h1>{translate(locale, 'pageNotFound')}</h1>
-      </main>
+      </Page>
     );
   }
 
@@ -100,7 +101,7 @@ export default async function ProductPage({ params }: Props) {
   const productUrl = absoluteSiteUrl(withLocale(`/shop/${product.slug}`, locale));
 
   return (
-    <main className="detail-page">
+    <Page>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -127,12 +128,12 @@ export default async function ProductPage({ params }: Props) {
         items={[{ href: '/', label: translate(locale, 'home') }, { href: '/shop', label: translate(locale, 'navShop') }]}
         current={name}
       />
-      <section className="sacred-detail-hero">
+      <DetailHero>
         <ProductGallery images={galleryImages} alt={name} />
-        <div className="sacred-hero-copy">
-          {category ? <p className="eyebrow">{categoryName(category, locale)}</p> : null}
-          <h1>{name}</h1>
-          <p className="detail-lead">{product.description}</p>
+        <HeroCopy>
+          {category ? <Eyebrow>{categoryName(category, locale)}</Eyebrow> : null}
+          <HeroTitle>{name}</HeroTitle>
+          <Lead>{product.description}</Lead>
           <dl className="mb-4.5 flex flex-wrap gap-2.5">
             <div className="rounded-xs border border-gold/28 bg-gold/6 px-3 py-2">
               <dt className="mb-0.5 text-[11px] font-bold text-muted-foreground uppercase">{priceLabel[locale]}</dt>
@@ -153,34 +154,36 @@ export default async function ProductPage({ params }: Props) {
               </div>
             ) : null}
           </dl>
-          <div className="detail-actions">
+          <DetailActions>
             <ProductOrderTrigger product={product} related={related} />
-          </div>
+          </DetailActions>
           {iconSlug ? (
             <p className="mb-1 font-serif text-[15px] text-gold-light">
               <Link href={withLocale(`/icons/${iconSlug}`, locale)}>{translate(locale, 'aboutIconLink')}</Link>
             </p>
           ) : null}
-        </div>
-      </section>
+        </HeroCopy>
+      </DetailHero>
 
       {fullDescription(product, locale) ? (
-        <article className="sacred-panel">
-          <span><T k="material" /></span>
-          <div className="reader-text">
+        <Panel>
+          <PanelLabel><T k="material" /></PanelLabel>
+          <ReaderText>
             {fullDescription(product, locale).split(/\n{2,}|\n/).map((part) => part.trim()).filter(Boolean).map((part) => <p key={part}>{part}</p>)}
-          </div>
-        </article>
+          </ReaderText>
+        </Panel>
       ) : null}
 
       {related.length ? (
-        <section className="related-section">
-          <div className="section-head"><p className="eyebrow">{translate(locale, 'relatedProductsLabel')}</p></div>
+        <RelatedSection>
+          <SectionHead>
+            <Eyebrow>{translate(locale, 'relatedProductsLabel')}</Eyebrow>
+          </SectionHead>
           <div className="grid grid-cols-3 gap-[18px] max-[960px]:grid-cols-2 max-[560px]:grid-cols-1">
             {related.map((item) => <ProductCard key={item.id} product={item} />)}
           </div>
-        </section>
+        </RelatedSection>
       ) : null}
-    </main>
+    </Page>
   );
 }

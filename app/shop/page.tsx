@@ -1,4 +1,5 @@
 import { Breadcrumbs } from '@/components/site/Breadcrumbs';
+import { Eyebrow, HeroTitle, Lead, Page } from '@/components/site/PageChrome';
 import { ShopCatalog } from '@/components/site/ShopCatalog';
 import { T } from '@/components/site/TranslatedText';
 import { publicApi } from '@/lib/api';
@@ -27,19 +28,21 @@ export default async function ShopPage() {
   ]);
 
   return (
-    <main className="page icons-page">
+    <Page className="overflow-hidden">
       <Breadcrumbs
         items={[{ href: '/', label: translate(locale, 'home') }]}
         current={translate(locale, 'navShop')}
       />
-      <section className="page-hero icons-catalog-hero">
+      <section className="grid grid-cols-[minmax(0,1fr)_minmax(260px,420px)] gap-[clamp(24px,5vw,80px)] items-end pt-0 px-0 pb-[clamp(30px,4vw,64px)] border-b border-gold/28 max-[900px]:items-start">
         <div>
-          <p className="eyebrow"><T k="shopSectionName" /></p>
-          <h1><T k="shopPageTitle" /></h1>
-          <p><T k="shopPageLead" /></p>
+          <Eyebrow><T k="shopSectionName" /></Eyebrow>
+          <HeroTitle className="max-w-[980px]">
+            <T k="shopPageTitle" />
+          </HeroTitle>
+          <Lead><T k="shopPageLead" /></Lead>
         </div>
       </section>
       <ShopCatalog products={products} categories={categories} />
-    </main>
+    </Page>
   );
 }

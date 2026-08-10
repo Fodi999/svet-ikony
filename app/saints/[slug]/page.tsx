@@ -1,7 +1,7 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BackLink, Breadcrumbs } from '@/components/site/Breadcrumbs';
 import { LocalizedSaintDetail } from '@/components/site/LocalizedContent';
+import { Eyebrow, Hero, HeroTitle, Lead, MiniGrid, MiniGridLink, MiniGridSmall, Page } from '@/components/site/PageChrome';
 import { publicApi } from '@/lib/api';
 import { localeNames, translate, withLocale } from '@/lib/i18n';
 import { resolveMediaUrl } from '@/lib/media/resolver';
@@ -48,27 +48,28 @@ export default async function SaintPage({ params, searchParams }: Props) {
   if (!page.saint) {
     const translations = page.translations || [];
     return (
-      <main className="page">
+      <Page>
         <Breadcrumbs
           items={[{ href: '/', label: translate(locale, 'home') }, { href: '/saints', label: translate(locale, 'navSaints') }]}
           current={translations[0]?.title || slug}
         />
-        <section className="page-hero">
-          <p className="eyebrow">{translate(locale, 'saintsPageEyebrow')}</p>
-          <h1>{translate(locale, 'saintNoTranslation')}</h1>
-          {translations.length ? <p>{translate(locale, 'prayerOpenIn')}</p> : null}
-        </section>
+        <Hero>
+          <Eyebrow>{translate(locale, 'saintsPageEyebrow')}</Eyebrow>
+          <HeroTitle>{translate(locale, 'saintNoTranslation')}</HeroTitle>
+          {translations.length ? <Lead>{translate(locale, 'prayerOpenIn')}</Lead> : null}
+        </Hero>
         {translations.length ? (
-          <div className="mini-grid">
+          <MiniGrid>
             {translations.map((item) => (
-              <Link key={item.language} href={withLocale(`/saints/${item.slug}`, item.language)}>
-                {item.title}<small>{localeNames[item.language]}</small>
-              </Link>
+              <MiniGridLink key={item.language} href={withLocale(`/saints/${item.slug}`, item.language)}>
+                {item.title}
+                <MiniGridSmall>{localeNames[item.language]}</MiniGridSmall>
+              </MiniGridLink>
             ))}
-          </div>
+          </MiniGrid>
         ) : null}
         <BackLink href="/saints" label={translate(locale, 'navSaints')} />
-      </main>
+      </Page>
     );
   }
 

@@ -111,19 +111,38 @@ export function PrayerAudioBar({ audioRef, playLabel, pauseLabel, volumeLabel, o
   }
 
   return (
-    <div className="prayer-audio-bar">
-      <button type="button" className="prayer-audio-bar__play" onClick={togglePlay} aria-label={isPlaying ? pauseLabel : playLabel}>
+    <div className="grid grid-cols-[auto_auto_minmax(160px,1fr)_auto_auto] items-center gap-[clamp(10px,1.4vw,18px)] rounded-full border border-gold/28 bg-[linear-gradient(180deg,rgba(205,164,90,.08),rgba(205,164,90,.025)),rgba(13,12,10,.86)] px-[18px] py-2.5 shadow-[inset_0_0_0_1px_rgba(233,203,132,.05)] max-[560px]:grid-cols-[auto_1fr_auto] max-[560px]:gap-2.5">
+      <button
+        type="button"
+        className="grid size-[42px] place-items-center rounded-full border border-[rgba(214,168,79,.4)] bg-white/4 text-gold-light transition-colors duration-200 ease-linear hover:border-gold hover:text-foreground focus-visible:border-gold focus-visible:text-foreground"
+        onClick={togglePlay}
+        aria-label={isPlaying ? pauseLabel : playLabel}
+      >
         {isPlaying ? <Pause size={17} aria-hidden="true" /> : <Play size={17} aria-hidden="true" />}
       </button>
-      <span className="prayer-audio-bar__time" ref={timeLabelRef}>00:00 / 00:00</span>
-      <div className="prayer-audio-bar__progress" ref={progressTrackRef} onClick={handleSeek}>
-        <div className="prayer-audio-bar__progress-fill" ref={progressFillRef} />
+      <span className="text-xs font-bold whitespace-nowrap text-muted-foreground max-[560px]:hidden" ref={timeLabelRef}>
+        00:00 / 00:00
+      </span>
+      <div
+        className="relative h-[5px] cursor-pointer rounded-full bg-white/16 after:absolute after:top-1/2 after:left-[var(--audio-thumb-left,0%)] after:size-4 after:-translate-x-1/2 after:-translate-y-1/2 after:rounded-full after:bg-gold-light after:shadow-[0_0_0_4px_rgba(214,168,79,.13)] after:content-['']"
+        ref={progressTrackRef}
+        onClick={handleSeek}
+      >
+        <div
+          className="absolute inset-y-0 left-0 w-0 rounded-[inherit] bg-[linear-gradient(90deg,var(--color-gold-light),var(--color-gold))]"
+          ref={progressFillRef}
+        />
       </div>
-      <button type="button" className="prayer-audio-bar__mute" onClick={toggleMute} aria-label={volumeLabel}>
+      <button
+        type="button"
+        className="grid size-[42px] place-items-center rounded-full border border-[rgba(214,168,79,.4)] bg-white/4 text-gold-light transition-colors duration-200 ease-linear hover:border-gold hover:text-foreground focus-visible:border-gold focus-visible:text-foreground max-[560px]:hidden"
+        onClick={toggleMute}
+        aria-label={volumeLabel}
+      >
         {isMuted || volume === 0 ? <VolumeX size={18} aria-hidden="true" /> : <Volume2 size={18} aria-hidden="true" />}
       </button>
       <input
-        className="prayer-audio-bar__volume"
+        className="w-[118px] accent-gold max-[560px]:hidden"
         type="range"
         min={0}
         max={1}

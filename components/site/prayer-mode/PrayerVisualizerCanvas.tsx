@@ -405,17 +405,38 @@ export function PrayerVisualizerCanvas({
   const fallbackSrc = (visualizerAsset?.processingStatus === 'ready' && visualizerAsset.fallbackImageUrl) || imageUrl;
 
   return (
-    <div className="prayer-visualizer-panel" ref={containerRef} style={{ background: backgroundColor || '#000000' }}>
+    <div
+      // `prayer-visualizer-panel` is kept as a structural marker class only:
+      // .prayer-mode-layout--split in prayer-mode.css (owned by
+      // LocalizedContent.tsx, not yet migrated) targets it via a descendant
+      // selector to place this panel in the split reading layout. All of
+      // this element's OWN styling now lives in the Tailwind utilities below.
+      className="prayer-visualizer-panel relative aspect-video max-h-none min-h-[clamp(380px,31vw,560px)] w-full min-w-0 max-w-full grid grid-rows-[1fr_auto] justify-self-stretch overflow-hidden rounded-md border border-gold/28 bg-[radial-gradient(circle_at_50%_35%,rgba(205,164,90,.13),transparent_35%),#070706] shadow-[inset_0_0_0_1px_rgba(233,203,132,.08),0_22px_60px_rgba(0,0,0,.42)] after:absolute after:bottom-[15px] after:left-1/2 after:z-[1] after:h-px after:w-[min(300px,45%)] after:-translate-x-1/2 after:bg-[linear-gradient(90deg,transparent,rgba(233,203,132,.55),transparent)] after:content-[''] max-[900px]:min-h-[320px] max-[560px]:aspect-[4/5] max-[560px]:min-h-[280px] [&:fullscreen]:aspect-auto [&:fullscreen]:h-screen [&:fullscreen]:max-h-none [&:fullscreen]:w-screen"
+      ref={containerRef}
+      style={{ background: backgroundColor || '#000000' }}
+    >
       {webglReady && mapUrl ? (
-        <canvas ref={canvasRef} className="prayer-mode-canvas" style={{ visibility: hasScene ? 'visible' : 'hidden' }} />
+        <canvas
+          ref={canvasRef}
+          className="relative z-0 row-start-1 block h-full min-h-0 w-full"
+          style={{ visibility: hasScene ? 'visible' : 'hidden' }}
+        />
       ) : null}
       {!hasScene ? (
-        <div className="prayer-mode-fallback">
-          {fallbackSrc ? <img src={fallbackSrc} alt={title} /> : null}
+        <div className="row-start-1 grid min-h-0 place-items-center overflow-hidden">
+          {fallbackSrc ? <img src={fallbackSrc} alt={title} className="max-h-full max-w-full object-contain" /> : null}
         </div>
       ) : null}
-      <p className="prayer-mode-subtitle" ref={subtitleRef} />
-      <button type="button" className="prayer-visualizer-fullscreen" onClick={toggleFullscreen} aria-label="Повний екран">
+      <p
+        ref={subtitleRef}
+        className="relative z-[2] m-0 min-h-[1.6em] px-[clamp(18px,4vw,44px)] pt-2.5 pb-7 text-center font-serif text-[clamp(18px,1.7vw,25px)] text-[#f2e6cd] opacity-0 transition-opacity duration-[.35s] ease-linear [text-shadow:0_2px_10px_rgba(0,0,0,.6)]"
+      />
+      <button
+        type="button"
+        className="absolute top-3 right-3 z-[3] grid size-8 place-items-center rounded-full border border-[rgba(214,168,79,.4)] bg-black/45 text-gold-light transition-colors duration-200 ease-linear hover:border-gold hover:text-white focus-visible:border-gold focus-visible:text-white"
+        onClick={toggleFullscreen}
+        aria-label="Повний екран"
+      >
         {isFullscreen ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
       </button>
     </div>

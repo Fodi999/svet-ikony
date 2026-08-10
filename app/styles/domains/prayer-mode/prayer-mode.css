@@ -34,122 +34,14 @@
   grid-row: 1;
 }
 
-.prayer-visualizer-panel {
-  position: relative;
-  min-width: 0;
-  width: 100%;
-  max-width: 100%;
-  justify-self: stretch;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  /* A definite height via aspect-ratio (rather than a bare 1fr row with only
-     min-height) avoids a circular sizing loop: the canvas is height:100% of
-     this element, so if this element's own height depended on its content
-     (including the canvas) instead of a fixed ratio, ResizeObserver would
-     keep nudging both sizes upward every frame without ever settling. */
-  aspect-ratio: 16 / 9;
-  max-height: none;
-  min-height: clamp(380px, 31vw, 560px);
-  border: 1px solid var(--border-gold);
-  border-radius: var(--radius-md);
-  background:
-    radial-gradient(circle at 50% 35%, rgba(205, 164, 90, .13), transparent 35%),
-    #070706;
-  box-shadow: inset 0 0 0 1px rgba(233, 203, 132, .08), 0 22px 60px rgba(0, 0, 0, .42);
-  overflow: hidden;
-}
-
-.prayer-visualizer-panel::after {
-  content: "";
-  position: absolute;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.prayer-visualizer-panel::after {
-  left: 50%;
-  bottom: 15px;
-  width: min(300px, 45%);
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(233, 203, 132, .55), transparent);
-  transform: translateX(-50%);
-}
-
-/* Both share the panel's first grid cell (rather than being placed into
-   separate rows) so the canvas and the fallback image can briefly coexist —
-   the fallback stays visible while a prepared map is downloading/parsing,
-   then the canvas takes over once a scene actually exists. */
-.prayer-mode-canvas,
-.prayer-mode-fallback {
-  grid-area: 1 / 1;
-}
-
-.prayer-mode-canvas {
-  position: relative;
-  z-index: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-}
-
-.prayer-mode-fallback {
-  display: grid;
-  place-items: center;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.prayer-mode-fallback img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-
-.prayer-mode-subtitle {
-  position: relative;
-  z-index: 2;
-  margin: 0;
-  padding: 10px clamp(18px, 4vw, 44px) 28px;
-  min-height: 1.6em;
-  color: #f2e6cd;
-  font-family: var(--font-serif, serif);
-  font-size: clamp(18px, 1.7vw, 25px);
-  text-align: center;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, .6);
-  opacity: 0;
-  transition: opacity .35s ease;
-}
-
-.prayer-visualizer-fullscreen {
-  position: absolute;
-  z-index: 3;
-  top: 12px;
-  right: 12px;
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid rgba(214, 168, 79, .4);
-  border-radius: var(--radius-full, 999px);
-  background: rgba(0, 0, 0, .45);
-  color: var(--gold-light, #d6a84f);
-  cursor: pointer;
-  transition: border-color .2s ease, color .2s ease;
-}
-
-.prayer-visualizer-fullscreen:hover,
-.prayer-visualizer-fullscreen:focus-visible {
-  border-color: var(--gold, #b8873b);
-  color: #fff;
-}
-
-.prayer-visualizer-panel:fullscreen {
-  aspect-ratio: auto;
-  max-height: none;
-  width: 100vw;
-  height: 100vh;
-}
+/* .prayer-visualizer-panel's OWN styling, .prayer-mode-canvas,
+   .prayer-mode-fallback, .prayer-mode-subtitle, and
+   .prayer-visualizer-fullscreen were migrated to Tailwind utilities
+   directly on PrayerVisualizerCanvas.tsx (Phase 2 of the Tailwind
+   migration) — see that file. The class name "prayer-visualizer-panel"
+   is deliberately kept on that component's root as a structural marker
+   only (no styling of its own left here), since the still-unmigrated
+   .prayer-mode-layout--split rule above targets it externally. */
 
 /* ── Shared transport bar (used by both plain reading and prayer mode) ── */
 
@@ -160,82 +52,8 @@
   margin: 8px auto 0;
 }
 
-.prayer-audio-bar {
-  display: grid;
-  grid-template-columns: auto auto minmax(160px, 1fr) auto auto;
-  align-items: center;
-  gap: clamp(10px, 1.4vw, 18px);
-  padding: 10px 18px;
-  border: 1px solid var(--border-gold);
-  border-radius: var(--radius-full, 999px);
-  background:
-    linear-gradient(180deg, rgba(205, 164, 90, .08), rgba(205, 164, 90, .025)),
-    rgba(13, 12, 10, .86);
-  box-shadow: inset 0 0 0 1px rgba(233, 203, 132, .05);
-}
-
-.prayer-audio-bar__play,
-.prayer-audio-bar__mute {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border: 1px solid rgba(214, 168, 79, .4);
-  border-radius: var(--radius-full, 999px);
-  background: rgba(255, 255, 255, .04);
-  color: var(--gold-light, #d6a84f);
-  cursor: pointer;
-  transition: border-color .2s ease, color .2s ease;
-}
-
-.prayer-audio-bar__play:hover,
-.prayer-audio-bar__play:focus-visible,
-.prayer-audio-bar__mute:hover,
-.prayer-audio-bar__mute:focus-visible {
-  border-color: var(--gold, #b8873b);
-  color: var(--text, #fff);
-}
-
-.prayer-audio-bar__time {
-  color: var(--muted, #cbb98a);
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.prayer-audio-bar__progress {
-  position: relative;
-  height: 5px;
-  border-radius: var(--radius-full, 999px);
-  background: rgba(255, 255, 255, .16);
-  cursor: pointer;
-}
-
-.prayer-audio-bar__progress::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: var(--audio-thumb-left, 0%);
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--gold-light, #d6a84f);
-  box-shadow: 0 0 0 4px rgba(214, 168, 79, .13);
-  transform: translate(-50%, -50%);
-}
-
-.prayer-audio-bar__progress-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 0%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--gold-light, #d6a84f), var(--gold, #b8873b));
-}
-
-.prayer-audio-bar__volume {
-  width: 118px;
-  accent-color: var(--gold, #b8873b);
-}
+/* .prayer-audio-bar and its __BEM children were migrated to Tailwind
+   utilities directly on PrayerAudioBar.tsx (Phase 2) — see that file. */
 
 .prayer-audio-hint {
   margin: 0;
@@ -453,31 +271,10 @@
   color: var(--gold-light);
 }
 
-.prayer-info-qr .prayer-qr-panel {
-  gap: 8px;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  background: transparent;
-}
-
-.prayer-info-qr .prayer-qr-panel span {
-  display: none;
-}
-
-.prayer-info-qr .prayer-qr-panel img {
-  width: 112px;
-  height: 112px;
-  border: 1px solid var(--border-gold);
-  border-radius: var(--radius-sm);
-  padding: 7px;
-}
-
-.prayer-info-qr .prayer-qr-panel a {
-  color: var(--gold-light);
-  font-size: 12px;
-  text-decoration: none;
-}
+/* .prayer-qr-panel's effective styling (previously scoped under
+   .prayer-info-qr) is now hand-written directly on PrayerQr.tsx's own
+   root (Phase 2) — that component no longer renders the class, so these
+   rules would be dead weight; removed rather than left orphaned. */
 
 @media (max-width: 900px) {
   .prayer-mode-layout--split {
@@ -488,10 +285,6 @@
   .prayer-mode-layout--split .prayer-visualizer-panel {
     grid-column: auto;
     grid-row: auto;
-  }
-
-  .prayer-visualizer-panel {
-    min-height: 320px;
   }
 
   .prayer-info-strip {
@@ -516,28 +309,6 @@
   .prayer-reader-panel {
     min-height: 0;
     padding: 22px 18px;
-  }
-
-  .prayer-visualizer-panel {
-    min-height: 280px;
-    aspect-ratio: 4 / 5;
-  }
-
-  .prayer-audio-bar {
-    grid-template-columns: auto 1fr auto;
-    gap: 10px;
-  }
-
-  .prayer-audio-bar__time {
-    display: none;
-  }
-
-  .prayer-audio-bar__volume {
-    display: none;
-  }
-
-  .prayer-audio-bar__mute {
-    display: none;
   }
 
   .prayer-info-about,

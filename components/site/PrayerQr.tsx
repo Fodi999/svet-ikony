@@ -26,11 +26,13 @@ export function PrayerQr({ url, label, downloadLabel, downloadName }: Props) {
   if (!dataUrl) return null;
 
   return (
-    <section className="sacred-panel prayer-qr-panel">
-      <span>{label}</span>
+    <section className="grid justify-items-center gap-2 text-gold-light">
+      <span className="hidden">{label}</span>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={dataUrl} alt={label} width={220} height={220} />
-      <a href={dataUrl} download={downloadName}>{downloadLabel}</a>
+      <img src={dataUrl} alt={label} width={220} height={220} className="size-[112px] rounded-md border border-gold/28 p-[7px]" />
+      <a href={dataUrl} download={downloadName} className="text-xs text-gold-light no-underline">
+        {downloadLabel}
+      </a>
     </section>
   );
 }

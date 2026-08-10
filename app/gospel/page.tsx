@@ -66,7 +66,7 @@ export default async function GospelPage() {
             ))}
           </div>
         </section>
-      )) : <p className="calendar-empty">{t.empty}</p>}
+      )) : <p className="m-0 border-t border-gold/28 py-6 text-muted-foreground text-[18px]">{t.empty}</p>}
     </main>
   );
 }

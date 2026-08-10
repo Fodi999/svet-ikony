@@ -18,7 +18,6 @@
 .daily-prayer-picker button,
 .daily-prayer-fullscreen-close,
 .daily-prayer-fullscreen-actions button,
-.list-panel-links a,
 .icon-lightbox-close,
 .slavonic-primary-action,
 .slavonic-listen {
@@ -62,7 +61,6 @@
 .daily-prayer-fullscreen-close:focus-visible,
 .daily-prayer-fullscreen-actions button:hover,
 .daily-prayer-fullscreen-actions button:focus-visible,
-.list-panel-links a:hover,
 .icon-lightbox-close:hover {
   border-color: var(--gold);
   background: linear-gradient(180deg, var(--gold-light), var(--gold));
@@ -153,7 +151,6 @@
 .daily-prayer-card,
 .daily-prayer-reader,
 .church-directory-card,
-.calendar-hero-card,
 .icons-empty,
 .slavonic-grid-section,
 .slavonic-message,
@@ -175,9 +172,7 @@
 .faq details:hover,
 .list-grid > a:hover,
 .list-grid .prayer-list-card:hover,
-.daily-prayer-card:hover,
-.calendar-hero-card:hover,
-.calendar-hero-card:focus-within {
+.daily-prayer-card:hover {
   border-color: var(--gold);
   background:
     linear-gradient(135deg, rgba(205, 164, 90, .095), transparent 44%),

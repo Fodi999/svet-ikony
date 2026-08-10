@@ -89,8 +89,7 @@ body {
 
   .page,
   .read-page,
-  .detail-page,
-  .calendar-page {
+  .detail-page {
     padding-right: max(clamp(10px, 5vw, 72px), env(safe-area-inset-right));
     padding-bottom: max(clamp(28px, 5vw, 92px), env(safe-area-inset-bottom));
     padding-left: max(clamp(10px, 5vw, 72px), env(safe-area-inset-left));

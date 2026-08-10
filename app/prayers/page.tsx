@@ -38,7 +38,7 @@ export default async function PrayersPage() {
         <h1><T k="prayersPageTitle" /></h1>
         <p>{prayers.length ? countLabel : translate(locale, 'prayersPageDescription')}</p>
       </section>
-      {prayers.length ? <LocalizedBackendPrayersList prayers={prayers} /> : <p className="calendar-empty">{translate(locale, 'noDays')}</p>}
+      {prayers.length ? <LocalizedBackendPrayersList prayers={prayers} /> : <p className="m-0 border-t border-gold/28 py-6 text-muted-foreground text-[18px]">{translate(locale, 'noDays')}</p>}
     </main>
   );
 }

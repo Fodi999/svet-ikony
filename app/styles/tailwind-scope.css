@@ -42,3 +42,30 @@
   --font-serif: Georgia, "Times New Roman", serif;
   --ease-brand: cubic-bezier(0.2, 0.7, 0.3, 1);
 }
+
+/* Calendar month-swap transition (Phase 4) — kept as plain keyframes since
+   Tailwind's animate-[...] arbitrary utility needs the @keyframes to exist
+   somewhere, and this is the only consumer. Referenced from CalendarView.tsx. */
+@keyframes calendarMonthSwap {
+  0% {
+    opacity: 0.2;
+    transform: translate3d(16px, 0, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes calendarMonthSwapPrev {
+  0% {
+    opacity: 0.2;
+    transform: translate3d(-16px, 0, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}

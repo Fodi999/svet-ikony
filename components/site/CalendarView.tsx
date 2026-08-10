@@ -531,12 +531,20 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
     setYear(nextYear);
   }
 
+  const monthSwapClass = monthTransition
+    ? monthDirection === 'prev'
+      ? 'animate-[calendarMonthSwapPrev_220ms_ease_both]'
+      : 'animate-[calendarMonthSwap_220ms_ease_both]'
+    : '';
+
   return (
-    <section className="calendar-page">
-      <section className="calendar-hero">
-        <div>
-          <span className="calendar-year">{hero?.year ?? String(year)}</span>
-          <h1>{localizedHeroTitle(hero?.title, t)}</h1>
+    <section className="w-full min-h-screen m-0 p-[clamp(18px,2.4vw,42px)] bg-canvas text-foreground max-[900px]:pt-[18px] max-[900px]:px-[14px] max-[900px]:pb-[38px] max-[520px]:pt-[14px] max-[520px]:px-[10px] max-[520px]:pb-[32px] max-[430px]:pt-[12px] max-[430px]:px-[8px] max-[430px]:pb-[28px] [@media(display-mode:standalone)]:pr-[max(clamp(10px,5vw,72px),env(safe-area-inset-right))] [@media(display-mode:standalone)]:pb-[max(clamp(28px,5vw,92px),env(safe-area-inset-bottom))] [@media(display-mode:standalone)]:pl-[max(clamp(10px,5vw,72px),env(safe-area-inset-left))]">
+      <section className="grid grid-cols-[minmax(0,1fr)_minmax(260px,.72fr)_minmax(300px,.92fr)_minmax(260px,.72fr)] items-start gap-[clamp(20px,2vw,32px)] border-b border-gold/28 pb-[clamp(34px,4vw,64px)] max-[1280px]:grid-cols-2 max-[1280px]:gap-[18px] max-[900px]:grid-cols-1 max-[900px]:gap-4 max-[900px]:pb-[26px]">
+        <div className="min-w-0 max-[1280px]:col-span-full">
+          <span className="block mb-1.5 text-muted-foreground text-[clamp(14px,1.05vw,20px)] font-medium max-[520px]:text-[14px]">{hero?.year ?? String(year)}</span>
+          <h1 className="m-0 max-w-[780px] font-serif font-bold leading-none text-foreground text-[clamp(56px,7.6vw,132px)] max-[900px]:max-w-full max-[900px]:text-[clamp(48px,12vw,84px)] max-[900px]:leading-none max-[900px]:[overflow-wrap:anywhere] max-[520px]:text-[clamp(42px,16vw,64px)] max-[520px]:leading-[.98] max-[520px]:text-balance">
+            {localizedHeroTitle(hero?.title, t)}
+          </h1>
         </div>
         <CalendarFeatureCard
           eyebrow={t('todayFeast')}
@@ -557,23 +565,43 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
         <CalendarInfoCard eyebrow={t('information')} title={t('catalog')} links={navigationTips} />
       </section>
 
-      <div className="calendar-toolbar">
-        <div className="month-switch">
-          <button className="month-step" type="button" onClick={() => moveMonth(-1)} aria-label={`${t(prevMonth.key)}`}>
-            <span><SvgIcon name="arrow-left" size={18} /></span>
-            <small>{t(prevMonth.key)}</small>
+      <div className="relative z-40 grid grid-cols-[minmax(360px,1fr)_auto_auto_auto] items-center gap-3 border-t border-gold/28 mt-[clamp(24px,3vw,44px)] py-3.5 text-foreground max-[900px]:grid-cols-1 max-[900px]:items-start max-[520px]:relative max-[520px]:z-[60] max-[520px]:border-b max-[520px]:bg-[rgba(11,11,10,.94)] max-[520px]:backdrop-blur-[14px]">
+        <div className="min-w-0 flex items-center gap-2.5 text-foreground max-[900px]:w-full max-[900px]:justify-between max-[900px]:overflow-visible max-[900px]:pb-0 max-[430px]:grid max-[430px]:grid-cols-[42px_minmax(0,1fr)_42px]">
+          <button
+            className="inline-flex min-h-[38px] min-w-[116px] items-center justify-center gap-2 rounded-md border border-gold/28 bg-[linear-gradient(135deg,rgba(127,141,101,.08),transparent_60%),#141511] px-3 font-black text-gold-light whitespace-nowrap cursor-pointer max-[900px]:min-w-0 max-[900px]:flex-1 max-[430px]:min-w-0 max-[430px]:w-[42px] max-[430px]:px-0"
+            type="button"
+            onClick={() => moveMonth(-1)}
+            aria-label={`${t(prevMonth.key)}`}
+          >
+            <span className="inline-grid place-items-center text-[18px] leading-none"><SvgIcon name="arrow-left" size={18} /></span>
+            <small className="min-w-0 overflow-hidden text-ellipsis text-[14px] font-black leading-none text-foreground max-[900px]:hidden">{t(prevMonth.key)}</small>
           </button>
-          <strong>{monthTitle}{calendarLoading ? ` - ${t('calendarLoading')}` : ''}</strong>
-          <button className="month-step" type="button" onClick={() => moveMonth(1)} aria-label={`${t(nextMonth.key)}`}>
-            <small>{t(nextMonth.key)}</small>
-            <span><SvgIcon name="arrow-right" size={18} /></span>
+          <strong className="min-w-[136px] text-center text-foreground text-[clamp(16px,1vw,19px)] whitespace-nowrap max-[900px]:min-w-[128px] max-[430px]:min-w-0 max-[430px]:text-[16px]">
+            {monthTitle}{calendarLoading ? ` - ${t('calendarLoading')}` : ''}
+          </strong>
+          <button
+            className="inline-flex min-h-[38px] min-w-[116px] items-center justify-center gap-2 rounded-md border border-gold/28 bg-[linear-gradient(135deg,rgba(127,141,101,.08),transparent_60%),#141511] px-3 font-black text-gold-light whitespace-nowrap cursor-pointer max-[900px]:min-w-0 max-[900px]:flex-1 max-[430px]:min-w-0 max-[430px]:w-[42px] max-[430px]:px-0"
+            type="button"
+            onClick={() => moveMonth(1)}
+            aria-label={`${t(nextMonth.key)}`}
+          >
+            <small className="min-w-0 overflow-hidden text-ellipsis text-[14px] font-black leading-none text-foreground max-[900px]:hidden">{t(nextMonth.key)}</small>
+            <span className="inline-grid place-items-center text-[18px] leading-none"><SvgIcon name="arrow-right" size={18} /></span>
           </button>
         </div>
-        <div className="year-switch" aria-label="Вибір року">
-          <button type="button" onClick={() => moveYear(-1)} aria-label={t('prevYear')}><SvgIcon name="minus" size={18} /></button>
-          <label>
-            <span>{t('yearLabel')}</span>
+        <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-foreground max-[900px]:w-full max-[900px]:justify-stretch" aria-label="Вибір року">
+          <button
+            className="h-[38px] w-[34px] rounded-md border border-gold/28 bg-[#141511] text-[18px] font-black text-gold-light cursor-pointer"
+            type="button"
+            onClick={() => moveYear(-1)}
+            aria-label={t('prevYear')}
+          >
+            <SvgIcon name="minus" size={18} />
+          </button>
+          <label className="h-[38px] inline-flex items-center gap-2 rounded-md border border-gold/28 bg-[#141511] px-3 max-[900px]:flex-1 max-[900px]:justify-center">
+            <span className="text-muted-foreground text-[12px] font-black tracking-[.08em] uppercase">{t('yearLabel')}</span>
             <input
+              className="w-[92px] min-w-[92px] border-0 bg-transparent text-foreground [color-scheme:dark] text-[16px] font-black outline-none text-center [font-variant-numeric:tabular-nums] max-[900px]:w-[110px] max-[900px]:min-w-[110px] max-[430px]:w-[86px] max-[430px]:min-w-[86px]"
               type="number"
               min="1900"
               max="2100"
@@ -584,20 +612,34 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
               }}
             />
           </label>
-          <button type="button" onClick={() => moveYear(1)} aria-label={t('nextYear')}><SvgIcon name="plus" size={18} /></button>
+          <button
+            className="h-[38px] w-[34px] rounded-md border border-gold/28 bg-[#141511] text-[18px] font-black text-gold-light cursor-pointer"
+            type="button"
+            onClick={() => moveYear(1)}
+            aria-label={t('nextYear')}
+          >
+            <SvgIcon name="plus" size={18} />
+          </button>
         </div>
-        <div className="calendar-filter">
-          <button className="filter-toggle" type="button" aria-expanded={filterOpen} onClick={() => setFilterOpen((open) => !open)}>
+        <div className="relative z-[70] max-[900px]:w-full">
+          <button
+            className="inline-flex min-h-[38px] items-center justify-between gap-2 rounded-md border border-gold/28 bg-[#141511] pr-3 pl-3.5 text-[14px] leading-none whitespace-nowrap text-gold-light font-black cursor-pointer outline-none focus-visible:border-gold max-[900px]:w-full max-[430px]:min-h-[42px]"
+            type="button"
+            aria-expanded={filterOpen}
+            onClick={() => setFilterOpen((open) => !open)}
+          >
             <span>{t('filter')}</span>
-            <strong>{t(filterLabelKeys[filter])}</strong>
-            <i aria-hidden="true"><SvgIcon name="chevron-down" size={16} /></i>
+            <strong className="text-foreground text-[14px]">{t(filterLabelKeys[filter])}</strong>
+            <i className={`inline-grid size-4 place-items-center not-italic transition-transform duration-[180ms] ease-brand ${filterOpen ? 'rotate-180' : ''}`} aria-hidden="true">
+              <SvgIcon name="chevron-down" size={16} />
+            </i>
           </button>
           {filterOpen ? (
-            <div className="filter-menu">
+            <div className="absolute top-[calc(100%+10px)] right-0 z-[90] w-[250px] rounded-md border border-gold p-1.5 bg-[#141511] shadow-[0_14px_34px_rgba(0,0,0,.24)] max-[900px]:right-auto max-[900px]:left-0 max-[900px]:w-[min(290px,calc(100vw-28px))]">
               {(Object.keys(filterLabelKeys) as FilterKind[]).map((kind) => (
                 <button
                   key={kind}
-                  className={filter === kind ? 'active' : ''}
+                  className={`w-full min-h-[38px] rounded-xs border-0 px-2.5 bg-transparent text-left text-foreground font-black cursor-pointer [&+&]:border-t [&+&]:border-t-[rgba(232,211,169,.13)] hover:bg-gold hover:text-canvas ${filter === kind ? 'bg-gold text-canvas' : ''}`}
                   type="button"
                   onClick={() => {
                     setFilter(kind);
@@ -610,25 +652,52 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
             </div>
           ) : null}
         </div>
-        <div className="view-switch" role="group" aria-label={t('calendarViewLabel')}>
-          <button className={view === 'calendar' ? 'active' : ''} type="button" onClick={() => setView('calendar')}>{t('calendar')}</button>
+        <div className="inline-flex items-center gap-2 text-muted-foreground font-black whitespace-nowrap max-[900px]:w-full max-[900px]:justify-start max-[430px]:min-h-[40px]" role="group" aria-label={t('calendarViewLabel')}>
+          <button
+            className={`border-0 bg-transparent font-black cursor-pointer ${view === 'calendar' ? 'text-foreground underline underline-offset-4' : 'text-gold-light'}`}
+            type="button"
+            onClick={() => setView('calendar')}
+          >
+            {t('calendar')}
+          </button>
           <span>|</span>
-          <button className={view === 'list' ? 'active' : ''} type="button" onClick={() => setView('list')}>{t('list')}</button>
+          <button
+            className={`border-0 bg-transparent font-black cursor-pointer ${view === 'list' ? 'text-foreground underline underline-offset-4' : 'text-gold-light'}`}
+            type="button"
+            onClick={() => setView('list')}
+          >
+            {t('list')}
+          </button>
         </div>
       </div>
 
-      <div className="calendar-main">
-        <section id="calendar-grid" className="month-block">
-          <div className={'calendar-month-surface' + (monthTransition ? ' is-changing' : '')} data-direction={monthDirection}>
-            <h2>{t(months[monthIndex].key)}</h2>
+      <div className="block w-full max-w-none">
+        <section id="calendar-grid" className="w-full overflow-x-auto pb-2 max-[1280px]:overflow-visible">
+          <div
+            className={`min-w-0 [transform:translate3d(0,0,0)] [will-change:opacity,transform] motion-reduce:animate-none ${monthSwapClass}`}
+            data-direction={monthDirection}
+          >
+            <h2 className="w-full max-w-full mt-[clamp(28px,5vw,64px)] mx-0 mb-[clamp(20px,3vw,38px)] pt-[.12em] px-[.04em] pb-[.18em] font-serif font-bold text-foreground text-[clamp(48px,6.4vw,108px)] leading-[1.12] [overflow-wrap:anywhere] max-[520px]:text-[clamp(52px,22vw,84px)] max-[520px]:mt-[30px] max-[520px]:px-[.03em] max-[520px]:pb-[.2em] max-[520px]:leading-[1.14] max-[430px]:text-[clamp(40px,17vw,58px)] max-[430px]:mt-[22px] max-[430px]:mb-[18px] max-[430px]:leading-[1.16]">
+              {t(months[monthIndex].key)}
+            </h2>
             {visibleDays.length ? (
               <>
                 {view === 'calendar' ? (
-                  <div className="weekday-strip" aria-label={t('weekdaysLabel')}>
-                    {weekdayKeys.map((key) => <span key={key}>{t(key)}</span>)}
+                  <div className="grid grid-cols-7 gap-3.5 mb-3.5 max-[520px]:gap-1.5 max-[430px]:gap-1 max-[430px]:mb-1.5" aria-label={t('weekdaysLabel')}>
+                    {weekdayKeys.map((key) => (
+                      <span key={key} className="min-w-0 border-b border-gold/28 pb-2.5 text-muted-foreground font-serif text-[14px] font-extrabold tracking-[.08em] uppercase max-[520px]:text-[10px] max-[520px]:tracking-[.02em] max-[430px]:border-b-0 max-[430px]:pb-1 max-[430px]:text-center max-[430px]:text-[9px]">
+                        {t(key)}
+                      </span>
+                    ))}
                   </div>
                 ) : null}
-                <div className={view === 'list' ? 'calendar-list' : 'calendar-grid'}>
+                <div
+                  className={
+                    view === 'list'
+                      ? 'grid gap-0 border-t border-gold/28'
+                      : 'w-full min-w-0 grid grid-cols-7 gap-3.5 items-stretch bg-[linear-gradient(180deg,rgba(205,164,90,.045),rgba(11,12,10,.16)),#0b0c0a] max-[520px]:gap-1.5 max-[520px]:bg-transparent'
+                  }
+                >
                   {view === 'list' ? visibleDays.map((item) => {
                     const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
                     const detailHref = pageHrefForDay(item, pages);
@@ -680,14 +749,14 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
                 </div>
               </>
             ) : (
-              <p className="calendar-empty">{t('noDays')}</p>
+              <p className="m-0 border-t border-gold/28 py-6 text-muted-foreground text-[18px]">{t('noDays')}</p>
             )}
           </div>
         </section>
 
       </div>
 
-      <section className="calendar-service-grid">
+      <section className="grid grid-cols-4 gap-[clamp(18px,2.7vw,50px)] mt-[clamp(38px,5vw,78px)] border-t border-gold/28 pt-[22px] max-[900px]:grid-cols-1">
         {services.map((service) => (
           <CalendarServiceCard key={service.id} href={service.href} index={service.index} title={service.title} description={service.description} />
         ))}

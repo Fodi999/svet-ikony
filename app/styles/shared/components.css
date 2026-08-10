@@ -9,17 +9,7 @@
    ------------------------------------------------------------ */
 
 .btn,
-.asset-button,
-.primary-button,
-.secondary-button,
-.pwa-install-actions button,
-.daily-prayer-actions button,
-.daily-prayer-picker button,
-.daily-prayer-fullscreen-close,
-.daily-prayer-fullscreen-actions button,
-.icon-lightbox-close,
-.slavonic-primary-action,
-.slavonic-listen {
+.icon-lightbox-close {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
@@ -45,19 +35,6 @@
 
 .btn:hover,
 .btn:focus-visible,
-.asset-button:hover,
-.asset-button:focus-visible,
-.secondary-button:hover,
-.secondary-button:focus-visible,
-.pwa-install-actions button:hover,
-.daily-prayer-actions button:hover,
-.daily-prayer-actions button:focus-visible,
-.daily-prayer-picker button:hover,
-.daily-prayer-picker button:focus-visible,
-.daily-prayer-fullscreen-close:hover,
-.daily-prayer-fullscreen-close:focus-visible,
-.daily-prayer-fullscreen-actions button:hover,
-.daily-prayer-fullscreen-actions button:focus-visible,
 .icon-lightbox-close:hover {
   border-color: var(--gold);
   background: linear-gradient(180deg, var(--gold-light), var(--gold));
@@ -65,71 +42,29 @@
 }
 
 /* Золотой primary-вариант */
-.btn-primary,
-.asset-button:not(.asset-button-dark),
-.primary-button,
-.daily-prayer-actions button:first-child,
-.daily-prayer-fullscreen-actions button:first-child,
-.daily-prayer-picker button.active,
-.slavonic-primary-action,
-.slavonic-listen {
+.btn-primary {
   border-color: var(--gold);
   background: linear-gradient(180deg, var(--gold-light), var(--gold));
   color: var(--background);
 }
 
 .btn-primary:hover,
-.btn-primary:focus-visible,
-.asset-button:not(.asset-button-dark):hover,
-.asset-button:not(.asset-button-dark):focus-visible,
-.primary-button:hover,
-.primary-button:focus-visible,
-.slavonic-primary-action:hover,
-.slavonic-primary-action:focus-visible,
-.slavonic-listen:not(:disabled):hover,
-.slavonic-listen:not(:disabled):focus-visible {
+.btn-primary:focus-visible {
   border-color: var(--gold-light);
   background: var(--gold-light);
   color: var(--background);
 }
 
-.slavonic-listen:disabled {
-  cursor: not-allowed;
-  opacity: .66;
-}
-
-/* Иконка и подпись внутри кнопки */
-.asset-button svg,
-.asset-button img,
+/* Иконка внутри кнопки */
 .btn svg {
   width: 16px;
   height: 16px;
   flex: 0 0 16px;
-}
-
-.asset-button svg,
-.btn svg {
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.asset-button-icon {
-  width: 16px;
-  height: 16px;
-  display: inline-grid;
-  place-items: center;
-}
-
-.asset-button-icon:empty { display: none; }
-
-.asset-button-label {
-  min-width: 0;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* ------------------------------------------------------------
@@ -145,13 +80,7 @@
 .list-grid > a,
 .list-grid .prayer-list-card,
 .icon-photo-card,
-.daily-prayer-card,
-.daily-prayer-reader,
-.church-directory-card,
-.icons-empty,
-.slavonic-grid-section,
-.slavonic-message,
-.slavonic-modal {
+.icons-empty {
   position: relative;
   border: 1px solid var(--border-gold);
   border-radius: var(--radius-md);
@@ -168,399 +97,10 @@
 .content-feature-grid article:hover,
 .faq details:hover,
 .list-grid > a:hover,
-.list-grid .prayer-list-card:hover,
-.daily-prayer-card:hover {
+.list-grid .prayer-list-card:hover {
   border-color: var(--gold);
   background:
     linear-gradient(135deg, rgba(205, 164, 90, .095), transparent 44%),
     linear-gradient(160deg, rgba(127, 141, 101, .075), transparent 60%),
     var(--surface-soft);
-}
-
-/* Угловой орнамент на карточках */
-/* ------------------------------------------------------------
-   Футер
-   ------------------------------------------------------------ */
-
-.site-footer {
-  position: relative;
-  z-index: 2;
-  isolation: isolate;
-  padding: 0 clamp(18px, 5vw, 72px);
-  border-top: 1px solid var(--border-soft);
-  background: var(--background);
-  color: var(--text);
-}
-
-.site-footer-main {
-  display: grid;
-  grid-template-columns: minmax(260px, .9fr) minmax(320px, 1.1fr);
-  gap: clamp(28px, 6vw, 96px);
-  padding: clamp(42px, 6vw, 78px) 0;
-}
-
-.site-footer-brand {
-  max-width: 560px;
-  display: grid;
-  align-content: start;
-  gap: 12px;
-}
-
-.footer-logo-link {
-  position: relative;
-  width: 54px;
-  height: 54px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-
-.footer-logo {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  opacity: 1;
-}
-
-.footer-logo-link::after {
-  content: none;
-}
-
-.footer-cross {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border-gold);
-  border-radius: var(--radius-sm);
-  color: var(--gold-light);
-  font-family: var(--font-serif);
-  font-size: 22px;
-  line-height: 1;
-}
-
-.site-footer strong {
-  display: block;
-  max-width: 620px;
-  color: var(--text);
-  font-family: var(--font-display);
-  font-size: clamp(30px, 3.4vw, 58px);
-  font-weight: 700;
-  line-height: 1.05;
-  text-wrap: balance;
-}
-
-.site-footer small {
-  display: block;
-  color: var(--gold-light);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-}
-
-.site-footer p {
-  max-width: 520px;
-  margin: 0;
-  color: var(--muted);
-  font-family: var(--font-serif);
-  font-size: clamp(17px, 1.4vw, 22px);
-  line-height: 1.5;
-}
-
-.site-footer-nav {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(18px, 3vw, 42px);
-  align-content: start;
-}
-
-.site-footer-nav::before {
-  content: none;
-}
-
-.site-footer-nav section {
-  min-width: 0;
-  display: grid;
-  align-content: start;
-  gap: 10px;
-  border-left: 1px solid var(--border-soft);
-  padding-left: clamp(16px, 2vw, 28px);
-}
-
-.site-footer-nav h2 {
-  margin: 0 0 8px;
-  color: var(--gold-light);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-}
-
-.site-footer a {
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.25;
-  text-decoration: none;
-  transition: color var(--speed) var(--ease);
-}
-
-.site-footer a:hover,
-.site-footer a:focus-visible {
-  color: var(--gold-light);
-}
-
-.site-footer-bottom {
-  min-height: 58px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  border-top: 1px solid var(--border-soft);
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.site-footer-bottom a {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-/* ------------------------------------------------------------
-   PWA: приглашение к установке
-   ------------------------------------------------------------ */
-
-.pwa-install-prompt {
-  position: fixed;
-  right: clamp(12px, 3vw, 28px);
-  bottom: calc(clamp(12px, 3vw, 28px) + env(safe-area-inset-bottom));
-  z-index: 1200;
-  width: min(420px, calc(100vw - 24px));
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: center;
-  border: 1px solid rgba(214, 168, 79, .52);
-  border-radius: var(--radius-md);
-  background:
-    linear-gradient(135deg, rgba(214, 168, 79, .16), rgba(11, 11, 10, .92) 42%),
-    rgba(11, 11, 10, .96);
-  box-shadow: var(--shadow-lg);
-  padding: 14px;
-  color: var(--text);
-  backdrop-filter: blur(18px) saturate(1.08);
-}
-
-.pwa-install-prompt strong {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--gold-light);
-  font-size: 14px;
-  font-weight: 900;
-  line-height: 1.15;
-  text-transform: uppercase;
-}
-
-.pwa-install-prompt p {
-  margin: 0;
-  color: var(--muted);
-  font-family: var(--font-serif);
-  font-size: 14px;
-  line-height: 1.35;
-}
-
-.pwa-install-actions {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.pwa-install-actions button {
-  min-height: 38px;
-  padding: 0 12px;
-  font-size: 12px;
-}
-
-.pwa-install-actions button:not(.pwa-install-dismiss) {
-  border-color: var(--gold);
-  background: var(--gold);
-  color: var(--background);
-}
-
-/* ------------------------------------------------------------
-   Оффлайн-страница
-   ------------------------------------------------------------ */
-
-.offline-page .offline-hero {
-  min-height: 62vh;
-  align-content: center;
-}
-
-/* ------------------------------------------------------------
-   Адаптив
-   ------------------------------------------------------------ */
-
-@media (max-width: 900px) {
-  .asset-button,
-  .primary-button,
-  .secondary-button {
-    width: 100%;
-  }
-
-  .site-footer { padding: 0 16px; }
-
-  .site-footer-main {
-    grid-template-columns: 1fr;
-    gap: 30px;
-    padding: 34px 0;
-  }
-
-  .site-footer-nav {
-    grid-template-columns: 1fr;
-    gap: 22px;
-  }
-
-  .site-footer-nav::before {
-    content: none;
-  }
-
-  .site-footer-nav section { padding-left: 16px; }
-
-  .site-footer-bottom {
-    align-items: start;
-    flex-direction: column;
-    justify-content: center;
-    padding: 16px 0;
-  }
-
-  .pwa-install-prompt {
-    left: 12px;
-    right: 12px;
-    grid-template-columns: 1fr;
-  }
-
-  .pwa-install-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .pwa-install-actions button { width: 100%; }
-}
-
-@media (max-width: 430px) {
-  .asset-button {
-    min-height: 42px;
-    padding-inline: 12px;
-    font-size: 12px;
-    white-space: normal;
-  }
-
-  .site-footer { padding: 0 12px; }
-
-  .site-footer-main {
-    gap: 24px;
-    padding: 28px 0;
-  }
-
-  .footer-cross {
-    width: 36px;
-    height: 36px;
-    font-size: 20px;
-  }
-
-  .site-footer strong {
-    font-size: clamp(26px, 8vw, 38px);
-    line-height: 1.08;
-  }
-
-  .site-footer p { font-size: 16px; }
-
-  .site-footer-nav { gap: 18px; }
-
-  .site-footer-nav section { padding-left: 12px; }
-
-  .site-footer a { font-size: 14px; }
-
-  .site-footer-bottom {
-    min-height: 0;
-    gap: 10px;
-    padding: 14px 0;
-    font-size: 11px;
-    letter-spacing: .04em;
-  }
-}
-
-/* ------------------------------------------------------------
-   Хлебные крошки и кнопка «назад» на страницах материалов.
-   ------------------------------------------------------------ */
-
-.breadcrumbs ol {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 18px;
-  padding: 0;
-  list-style: none;
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--quiet);
-}
-
-.breadcrumbs li {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.breadcrumbs a {
-  color: var(--gold-light);
-  text-decoration: none;
-}
-
-.breadcrumbs a:hover {
-  color: var(--gold);
-  text-decoration: underline;
-}
-
-.breadcrumbs li[aria-current='page'] span {
-  display: inline-block;
-  max-width: 46ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--muted);
-}
-
-.breadcrumbs svg {
-  flex-shrink: 0;
-  opacity: .6;
-}
-
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: .06em;
-  color: var(--gold-light);
-  text-decoration: none;
-}
-
-.back-link:hover {
-  color: var(--gold);
-  text-decoration: underline;
 }

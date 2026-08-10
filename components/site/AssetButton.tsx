@@ -28,9 +28,9 @@ export function CopyIcon() {
 
 // "asset-button" carries no styling of its own anymore (fully replaced by the
 // Tailwind utilities below) but is kept as a structural marker: content.css
-// (.detail-actions/.hero-actions/.prayer-card-actions/.icon-qr-actions) and
-// prayer-mode.css (.prayer-mode-hero) still target it via descendant
-// selectors from not-yet-migrated containers (phase 7).
+// (.detail-actions/.hero-actions/.prayer-card-actions) and prayer-mode.css
+// (.prayer-mode-hero) still target it via descendant selectors from
+// not-yet-migrated containers (phase 7b).
 const sharedButtonClass =
   "asset-button inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4.5 text-[13px] font-black tracking-[.06em] uppercase leading-[1.15] text-center no-underline whitespace-nowrap cursor-pointer border transition-[border-color,background,color,transform] duration-[180ms] ease-brand max-[900px]:w-full max-[430px]:min-h-[42px] max-[430px]:px-3 max-[430px]:text-[12px] max-[430px]:whitespace-normal";
 

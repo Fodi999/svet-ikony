@@ -37,12 +37,13 @@ export function IconsCatalog({ icons }: { icons: Icon[] }) {
 
   return (
     <>
-      <div className="icons-toolbar">
-        <label className="icons-search-field">
-          <span>{t('search')}</span>
-          <span className="icons-search-control">
-            <BrandLogo className="icons-search-logo" size={24} />
+      <div className="grid grid-cols-[minmax(280px,1fr)_minmax(220px,340px)] items-end gap-3.5 max-w-[1180px] mt-[clamp(22px,3vw,38px)] mx-0 max-[900px]:gap-3 max-[900px]:max-w-none max-[720px]:grid-cols-1 max-[430px]:mt-5">
+        <label className="min-w-0 grid gap-2">
+          <span className="text-muted-foreground text-[11px] font-black tracking-[.12em] uppercase">{t('search')}</span>
+          <span className="relative block">
+            <BrandLogo className="absolute top-1/2 left-4 z-[1] size-6 opacity-[.72] -translate-y-1/2 pointer-events-none" size={24} />
             <input
+              className="rounded-sm! border! border-gold/28! bg-[linear-gradient(135deg,rgba(205,164,90,.06),transparent_46%),#141511]! py-3.5! text-foreground! min-h-14 text-base font-bold outline-none pl-[52px]! pr-4! placeholder:text-muted-foreground placeholder:font-semibold focus:border-gold focus:shadow-[inset_0_0_0_1px_rgba(214,168,79,.38)] max-[520px]:min-h-[52px] max-[430px]:min-h-[50px] max-[430px]:pl-3! max-[430px]:pr-3! max-[430px]:text-[15px]"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t('iconSearchPlaceholder')}
@@ -50,23 +51,30 @@ export function IconsCatalog({ icons }: { icons: Icon[] }) {
             />
           </span>
         </label>
-        <div className="icons-select-field">
-          <span>{t('section')}</span>
+        <div className="relative min-w-0 grid gap-2">
+          <span className="text-muted-foreground text-[11px] font-black tracking-[.12em] uppercase">{t('section')}</span>
           <button
-            className="icons-select-button"
+            className="w-full inline-flex min-h-14 items-center justify-between gap-3.5 rounded-sm border border-gold/28 px-4 bg-[linear-gradient(135deg,rgba(205,164,90,.06),transparent_46%),linear-gradient(160deg,rgba(127,141,101,.05),transparent_62%),#141511] text-foreground cursor-pointer outline-none focus-visible:border-gold focus-visible:shadow-[inset_0_0_0_1px_rgba(214,168,79,.38)] max-[520px]:min-h-[52px] max-[430px]:min-h-[50px] max-[430px]:px-3 max-[430px]:text-[15px]"
             type="button"
             aria-expanded={categoryOpen}
             onClick={() => setCategoryOpen((open) => !open)}
           >
-            <b>{currentCategory}</b>
-            <i aria-hidden="true" />
+            <b className="min-w-0 overflow-hidden text-[16px] font-black leading-none text-ellipsis whitespace-nowrap">{currentCategory}</b>
+            <i
+              className={`size-2.5 flex-none border-r-2 border-b-2 border-gold-light transition-transform duration-[180ms] ease-brand ${
+                categoryOpen ? '-translate-y-0.5 rotate-[225deg]' : '-translate-y-0.5 rotate-45'
+              }`}
+              aria-hidden="true"
+            />
           </button>
           {categoryOpen ? (
-            <div className="icons-select-menu">
+            <div className="absolute top-[calc(100%+8px)] left-0 right-0 z-30 grid rounded-sm border border-gold bg-[#141511] shadow-[0_14px_34px_rgba(0,0,0,.24)] overflow-hidden">
               {categoryOptions.map((item) => (
                 <button
                   key={item.value}
-                  className={item.value === category ? 'active' : ''}
+                  className={`min-h-11 border-0 border-b border-b-[rgba(232,211,169,.13)] px-3.5 bg-transparent text-muted-foreground text-[15px] font-extrabold text-left cursor-pointer last:border-b-0 hover:bg-gold/14 hover:text-gold-light max-[430px]:min-h-[42px] max-[430px]:text-[14px] ${
+                    item.value === category ? 'bg-gold/14 text-gold-light' : ''
+                  }`}
                   type="button"
                   onClick={() => {
                     setCategory(item.value);
@@ -81,11 +89,15 @@ export function IconsCatalog({ icons }: { icons: Icon[] }) {
         </div>
       </div>
 
-      <section className="icons-catalog-section">
+      <section className="mt-[clamp(20px,3vw,42px)]">
         {visibleIcons.length ? (
-          <div className="icon-grid">{visibleIcons.map((icon) => <IconCard key={icon.id} icon={icon} />)}</div>
+          <div className="grid grid-cols-3 gap-[18px] mt-0 max-[900px]:grid-cols-2 max-[900px]:gap-3 max-[720px]:grid-cols-1 max-[720px]:gap-3.5">
+            {visibleIcons.map((icon) => <IconCard key={icon.id} icon={icon} />)}
+          </div>
         ) : (
-          <p className="icons-empty">{t('noIconsFound')}</p>
+          <p className="relative m-0 rounded-[8px] border border-gold/28 bg-[linear-gradient(135deg,rgba(205,164,90,.065),transparent_44%),linear-gradient(160deg,rgba(127,141,101,.055),transparent_60%),#141511] p-7 text-muted-foreground text-[18px] font-bold overflow-hidden">
+            {t('noIconsFound')}
+          </p>
         )}
       </section>
     </>

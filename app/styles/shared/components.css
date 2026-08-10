@@ -73,14 +73,11 @@
    ------------------------------------------------------------ */
 
 .card,
-.icon-card,
 .sacred-panel,
 .content-feature-grid article,
 .faq details,
 .list-grid > a,
-.list-grid .prayer-list-card,
-.icon-photo-card,
-.icons-empty {
+.list-grid .prayer-list-card {
   position: relative;
   border: 1px solid var(--border-gold);
   border-radius: var(--radius-md);
@@ -93,7 +90,6 @@
 }
 
 .card:hover,
-.icon-card:hover,
 .content-feature-grid article:hover,
 .faq details:hover,
 .list-grid > a:hover,

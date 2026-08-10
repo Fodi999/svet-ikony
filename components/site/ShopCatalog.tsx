@@ -40,9 +40,9 @@ export function ShopCatalog({ products, categories }: { products: ChurchProductD
     <>
       <label className="mt-[clamp(22px,3vw,38px)] grid max-w-[480px] gap-2">
         <span className="text-[11px] font-black tracking-[.12em] text-muted-foreground uppercase">{t('search')}</span>
-        <span className="icons-search-control">
+        <span className="relative block">
           <input
-            className="min-h-14 text-base font-bold outline-none focus:border-gold focus:shadow-[inset_0_0_0_1px_rgba(214,168,79,.38)]"
+            className="min-h-14 pl-[52px]! text-base font-bold outline-none focus:border-gold focus:shadow-[inset_0_0_0_1px_rgba(214,168,79,.38)]"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t('productSearchPlaceholder')}
@@ -98,13 +98,15 @@ export function ShopCatalog({ products, categories }: { products: ChurchProductD
         </div>
       ) : null}
 
-      <section className="icons-catalog-section">
+      <section className="mt-[clamp(20px,3vw,42px)]">
         {visibleProducts.length ? (
           <div className="grid grid-cols-3 gap-[18px] max-[960px]:grid-cols-2 max-[560px]:grid-cols-1">
             {visibleProducts.map((product) => <ProductCard key={product.id} product={product} />)}
           </div>
         ) : (
-          <p className="icons-empty">{t('noProductsFound')}</p>
+          <p className="relative m-0 rounded-[8px] border border-gold/28 bg-[linear-gradient(135deg,rgba(205,164,90,.065),transparent_44%),linear-gradient(160deg,rgba(127,141,101,.055),transparent_60%),#141511] p-7 text-muted-foreground text-[18px] font-bold overflow-hidden">
+            {t('noProductsFound')}
+          </p>
         )}
       </section>
     </>

@@ -38,10 +38,11 @@ export function ShopCatalog({ products, categories }: { products: ChurchProductD
 
   return (
     <>
-      <label className="shop-search-field">
-        <span>{t('search')}</span>
+      <label className="mt-[clamp(22px,3vw,38px)] grid max-w-[480px] gap-2">
+        <span className="text-[11px] font-black tracking-[.12em] text-muted-foreground uppercase">{t('search')}</span>
         <span className="icons-search-control">
           <input
+            className="min-h-14 text-base font-bold outline-none focus:border-gold focus:shadow-[inset_0_0_0_1px_rgba(214,168,79,.38)]"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t('productSearchPlaceholder')}
@@ -51,26 +52,47 @@ export function ShopCatalog({ products, categories }: { products: ChurchProductD
       </label>
 
       {categories.length ? (
-        <div className="shop-category-rail" role="tablist" aria-label={t('section')}>
+        <div
+          className="mt-[clamp(18px,2.5vw,30px)] flex gap-[clamp(10px,1.4vw,16px)] overflow-x-auto pb-1.5 [scrollbar-width:thin]"
+          role="tablist"
+          aria-label={t('section')}
+        >
           <button
             type="button"
-            className={`shop-category-tile${categoryId === 'all' ? ' active' : ''}`}
+            className="group grid w-24 flex-none cursor-pointer justify-items-center gap-2 border-0 bg-none max-[560px]:w-[76px]"
             onClick={() => setCategoryId('all')}
           >
-            <span className="shop-category-tile-photo shop-category-tile-photo--all" aria-hidden="true" />
-            <b>{t('allSections')}</b>
+            <span
+              aria-hidden="true"
+              className={`grid size-21 place-items-center overflow-hidden rounded-full border-2 bg-[linear-gradient(135deg,rgba(214,168,79,.28),rgba(127,141,101,.18))] transition-[border-color,transform] duration-200 ease-brand group-hover:-translate-y-0.5 group-hover:border-gold max-[560px]:size-[66px] ${
+                categoryId === 'all' ? 'border-gold shadow-[0_0_0_3px_rgba(214,168,79,.22)]' : 'border-gold/28'
+              }`}
+            />
+            <b className={`text-center text-xs leading-tight font-extrabold transition-colors duration-200 ease-brand ${categoryId === 'all' ? 'text-gold-light' : 'text-muted-foreground'}`}>
+              {t('allSections')}
+            </b>
           </button>
           {categories.map((category) => (
             <button
               key={category.id}
               type="button"
-              className={`shop-category-tile${categoryId === category.id ? ' active' : ''}`}
+              className="group grid w-24 flex-none cursor-pointer justify-items-center gap-2 border-0 bg-none max-[560px]:w-[76px]"
               onClick={() => setCategoryId(category.id)}
             >
-              <span className="shop-category-tile-photo">
-                {category.imageUrl ? <img src={category.imageUrl} alt="" loading="lazy" /> : null}
+              <span
+                className={`grid size-21 place-items-center overflow-hidden rounded-full border-2 bg-[#1b1c16] transition-[border-color,transform] duration-200 ease-brand group-hover:-translate-y-0.5 group-hover:border-gold max-[560px]:size-[66px] ${
+                  categoryId === category.id ? 'border-gold shadow-[0_0_0_3px_rgba(214,168,79,.22)]' : 'border-gold/28'
+                }`}
+              >
+                {category.imageUrl ? <img src={category.imageUrl} alt="" loading="lazy" className="size-full object-cover" /> : null}
               </span>
-              <b>{categoryName(category, locale)}</b>
+              <b
+                className={`text-center text-xs leading-tight font-extrabold transition-colors duration-200 ease-brand ${
+                  categoryId === category.id ? 'text-gold-light' : 'text-muted-foreground'
+                }`}
+              >
+                {categoryName(category, locale)}
+              </b>
             </button>
           ))}
         </div>
@@ -78,7 +100,9 @@ export function ShopCatalog({ products, categories }: { products: ChurchProductD
 
       <section className="icons-catalog-section">
         {visibleProducts.length ? (
-          <div className="product-grid">{visibleProducts.map((product) => <ProductCard key={product.id} product={product} />)}</div>
+          <div className="grid grid-cols-3 gap-[18px] max-[960px]:grid-cols-2 max-[560px]:grid-cols-1">
+            {visibleProducts.map((product) => <ProductCard key={product.id} product={product} />)}
+          </div>
         ) : (
           <p className="icons-empty">{t('noProductsFound')}</p>
         )}

@@ -133,17 +133,31 @@ export default async function ProductPage({ params }: Props) {
           {category ? <p className="eyebrow">{categoryName(category, locale)}</p> : null}
           <h1>{name}</h1>
           <p className="detail-lead">{product.description}</p>
-          <dl className="icon-order-meta">
-            <div><dt>{priceLabel[locale]}</dt><dd>{formatMoney(product.priceCents, product.currency)}</dd></div>
-            {product.productionTime ? <div><dt>{translate(locale, 'productionTimeLabel')}</dt><dd>{product.productionTime}</dd></div> : null}
-            <div><dt>{translate(locale, stockKey[product.stockStatus])}</dt></div>
-            {product.consecrationAvailable ? <div><dt>{translate(locale, 'consecrationAvailableLabel')}</dt></div> : null}
+          <dl className="mb-4.5 flex flex-wrap gap-2.5">
+            <div className="rounded-xs border border-gold/28 bg-gold/6 px-3 py-2">
+              <dt className="mb-0.5 text-[11px] font-bold text-muted-foreground uppercase">{priceLabel[locale]}</dt>
+              <dd className="text-[15px] font-bold text-foreground">{formatMoney(product.priceCents, product.currency)}</dd>
+            </div>
+            {product.productionTime ? (
+              <div className="rounded-xs border border-gold/28 bg-gold/6 px-3 py-2">
+                <dt className="mb-0.5 text-[11px] font-bold text-muted-foreground uppercase">{translate(locale, 'productionTimeLabel')}</dt>
+                <dd className="text-[15px] font-bold text-foreground">{product.productionTime}</dd>
+              </div>
+            ) : null}
+            <div className="rounded-xs border border-gold/28 bg-gold/6 px-3 py-2">
+              <dt className="mb-0.5 text-[11px] font-bold text-muted-foreground uppercase">{translate(locale, stockKey[product.stockStatus])}</dt>
+            </div>
+            {product.consecrationAvailable ? (
+              <div className="rounded-xs border border-gold/28 bg-gold/6 px-3 py-2">
+                <dt className="mb-0.5 text-[11px] font-bold text-muted-foreground uppercase">{translate(locale, 'consecrationAvailableLabel')}</dt>
+              </div>
+            ) : null}
           </dl>
           <div className="detail-actions">
             <ProductOrderTrigger product={product} related={related} />
           </div>
           {iconSlug ? (
-            <p className="icon-order-icon-name">
+            <p className="mb-1 font-serif text-[15px] text-gold-light">
               <Link href={withLocale(`/icons/${iconSlug}`, locale)}>{translate(locale, 'aboutIconLink')}</Link>
             </p>
           ) : null}
@@ -162,7 +176,7 @@ export default async function ProductPage({ params }: Props) {
       {related.length ? (
         <section className="related-section">
           <div className="section-head"><p className="eyebrow">{translate(locale, 'relatedProductsLabel')}</p></div>
-          <div className="product-grid">
+          <div className="grid grid-cols-3 gap-[18px] max-[960px]:grid-cols-2 max-[560px]:grid-cols-1">
             {related.map((item) => <ProductCard key={item.id} product={item} />)}
           </div>
         </section>

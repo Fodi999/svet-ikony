@@ -205,45 +205,109 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
     }
   }
 
+  const fieldLabelClass = 'grid gap-1.5 text-[13px] font-bold text-muted-foreground';
+  const textInputClass =
+    'rounded-xs! border! border-gold-light/13! bg-black/50! px-3! py-2.5! font-sans! text-sm! text-foreground!';
+  const checkboxLabelClass = 'flex flex-row items-center gap-2 text-[13px] font-semibold text-muted-foreground';
+
   return (
-    <div className="icon-order-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="icon-order-modal" role="dialog" aria-modal="true" aria-labelledby="product-order-title" onMouseDown={(event) => event.stopPropagation()}>
-        <button type="button" className="icon-order-close" onClick={onClose} aria-label={text.closeLabel}>×</button>
+    <div
+      className="fixed inset-0 z-[1100] grid place-items-center overflow-y-auto bg-black/72 p-[18px] backdrop-blur-[10px]"
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <section
+        className="relative w-[min(560px,100%)] max-h-[min(860px,calc(100vh-36px))] overflow-y-auto rounded-md border border-gold/28 bg-[#1b1c16] p-[clamp(24px,5vw,40px)] shadow-lg max-[520px]:p-[20px_16px]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-order-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="absolute top-3.5 right-3.5 z-[2] grid size-[38px] place-items-center rounded-full border border-gold/28 bg-black/78 text-2xl leading-none text-gold-light transition-colors duration-200 ease-linear hover:border-gold hover:text-foreground focus-visible:border-gold focus-visible:text-foreground"
+          onClick={onClose}
+          aria-label={text.closeLabel}
+        >
+          ×
+        </button>
 
         {orderNumber ? (
-          <div className="icon-order-success">
-            <h2>{text.successTitle}</h2>
-            <p>{text.successText.replace('{number}', orderNumber)}</p>
-            <button type="button" className="icon-order-submit" onClick={onClose}>{text.closeLabel}</button>
+          <div className="grid gap-3.5 py-5">
+            <h2 className="mb-1.5 font-serif text-[clamp(22px,3vw,30px)] font-bold text-gold-light">{text.successTitle}</h2>
+            <p className="m-0 text-[15px] leading-normal text-foreground">{text.successText.replace('{number}', orderNumber)}</p>
+            <button
+              type="button"
+              className="cursor-pointer rounded-full border-none bg-gradient-to-br from-gold-light to-gold px-6 py-3 text-sm font-black text-[#1a1305] uppercase transition-[transform,box-shadow] duration-200 ease-brand hover:-translate-y-0.5 hover:shadow-sm"
+              onClick={onClose}
+            >
+              {text.closeLabel}
+            </button>
           </div>
         ) : (
-          <form onSubmit={submit}>
-            <h2 id="product-order-title">{text.title}</h2>
-            <p className="icon-order-icon-name">{productName(product, locale)}</p>
-            <dl className="icon-order-meta">
-              <div><dt>{formatMoney(product.priceCents, product.currency)}</dt></div>
+          <form onSubmit={submit} className="grid gap-3.5">
+            <h2 id="product-order-title" className="mb-1.5 font-serif text-[clamp(22px,3vw,30px)] font-bold text-foreground">
+              {text.title}
+            </h2>
+            <p className="mb-1 font-serif text-[15px] text-gold-light">{productName(product, locale)}</p>
+            <dl className="mb-4.5 flex flex-wrap gap-2.5">
+              <div className="rounded-xs border border-gold/28 bg-gold/6 px-3 py-2">
+                <dt className="mb-0.5 text-[11px] font-bold text-muted-foreground uppercase">{formatMoney(product.priceCents, product.currency)}</dt>
+              </div>
             </dl>
 
-            <label><span>{text.nameLabel}</span><input value={name} onChange={(event) => setName(event.target.value)} placeholder={text.namePlaceholder} required /></label>
+            <label className={fieldLabelClass}>
+              <span>{text.nameLabel}</span>
+              <input
+                className={textInputClass}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={text.namePlaceholder}
+                required
+              />
+            </label>
 
-            <div className="icon-order-contact-method">
-              <label><input type="radio" name="contactMethod" checked={contactMethod === 'phone'} onChange={() => setContactMethod('phone')} /><span>{text.contactPhone}</span></label>
-              <label><input type="radio" name="contactMethod" checked={contactMethod === 'email'} onChange={() => setContactMethod('email')} /><span>{text.contactEmail}</span></label>
+            <div className="flex gap-4.5">
+              <label className={checkboxLabelClass}>
+                <input type="radio" name="contactMethod" checked={contactMethod === 'phone'} onChange={() => setContactMethod('phone')} />
+                <span>{text.contactPhone}</span>
+              </label>
+              <label className={checkboxLabelClass}>
+                <input type="radio" name="contactMethod" checked={contactMethod === 'email'} onChange={() => setContactMethod('email')} />
+                <span>{text.contactEmail}</span>
+              </label>
             </div>
-            <label><span>{text.contactValueLabel}</span><input value={contactValue} onChange={(event) => setContactValue(event.target.value)} type={contactMethod === 'email' ? 'email' : 'tel'} required /></label>
+            <label className={fieldLabelClass}>
+              <span>{text.contactValueLabel}</span>
+              <input
+                className={textInputClass}
+                value={contactValue}
+                onChange={(event) => setContactValue(event.target.value)}
+                type={contactMethod === 'email' ? 'email' : 'tel'}
+                required
+              />
+            </label>
 
-            <div className="icon-order-grid-2">
-              <label><span>{text.countryLabel}</span><input value={country} onChange={(event) => setCountry(event.target.value)} /></label>
-              <label><span>{text.cityLabel}</span><input value={city} onChange={(event) => setCity(event.target.value)} /></label>
+            <div className="grid grid-cols-2 gap-3.5 max-[520px]:grid-cols-1">
+              <label className={fieldLabelClass}>
+                <span>{text.countryLabel}</span>
+                <input className={textInputClass} value={country} onChange={(event) => setCountry(event.target.value)} />
+              </label>
+              <label className={fieldLabelClass}>
+                <span>{text.cityLabel}</span>
+                <input className={textInputClass} value={city} onChange={(event) => setCity(event.target.value)} />
+              </label>
             </div>
 
             {related.length ? (
-              <fieldset className="icon-order-options">
-                <legend>{text.optionsLabel}</legend>
+              <fieldset className="grid gap-2 rounded-md border border-gold/28 p-3">
+                <legend className="px-1.5 text-[13px] font-extrabold text-gold-light uppercase">{text.optionsLabel}</legend>
                 {related.map((option) => (
-                  <label key={option.id} className="icon-order-option">
+                  <label key={option.id} className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-2.5 text-[13px] font-medium text-muted-foreground">
                     <input type="checkbox" checked={selectedIds.includes(option.id)} onChange={() => toggleOption(option.id)} />
-                    {option.photoUrl ? <img src={option.photoUrl} alt={productName(option, locale)} loading="lazy" /> : null}
+                    {option.photoUrl ? (
+                      <img src={option.photoUrl} alt={productName(option, locale)} loading="lazy" className="size-9 rounded-xs object-cover" />
+                    ) : null}
                     <span>{productName(option, locale)}</span>
                     <small>{formatMoney(option.priceCents, option.currency)}</small>
                   </label>
@@ -252,22 +316,50 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
             ) : null}
 
             {product.consecrationAvailable ? (
-              <label className="icon-order-checkbox"><input type="checkbox" checked={consecrationRequested} onChange={(event) => setConsecrationRequested(event.target.checked)} /><span>{text.consecrationLabel}</span></label>
+              <label className={checkboxLabelClass}>
+                <input type="checkbox" checked={consecrationRequested} onChange={(event) => setConsecrationRequested(event.target.checked)} />
+                <span>{text.consecrationLabel}</span>
+              </label>
             ) : null}
 
-            <label><span>{text.channelLabel}</span><input value={preferredContactChannel} onChange={(event) => setPreferredContactChannel(event.target.value)} placeholder={text.channelPlaceholder} /></label>
-            <label><span>{text.commentLabel}</span><textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder={text.commentPlaceholder} /></label>
+            <label className={fieldLabelClass}>
+              <span>{text.channelLabel}</span>
+              <input
+                className={textInputClass}
+                value={preferredContactChannel}
+                onChange={(event) => setPreferredContactChannel(event.target.value)}
+                placeholder={text.channelPlaceholder}
+              />
+            </label>
+            <label className={fieldLabelClass}>
+              <span>{text.commentLabel}</span>
+              <textarea
+                className={`${textInputClass} min-h-[80px]! resize-y!`}
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                placeholder={text.commentPlaceholder}
+              />
+            </label>
 
-            <label className="icon-order-honeypot" aria-hidden="true">
+            <label className="absolute h-px w-px overflow-hidden [clip:rect(0,0,0,0)] whitespace-nowrap" aria-hidden="true">
               <span>Website</span>
               <input value={website} onChange={(event) => setWebsite(event.target.value)} tabIndex={-1} autoComplete="off" />
             </label>
 
-            <label className="icon-order-checkbox"><input type="checkbox" checked={consentGiven} onChange={(event) => setConsentGiven(event.target.checked)} required /><span>{text.consentLabel}</span></label>
+            <label className={checkboxLabelClass}>
+              <input type="checkbox" checked={consentGiven} onChange={(event) => setConsentGiven(event.target.checked)} required />
+              <span>{text.consentLabel}</span>
+            </label>
 
-            {error ? <p className="icon-order-error">{error}</p> : null}
+            {error ? <p className="m-0 text-[13px] font-bold text-[#ff6b6b]">{error}</p> : null}
 
-            <button type="submit" className="icon-order-submit" disabled={submitting}>{submitting ? text.submitting : text.submit}</button>
+            <button
+              type="submit"
+              className="cursor-pointer rounded-full border-none bg-gradient-to-br from-gold-light to-gold px-6 py-3 text-sm font-black text-[#1a1305] uppercase transition-[transform,box-shadow] duration-200 ease-brand hover:-translate-y-0.5 hover:shadow-sm disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-60"
+              disabled={submitting}
+            >
+              {submitting ? text.submitting : text.submit}
+            </button>
           </form>
         )}
       </section>

@@ -51,11 +51,16 @@ export function LanguageSwitch() {
   const { locale, setLocale, t } = useI18n();
 
   return (
-    <div className="language-switch" aria-label={t('langLabel')}>
+    <div
+      className="inline-flex min-h-10 items-center border border-[rgba(232,211,169,.13)] rounded-full p-[3px] bg-[rgba(5,5,5,.24)] max-[640px]:min-h-9 max-[430px]:min-h-[34px]"
+      aria-label={t('langLabel')}
+    >
       {locales.map((item) => (
         <button
           key={item}
-          className={locale === item ? 'active' : ''}
+          className={`min-w-[38px] h-8 border-0 rounded-full px-2.5 bg-transparent text-[11px] font-black tracking-[.08em] cursor-pointer transition-colors duration-[180ms] ease-brand hover:text-foreground max-[640px]:min-w-[30px] max-[640px]:h-[30px] max-[640px]:px-1.5 max-[430px]:min-w-[28px] max-[430px]:h-7 max-[430px]:px-[5px] max-[430px]:text-[10px] ${
+            locale === item ? 'bg-gold-light text-canvas' : 'text-muted-foreground'
+          }`}
           type="button"
           onClick={() => setLocale(item)}
         >

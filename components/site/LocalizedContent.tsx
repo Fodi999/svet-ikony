@@ -11,6 +11,31 @@ import { BackLink, Breadcrumbs } from './Breadcrumbs';
 import { BrandLogo } from './BrandLogo';
 import { IconOrderLink } from './IconOrderLink';
 import { useI18n, useLocaleHref } from './LanguageProvider';
+import {
+  DetailActions,
+  DetailHero,
+  Eyebrow,
+  Hero,
+  HeroCopy,
+  HeroTitle,
+  ImageFrame,
+  imageFrameImgClass,
+  Lead,
+  MiniGrid,
+  MiniGridLink,
+  MiniGridSmall,
+  Page,
+  Panel,
+  PanelLabel,
+  PanelTitle,
+  ReaderText,
+  ReadPage,
+  RelatedSection,
+  SacredContentGrid,
+  SacredMeta,
+  SectionHead,
+  SectionHeadTitle
+} from './PageChrome';
 import { PrayerAudioBar } from './prayer-mode/PrayerAudioBar';
 import { PrayerVisualizerCanvas } from './prayer-mode/PrayerVisualizerCanvas';
 import { PrayerQr } from './PrayerQr';
@@ -383,41 +408,55 @@ export function LocalizedChurchPrayerDetail({ prayer, icon, calendarDay, categor
     setVisualizerOn((current) => !current);
   }
 
+  const prayerLabelClass = "block w-max max-w-full text-gold-light font-serif text-[clamp(18px,1.35vw,24px)] font-normal tracking-normal leading-[1.35] normal-case";
+  const readerTextClass = "max-w-full text-[#e9dfcd] font-serif text-[clamp(18px,1.18vw,22px)] leading-[1.62] [&>p]:mt-0 [&>p]:mb-[clamp(16px,1.8vw,28px)] [&>p:last-child]:mb-0";
+
   return (
-    <main className="read-page sacred-read-page">
+    <ReadPage>
       <Breadcrumbs
+        wide
         items={[{ href: '/', label: t('home') }, { href: '/prayers', label: t('navPrayers') }]}
         current={title}
       />
-      {/* prayer-mode-hero stays as a marker: prayer-mode.css's .prayer-mode-hero .asset-button
-          (the glow-pill variant) and .prayer-mode-hero h1 both target it via descendant
-          selectors, and it already carries the layout/typography this section needs. */}
-      <section className="read-hero prayer-mode-hero">
+      <section className="flex flex-wrap items-end justify-between gap-4 border-b border-gold/28 pb-[18px] mb-3.5 w-[min(100%,1660px)] mx-auto">
         <div>
-          <p className="eyebrow">{categoryLabel}</p>
-          <h1>{title}</h1>
+          <Eyebrow>{categoryLabel}</Eyebrow>
+          <h1 className="m-0 max-w-[980px] font-serif font-bold text-[clamp(34px,2.9vw,52px)] leading-[1.02] text-[#ead9bd] text-balance [overflow-wrap:anywhere] max-[560px]:text-[clamp(32px,12vw,42px)]">
+            {title}
+          </h1>
         </div>
         {canUseVisualizer ? (
-          <AssetButton variant="dark" onClick={toggleVisualizer} icon={<Headphones size={16} aria-hidden="true" />}>
+          <AssetButton
+            variant="dark"
+            onClick={toggleVisualizer}
+            icon={<Headphones size={16} aria-hidden="true" />}
+            className="rounded-full bg-gold/8 shadow-[0_0_28px_rgba(205,164,90,.08)] normal-case"
+          >
             {visualizerOn ? ui(locale, 'prayerModeActive') : ui(locale, 'openPrayerMode')}
           </AssetButton>
         ) : null}
       </section>
 
-      <div className={`prayer-mode-layout${visualizerOn ? ' prayer-mode-layout--split' : ''}`}>
-        <article className="sacred-panel prayer-reader-panel">
+      <div className={`grid gap-3.5 items-stretch w-[min(100%,1660px)] mx-auto ${visualizerOn ? 'grid-cols-[minmax(0,.82fr)_minmax(0,1.18fr)] max-[900px]:grid-cols-1' : 'grid-cols-1'}`}>
+        <article
+          className={`min-w-0 ${visualizerOn ? 'col-start-1 row-start-1 max-[900px]:col-auto max-[900px]:row-auto' : ''} min-h-[clamp(380px,31vw,560px)] max-[560px]:min-h-0 p-[clamp(28px,3vw,50px)] max-[560px]:p-[22px_18px] bg-[linear-gradient(135deg,rgba(205,164,90,.06),transparent_44%),linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,0)),rgba(14,15,12,.82)] shadow-[inset_0_0_0_1px_rgba(233,203,132,.055),0_18px_50px_rgba(0,0,0,.26)]`}
+        >
           {image ? (
-            <div className="prayer-panel-layout">
-              <figure className="prayer-panel-image"><StableImage src={image} alt={title} width={720} height={720} /></figure>
-              <div className="prayer-panel-copy">
-                <span>{ui(locale, 'prayer')}</span>
-                <div className="reader-text prayer-reader"><DisplayText text={prayer.text} /></div>
+            <div className={`grid gap-[clamp(22px,4vw,58px)] items-start ${visualizerOn ? 'grid-cols-1' : 'grid-cols-[minmax(220px,.38fr)_minmax(0,1fr)] max-[900px]:grid-cols-1'}`}>
+              <figure
+                className={`relative m-0 border border-gold/28 rounded-md aspect-square overflow-hidden max-[900px]:max-h-[72vh] max-[430px]:p-2.5 before:content-[''] before:absolute before:inset-0 before:z-0 before:pointer-events-none before:bg-[linear-gradient(110deg,transparent_0_28%,rgba(232,203,132,.12)_42%,transparent_56%),#1b1c16] before:bg-[length:220%_100%,100%_100%] before:[animation:imageSkeleton_1.4s_ease-in-out_infinite] ${visualizerOn ? 'hidden' : ''}`}
+              >
+                <StableImage src={image} alt={title} width={720} height={720} className="relative z-[1] block w-full h-full p-3 object-contain max-[900px]:max-h-[72vh]" />
+              </figure>
+              <div className="min-w-0">
+                <span className={prayerLabelClass}>{ui(locale, 'prayer')}</span>
+                <div className={readerTextClass}><DisplayText text={prayer.text} dropCap /></div>
               </div>
             </div>
           ) : (
             <>
-              <span>{ui(locale, 'prayer')}</span>
-              <div className="reader-text prayer-reader"><DisplayText text={prayer.text} /></div>
+              <span className={prayerLabelClass}>{ui(locale, 'prayer')}</span>
+              <div className={readerTextClass}><DisplayText text={prayer.text} dropCap /></div>
             </>
           )}
         </article>
@@ -529,7 +568,7 @@ export function LocalizedChurchPrayerDetail({ prayer, icon, calendarDay, categor
         </article>
       </section>
       <BackLink href="/prayers" label={t('navPrayers')} />
-    </main>
+    </ReadPage>
   );
 }
 
@@ -537,17 +576,21 @@ export function LocalizedSaintDetail({ saint }: { saint: Saint }) {
   const { locale, t } = useI18n();
   const localeHref = useLocaleHref();
   return (
-    <main className="detail-page">
+    <Page>
       <Breadcrumbs
         items={[{ href: '/', label: t('home') }, { href: '/saints', label: t('navSaints') }]}
         current={saint.name}
       />
-      <section className="sacred-detail-hero">
-        {saint.imageUrl ? <figure className="sacred-image-frame"><StableImage src={saint.imageUrl} alt={saint.name} width={800} height={1000} loading="eager" /></figure> : null}
-        <div className="sacred-hero-copy">
+      <DetailHero>
+        {saint.imageUrl ? (
+          <ImageFrame>
+            <StableImage src={saint.imageUrl} alt={saint.name} width={800} height={1000} loading="eager" className={imageFrameImgClass} />
+          </ImageFrame>
+        ) : null}
+        <HeroCopy>
           {saint.feastDayNewStyle || saint.feastDayOldStyle ? (
             <div className="grid gap-1">
-              {saint.feastDayNewStyle ? <p className="eyebrow">{formatFeastDay(saint.feastDayNewStyle, locale)}</p> : null}
+              {saint.feastDayNewStyle ? <Eyebrow>{formatFeastDay(saint.feastDayNewStyle, locale)}</Eyebrow> : null}
               {saint.feastDayOldStyle ? (
                 <p className="m-0 text-muted-foreground text-[13px] font-semibold">
                   {formatFeastDay(saint.feastDayOldStyle, locale)} {t('saintOldStyleSuffix')}
@@ -555,22 +598,31 @@ export function LocalizedSaintDetail({ saint }: { saint: Saint }) {
               ) : null}
             </div>
           ) : null}
-          <h1>{saint.name}</h1>
-          {saint.shortDescription ? <p className="detail-lead">{saint.shortDescription}</p> : null}
-          <div className="soft-note reader-text"><DisplayText text={saint.biography} /></div>
-        </div>
-      </section>
-      {saint.relatedIcons.length || saint.prayers.length ? (
-        <section className="related-section">
-          <div className="section-head"><p className="eyebrow">{t('calendarMaterial')}</p><h2>{ui(locale, 'furtherReading')}</h2></div>
-          <div className="mini-grid">
-            {saint.relatedIcons.map((slug) => <Link key={slug} href={localeHref(`/icons/${slug}`)}>{slug}<small>{t('navIcons')}</small></Link>)}
-            {saint.prayers.map((slug) => <Link key={slug} href={localeHref(`/prayers/${slug}`)}>{slug}<small>{t('navPrayers')}</small></Link>)}
+          <HeroTitle>{saint.name}</HeroTitle>
+          {saint.shortDescription ? <Lead>{saint.shortDescription}</Lead> : null}
+          <div className="border-l-[3px] border-l-gold py-3.5 pr-0 pl-4.5 bg-[linear-gradient(90deg,rgba(214,168,79,.12),transparent)] rounded-l-none rounded-r-xs max-w-[960px] text-muted-foreground font-serif text-[clamp(18px,1.45vw,24px)] leading-[1.6] [&>p]:mt-0 [&>p]:mx-0 [&>p]:mb-4 [&>p:last-child]:mb-0">
+            <DisplayText text={saint.biography} />
           </div>
-        </section>
+        </HeroCopy>
+      </DetailHero>
+      {saint.relatedIcons.length || saint.prayers.length ? (
+        <RelatedSection>
+          <SectionHead>
+            <Eyebrow>{t('calendarMaterial')}</Eyebrow>
+            <SectionHeadTitle>{ui(locale, 'furtherReading')}</SectionHeadTitle>
+          </SectionHead>
+          <MiniGrid>
+            {saint.relatedIcons.map((slug) => (
+              <MiniGridLink key={slug} href={localeHref(`/icons/${slug}`)}>{slug}<MiniGridSmall>{t('navIcons')}</MiniGridSmall></MiniGridLink>
+            ))}
+            {saint.prayers.map((slug) => (
+              <MiniGridLink key={slug} href={localeHref(`/prayers/${slug}`)}>{slug}<MiniGridSmall>{t('navPrayers')}</MiniGridSmall></MiniGridLink>
+            ))}
+          </MiniGrid>
+        </RelatedSection>
       ) : null}
       <BackLink href="/saints" label={t('navSaints')} />
-    </main>
+    </Page>
   );
 }
 
@@ -669,22 +721,22 @@ export function LocalizedChurchesPage({ churchInfo }: { churchInfo: ChurchInfoDt
     ].filter((item) => item.value?.trim());
 
     return (
-      <main className="page max-w-[1480px] mx-auto grid gap-[clamp(28px,4vw,58px)]">
+      <Page className="max-w-[1480px] mx-auto grid gap-[clamp(28px,4vw,58px)]">
         <section className="grid grid-cols-[minmax(0,1fr)_minmax(300px,440px)] gap-[clamp(28px,5vw,86px)] items-center border-b border-gold/28 pb-[clamp(28px,4vw,60px)] max-[820px]:grid-cols-1 max-[520px]:gap-[22px] max-[520px]:pb-7">
           <div className="min-w-0 max-w-[900px] grid gap-4.5 max-[520px]:gap-3.5">
-            <p className="eyebrow">{t('churchesPageEyebrow')}</p>
+            <Eyebrow>{t('churchesPageEyebrow')}</Eyebrow>
             <h1 className="m-0 text-foreground font-serif text-[88px] font-bold leading-[1.02] tracking-normal text-balance [overflow-wrap:anywhere] max-[820px]:text-[56px] max-[520px]:text-[42px] max-[520px]:leading-[1.06]">
               {translation.title}
             </h1>
             {translation.dedication ? (
               <p className="text-gold-light text-[12px] font-black tracking-[.1em] uppercase">{ui(locale, 'dedicatedTo')}: {translation.dedication}</p>
             ) : null}
-            {translation.description ? <p className="detail-lead">{textPreview(translation.description, 260)}</p> : null}
+            {translation.description ? <Lead>{textPreview(translation.description, 260)}</Lead> : null}
             {churchInfo.mapsUrl || contactHref ? (
-              <div className="detail-actions">
+              <DetailActions>
                 {churchInfo.mapsUrl ? <AssetButton variant="dark" href={churchInfo.mapsUrl} target="_blank" rel="noreferrer">{ui(locale, 'openMap')}</AssetButton> : null}
                 {contactHref ? <AssetButton href={contactHref} target="_blank" rel="noreferrer">{ui(locale, 'phoneSite')}</AssetButton> : null}
-              </div>
+              </DetailActions>
             ) : null}
           </div>
           <aside className="min-w-0 self-stretch grid items-center" aria-label={translation.title}>
@@ -735,37 +787,37 @@ export function LocalizedChurchesPage({ churchInfo }: { churchInfo: ChurchInfoDt
 
         {galleryImages.length ? (
           <section className="grid gap-[clamp(18px,2.5vw,34px)] border-t border-gold/28 pt-[clamp(28px,4vw,58px)] max-[520px]:gap-4 max-[520px]:pt-7">
-            <div className="section-head max-w-[720px] m-0!">
-              <p className="eyebrow">{ui(locale, 'gallery')}</p>
-              <h2 className="text-foreground! text-[clamp(36px,4vw,70px)]! leading-[1.04]!">{storyTitle}</h2>
-            </div>
+            <SectionHead className="max-w-[720px] m-0">
+              <Eyebrow>{ui(locale, 'gallery')}</Eyebrow>
+              <SectionHeadTitle className="text-foreground text-[clamp(36px,4vw,70px)] leading-[1.04]">{storyTitle}</SectionHeadTitle>
+            </SectionHead>
             <ChurchGallery title={translation.title} images={galleryImages} />
           </section>
         ) : null}
 
         {translation.description ? (
           <section className="grid grid-cols-[minmax(220px,320px)_minmax(0,1fr)] gap-[clamp(24px,4vw,70px)] items-start border-t border-gold/28 pt-[clamp(28px,4vw,58px)] max-[820px]:grid-cols-1">
-            <div className="section-head sticky! top-[110px] m-0! max-[820px]:static!">
-              <p className="eyebrow">{ui(locale, 'aboutChurch')}</p>
-              <h2 className="max-w-[320px]! text-foreground! text-[48px]! leading-[1.04]! max-[820px]:max-w-none! max-[820px]:text-[34px]!">{storyTitle}</h2>
-            </div>
+            <SectionHead className="sticky top-[110px] m-0 max-[820px]:static">
+              <Eyebrow>{ui(locale, 'aboutChurch')}</Eyebrow>
+              <SectionHeadTitle className="max-w-[320px] text-foreground text-[48px] leading-[1.04] max-[820px]:max-w-none max-[820px]:text-[34px]">{storyTitle}</SectionHeadTitle>
+            </SectionHead>
             <div className="min-w-0 grid grid-cols-2 gap-[clamp(14px,1.6vw,24px)] max-w-none text-foreground font-serif text-[clamp(22px,1.45vw,30px)] leading-[1.52] max-[820px]:grid-cols-1 max-[820px]:text-[20px] max-[520px]:text-[19px] max-[520px]:leading-[1.62] [&>p]:min-w-0 [&>p]:m-0 [&>p]:border-l-[3px] [&>p]:border-l-[#a97832] [&>p]:rounded-xs [&>p]:p-[clamp(16px,1.7vw,26px)] max-[520px]:[&>p]:p-4 [&>p]:bg-[linear-gradient(135deg,rgba(205,164,90,.075),transparent_46%),#141511] [&>p]:text-[#ddd4c2] [&>p]:shadow-[inset_0_0_0_1px_rgba(205,164,90,.12)] [&>p]:[break-inside:avoid] [&>p:first-child]:text-[clamp(24px,1.65vw,34px)] [&>p:nth-child(2)]:text-[clamp(24px,1.65vw,34px)] [&>p:nth-child(3)]:text-[clamp(24px,1.65vw,34px)] [&>p:first-child]:leading-[1.42] [&>p:nth-child(2)]:leading-[1.42] [&>p:nth-child(3)]:leading-[1.42] max-[520px]:[&>p:first-child]:text-[22px] max-[520px]:[&>p:nth-child(2)]:text-[22px] max-[520px]:[&>p:nth-child(3)]:text-[22px] [&>p:first-child]:col-span-full [&>p:first-child]:border-l-gold-light [&>p:first-child]:text-gold-light [&>p:first-child]:text-[clamp(34px,3vw,58px)]! [&>p:first-child]:leading-[1.08]! max-[520px]:[&>p:first-child]:text-[32px]!">
               <DisplayText text={translation.description} />
             </div>
           </section>
         ) : null}
-      </main>
+      </Page>
     );
   }
 
   return (
-    <main className="page max-w-[1480px] mx-auto grid gap-[clamp(28px,4vw,58px)]">
-      <section className="page-hero">
-        <p className="eyebrow">{t('churchesPageEyebrow')}</p>
-        <h1>{t('churchesPageTitle')}</h1>
-        <p>{t('churchesPageLead')}</p>
-      </section>
-    </main>
+    <Page className="max-w-[1480px] mx-auto grid gap-[clamp(28px,4vw,58px)]">
+      <Hero>
+        <Eyebrow>{t('churchesPageEyebrow')}</Eyebrow>
+        <HeroTitle>{t('churchesPageTitle')}</HeroTitle>
+        <Lead>{t('churchesPageLead')}</Lead>
+      </Hero>
+    </Page>
   );
 }
 
@@ -790,38 +842,71 @@ export function LocalizedIconDetail({ icon, related }: { icon: Icon; related: Ic
   const iconPageUrl = absoluteSiteUrl(localeHref(`/icons/${item.slug}`));
 
   return (
-    <main className="detail-page">
+    <Page>
       <Breadcrumbs
         items={[{ href: '/', label: t('home') }, { href: '/icons', label: t('navIcons') }]}
         current={iconTitle}
       />
-      <section className="sacred-detail-hero">
-        <figure className="sacred-image-frame"><StableImage src={item.imageUrl} alt={iconTitle} width={800} height={1000} loading="eager" /></figure>
-        <div className="sacred-hero-copy">
-          <p className="eyebrow">{item.category}</p>
-          <h1>{iconTitle}</h1>
-          <p className="detail-lead">{item.shortDescription || textPreview(item.fullDescription, 220)}</p>
-          <div className="sacred-meta">{item.saintName ? <span>{item.saintName}</span> : null}<span>{item.status === 'published' ? ui(locale, 'published') : ui(locale, 'draft')}</span></div>
-          <div className="detail-actions"><AssetButton variant="dark" href="#prayer">{ui(locale, 'readPrayer')}</AssetButton><AssetButton href="/churches">{ui(locale, 'forChurches')}</AssetButton><IconOrderLink icon={item} /></div>
-        </div>
-      </section>
+      <DetailHero>
+        <ImageFrame>
+          <StableImage src={item.imageUrl} alt={iconTitle} width={800} height={1000} loading="eager" className={imageFrameImgClass} />
+        </ImageFrame>
+        <HeroCopy>
+          <Eyebrow>{item.category}</Eyebrow>
+          <HeroTitle>{iconTitle}</HeroTitle>
+          <Lead>{item.shortDescription || textPreview(item.fullDescription, 220)}</Lead>
+          <SacredMeta>
+            {item.saintName ? <span>{item.saintName}</span> : null}
+            <span>{item.status === 'published' ? ui(locale, 'published') : ui(locale, 'draft')}</span>
+          </SacredMeta>
+          <DetailActions>
+            <AssetButton variant="dark" href="#prayer">{ui(locale, 'readPrayer')}</AssetButton>
+            <AssetButton href="/churches">{ui(locale, 'forChurches')}</AssetButton>
+            <IconOrderLink icon={item} />
+          </DetailActions>
+        </HeroCopy>
+      </DetailHero>
       <IconStory text={item.fullDescription} images={photoImages.length ? photoImages : [item.imageUrl]} />
       {publicGalleryImages.length > 1 ? (
         <section className="border-t border-gold/28 pt-[clamp(22px,3vw,42px)] max-[900px]:mt-7 max-[900px]:pt-[22px]">
-          <div className="section-head mb-[clamp(18px,2.5vw,30px)]!">
-            <p className="eyebrow">{ui(locale, 'photoQr')}</p>
-            <h2 className="text-foreground! text-[clamp(24px,2.8vw,42px)]! leading-[1.05]!">{ui(locale, 'imageCatalog')}</h2>
-          </div>
+          <SectionHead className="mb-[clamp(18px,2.5vw,30px)]">
+            <Eyebrow>{ui(locale, 'photoQr')}</Eyebrow>
+            <SectionHeadTitle className="text-foreground text-[clamp(24px,2.8vw,42px)] leading-[1.05]">{ui(locale, 'imageCatalog')}</SectionHeadTitle>
+          </SectionHead>
           <IconPhotoCatalog title={iconTitle} iconUrl={iconPageUrl} items={publicGalleryImages} />
         </section>
       ) : null}
-      <section className="sacred-content-grid">
-        <article id="prayer" className="sacred-panel prayer-panel"><div className="prayer-panel-layout"><figure className="prayer-panel-image"><StableImage src={prayerImage} alt={`${ui(locale, 'prayer')}: ${iconTitle}`} width={720} height={720} /></figure><div className="prayer-panel-copy"><span>01</span><h2>{ui(locale, 'prayer')}</h2><div className="reader-text"><DisplayText text={item.prayerText} /></div>{item.audioUrl ? <audio controls src={item.audioUrl} /> : null}</div></div></article>
-        <article className="sacred-panel"><span>02</span><h2>{ui(locale, 'gospel')}</h2><div className="reader-text"><DisplayText text={item.gospelText} /></div></article>
-        <article className="sacred-panel"><span>03</span><h2>{ui(locale, 'life')}</h2><div className="reader-text"><DisplayText text={item.lifeText} /></div></article>
-        <article className="sacred-panel"><span>04</span><h2>{ui(locale, 'iconHistory')}</h2><div className="reader-text"><DisplayText text={item.historyText} /></div></article>
-      </section>
-      {relatedItems.length ? <section className="related-section"><div className="section-head"><p className="eyebrow">{ui(locale, 'similarIcons')}</p><h2>{ui(locale, 'furtherReading')}</h2></div><div className="mini-grid">{relatedItems.map((entry) => <Link key={entry.id} href={localeHref(`/icons/${entry.slug}`)}>{displayText(entry.title)}<small>{entry.category}</small></Link>)}</div></section> : null}
-    </main>
+      <SacredContentGrid>
+        <Panel id="prayer" className="col-span-2 max-[900px]:col-span-1">
+          <div className="grid grid-cols-[minmax(220px,.38fr)_minmax(0,1fr)] gap-[clamp(22px,4vw,58px)] items-start max-[900px]:grid-cols-1">
+            <figure className="relative m-0 border border-gold/28 rounded-md aspect-square overflow-hidden max-[900px]:max-h-[72vh] max-[430px]:p-2.5 before:content-[''] before:absolute before:inset-0 before:z-0 before:pointer-events-none before:bg-[linear-gradient(110deg,transparent_0_28%,rgba(232,203,132,.12)_42%,transparent_56%),#1b1c16] before:bg-[length:220%_100%,100%_100%] before:[animation:imageSkeleton_1.4s_ease-in-out_infinite]">
+              <StableImage src={prayerImage} alt={`${ui(locale, 'prayer')}: ${iconTitle}`} width={720} height={720} className="relative z-[1] block w-full h-full p-3 object-contain max-[900px]:max-h-[72vh]" />
+            </figure>
+            <div className="min-w-0">
+              <PanelLabel>01</PanelLabel>
+              <PanelTitle>{ui(locale, 'prayer')}</PanelTitle>
+              <ReaderText><DisplayText text={item.prayerText} /></ReaderText>
+              {item.audioUrl ? <audio controls src={item.audioUrl} /> : null}
+            </div>
+          </div>
+        </Panel>
+        <Panel><PanelLabel>02</PanelLabel><PanelTitle>{ui(locale, 'gospel')}</PanelTitle><ReaderText><DisplayText text={item.gospelText} /></ReaderText></Panel>
+        <Panel><PanelLabel>03</PanelLabel><PanelTitle>{ui(locale, 'life')}</PanelTitle><ReaderText><DisplayText text={item.lifeText} /></ReaderText></Panel>
+        <Panel><PanelLabel>04</PanelLabel><PanelTitle>{ui(locale, 'iconHistory')}</PanelTitle><ReaderText><DisplayText text={item.historyText} /></ReaderText></Panel>
+      </SacredContentGrid>
+      {relatedItems.length ? (
+        <RelatedSection>
+          <SectionHead>
+            <Eyebrow>{ui(locale, 'similarIcons')}</Eyebrow>
+            <SectionHeadTitle>{ui(locale, 'furtherReading')}</SectionHeadTitle>
+          </SectionHead>
+          <MiniGrid>
+            {relatedItems.map((entry) => (
+              <MiniGridLink key={entry.id} href={localeHref(`/icons/${entry.slug}`)}>{displayText(entry.title)}<MiniGridSmall>{entry.category}</MiniGridSmall></MiniGridLink>
+            ))}
+          </MiniGrid>
+        </RelatedSection>
+      ) : null}
+    </Page>
   );
 }

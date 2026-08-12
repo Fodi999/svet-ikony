@@ -7,10 +7,10 @@ import {
   MiniGrid,
   MiniGridLink,
   MiniGridSmall,
-  Page,
   Panel,
   PanelLabel,
   ReaderText,
+  ReadPage,
   RelatedSection,
   SectionHead,
   SectionHeadTitle
@@ -60,7 +60,7 @@ export default async function ChurchArticlePage({ params, searchParams }: Props)
   if (!page) notFound();
   const date = result?.calendarDay?.dateNewStyle || result?.calendarDay?.dateOldStyle;
   return (
-    <Page className="sacred-read-page">
+    <ReadPage>
       <Hero>
         <Eyebrow>{page.targetKeyword}</Eyebrow>
         <HeroTitle>{page.h1}</HeroTitle>
@@ -90,6 +90,6 @@ export default async function ChurchArticlePage({ params, searchParams }: Props)
           ) : null}
         </MiniGrid>
       </RelatedSection>
-    </Page>
+    </ReadPage>
   );
 }

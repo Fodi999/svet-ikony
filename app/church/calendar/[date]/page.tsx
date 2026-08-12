@@ -13,11 +13,11 @@ import {
   MiniGrid,
   MiniGridLink,
   MiniGridSmall,
-  Page,
   Panel,
   PanelLabel,
   PanelTitle,
   ReaderText,
+  ReadPage,
   RelatedSection,
   SectionHead,
   SectionHeadTitle
@@ -102,7 +102,7 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
   );
 
   return (
-    <Page className="sacred-read-page">
+    <ReadPage>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       {heroImageUrl ? (
         <DetailHero>
@@ -169,6 +169,6 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
           </DetailActions>
         </Panel>
       ))}
-    </Page>
+    </ReadPage>
   );
 }

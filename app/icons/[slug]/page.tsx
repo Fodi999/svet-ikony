@@ -18,6 +18,7 @@ import {
   Panel,
   PanelLabel,
   ReaderText,
+  ReadPage,
   RelatedSection,
   SectionHead,
   SectionHeadTitle
@@ -68,7 +69,7 @@ function CalendarFallbackPage({ day, page, locale }: { day?: CalendarDay; page?:
   );
 
   return (
-    <Page className="sacred-read-page">
+    <ReadPage>
       {imageUrl ? (
         <DetailHero>
           <ImageFrame>
@@ -85,7 +86,7 @@ function CalendarFallbackPage({ day, page, locale }: { day?: CalendarDay; page?:
           <ReaderText><Paragraphs text={content} /></ReaderText>
         </Panel>
       ) : null}
-    </Page>
+    </ReadPage>
   );
 }
 

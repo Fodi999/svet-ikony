@@ -10,7 +10,8 @@ import {
   Page,
   Panel,
   PanelLabel,
-  ReaderText
+  ReaderText,
+  ReadPage
 } from '@/components/site/PageChrome';
 import { StableImage } from '@/components/site/StableImage';
 import { publicApi } from '@/lib/api';
@@ -60,7 +61,7 @@ export default async function SeoLandingPage({ params }: Props) {
   );
 
   return (
-    <Page className="sacred-read-page">
+    <ReadPage>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('Article', { headline: page.h1, description: page.seoDescription, image: page.imageUrl })) }} />
       {page.imageUrl ? (
         <DetailHero>
@@ -97,6 +98,6 @@ export default async function SeoLandingPage({ params }: Props) {
           ))}
         </section>
       ) : null}
-    </Page>
+    </ReadPage>
   );
 }

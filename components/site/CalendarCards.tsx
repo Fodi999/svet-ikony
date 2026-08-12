@@ -62,8 +62,8 @@ type InfoLink = {
   tone?: 'default' | 'red';
 };
 
-// Matches the shared .card base in app/styles/shared/components.css.
-// Reimplemented here directly rather than waiting for that phase.
+// Matches what used to be the shared .card base (components.css, deleted
+// once the Tailwind migration finished) — reimplemented directly here.
 const heroCardBaseClass =
   "relative min-w-0 self-start overflow-hidden grid content-start gap-3 min-h-[210px] p-[clamp(16px,1.6vw,24px)] rounded-md border border-gold/28 " +
   "bg-[linear-gradient(135deg,rgba(205,164,90,.065),transparent_44%),linear-gradient(160deg,rgba(127,141,101,.055),transparent_60%),#141511] text-foreground " +

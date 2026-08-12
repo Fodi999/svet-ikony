@@ -3,17 +3,22 @@ import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * Shared page-template building blocks — the Tailwind equivalent of
- * foundation.css's .page/.page-hero/.eyebrow/.sacred-panel/.mini-grid/etc.
- * Built as components rather than repeated class strings because the
- * same visual language is used identically across 9+ route files
- * (phase 8 of the Tailwind migration) — see the plan file for the full
- * list of consumers and what's still deferred (LocalizedContent.tsx's
- * own usage, and prayer-mode.css's compound-selector-anchored markers).
+ * Shared page-template building blocks — the Tailwind equivalent of the
+ * former foundation.css/content.css/prayer-mode.css page/hero/detail-
+ * template system (all three files deleted or reduced to tokens+reset by
+ * the end of the Tailwind migration — see the plan file for the full
+ * history). Built as components rather than repeated class strings because
+ * the same visual language is used identically across every route file,
+ * including LocalizedContent.tsx.
  */
 
+// The ≤900px values below (28/16/46, min-h -112px) come from content.css's
+// `.page,.read-page,.detail-page` override, which — because content.css
+// imports after foundation.css — has always fully shadowed foundation's own
+// (dead) ≤520px override; there is no separate ≤520px tier in the real
+// cascade, confirmed against the compiled stylesheet's rule order.
 const pageClass =
-  "w-full m-0 min-h-[calc(100vh-78px)] py-[clamp(42px,5vw,92px)] px-[clamp(18px,5vw,72px)] bg-canvas text-foreground max-[520px]:pt-6 max-[520px]:px-3.5 max-[520px]:pb-10 [@media(display-mode:standalone)]:pr-[max(clamp(10px,5vw,72px),env(safe-area-inset-right))] [@media(display-mode:standalone)]:pb-[max(clamp(28px,5vw,92px),env(safe-area-inset-bottom))] [@media(display-mode:standalone)]:pl-[max(clamp(10px,5vw,72px),env(safe-area-inset-left))]";
+  "w-full m-0 min-h-[calc(100vh-78px)] max-[900px]:min-h-[calc(100vh-112px)] pt-[clamp(42px,5vw,92px)] max-[900px]:pt-7 pr-[clamp(18px,5vw,72px)] max-[900px]:pr-4 pb-[clamp(42px,5vw,92px)] max-[900px]:pb-[46px] pl-[clamp(18px,5vw,72px)] max-[900px]:pl-4 bg-canvas text-foreground [@media(display-mode:standalone)]:pr-[max(clamp(10px,5vw,72px),env(safe-area-inset-right))] [@media(display-mode:standalone)]:pb-[max(clamp(28px,5vw,92px),env(safe-area-inset-bottom))] [@media(display-mode:standalone)]:pl-[max(clamp(10px,5vw,72px),env(safe-area-inset-left))]";
 
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
   return <main className={cn(pageClass, className)}>{children}</main>;
@@ -115,12 +120,12 @@ export function RelatedSection({ children }: { children: ReactNode }) {
   return <section className="mt-[clamp(46px,6vw,88px)] border-t border-gold/28 pt-[clamp(22px,3vw,42px)]">{children}</section>;
 }
 
-export function SectionHead({ children }: { children: ReactNode }) {
-  return <div className="grid gap-1.5 mb-5">{children}</div>;
+export function SectionHead({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn('grid gap-1.5 mb-5', className)}>{children}</div>;
 }
 
-export function SectionHeadTitle({ children }: { children: ReactNode }) {
-  return <h2 className="m-0 font-serif font-bold text-[clamp(30px,3.6vw,62px)] leading-[1.05]">{children}</h2>;
+export function SectionHeadTitle({ children, className }: { children: ReactNode; className?: string }) {
+  return <h2 className={cn('m-0 font-serif font-bold text-[clamp(30px,3.6vw,62px)] leading-[1.05]', className)}>{children}</h2>;
 }
 
 export function MiniGrid({ children }: { children: ReactNode }) {
@@ -148,4 +153,30 @@ export function DetailActions({ children }: { children: ReactNode }) {
       {children}
     </div>
   );
+}
+
+export function SacredMeta({ children }: { children: ReactNode }) {
+  return <div className="flex flex-wrap gap-2.5 [&>span]:min-h-[34px] [&>span]:inline-flex [&>span]:items-center [&>span]:rounded-full [&>span]:border [&>span]:border-gold/28 [&>span]:px-3.5 [&>span]:text-gold-light [&>span]:text-[12px] [&>span]:font-black [&>span]:tracking-[.08em] [&>span]:uppercase">{children}</div>;
+}
+
+export function SacredContentGrid({ children }: { children: ReactNode }) {
+  return (
+    <section className="grid grid-cols-2 gap-[clamp(14px,2vw,24px)] mt-[clamp(46px,6vw,88px)] border-t border-gold/28 pt-[clamp(22px,3vw,42px)] max-[900px]:grid-cols-1">
+      {children}
+    </section>
+  );
+}
+
+// The Tailwind equivalent of prayer-mode.css's `.sacred-read-page` extension
+// (border grid-lines + radial glow + noise overlay), which — because
+// prayer-mode.css imports after content.css — has always won over content's
+// ≤900px padding-top for any sacred-read-page-tagged element, at every
+// width; only ≤560px overrides it further. See Page's own comment for the
+// ≤900px baseline this replaces on the top side. Non-top padding/min-height
+// are untouched, so Page's own values apply unmodified.
+const readPageClass =
+  "grid gap-3 relative isolate pt-[clamp(24px,3.2vw,46px)] max-[900px]:pt-[clamp(24px,3.2vw,46px)] max-[560px]:pt-[22px] bg-[linear-gradient(90deg,rgba(205,164,90,.12)_0_1px,transparent_1px_calc(100%-1px),rgba(205,164,90,.12)_calc(100%-1px)),radial-gradient(ellipse_at_50%_0%,rgba(205,164,90,.11),transparent_46%),linear-gradient(180deg,#0a0a08_0%,#10100d_54%,#090a08_100%)] before:content-[''] before:absolute before:inset-0 before:-z-10 before:opacity-[.55] before:bg-[linear-gradient(90deg,rgba(205,164,90,.05),transparent_10%,transparent_90%,rgba(205,164,90,.05)),repeating-linear-gradient(135deg,rgba(233,203,132,.035)_0_1px,transparent_1px_18px)] before:[mask-image:linear-gradient(90deg,#000_0_4%,transparent_18%_82%,#000_96%_100%)]";
+
+export function ReadPage({ children, className }: { children: ReactNode; className?: string }) {
+  return <Page className={cn(readPageClass, className)}>{children}</Page>;
 }

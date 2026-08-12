@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { AssetButton } from '@/components/site/AssetButton';
 import { useI18n } from '@/components/site/LanguageProvider';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { publicApi } from '@/lib/api';
 import type { ChurchProductDto } from '@/lib/types';
 
@@ -206,8 +208,7 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
   }
 
   const fieldLabelClass = 'grid gap-1.5 text-[13px] font-bold text-muted-foreground';
-  const textInputClass =
-    'rounded-xs! border! border-gold-light/13! bg-black/50! px-3! py-2.5! font-sans! text-sm! text-foreground!';
+  const textInputClass = 'rounded-xs border-gold-light/13 bg-black/50 px-3 py-2.5 font-sans text-sm text-foreground';
   const checkboxLabelClass = 'flex flex-row items-center gap-2 text-[13px] font-semibold text-muted-foreground';
 
   return (
@@ -258,7 +259,7 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
 
             <label className={fieldLabelClass}>
               <span>{text.nameLabel}</span>
-              <input
+              <Input
                 className={textInputClass}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -279,7 +280,7 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
             </div>
             <label className={fieldLabelClass}>
               <span>{text.contactValueLabel}</span>
-              <input
+              <Input
                 className={textInputClass}
                 value={contactValue}
                 onChange={(event) => setContactValue(event.target.value)}
@@ -291,11 +292,11 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
             <div className="grid grid-cols-2 gap-3.5 max-[520px]:grid-cols-1">
               <label className={fieldLabelClass}>
                 <span>{text.countryLabel}</span>
-                <input className={textInputClass} value={country} onChange={(event) => setCountry(event.target.value)} />
+                <Input className={textInputClass} value={country} onChange={(event) => setCountry(event.target.value)} />
               </label>
               <label className={fieldLabelClass}>
                 <span>{text.cityLabel}</span>
-                <input className={textInputClass} value={city} onChange={(event) => setCity(event.target.value)} />
+                <Input className={textInputClass} value={city} onChange={(event) => setCity(event.target.value)} />
               </label>
             </div>
 
@@ -324,7 +325,7 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
 
             <label className={fieldLabelClass}>
               <span>{text.channelLabel}</span>
-              <input
+              <Input
                 className={textInputClass}
                 value={preferredContactChannel}
                 onChange={(event) => setPreferredContactChannel(event.target.value)}
@@ -333,8 +334,8 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
             </label>
             <label className={fieldLabelClass}>
               <span>{text.commentLabel}</span>
-              <textarea
-                className={`${textInputClass} min-h-[80px]! resize-y!`}
+              <Textarea
+                className={`${textInputClass} min-h-[80px]`}
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
                 placeholder={text.commentPlaceholder}

@@ -406,12 +406,13 @@ export function PrayerVisualizerCanvas({
 
   return (
     <div
-      // `prayer-visualizer-panel` is kept as a structural marker class only:
-      // .prayer-mode-layout--split in prayer-mode.css (owned by
-      // LocalizedContent.tsx, not yet migrated) targets it via a descendant
-      // selector to place this panel in the split reading layout. All of
-      // this element's OWN styling now lives in the Tailwind utilities below.
-      className="prayer-visualizer-panel relative aspect-video max-h-none min-h-[clamp(380px,31vw,560px)] w-full min-w-0 max-w-full grid grid-rows-[1fr_auto] justify-self-stretch overflow-hidden rounded-md border border-gold/28 bg-[radial-gradient(circle_at_50%_35%,rgba(205,164,90,.13),transparent_35%),#070706] shadow-[inset_0_0_0_1px_rgba(233,203,132,.08),0_22px_60px_rgba(0,0,0,.42)] after:absolute after:bottom-[15px] after:left-1/2 after:z-[1] after:h-px after:w-[min(300px,45%)] after:-translate-x-1/2 after:bg-[linear-gradient(90deg,transparent,rgba(233,203,132,.55),transparent)] after:content-[''] max-[900px]:min-h-[320px] max-[560px]:aspect-[4/5] max-[560px]:min-h-[280px] [&:fullscreen]:aspect-auto [&:fullscreen]:h-screen [&:fullscreen]:max-h-none [&:fullscreen]:w-screen"
+      // Only ever rendered inside LocalizedChurchPrayerDetail's split-view
+      // grid (2 columns when the visualizer is on), so the column/row
+      // placement below is unconditional — it used to come from
+      // prayer-mode.css's `.prayer-mode-layout--split .prayer-visualizer-panel`
+      // descendant selector; see LocalizedContent.tsx for the reader panel's
+      // matching `col-start-1 row-start-1`.
+      className="relative col-start-2 row-start-1 max-[900px]:col-auto max-[900px]:row-auto aspect-video max-h-none min-h-[clamp(380px,31vw,560px)] w-full min-w-0 max-w-full grid grid-rows-[1fr_auto] justify-self-stretch overflow-hidden rounded-md border border-gold/28 bg-[radial-gradient(circle_at_50%_35%,rgba(205,164,90,.13),transparent_35%),#070706] shadow-[inset_0_0_0_1px_rgba(233,203,132,.08),0_22px_60px_rgba(0,0,0,.42)] after:absolute after:bottom-[15px] after:left-1/2 after:z-[1] after:h-px after:w-[min(300px,45%)] after:-translate-x-1/2 after:bg-[linear-gradient(90deg,transparent,rgba(233,203,132,.55),transparent)] after:content-[''] max-[900px]:min-h-[320px] max-[560px]:aspect-[4/5] max-[560px]:min-h-[280px] [&:fullscreen]:aspect-auto [&:fullscreen]:h-screen [&:fullscreen]:max-h-none [&:fullscreen]:w-screen"
       ref={containerRef}
       style={{ background: backgroundColor || '#000000' }}
     >

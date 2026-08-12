@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { Input } from '@/components/ui/input';
 import type { ChurchProductCategoryDto, ChurchProductDto } from '@/lib/types';
 import { useI18n } from './LanguageProvider';
 import { ProductCard } from './ProductCard';
@@ -41,8 +42,8 @@ export function ShopCatalog({ products, categories }: { products: ChurchProductD
       <label className="mt-[clamp(22px,3vw,38px)] grid max-w-[480px] gap-2">
         <span className="text-[11px] font-black tracking-[.12em] text-muted-foreground uppercase">{t('search')}</span>
         <span className="relative block">
-          <input
-            className="min-h-14 pl-[52px]! text-base font-bold outline-none focus:border-gold focus:shadow-[inset_0_0_0_1px_rgba(214,168,79,.38)]"
+          <Input
+            className="min-h-14 pl-[52px] text-base font-bold outline-none focus:border-gold focus:shadow-[inset_0_0_0_1px_rgba(214,168,79,.38)]"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t('productSearchPlaceholder')}

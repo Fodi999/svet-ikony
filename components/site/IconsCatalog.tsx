@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { Input } from '@/components/ui/input';
 import type { Icon } from '@/lib/types';
 import { localizeIcon } from '@/lib/iconContent';
 import { BrandLogo } from './BrandLogo';
@@ -42,8 +43,8 @@ export function IconsCatalog({ icons }: { icons: Icon[] }) {
           <span className="text-muted-foreground text-[11px] font-black tracking-[.12em] uppercase">{t('search')}</span>
           <span className="relative block">
             <BrandLogo className="absolute top-1/2 left-4 z-[1] size-6 opacity-[.72] -translate-y-1/2 pointer-events-none" size={24} />
-            <input
-              className="rounded-sm! border! border-gold/28! bg-[linear-gradient(135deg,rgba(205,164,90,.06),transparent_46%),#141511]! py-3.5! text-foreground! min-h-14 text-base font-bold outline-none pl-[52px]! pr-4! placeholder:text-muted-foreground placeholder:font-semibold focus:border-gold focus:shadow-[inset_0_0_0_1px_rgba(214,168,79,.38)] max-[520px]:min-h-[52px] max-[430px]:min-h-[50px] max-[430px]:pl-3! max-[430px]:pr-3! max-[430px]:text-[15px]"
+            <Input
+              className="min-h-14 pl-[52px] pr-4 text-base font-bold outline-none placeholder:text-muted-foreground placeholder:font-semibold focus:border-gold focus:shadow-[inset_0_0_0_1px_rgba(214,168,79,.38)] max-[520px]:min-h-[52px] max-[430px]:min-h-[50px] max-[430px]:pl-3 max-[430px]:pr-3 max-[430px]:text-[15px]"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t('iconSearchPlaceholder')}

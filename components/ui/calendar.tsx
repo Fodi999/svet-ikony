@@ -14,7 +14,7 @@ import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react
 
 /** Ported from svetikony-admin's components/ui/calendar.tsx (shadcn's
  * standard react-day-picker wrapper) — same component, same behavior,
- * restyled via app/styles/tailwind-scope.css's tokens instead of
+ * restyled via app/globals.css's tokens instead of
  * admin's neutral theme. */
 function Calendar({
   className,

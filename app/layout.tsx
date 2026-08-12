@@ -51,7 +51,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="uk">
+    <html lang="uk" style={{ colorScheme: 'dark' }} className="min-h-full overflow-x-hidden bg-canvas">
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
@@ -62,7 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
         />
       </head>
-      <body>
+      <body className="relative m-0 min-h-dvh overflow-x-hidden bg-canvas text-foreground font-sans antialiased [text-rendering:optimizeLegibility] [@media(display-mode:standalone)]:overscroll-y-none [@media(display-mode:standalone)]:pb-[env(safe-area-inset-bottom)]">
         <LanguageProvider>
           <Header />
           {children}

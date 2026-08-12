@@ -35,7 +35,7 @@ export function SvgIcon({ name, className = '', size = 18 }: { name: SvgIconName
 
   return (
     <Icon
-      className={`svg-icon svg-icon-${name}${className ? ` ${className}` : ''}`}
+      className={`block w-[1em] h-[1em] object-contain pointer-events-none${className ? ` ${className}` : ''}`}
       width={size}
       height={size}
       aria-hidden="true"

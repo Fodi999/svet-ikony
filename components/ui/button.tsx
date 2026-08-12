@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 /**
  * Ported from svetikony-admin's components/ui/button.tsx (shadcn pattern
  * on @base-ui/react) — trimmed to the variants Calendar/Popover actually
- * use. Colors point at app/styles/tailwind-scope.css's --color-* tokens,
+ * use. Colors point at app/globals.css's --color-* tokens,
  * not admin's neutral palette, so this renders in the site's own gold/
  * dark theme.
  */

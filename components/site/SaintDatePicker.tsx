@@ -17,7 +17,7 @@ type Props = {
 
 /**
  * The calendar dropdown for feast-day filtering — first piece of the site
- * ported to Tailwind + shadcn (see app/styles/tailwind-scope.css for how
+ * ported to Tailwind + shadcn (see app/globals.css for how
  * Tailwind is scoped in without disturbing the rest of the site's CSS).
  * The trigger pill matches SaintsCatalog.tsx's "Сьогодні"/"Завтра" sibling
  * buttons (own duplicated Tailwind string, not a shared export — same

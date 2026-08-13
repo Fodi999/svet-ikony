@@ -271,7 +271,7 @@ export function CalendarGridDay(props: DayCommonProps & { todayLabel: string }) 
         <DayStatusMarks item={item} />
       </div>
       {isToday ? (
-        <span className="absolute top-[50px] left-2.5 z-[5] w-max rounded-full border border-gold/28 bg-[rgba(11,11,10,.82)] px-2.5 py-1 font-serif text-[15px] font-extrabold text-gold-light">
+        <span className="absolute top-[50px] left-2.5 z-[5] max-w-[calc(100%-20px)] overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-gold/28 bg-[rgba(11,11,10,.82)] px-2.5 py-1 font-serif text-[15px] font-extrabold text-gold-light max-[520px]:px-1.5 max-[520px]:py-0.5 max-[520px]:text-[11px] max-[360px]:text-[10px]">
           {todayLabel}
         </span>
       ) : null}

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { MouseEventHandler, ReactNode } from 'react';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { useLocaleHref } from './LanguageProvider';
 import { SvgIcon } from './SvgIcon';
 
@@ -28,18 +28,8 @@ export function CopyIcon() {
   return <SvgIcon name="copy" size={16} />;
 }
 
-const sharedButtonClass =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4.5 text-[13px] font-black tracking-[.06em] uppercase leading-[1.15] text-center no-underline whitespace-nowrap cursor-pointer border transition-[border-color,background,color,transform] duration-[180ms] ease-brand max-[900px]:w-full max-[430px]:min-h-[42px] max-[430px]:px-3 max-[430px]:text-[12px] max-[430px]:whitespace-normal";
-
-export function AssetButton({ children, href, download, icon, variant = 'light', type = 'button', ariaLabel, target, rel, onClick, className: classNameOverride }: AssetButtonProps) {
+export function AssetButton({ children, href, download, icon, variant = 'light', type = 'button', ariaLabel, target, rel, onClick, className }: AssetButtonProps) {
   const localeHref = useLocaleHref();
-  const className = cn(
-    sharedButtonClass,
-    variant === 'dark'
-      ? 'border-gold/28 bg-gold/8 text-gold-light hover:border-gold hover:bg-[linear-gradient(180deg,#e9cb84,#cda45a)] hover:text-canvas focus-visible:border-gold focus-visible:bg-[linear-gradient(180deg,#e9cb84,#cda45a)] focus-visible:text-canvas'
-      : 'border-gold bg-[linear-gradient(180deg,#e9cb84,#cda45a)] text-canvas hover:border-gold-light hover:bg-gold-light hover:text-canvas focus-visible:border-gold-light focus-visible:bg-gold-light focus-visible:text-canvas',
-    classNameOverride
-  );
   const content = (
     <>
       <span className="size-4 inline-grid place-items-center empty:hidden">{icon}</span>
@@ -48,12 +38,29 @@ export function AssetButton({ children, href, download, icon, variant = 'light',
   );
 
   if (href && (download || target || /^https?:\/\//i.test(href))) {
-    return <a className={className} href={href} download={download} target={target} rel={rel} aria-label={ariaLabel}>{content}</a>;
+    return (
+      <Button
+        variant={variant}
+        size="asset"
+        className={className}
+        render={<a href={href} download={download} target={target} rel={rel} aria-label={ariaLabel} />}
+      >
+        {content}
+      </Button>
+    );
   }
 
   if (href) {
-    return <Link className={className} href={localeHref(href)} aria-label={ariaLabel}>{content}</Link>;
+    return (
+      <Button variant={variant} size="asset" className={className} render={<Link href={localeHref(href)} aria-label={ariaLabel} />}>
+        {content}
+      </Button>
+    );
   }
 
-  return <button className={className} type={type} onClick={onClick} aria-label={ariaLabel}>{content}</button>;
+  return (
+    <Button variant={variant} size="asset" className={className} type={type} onClick={onClick} aria-label={ariaLabel}>
+      {content}
+    </Button>
+  );
 }

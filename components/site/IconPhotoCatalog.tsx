@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { Dialog, DialogClose, DialogOverlay, DialogPopup, DialogPortal } from '@/components/ui/dialog';
 import { AssetButton, CopyIcon, DownloadIcon } from './AssetButton';
 import { useI18n } from './LanguageProvider';
 import { StableImage } from './StableImage';
@@ -45,7 +46,7 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
   }
 
   return (
-    <>
+    <Dialog open={active !== null} onOpenChange={(open) => { if (!open) setActiveIndex(null); }}>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,280px),1fr))] gap-[clamp(12px,1.5vw,20px)] items-stretch max-[900px]:grid-cols-1">
         {items.map((item, index) => {
           const isQr = item.kind === 'qr';
@@ -103,21 +104,17 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
       </div>
 
       {active ? (
-        <div className="fixed inset-0 z-[2000] grid place-items-center p-[clamp(28px,4vw,56px)] max-[900px]:p-4" role="dialog" aria-modal="true" aria-label={active.label}>
-          <button
-            className="absolute inset-0 border-0 bg-[rgba(5,5,5,.84)]"
-            type="button"
-            onClick={() => setActiveIndex(null)}
-            aria-label={t('close')}
-          />
-          <div className="relative z-[1] w-[min(1180px,96vw)] max-h-[min(90vh,calc(100vh-56px))] border border-gold/28 rounded-[8px] bg-canvas grid grid-rows-[minmax(0,1fr)_auto] overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-14 before:z-0 before:pointer-events-none before:bg-[linear-gradient(110deg,transparent_0_28%,rgba(241,209,138,.13)_42%,transparent_56%),#141511] before:bg-[length:220%_100%,100%_100%] before:[animation:imageSkeleton_1.4s_ease-in-out_infinite]">
-            <button
+        <DialogPortal>
+          <DialogOverlay className="z-[2000] bg-[rgba(5,5,5,.84)]" />
+          <DialogPopup
+            aria-label={active.label}
+            className="z-[2000] w-[min(1180px,calc(100vw-56px))] max-h-[min(90vh,calc(100vh-56px))] max-[900px]:w-[calc(100vw-32px)] border border-gold/28 rounded-[8px] bg-canvas grid grid-rows-[minmax(0,1fr)_auto] overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-14 before:z-0 before:pointer-events-none before:bg-[linear-gradient(110deg,transparent_0_28%,rgba(241,209,138,.13)_42%,transparent_56%),#141511] before:bg-[length:220%_100%,100%_100%] before:[animation:imageSkeleton_1.4s_ease-in-out_infinite]"
+          >
+            <DialogClose
               className="absolute top-3 right-3 z-[2] inline-flex min-h-[38px] items-center justify-center gap-2 rounded-sm border border-gold/28 px-3 bg-[rgba(11,11,10,.78)] text-[13px] font-black tracking-[.06em] uppercase leading-[1.15] text-gold-light no-underline whitespace-nowrap cursor-pointer transition-[border-color,background,color] duration-[180ms] ease-brand hover:border-gold hover:bg-[linear-gradient(180deg,#e9cb84,#cda45a)] hover:text-canvas focus-visible:border-gold focus-visible:bg-[linear-gradient(180deg,#e9cb84,#cda45a)] focus-visible:text-canvas"
-              type="button"
-              onClick={() => setActiveIndex(null)}
             >
               {t('close')}
-            </button>
+            </DialogClose>
             <StableImage
               src={active.image}
               alt={`${active.label}: ${title}`}
@@ -139,9 +136,9 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
                 </div>
               ) : null}
             </div>
-          </div>
-        </div>
+          </DialogPopup>
+        </DialogPortal>
       ) : null}
-    </>
+    </Dialog>
   );
 }

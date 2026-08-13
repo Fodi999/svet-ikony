@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AssetButton } from '@/components/site/AssetButton';
 import { useI18n } from '@/components/site/LanguageProvider';
+import { Dialog, DialogClose, DialogOverlay, DialogPopup, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { publicApi } from '@/lib/api';
@@ -138,10 +139,10 @@ export function ProductOrderTrigger({ product, related }: { product: ChurchProdu
   if (product.stockStatus === 'unavailable') return null;
 
   return (
-    <>
+    <Dialog open={open} onOpenChange={setOpen}>
       <AssetButton variant="dark" onClick={() => setOpen(true)}>{text.trigger}</AssetButton>
       {open ? <ProductOrderModal product={product} related={related} onClose={() => setOpen(false)} /> : null}
-    </>
+    </Dialog>
   );
 }
 
@@ -163,14 +164,6 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [orderNumber, setOrderNumber] = useState('');
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
 
   function toggleOption(id: string) {
     setSelectedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
@@ -212,30 +205,19 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
   const checkboxLabelClass = 'flex flex-row items-center gap-2 text-[13px] font-semibold text-muted-foreground';
 
   return (
-    <div
-      className="fixed inset-0 z-[1100] grid place-items-center overflow-y-auto bg-black/72 p-[18px] backdrop-blur-[10px]"
-      role="presentation"
-      onMouseDown={onClose}
-    >
-      <section
-        className="relative w-[min(560px,100%)] max-h-[min(860px,calc(100vh-36px))] overflow-y-auto rounded-md border border-gold/28 bg-[#1b1c16] p-[clamp(24px,5vw,40px)] shadow-lg max-[520px]:p-[20px_16px]"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="product-order-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <button
-          type="button"
+    <DialogPortal>
+      <DialogOverlay className="bg-black/72 [backdrop-filter:blur(10px)]" />
+      <DialogPopup className="w-[min(560px,calc(100vw-36px))] max-h-[min(860px,calc(100vh-36px))] overflow-y-auto rounded-md border border-gold/28 bg-[#1b1c16] p-[clamp(24px,5vw,40px)] shadow-lg max-[520px]:p-[20px_16px]">
+        <DialogClose
           className="absolute top-3.5 right-3.5 z-[2] grid size-[38px] place-items-center rounded-full border border-gold/28 bg-black/78 text-2xl leading-none text-gold-light transition-colors duration-200 ease-linear hover:border-gold hover:text-foreground focus-visible:border-gold focus-visible:text-foreground"
-          onClick={onClose}
           aria-label={text.closeLabel}
         >
           ×
-        </button>
+        </DialogClose>
 
         {orderNumber ? (
           <div className="grid gap-3.5 py-5">
-            <h2 className="mb-1.5 font-serif text-[clamp(22px,3vw,30px)] font-bold text-gold-light">{text.successTitle}</h2>
+            <DialogTitle className="mb-1.5 font-serif text-[clamp(22px,3vw,30px)] font-bold text-gold-light">{text.successTitle}</DialogTitle>
             <p className="m-0 text-[15px] leading-normal text-foreground">{text.successText.replace('{number}', orderNumber)}</p>
             <button
               type="button"
@@ -247,9 +229,9 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
           </div>
         ) : (
           <form onSubmit={submit} className="grid gap-3.5">
-            <h2 id="product-order-title" className="mb-1.5 font-serif text-[clamp(22px,3vw,30px)] font-bold text-foreground">
+            <DialogTitle className="mb-1.5 font-serif text-[clamp(22px,3vw,30px)] font-bold text-foreground">
               {text.title}
-            </h2>
+            </DialogTitle>
             <p className="mb-1 font-serif text-[15px] text-gold-light">{productName(product, locale)}</p>
             <dl className="mb-4.5 flex flex-wrap gap-2.5">
               <div className="rounded-xs border border-gold/28 bg-gold/6 px-3 py-2">
@@ -363,7 +345,7 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
             </button>
           </form>
         )}
-      </section>
-    </div>
+      </DialogPopup>
+    </DialogPortal>
   );
 }

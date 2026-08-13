@@ -44,7 +44,7 @@ export function IconsCatalog({ icons }: { icons: Icon[] }) {
           <span className="relative block">
             <BrandLogo className="absolute top-1/2 left-4 z-[1] size-6 opacity-[.72] -translate-y-1/2 pointer-events-none" size={24} />
             <Input
-              className="min-h-14 pl-[52px] pr-4 text-base font-bold outline-none placeholder:text-muted-foreground placeholder:font-semibold focus:border-gold focus:shadow-[inset_0_0_0_1px_rgba(214,168,79,.38)] max-[520px]:min-h-[52px] max-[430px]:min-h-[50px] max-[430px]:pl-3 max-[430px]:pr-3 max-[430px]:text-[15px]"
+              className="min-h-14 pl-[52px] pr-4 text-base font-bold outline-none placeholder:text-muted-foreground placeholder:font-semibold focus:border-gold focus:shadow-[inset_0_0_0_1px_rgba(214,168,79,.38)] max-[520px]:min-h-[52px] max-[430px]:min-h-[50px] max-[430px]:pl-3 max-[430px]:pr-3"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t('iconSearchPlaceholder')}

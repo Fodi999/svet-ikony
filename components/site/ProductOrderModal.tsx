@@ -201,13 +201,15 @@ function ProductOrderModal({ product, related, onClose }: { product: ChurchProdu
   }
 
   const fieldLabelClass = 'grid gap-1.5 text-[13px] font-bold text-muted-foreground';
-  const textInputClass = 'rounded-xs border-gold-light/13 bg-black/50 px-3 py-2.5 font-sans text-sm text-foreground';
+  // text-base (not text-sm): iOS Safari auto-zooms on focusing any input
+  // under 16px, which was happening on every field in this form on mobile.
+  const textInputClass = 'rounded-xs border-gold-light/13 bg-black/50 px-3 py-2.5 font-sans text-base text-foreground';
   const checkboxLabelClass = 'flex flex-row items-center gap-2 text-[13px] font-semibold text-muted-foreground';
 
   return (
     <DialogPortal>
       <DialogOverlay className="bg-black/72 [backdrop-filter:blur(10px)]" />
-      <DialogPopup className="w-[min(560px,calc(100vw-36px))] max-h-[min(860px,calc(100vh-36px))] overflow-y-auto rounded-md border border-gold/28 bg-[#1b1c16] p-[clamp(24px,5vw,40px)] shadow-lg max-[520px]:p-[20px_16px]">
+      <DialogPopup className="w-[min(560px,calc(100vw-36px))] max-h-[min(860px,calc(100dvh-36px))] overflow-y-auto rounded-md border border-gold/28 bg-[#1b1c16] p-[clamp(24px,5vw,40px)] shadow-lg max-[520px]:p-[20px_16px]">
         <DialogClose
           className="absolute top-3.5 right-3.5 z-[2] grid size-[38px] place-items-center rounded-full border border-gold/28 bg-black/78 text-2xl leading-none text-gold-light transition-colors duration-200 ease-linear hover:border-gold hover:text-foreground focus-visible:border-gold focus-visible:text-foreground"
           aria-label={text.closeLabel}

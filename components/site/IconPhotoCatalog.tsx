@@ -108,7 +108,7 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
           <DialogOverlay className="z-[2000] bg-[rgba(5,5,5,.84)]" />
           <DialogPopup
             aria-label={active.label}
-            className="z-[2000] w-[min(1180px,calc(100vw-56px))] max-h-[min(90vh,calc(100vh-56px))] max-[900px]:w-[calc(100vw-32px)] border border-gold/28 rounded-[8px] bg-canvas grid grid-rows-[minmax(0,1fr)_auto] overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-14 before:z-0 before:pointer-events-none before:bg-[linear-gradient(110deg,transparent_0_28%,rgba(241,209,138,.13)_42%,transparent_56%),#141511] before:bg-[length:220%_100%,100%_100%] before:[animation:imageSkeleton_1.4s_ease-in-out_infinite]"
+            className="z-[2000] w-[min(1180px,calc(100vw-56px))] max-h-[min(90dvh,calc(100dvh-56px))] max-[900px]:w-[calc(100vw-32px)] border border-gold/28 rounded-[8px] bg-canvas grid grid-rows-[minmax(0,1fr)_auto] overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:bottom-14 before:z-0 before:pointer-events-none before:bg-[linear-gradient(110deg,transparent_0_28%,rgba(241,209,138,.13)_42%,transparent_56%),#141511] before:bg-[length:220%_100%,100%_100%] before:[animation:imageSkeleton_1.4s_ease-in-out_infinite]"
           >
             <DialogClose
               className="absolute top-3 right-3 z-[2] inline-flex min-h-[38px] items-center justify-center gap-2 rounded-sm border border-gold/28 px-3 bg-[rgba(11,11,10,.78)] text-[13px] font-black tracking-[.06em] uppercase leading-[1.15] text-gold-light no-underline whitespace-nowrap cursor-pointer transition-[border-color,background,color] duration-[180ms] ease-brand hover:border-gold hover:bg-[linear-gradient(180deg,#e9cb84,#cda45a)] hover:text-canvas focus-visible:border-gold focus-visible:bg-[linear-gradient(180deg,#e9cb84,#cda45a)] focus-visible:text-canvas"
@@ -121,7 +121,7 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
               width={1200}
               height={900}
               loading="eager"
-              className="relative z-[1] w-full h-full max-h-[calc(90vh-92px)] object-contain block max-[900px]:max-h-[calc(100vh-132px)]"
+              className="relative z-[1] w-full h-full max-h-[calc(90dvh-92px)] object-contain block max-[900px]:max-h-[calc(100dvh-132px)]"
             />
             <div className="min-w-0 border-t border-gold/28 py-3 px-3.5 flex items-center justify-between gap-3 text-foreground">
               <strong className="text-foreground text-[13px] font-black uppercase">{active.label}</strong>

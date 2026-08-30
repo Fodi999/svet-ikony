@@ -7,27 +7,28 @@ import {
 } from '@/lib/d1/repositories/telegram-autopost';
 import { generateTelegramPost, OpenAiError } from '@/lib/ai/openai';
 import { loadAutopostFacts } from './autopost-content';
+import { ensureAutopostImage } from './autopost-image';
 import { getOrResolveChannelChat } from './channel';
 import { TelegramApiError, TelegramClient } from './client';
+import { CONTENT_TYPE_FORMAT_HINTS, CONTENT_TYPE_LABELS } from './content-format';
 import { getOpenAiConfig, getTelegramConfig } from './env';
+import { getJulianCalendarDate } from './julian-calendar';
 
 /** The autonomous pipeline: Cloudflare Cron (via the standalone cron/
  * pinger Worker) → this → D1 church data → OpenAI → telegram_posts →
  * Telegram Bot API → @svit_ikony. Entry point is runAutopostTick(), called
  * by app/api/internal/telegram/autopost/tick/route.ts on every pinger fire
  * (every 5 minutes) — everything here decides on its own whether there is
- * actually anything due, so an extra or slightly-late fire is harmless. */
+ * actually anything due, so an extra or slightly-late fire is harmless.
+ *
+ * Calendar policy: the church content this pipeline sources is always
+ * looked up by the Orthodox Julian ('old style') calendar date, never the
+ * civil Gregorian one -- see julian-calendar.ts and autopost-content.ts.
+ * `publishDate` on the resulting telegram_posts row stays the civil
+ * Europe/Kyiv date, so Telegram history reflects the real day it was sent;
+ * only the *source lookup* uses the Julian date. */
 
-/** Also reused by the admin publish/retry route to regenerate text for an
- * autopost row that failed before OpenAI ever produced any (see
- * app/api/admin/telegram/posts/[id]/publish/route.ts). */
-export const CONTENT_TYPE_LABELS: Record<AutopostContentType, string> = {
-  morning_prayer: 'Ранкова молитва',
-  saint_of_day: 'Святий дня',
-  gospel: 'Євангеліє дня',
-  faith_story: 'Історія віри',
-  evening_prayer: 'Вечірня молитва',
-};
+export { CONTENT_TYPE_LABELS };
 
 function kyivDateIso(date: Date): string {
   // en-CA formats as YYYY-MM-DD, which happens to match SQLite's own date
@@ -55,7 +56,7 @@ function isDue(nowHhMm: string, scheduledHhMm: string): boolean {
   return diff >= 0 && diff < DUE_WINDOW_MINUTES;
 }
 
-export type AutopostOutcome = 'sent' | 'failed' | 'skipped_insufficient_data' | 'skipped_already_claimed';
+export type AutopostOutcome = 'sent' | 'failed' | 'skipped_insufficient_data' | 'skipped_already_claimed' | 'skipped_missing_source';
 
 export type AutopostTickResult = {
   ranAt: string;
@@ -90,7 +91,8 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
     return { ranAt: now.toISOString(), globalEnabled: true, attempted };
   }
 
-  const dateIso = kyivDateIso(now);
+  const civilDateIso = kyivDateIso(now);
+  const julianDateIso = getJulianCalendarDate(now, 'Europe/Kyiv');
   const nowHhMm = kyivHhMm(now);
   const dueTypes = settings.items.filter((item) => item.enabled && isDue(nowHhMm, item.scheduleTime));
   if (dueTypes.length === 0) {
@@ -103,15 +105,20 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
   for (const item of dueTypes) {
     const { contentType } = item;
 
-    const facts = await loadAutopostFacts(contentType, dateIso);
-    if (!facts) {
+    const factsResult = await loadAutopostFacts(contentType, julianDateIso);
+    if (factsResult.status === 'missing_source') {
+      attempted.push({ contentType, outcome: 'skipped_missing_source' });
+      continue;
+    }
+    if (factsResult.status === 'insufficient_data') {
       attempted.push({ contentType, outcome: 'skipped_insufficient_data' });
       continue;
     }
+    const { facts } = factsResult;
 
     const claimed = await claimAutopostSlot({
       contentType,
-      publishDate: dateIso,
+      publishDate: civilDateIso,
       channelChatId: channelChat.telegramChatId,
       sourceType: facts.sourceType,
       sourceId: facts.sourceId,
@@ -126,14 +133,31 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
         apiKey: openAiConfig.apiKey,
         model: openAiConfig.model,
         contentTypeLabel: CONTENT_TYPE_LABELS[contentType],
+        formatHint: CONTENT_TYPE_FORMAT_HINTS[contentType],
         facts: facts.facts,
+        civilDateIso,
+        julianDateIso,
       });
       // Persisted before the Telegram call so a send failure still leaves
       // the generated text on the row for a manual edit/retry, instead of
       // an empty 'failed' post nobody can do anything with.
       await setAutopostDraftText(claimed.id, text);
 
-      const { messageId } = await client.sendMessage(channelChat.telegramChatId, text);
+      // Best-effort: a failure here is recorded (telegram_posts.image_error)
+      // and returns null, never throws -- the post still publishes as
+      // text-only rather than being blocked on the image. See
+      // lib/telegram/autopost-image.ts.
+      const mediaUrl = await ensureAutopostImage({
+        postId: claimed.id,
+        existingMediaUrl: null,
+        contentType,
+        apiKey: openAiConfig.apiKey,
+        imageModel: openAiConfig.imageModel,
+      });
+
+      const { messageId } = mediaUrl
+        ? await client.sendPhoto(channelChat.telegramChatId, mediaUrl, text)
+        : await client.sendMessage(channelChat.telegramChatId, text);
       await markTelegramPostSent(claimed.id, messageId);
       await recordDeliveryLog({
         telegramPostId: claimed.id,

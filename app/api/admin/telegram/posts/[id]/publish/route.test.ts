@@ -27,6 +27,14 @@ vi.mock('@/lib/telegram/autopost-content', () => ({
   loadAutopostFacts: mockLoadAutopostFacts,
 }));
 
+/** Defaults to "no image" so every pre-existing assertion below keeps
+ * working without needing to know about the image step; dedicated tests
+ * further down override this per-case. */
+const mockEnsureAutopostImage = vi.fn<() => Promise<string | null>>(async () => null);
+vi.mock('@/lib/telegram/autopost-image', () => ({
+  ensureAutopostImage: mockEnsureAutopostImage,
+}));
+
 const mockGenerateTelegramPost = vi.fn();
 vi.mock('@/lib/ai/openai', async () => {
   const actual = await vi.importActual<typeof import('@/lib/ai/openai')>('@/lib/ai/openai');
@@ -82,6 +90,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     vi.clearAllMocks();
     mockGetOrResolveChannelChat.mockResolvedValue({ telegramChatId: -100999 });
     mockSendMessage.mockResolvedValue({ messageId: 555 });
+    mockEnsureAutopostImage.mockResolvedValue(null);
     token = await mintTestAdminJwt();
   });
 
@@ -171,7 +180,10 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
     });
-    mockLoadAutopostFacts.mockResolvedValue({ facts: 'real facts from D1', sourceType: 'saint', sourceId: 'abc' });
+    mockLoadAutopostFacts.mockResolvedValue({
+      status: 'ok',
+      facts: { facts: 'real facts from D1', sourceType: 'saint', sourceId: 'abc' },
+    });
     mockGenerateTelegramPost.mockResolvedValue('Generated Ukrainian post text');
     mockSetAutopostDraftText.mockResolvedValue({
       id: 3,
@@ -186,9 +198,17 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
 
     const response = await POST(publishRequest('3', token), ctx('3'));
 
-    expect(mockLoadAutopostFacts).toHaveBeenCalledWith('saint_of_day', '2026-08-30');
+    // publishDate ('2026-08-30', civil Europe/Kyiv) must be converted to the
+    // Julian/old-style date ('2026-08-17') before the source lookup -- see
+    // julian-calendar.test.ts for how that 13-day conversion is verified.
+    expect(mockLoadAutopostFacts).toHaveBeenCalledWith('saint_of_day', '2026-08-17');
     expect(mockGenerateTelegramPost).toHaveBeenCalledWith(
-      expect.objectContaining({ apiKey: 'fake-key-for-tests', facts: 'real facts from D1' })
+      expect.objectContaining({
+        apiKey: 'fake-key-for-tests',
+        facts: 'real facts from D1',
+        civilDateIso: '2026-08-30',
+        julianDateIso: '2026-08-17',
+      })
     );
     expect(mockSetAutopostDraftText).toHaveBeenCalledWith(3, 'Generated Ukrainian post text');
     expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Generated Ukrainian post text');
@@ -216,6 +236,76 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     expect(response.status).toBe(200);
   });
 
+  it('does not regenerate the image when the autopost row already has a saved mediaUrl', async () => {
+    mockGetTelegramPost.mockResolvedValue({
+      id: 7,
+      status: 'failed',
+      text: 'Already generated earlier',
+      mediaUrl: 'https://svetikony.com/media/telegram/7/post-image/existing.png',
+      contentType: 'saint_of_day',
+      publishDate: '2026-08-30',
+    });
+    mockSendPhoto.mockResolvedValue({ messageId: 777 });
+    mockMarkTelegramPostSent.mockResolvedValue({ id: 7, status: 'sent', telegramMessageId: 777 });
+
+    const response = await POST(publishRequest('7', token), ctx('7'));
+
+    expect(mockEnsureAutopostImage).not.toHaveBeenCalled();
+    expect(mockSendPhoto).toHaveBeenCalledWith(
+      -100999,
+      'https://svetikony.com/media/telegram/7/post-image/existing.png',
+      'Already generated earlier'
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it('generates a fresh image via sendPhoto when the autopost row has text but no mediaUrl yet', async () => {
+    mockGetTelegramPost.mockResolvedValue({
+      id: 8,
+      status: 'failed',
+      text: 'Already generated earlier',
+      mediaUrl: null,
+      contentType: 'saint_of_day',
+      publishDate: '2026-08-30',
+    });
+    mockEnsureAutopostImage.mockResolvedValue('https://svetikony.com/media/telegram/8/post-image/new.png');
+    mockSendPhoto.mockResolvedValue({ messageId: 888 });
+    mockMarkTelegramPostSent.mockResolvedValue({ id: 8, status: 'sent', telegramMessageId: 888 });
+
+    const response = await POST(publishRequest('8', token), ctx('8'));
+
+    expect(mockEnsureAutopostImage).toHaveBeenCalledWith(
+      expect.objectContaining({ postId: 8, existingMediaUrl: null, contentType: 'saint_of_day', apiKey: 'fake-key-for-tests' })
+    );
+    expect(mockSendPhoto).toHaveBeenCalledWith(
+      -100999,
+      'https://svetikony.com/media/telegram/8/post-image/new.png',
+      'Already generated earlier'
+    );
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+  });
+
+  it('falls back to sendMessage when image generation fails during retry, and still publishes the text', async () => {
+    mockGetTelegramPost.mockResolvedValue({
+      id: 9,
+      status: 'failed',
+      text: 'Already generated earlier',
+      mediaUrl: null,
+      contentType: 'saint_of_day',
+      publishDate: '2026-08-30',
+    });
+    mockEnsureAutopostImage.mockResolvedValue(null); // ensureAutopostImage itself never throws -- see autopost-image.test.ts
+    mockSendMessage.mockResolvedValue({ messageId: 999 });
+    mockMarkTelegramPostSent.mockResolvedValue({ id: 9, status: 'sent', telegramMessageId: 999 });
+
+    const response = await POST(publishRequest('9', token), ctx('9'));
+
+    expect(mockSendPhoto).not.toHaveBeenCalled();
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Already generated earlier');
+    expect(response.status).toBe(200);
+  });
+
   it('fails with 400 and never calls Telegram when source facts are no longer available', async () => {
     mockGetTelegramPost.mockResolvedValue({
       id: 5,
@@ -225,7 +315,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
     });
-    mockLoadAutopostFacts.mockResolvedValue(null);
+    mockLoadAutopostFacts.mockResolvedValue({ status: 'missing_source' });
 
     const response = await POST(publishRequest('5', token), ctx('5'));
 
@@ -243,7 +333,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
     });
-    mockLoadAutopostFacts.mockResolvedValue({ facts: 'real facts', sourceType: 'saint', sourceId: 'abc' });
+    mockLoadAutopostFacts.mockResolvedValue({ status: 'ok', facts: { facts: 'real facts', sourceType: 'saint', sourceId: 'abc' } });
     mockGenerateTelegramPost.mockRejectedValueOnce(new Error('no credits remaining'));
 
     const response = await POST(publishRequest('6', token), ctx('6'));

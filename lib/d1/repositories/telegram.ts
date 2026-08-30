@@ -210,6 +210,7 @@ export type PostRow = {
   error_message: string | null;
   content_type: string | null;
   publish_date: string | null;
+  image_error: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -230,6 +231,11 @@ export type TelegramPostDto = {
    * manually-composed posts. See lib/telegram/autopost.ts. */
   contentType: string | null;
   publishDate: string | null;
+  /** Non-fatal AI image generation/R2 upload failure reason (migration
+   * 0009) -- independent of errorMessage, which is about the Telegram
+   * publish step. Null means either not attempted or mediaUrl is already
+   * set (succeeded). See lib/telegram/autopost-image.ts. */
+  imageError: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -263,13 +269,14 @@ export function toPostDto(row: PostRow): TelegramPostDto {
     errorMessage: row.error_message,
     contentType: row.content_type,
     publishDate: row.publish_date,
+    imageError: row.image_error,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
 export const POST_COLUMNS =
-  'id, telegram_chat_id, source_type, source_id, text, media_url, telegram_message_id, status, scheduled_at, sent_at, error_message, content_type, publish_date, created_at, updated_at';
+  'id, telegram_chat_id, source_type, source_id, text, media_url, telegram_message_id, status, scheduled_at, sent_at, error_message, content_type, publish_date, image_error, created_at, updated_at';
 
 /** Admin "Публікації" tab — full history, newest first. */
 export async function listTelegramPosts(): Promise<TelegramPostDto[]> {

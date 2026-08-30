@@ -32,6 +32,8 @@ declare global {
     OPENAI_API_KEY?: string;
     /** Defaults to gpt-4o-mini (lib/ai/openai.ts) when unset. */
     OPENAI_MODEL?: string;
+    /** Defaults to gpt-image-1 (lib/ai/openai-image.ts) when unset. */
+    OPENAI_IMAGE_MODEL?: string;
     /** Shared secret the standalone cron pinger Worker (see cron/) sends as
      * X-Autopost-Secret — distinct from TELEGRAM_WEBHOOK_SECRET. */
     AUTOPOST_TICK_SECRET?: string;

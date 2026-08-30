@@ -130,3 +130,22 @@ export async function setAutopostDraftText(id: number, text: string): Promise<Te
   if (!row) throw ApiError.notFound('telegram post not found');
   return toPostDto(row);
 }
+
+/**
+ * Records the outcome of the (best-effort, non-fatal) AI image step -- see
+ * lib/telegram/autopost-image.ts. Exactly one of the two arguments is
+ * meaningful per call: a successful generation passes `mediaUrl` and
+ * `imageError: null`; a failure passes `mediaUrl: null` and the failure
+ * reason, leaving the post publishable text-only. Never called once
+ * mediaUrl is already set -- see ensureAutopostImage()'s own skip check.
+ */
+export async function setAutopostImageResult(id: number, mediaUrl: string | null, imageError: string | null): Promise<TelegramPostDto> {
+  const row = await d1First<PostRow>(
+    `UPDATE telegram_posts SET media_url = ?, image_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING ${POST_COLUMNS}`,
+    mediaUrl,
+    imageError,
+    id
+  );
+  if (!row) throw ApiError.notFound('telegram post not found');
+  return toPostDto(row);
+}

@@ -1,0 +1,12 @@
+-- Additive only: AI image generation for Telegram autopost (see
+-- lib/telegram/autopost-image.ts). telegram_posts.media_url already exists
+-- (migration 0007, used by the manual composer's media picker) and is
+-- reused as-is for the AI-generated image's public /media/... URL.
+--
+-- image_error is a separate column from the existing error_message so a
+-- non-fatal image-generation failure (pipeline still publishes text-only,
+-- per spec) never overwrites/hides a real publish-time error_message, and
+-- vice versa -- the two failure modes are independent and both worth
+-- keeping. NULL means "no image failure recorded" (either not yet
+-- attempted, or media_url is already set because it succeeded).
+ALTER TABLE telegram_posts ADD COLUMN image_error TEXT;

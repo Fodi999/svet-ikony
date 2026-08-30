@@ -29,6 +29,10 @@ export async function getTelegramConfig(): Promise<TelegramConfig | null> {
 export type OpenAiConfig = {
   apiKey: string;
   model?: string;
+  /** Optional override for lib/ai/openai-image.ts's image model, same
+   * "unset -> code default" convention as `model` above (defaults to
+   * 'gpt-image-1' in openai-image.ts, not here). */
+  imageModel?: string;
 };
 
 /** Returns null when OPENAI_API_KEY is absent/blank — the autopost tick
@@ -40,7 +44,11 @@ export async function getOpenAiConfig(): Promise<OpenAiConfig | null> {
   const apiKey = env.OPENAI_API_KEY?.trim();
   if (!apiKey) return null;
 
-  return { apiKey, model: env.OPENAI_MODEL?.trim() || undefined };
+  return {
+    apiKey,
+    model: env.OPENAI_MODEL?.trim() || undefined,
+    imageModel: env.OPENAI_IMAGE_MODEL?.trim() || undefined,
+  };
 }
 
 /** The shared secret the standalone cron pinger Worker (see cron/) sends as

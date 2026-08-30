@@ -9,11 +9,13 @@ import {
   type TelegramPostDto,
 } from '@/lib/d1/repositories/telegram';
 import { isAutopostContentType, setAutopostDraftText } from '@/lib/d1/repositories/telegram-autopost';
-import { CONTENT_TYPE_LABELS } from '@/lib/telegram/autopost';
 import { loadAutopostFacts } from '@/lib/telegram/autopost-content';
+import { ensureAutopostImage } from '@/lib/telegram/autopost-image';
 import { getOrResolveChannelChat } from '@/lib/telegram/channel';
 import { TelegramApiError, TelegramClient } from '@/lib/telegram/client';
+import { CONTENT_TYPE_FORMAT_HINTS, CONTENT_TYPE_LABELS } from '@/lib/telegram/content-format';
 import { getOpenAiConfig, getTelegramConfig } from '@/lib/telegram/env';
+import { gregorianToJulianCalendarDate } from '@/lib/telegram/julian-calendar';
 
 function parsePostId(raw: string): number {
   const id = Number(raw);
@@ -28,6 +30,11 @@ function parsePostId(raw: string): number {
  * Regenerate from the same real D1 facts first, persisting via
  * setAutopostDraftText before returning, same crash-safety order as
  * lib/telegram/autopost.ts's own generate step.
+ *
+ * `post.publishDate` is always the CIVIL Europe/Kyiv date (see autopost.ts)
+ * -- source facts are Julian-calendar-only, so it's converted here before
+ * calling loadAutopostFacts, exactly mirroring the orchestrator's own
+ * civil-date vs Julian-date split.
  */
 async function regenerateAutopostTextIfMissing(post: TelegramPostDto): Promise<TelegramPostDto> {
   if (post.text || !post.contentType || !isAutopostContentType(post.contentType) || !post.publishDate) {
@@ -37,15 +44,20 @@ async function regenerateAutopostTextIfMissing(post: TelegramPostDto): Promise<T
   const openAiConfig = await getOpenAiConfig();
   if (!openAiConfig) throw ApiError.validation('OpenAI is not configured');
 
-  const facts = await loadAutopostFacts(post.contentType, post.publishDate);
-  if (!facts) throw ApiError.validation('Source data for this post is no longer available');
+  const civilDateIso = post.publishDate;
+  const julianDateIso = gregorianToJulianCalendarDate(civilDateIso);
+  const factsResult = await loadAutopostFacts(post.contentType, julianDateIso);
+  if (factsResult.status !== 'ok') throw ApiError.validation('Source data for this post is no longer available');
 
   try {
     const text = await generateTelegramPost({
       apiKey: openAiConfig.apiKey,
       model: openAiConfig.model,
       contentTypeLabel: CONTENT_TYPE_LABELS[post.contentType],
-      facts: facts.facts,
+      formatHint: CONTENT_TYPE_FORMAT_HINTS[post.contentType],
+      facts: factsResult.facts.facts,
+      civilDateIso,
+      julianDateIso,
     });
     return await setAutopostDraftText(post.id, text);
   } catch (error) {
@@ -53,6 +65,33 @@ async function regenerateAutopostTextIfMissing(post: TelegramPostDto): Promise<T
     await markTelegramPostFailed(post.id, message);
     throw new ApiError(502, 'OPENAI_ERROR', 'Failed to generate post text', message);
   }
+}
+
+/**
+ * Best-effort: an autopost row (contentType set) with no mediaUrl yet gets
+ * one AI image generation attempt -- skipped entirely (not an error) when
+ * OPENAI_API_KEY isn't configured, since the image is always optional. A
+ * row that already has mediaUrl (from a prior successful attempt) is
+ * returned unchanged -- see ensureAutopostImage's own "already saved"
+ * skip, which is what actually enforces "retry must not regenerate an
+ * already-saved image".
+ */
+async function ensureAutopostImageIfMissing(post: TelegramPostDto): Promise<TelegramPostDto> {
+  if (post.mediaUrl || !post.contentType || !isAutopostContentType(post.contentType)) {
+    return post;
+  }
+
+  const openAiConfig = await getOpenAiConfig();
+  if (!openAiConfig) return post;
+
+  const mediaUrl = await ensureAutopostImage({
+    postId: post.id,
+    existingMediaUrl: null,
+    contentType: post.contentType,
+    apiKey: openAiConfig.apiKey,
+    imageModel: openAiConfig.imageModel,
+  });
+  return mediaUrl ? { ...post, mediaUrl } : post;
 }
 
 /**
@@ -79,6 +118,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!config) throw ApiError.validation('Telegram bot is not configured');
 
     post = await regenerateAutopostTextIfMissing(post);
+    post = await ensureAutopostImageIfMissing(post);
 
     const client = new TelegramClient(config.botToken);
     const channelChat = await getOrResolveChannelChat(client, config.channel);

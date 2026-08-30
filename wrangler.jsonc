@@ -13,7 +13,8 @@
   },
   "vars": {
     "NEXT_PUBLIC_API_URL": "https://ministerial-yetta-fodi999-c58d8823.koyeb.app",
-    "NEXT_PUBLIC_SITE_URL": "https://svetikony.com"
+    "NEXT_PUBLIC_SITE_URL": "https://svetikony.com",
+    "TELEGRAM_CHANNEL": "@svit_ikony"
   },
   "services": [
     {

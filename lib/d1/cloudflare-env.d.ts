@@ -18,6 +18,14 @@ declare global {
      * nothing here ever points at production unless `--remote` is passed,
      * which nothing in this project does. */
     MEDIA_BUCKET: R2Bucket;
+    /** Telegram bot ("Світло Ікони"). Set via `wrangler secret put` in
+     * production, `.dev.vars` locally — never in wrangler.jsonc's plaintext
+     * `vars`. Optional: lib/telegram/env.ts treats an absent/blank token as
+     * "bot disabled", not an error. */
+    TELEGRAM_BOT_TOKEN?: string;
+    TELEGRAM_WEBHOOK_SECRET?: string;
+    /** Not sensitive — declared directly in wrangler.jsonc's `vars`. */
+    TELEGRAM_CHANNEL?: string;
   }
 }
 

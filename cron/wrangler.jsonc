@@ -1,0 +1,15 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "svet-ikony-autopost-cron",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-25",
+  "triggers": {
+    // Every 5 minutes, Europe/Kyiv-time schedule matching is done inside the
+    // tick route itself (lib/telegram/autopost.ts) — Cloudflare Cron only
+    // runs on fixed UTC cadences, no timezone support.
+    "crons": ["*/5 * * * *"]
+  },
+  "vars": {
+    "TICK_URL": "https://svetikony.com/api/internal/telegram/autopost/tick"
+  }
+}

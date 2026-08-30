@@ -26,6 +26,15 @@ declare global {
     TELEGRAM_WEBHOOK_SECRET?: string;
     /** Not sensitive — declared directly in wrangler.jsonc's `vars`. */
     TELEGRAM_CHANNEL?: string;
+    /** Telegram autopost (OpenAI-generated). Secrets via `wrangler secret
+     * put`, never in `vars`. Optional: lib/telegram/env.ts treats an
+     * absent/blank OPENAI_API_KEY as "autopost disabled", not an error. */
+    OPENAI_API_KEY?: string;
+    /** Defaults to gpt-4o-mini (lib/ai/openai.ts) when unset. */
+    OPENAI_MODEL?: string;
+    /** Shared secret the standalone cron pinger Worker (see cron/) sends as
+     * X-Autopost-Secret — distinct from TELEGRAM_WEBHOOK_SECRET. */
+    AUTOPOST_TICK_SECRET?: string;
   }
 }
 

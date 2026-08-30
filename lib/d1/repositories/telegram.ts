@@ -1,10 +1,10 @@
-import { d1All, d1First } from '../db';
+import { d1All, d1First, d1Run } from '../db';
 import { ApiError } from '../errors';
 
-/** telegram_users / telegram_chats / telegram_posts — additive tables from
- * migrations/0007_telegram_bot.sql, isolated from the church_ and icon_
- * content schema. telegram_subscriptions/telegram_delivery_logs still exist
- * as schema only (broadcast-to-individual-chats feature, explicitly out of
+/** telegram_users / telegram_chats / telegram_posts / telegram_delivery_logs
+ * — additive tables from migrations/0007_telegram_bot.sql, isolated from the
+ * church_ and icon_ content schema. telegram_subscriptions still exists as
+ * schema only (broadcast-to-individual-chats feature, explicitly out of
  * scope for this stage) — everything below only ever targets the single
  * resolved channel chat (see lib/telegram/channel.ts). */
 
@@ -196,7 +196,7 @@ export async function getTelegramStats(): Promise<TelegramStats> {
 
 export type TelegramPostStatus = 'draft' | 'scheduled' | 'sent' | 'failed';
 
-type PostRow = {
+export type PostRow = {
   id: number;
   telegram_chat_id: number;
   source_type: string | null;
@@ -208,6 +208,8 @@ type PostRow = {
   scheduled_at: string | null;
   sent_at: string | null;
   error_message: string | null;
+  content_type: string | null;
+  publish_date: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -224,6 +226,10 @@ export type TelegramPostDto = {
   scheduledAt: string | null;
   sentAt: string | null;
   errorMessage: string | null;
+  /** Set only for autopost-claimed rows (migration 0008) — null for
+   * manually-composed posts. See lib/telegram/autopost.ts. */
+  contentType: string | null;
+  publishDate: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -242,7 +248,7 @@ function toPostStatus(value: string): TelegramPostStatus {
   return value === 'scheduled' || value === 'sent' || value === 'failed' ? value : 'draft';
 }
 
-function toPostDto(row: PostRow): TelegramPostDto {
+export function toPostDto(row: PostRow): TelegramPostDto {
   return {
     id: row.id,
     telegramChatId: row.telegram_chat_id,
@@ -255,13 +261,15 @@ function toPostDto(row: PostRow): TelegramPostDto {
     scheduledAt: row.scheduled_at,
     sentAt: row.sent_at,
     errorMessage: row.error_message,
+    contentType: row.content_type,
+    publishDate: row.publish_date,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-const POST_COLUMNS =
-  'id, telegram_chat_id, source_type, source_id, text, media_url, telegram_message_id, status, scheduled_at, sent_at, error_message, created_at, updated_at';
+export const POST_COLUMNS =
+  'id, telegram_chat_id, source_type, source_id, text, media_url, telegram_message_id, status, scheduled_at, sent_at, error_message, content_type, publish_date, created_at, updated_at';
 
 /** Admin "Публікації" tab — full history, newest first. */
 export async function listTelegramPosts(): Promise<TelegramPostDto[]> {
@@ -355,4 +363,28 @@ export async function markTelegramPostFailed(id: number, errorMessage: string): 
   );
   if (!row) throw ApiError.notFound('telegram post not found');
   return toPostDto(row);
+}
+
+export type DeliveryLogInput = {
+  telegramPostId: number;
+  telegramChatId: number;
+  telegramMessageId: number | null;
+  status: 'success' | 'failed';
+  errorMessage?: string | null;
+};
+
+/** Best-effort audit trail for every publish attempt (manual or autopost) —
+ * a failure to write this must never mask the actual publish outcome, so
+ * callers should treat this as fire-and-forget rather than propagating a
+ * write error from here. */
+export async function recordDeliveryLog(input: DeliveryLogInput): Promise<void> {
+  await d1Run(
+    `INSERT INTO telegram_delivery_logs (telegram_post_id, telegram_chat_id, telegram_message_id, status, error_message)
+     VALUES (?, ?, ?, ?, ?)`,
+    input.telegramPostId,
+    input.telegramChatId,
+    input.telegramMessageId,
+    input.status,
+    input.errorMessage ?? null
+  );
 }

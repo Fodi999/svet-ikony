@@ -18,7 +18,10 @@ import { getOpenAiConfig, getTelegramConfig } from './env';
  * (every 5 minutes) — everything here decides on its own whether there is
  * actually anything due, so an extra or slightly-late fire is harmless. */
 
-const CONTENT_TYPE_LABELS: Record<AutopostContentType, string> = {
+/** Also reused by the admin publish/retry route to regenerate text for an
+ * autopost row that failed before OpenAI ever produced any (see
+ * app/api/admin/telegram/posts/[id]/publish/route.ts). */
+export const CONTENT_TYPE_LABELS: Record<AutopostContentType, string> = {
   morning_prayer: 'Ранкова молитва',
   saint_of_day: 'Святий дня',
   gospel: 'Євангеліє дня',

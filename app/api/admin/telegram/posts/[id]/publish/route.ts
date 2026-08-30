@@ -1,14 +1,58 @@
+import { generateTelegramPost, OpenAiError } from '@/lib/ai/openai';
 import { requireSuperAdmin } from '@/lib/d1/auth';
 import { ApiError, withErrors } from '@/lib/d1/errors';
-import { getTelegramPost, markTelegramPostFailed, markTelegramPostSent } from '@/lib/d1/repositories/telegram';
+import {
+  getTelegramPost,
+  markTelegramPostFailed,
+  markTelegramPostSent,
+  recordDeliveryLog,
+  type TelegramPostDto,
+} from '@/lib/d1/repositories/telegram';
+import { isAutopostContentType, setAutopostDraftText } from '@/lib/d1/repositories/telegram-autopost';
+import { CONTENT_TYPE_LABELS } from '@/lib/telegram/autopost';
+import { loadAutopostFacts } from '@/lib/telegram/autopost-content';
 import { getOrResolveChannelChat } from '@/lib/telegram/channel';
 import { TelegramApiError, TelegramClient } from '@/lib/telegram/client';
-import { getTelegramConfig } from '@/lib/telegram/env';
+import { getOpenAiConfig, getTelegramConfig } from '@/lib/telegram/env';
 
 function parsePostId(raw: string): number {
   const id = Number(raw);
   if (!Number.isInteger(id)) throw ApiError.validation('id must be an integer');
   return id;
+}
+
+/**
+ * An autopost row (migration 0008) can reach 'failed' before OpenAI ever
+ * produced any text (its own generation call threw) -- unlike a manually
+ * composed post, resending `post.text` here would just resend nothing.
+ * Regenerate from the same real D1 facts first, persisting via
+ * setAutopostDraftText before returning, same crash-safety order as
+ * lib/telegram/autopost.ts's own generate step.
+ */
+async function regenerateAutopostTextIfMissing(post: TelegramPostDto): Promise<TelegramPostDto> {
+  if (post.text || !post.contentType || !isAutopostContentType(post.contentType) || !post.publishDate) {
+    return post;
+  }
+
+  const openAiConfig = await getOpenAiConfig();
+  if (!openAiConfig) throw ApiError.validation('OpenAI is not configured');
+
+  const facts = await loadAutopostFacts(post.contentType, post.publishDate);
+  if (!facts) throw ApiError.validation('Source data for this post is no longer available');
+
+  try {
+    const text = await generateTelegramPost({
+      apiKey: openAiConfig.apiKey,
+      model: openAiConfig.model,
+      contentTypeLabel: CONTENT_TYPE_LABELS[post.contentType],
+      facts: facts.facts,
+    });
+    return await setAutopostDraftText(post.id, text);
+  } catch (error) {
+    const message = error instanceof OpenAiError ? error.message : error instanceof Error ? error.message : 'unknown error';
+    await markTelegramPostFailed(post.id, message);
+    throw new ApiError(502, 'OPENAI_ERROR', 'Failed to generate post text', message);
+  }
 }
 
 /**
@@ -26,13 +70,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params;
     const postId = parsePostId(id);
 
-    const post = await getTelegramPost(postId);
+    let post = await getTelegramPost(postId);
     if (post.status === 'sent') {
       throw ApiError.conflict('telegram post has already been sent');
     }
 
     const config = await getTelegramConfig();
     if (!config) throw ApiError.validation('Telegram bot is not configured');
+
+    post = await regenerateAutopostTextIfMissing(post);
 
     const client = new TelegramClient(config.botToken);
     const channelChat = await getOrResolveChannelChat(client, config.channel);
@@ -42,11 +88,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         ? await client.sendPhoto(channelChat.telegramChatId, post.mediaUrl, post.text ?? undefined)
         : await client.sendMessage(channelChat.telegramChatId, post.text ?? '');
       const updated = await markTelegramPostSent(postId, messageId);
+      await recordDeliveryLog({
+        telegramPostId: postId,
+        telegramChatId: channelChat.telegramChatId,
+        telegramMessageId: messageId,
+        status: 'success',
+      });
       return Response.json(updated);
     } catch (error) {
       const message =
         error instanceof TelegramApiError ? error.description : error instanceof Error ? error.message : 'unknown error';
       await markTelegramPostFailed(postId, message);
+      await recordDeliveryLog({
+        telegramPostId: postId,
+        telegramChatId: channelChat.telegramChatId,
+        telegramMessageId: null,
+        status: 'failed',
+        errorMessage: message,
+      });
       throw new ApiError(502, 'TELEGRAM_ERROR', 'Failed to publish to Telegram', message);
     }
   });

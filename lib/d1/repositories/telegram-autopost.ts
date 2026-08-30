@@ -107,7 +107,7 @@ export async function claimAutopostSlot(input: ClaimAutopostSlotInput): Promise<
   const row = await d1First<PostRow>(
     `INSERT INTO telegram_posts (telegram_chat_id, source_type, source_id, status, content_type, publish_date)
      VALUES (?, ?, ?, 'draft', ?, ?)
-     ON CONFLICT(publish_date, content_type) DO NOTHING
+     ON CONFLICT(publish_date, content_type) WHERE content_type IS NOT NULL DO NOTHING
      RETURNING ${POST_COLUMNS}`,
     input.channelChatId,
     input.sourceType ?? null,

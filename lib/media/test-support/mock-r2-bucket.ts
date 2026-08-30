@@ -122,8 +122,24 @@ export class MockR2Bucket implements R2Bucket {
     throw new Error('MockR2Bucket: resumeMultipartUpload not implemented in tests');
   }
 
-  list(): Promise<R2Objects> {
-    throw new Error('MockR2Bucket: list not implemented in tests');
+  /** Cursor is simply the last key of the previous page — good enough for
+   * tests, which never see more than a handful of objects at once. Always
+   * includes httpMetadata/customMetadata regardless of `options.include`
+   * (the real binding only returns them when asked) since every caller in
+   * this codebase requests both anyway. */
+  async list(options?: R2ListOptions): Promise<R2Objects> {
+    const prefix = options?.prefix ?? '';
+    const limit = options?.limit ?? 1000;
+    const allKeys = [...this.store.keys()].filter((key) => key.startsWith(prefix)).sort();
+
+    const startIndex = options?.cursor ? allKeys.indexOf(options.cursor) + 1 : 0;
+    const pageKeys = allKeys.slice(startIndex, startIndex + limit);
+    const objects = pageKeys.map((key) => toR2Object(key, this.store.get(key)!));
+
+    if (startIndex + limit < allKeys.length) {
+      return { objects, truncated: true, cursor: pageKeys[pageKeys.length - 1]!, delimitedPrefixes: [] };
+    }
+    return { objects, truncated: false, delimitedPrefixes: [] };
   }
 }
 

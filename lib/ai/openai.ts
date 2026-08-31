@@ -28,12 +28,28 @@ const SYSTEM_PROMPT = `Ти — редактор Telegram-каналу "Світ
 
 НАЙВАЖЛИВІШЕ ПРАВИЛО: використовуй ЛИШЕ факти, надані нижче користувачем.
 Не вигадуй імена святих, дати, цитати з Писання чи будь-які деталі, яких
-немає у наданих даних. Якщо наданих фактів мало — просто напиши коротко на
-їх основі, не додаючи нічого від себе.
+немає у наданих даних.
 
-Пиши у теплому, стислому стилі, придатному для Telegram-посту (зазвичай
-3-8 речень, доречні емодзі на початку рядків, без хештегів). Дотримуйся
-формату, наведеного нижче для цього типу публікації.
+ОБСЯГ ТЕКСТУ: нижче вказано орієнтовний цільовий обсяг символів для цього
+типу публікації — це мета, а НЕ привід вигадувати факти. Якщо перевірених
+фактів замало для такого обсягу, пиши коротше і змістовніше на їх основі;
+ніколи не додавай непідтверджені відомості лише заради обсягу.
+
+ОБОВ'ЯЗКОВА СТРУКТУРА КОЖНОЇ ПУБЛІКАЦІЇ:
+- публікація завжди починається з привітання — його точний варіант
+  наведено у структурі нижче для цього типу, і його не можна змінювати;
+- перед підписом завжди має бути природне завершальне побажання, яке
+  відповідає темі цієї конкретної публікації (не повторюй одне й те саме
+  формулювання щодня — воно може природно змінюватися);
+- публікація завжди завершується підписом рівно такого вигляду, без змін:
+  ☦️ «Світло ікони»
+
+СТИЛЬ: теплий, спокійний, зрозумілий звичайній людині; без дешевого
+клікбейту; без надмірної кількості емодзі; невеликі абзаци, зручні для
+Telegram. Це має бути живий, змістовний текст, а не суха енциклопедична
+довідка.
+
+Дотримуйся структури, наведеної нижче для цього типу публікації.
 
 Поверни лише готовий текст поста, без пояснень і без лапок навколо нього.`;
 
@@ -43,9 +59,14 @@ export interface GenerateTelegramPostInput {
   /** Ukrainian label of the slot, e.g. "Ранкова молитва" — gives the model
    * the post's purpose without it needing to infer one. */
   contentTypeLabel: string;
-  /** Per-type opening line + structure instructions — see
-   * lib/telegram/content-format.ts's CONTENT_TYPE_FORMAT_HINTS. */
+  /** Full section outline (greeting through signature) for this content
+   * type — see lib/telegram/content-format.ts's CONTENT_TYPE_FORMAT_HINTS. */
   formatHint: string;
+  /** Target character-count range for the complete finished text — a goal,
+   * never a reason to invent facts (see the system prompt's own caveat).
+   * See lib/telegram/content-format.ts's CONTENT_TYPE_TARGET_LENGTH. */
+  targetLengthMin: number;
+  targetLengthMax: number;
   /** Plain-text facts pulled straight from D1 (see autopost-content.ts) —
    * the only source of truth the model is allowed to draw from. */
   facts: string;
@@ -85,7 +106,7 @@ export async function generateTelegramPost(input: GenerateTelegramPostInput): Pr
         { role: 'system', content: SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `Тип публікації: ${input.contentTypeLabel}\nФормат: ${input.formatHint}\n\nМетадані (не факти для тексту, лише контекст):\nCivil date (Europe/Kyiv): ${input.civilDateIso}\nJulian/old-style date: ${input.julianDateIso}\n\n${
+          content: `Тип публікації: ${input.contentTypeLabel}\nЦільовий обсяг тексту: ${input.targetLengthMin}–${input.targetLengthMax} символів (мета, не вимога -- див. правило про обсяг вище)\nСтруктура: ${input.formatHint}\n\nМетадані (не факти для тексту, лише контекст):\nCivil date (Europe/Kyiv): ${input.civilDateIso}\nJulian/old-style date: ${input.julianDateIso}\n\n${
             input.verifiedFacts
               ? 'Ці календарні дані вже перевірені. Не змінюй дату, ім\'я святого або церковне найменування. Не додавай інших святих чи фактів.\n\n'
               : ''

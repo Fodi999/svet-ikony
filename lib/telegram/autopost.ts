@@ -11,7 +11,8 @@ import { loadAutopostFacts } from './autopost-content';
 import { ensureAutopostImage } from './autopost-image';
 import { getOrResolveChannelChat } from './channel';
 import { TelegramApiError, TelegramClient } from './client';
-import { CONTENT_TYPE_FORMAT_HINTS, CONTENT_TYPE_LABELS } from './content-format';
+import { CONTENT_TYPE_FORMAT_HINTS, CONTENT_TYPE_LABELS, CONTENT_TYPE_TARGET_LENGTH } from './content-format';
+import { sendAutopostMessage } from './deliver-post';
 import { getOpenAiConfig, getTelegramConfig } from './env';
 import { getJulianCalendarDate } from './julian-calendar';
 import { verifySaintOfDay } from './orthodox-calendar-verifier';
@@ -172,11 +173,14 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
     }
 
     try {
+      const targetLength = CONTENT_TYPE_TARGET_LENGTH[contentType];
       const text = await generateTelegramPost({
         apiKey: openAiConfig.apiKey,
         model: openAiConfig.model,
         contentTypeLabel: CONTENT_TYPE_LABELS[contentType],
         formatHint: CONTENT_TYPE_FORMAT_HINTS[contentType],
+        targetLengthMin: targetLength.min,
+        targetLengthMax: targetLength.max,
         facts: facts.facts,
         civilDateIso,
         julianDateIso,
@@ -212,14 +216,19 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
         throw new Error(`Pre-send validation failed: ${preSendCheck.reason}`);
       }
 
-      const { messageId } = mediaUrl
-        ? await client.sendPhoto(channelChat.telegramChatId, mediaUrl, text)
-        : await client.sendMessage(channelChat.telegramChatId, text);
-      await markTelegramPostSent(claimed.id, messageId);
+      const { textMessageId, photoMessageId } = await sendAutopostMessage({
+        client,
+        chatId: channelChat.telegramChatId,
+        postId: claimed.id,
+        text,
+        mediaUrl,
+        existingPhotoMessageId: null,
+      });
+      await markTelegramPostSent(claimed.id, textMessageId, photoMessageId);
       await recordDeliveryLog({
         telegramPostId: claimed.id,
         telegramChatId: channelChat.telegramChatId,
-        telegramMessageId: messageId,
+        telegramMessageId: textMessageId,
         status: 'success',
       });
       attempted.push({ contentType, outcome: 'sent' });

@@ -20,11 +20,13 @@ vi.mock('@/lib/d1/repositories/telegram-autopost', () => ({
 const mockMarkTelegramPostSent = vi.fn();
 const mockMarkTelegramPostFailed = vi.fn();
 const mockRecordDeliveryLog = vi.fn();
+const mockSetTelegramPostPhotoMessageId = vi.fn();
 
 vi.mock('@/lib/d1/repositories/telegram', () => ({
   markTelegramPostSent: mockMarkTelegramPostSent,
   markTelegramPostFailed: mockMarkTelegramPostFailed,
   recordDeliveryLog: mockRecordDeliveryLog,
+  setTelegramPostPhotoMessageId: mockSetTelegramPostPhotoMessageId,
 }));
 
 const mockGenerateTelegramPost = vi.fn();
@@ -234,7 +236,7 @@ describe('runAutopostTick', () => {
     );
     expect(mockSetAutopostDraftText).toHaveBeenCalledWith(42, 'Доброго ранку! 🙏');
     expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Доброго ранку! 🙏');
-    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(42, 555);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(42, 555, null);
     expect(mockRecordDeliveryLog).toHaveBeenCalledWith(
       expect.objectContaining({ telegramPostId: 42, status: 'success', telegramMessageId: 555 }),
     );
@@ -258,7 +260,7 @@ describe('runAutopostTick', () => {
     );
     expect(mockSendPhoto).toHaveBeenCalledWith(-100999, 'https://svetikony.com/media/telegram/42/post-image/abc.png', 'Доброго ранку! 🙏');
     expect(mockSendMessage).not.toHaveBeenCalled();
-    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(42, 555);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(42, 555, null);
     expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'sent' }]);
   });
 
@@ -276,7 +278,32 @@ describe('runAutopostTick', () => {
 
     expect(mockSendPhoto).not.toHaveBeenCalled();
     expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Доброго ранку! 🙏');
-    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(42, 555);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(42, 555, null);
+    expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'sent' }]);
+  });
+
+  it('long post: sends a photo-only message then the full text as a separate message, one claim, both ids recorded', async () => {
+    mockGetAutopostSettings.mockResolvedValue(settingsWith({}));
+    mockLoadAutopostFacts.mockResolvedValue({
+      status: 'ok',
+      facts: { facts: 'Молитва: ...', sourceType: 'prayer', sourceId: 'p1' },
+    });
+    mockClaimAutopostSlot.mockResolvedValue({ id: 42, status: 'draft' });
+    const longText = 'а'.repeat(1500); // exceeds SAFE_CAPTION_LIMIT (1000)
+    mockGenerateTelegramPost.mockResolvedValue(longText);
+    mockEnsureAutopostImage.mockResolvedValue('https://svetikony.com/media/telegram/42/post-image/abc.png');
+    mockSendPhoto.mockResolvedValueOnce({ messageId: 777 });
+    mockSendMessage.mockResolvedValueOnce({ messageId: 888 });
+
+    const result = await runAutopostTick();
+
+    // Exactly one claim -- duplicate protection is unaffected by needing
+    // two real Telegram calls for one logical post.
+    expect(mockClaimAutopostSlot).toHaveBeenCalledTimes(1);
+    expect(mockSendPhoto).toHaveBeenCalledWith(-100999, 'https://svetikony.com/media/telegram/42/post-image/abc.png'); // no caption
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, longText); // full, untruncated text
+    expect(mockSetTelegramPostPhotoMessageId).toHaveBeenCalledWith(42, 777);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(42, 888, 777);
     expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'sent' }]);
   });
 
@@ -424,7 +451,7 @@ describe('runAutopostTick -- mandatory calendar verification for saint_of_day', 
     );
     expect(mockGenerateTelegramPost).toHaveBeenCalledWith(expect.objectContaining({ verifiedFacts: true }));
     expect(mockSendMessage).toHaveBeenCalledWith(-100999, '🌟 Сьогодні Церква вшановує мучеників Флора і Лавра...');
-    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(101, 555);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(101, 555, null);
     expect(result.attempted).toEqual([{ contentType: 'saint_of_day', outcome: 'sent' }]);
   });
 

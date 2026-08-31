@@ -13,7 +13,8 @@ import { loadAutopostFacts } from '@/lib/telegram/autopost-content';
 import { ensureAutopostImage } from '@/lib/telegram/autopost-image';
 import { getOrResolveChannelChat } from '@/lib/telegram/channel';
 import { TelegramApiError, TelegramClient } from '@/lib/telegram/client';
-import { CONTENT_TYPE_FORMAT_HINTS, CONTENT_TYPE_LABELS } from '@/lib/telegram/content-format';
+import { CONTENT_TYPE_FORMAT_HINTS, CONTENT_TYPE_LABELS, CONTENT_TYPE_TARGET_LENGTH } from '@/lib/telegram/content-format';
+import { sendAutopostMessage } from '@/lib/telegram/deliver-post';
 import { getOpenAiConfig, getTelegramConfig } from '@/lib/telegram/env';
 import { gregorianToJulianCalendarDate } from '@/lib/telegram/julian-calendar';
 import { requiresCalendarVerification, validateBeforeSend } from '@/lib/telegram/pre-send-validator';
@@ -61,11 +62,14 @@ async function regenerateAutopostTextIfMissing(post: TelegramPostDto): Promise<T
   if (factsResult.status !== 'ok') throw ApiError.validation('Source data for this post is no longer available');
 
   try {
+    const targetLength = CONTENT_TYPE_TARGET_LENGTH[post.contentType];
     const text = await generateTelegramPost({
       apiKey: openAiConfig.apiKey,
       model: openAiConfig.model,
       contentTypeLabel: CONTENT_TYPE_LABELS[post.contentType],
       formatHint: CONTENT_TYPE_FORMAT_HINTS[post.contentType],
+      targetLengthMin: targetLength.min,
+      targetLengthMax: targetLength.max,
       facts: factsResult.facts.facts,
       civilDateIso,
       julianDateIso,
@@ -149,14 +153,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const channelChat = await getOrResolveChannelChat(client, config.channel);
 
     try {
-      const { messageId } = post.mediaUrl
-        ? await client.sendPhoto(channelChat.telegramChatId, post.mediaUrl, post.text ?? undefined)
-        : await client.sendMessage(channelChat.telegramChatId, post.text ?? '');
-      const updated = await markTelegramPostSent(postId, messageId);
+      const { textMessageId, photoMessageId } = await sendAutopostMessage({
+        client,
+        chatId: channelChat.telegramChatId,
+        postId,
+        text: post.text ?? '',
+        mediaUrl: post.mediaUrl,
+        existingPhotoMessageId: post.telegramPhotoMessageId,
+      });
+      const updated = await markTelegramPostSent(postId, textMessageId, photoMessageId);
       await recordDeliveryLog({
         telegramPostId: postId,
         telegramChatId: channelChat.telegramChatId,
-        telegramMessageId: messageId,
+        telegramMessageId: textMessageId,
         status: 'success',
       });
       return Response.json(updated);

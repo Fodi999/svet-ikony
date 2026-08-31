@@ -5,12 +5,14 @@ const mockGetTelegramPost = vi.fn();
 const mockMarkTelegramPostSent = vi.fn();
 const mockMarkTelegramPostFailed = vi.fn();
 const mockRecordDeliveryLog = vi.fn();
+const mockSetTelegramPostPhotoMessageId = vi.fn();
 
 vi.mock('@/lib/d1/repositories/telegram', () => ({
   getTelegramPost: mockGetTelegramPost,
   markTelegramPostSent: mockMarkTelegramPostSent,
   markTelegramPostFailed: mockMarkTelegramPostFailed,
   recordDeliveryLog: mockRecordDeliveryLog,
+  setTelegramPostPhotoMessageId: mockSetTelegramPostPhotoMessageId,
 }));
 
 const mockIsAutopostContentType = vi.fn((value: string) =>
@@ -125,7 +127,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
     expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Hello');
     expect(mockSendPhoto).not.toHaveBeenCalled();
-    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(1, 555);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(1, 555, null);
     expect(mockRecordDeliveryLog).toHaveBeenCalledWith({
       telegramPostId: 1,
       telegramChatId: -100999,
@@ -214,7 +216,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     );
     expect(mockSetAutopostDraftText).toHaveBeenCalledWith(3, 'Generated Ukrainian post text');
     expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Generated Ukrainian post text');
-    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(3, 999);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(3, 999, null);
     expect(response.status).toBe(200);
   });
 

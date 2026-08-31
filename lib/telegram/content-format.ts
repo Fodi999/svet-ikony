@@ -12,19 +12,67 @@ export const CONTENT_TYPE_LABELS: Record<AutopostContentType, string> = {
   evening_prayer: 'Вечірня молитва',
 };
 
-/** Per-type structure/opening line handed to OpenAI alongside the facts --
- * see lib/ai/openai.ts's system prompt for the shared rules (Ukrainian
- * only, no invented facts, no altering the church date). */
+/** Mandatory opening line, exact and literal -- every autopost publication
+ * must start with it (see lib/ai/openai.ts's system prompt). evening_prayer
+ * gets the moon variant; every other type uses the sun/default one. */
+export const AUTOPOST_GREETING_DEFAULT = '☀️ Вітаємо вас, дорогі друзі!';
+export const AUTOPOST_GREETING_EVENING = '🌙 Вітаємо вас, дорогі друзі!';
+
+export const CONTENT_TYPE_GREETINGS: Record<AutopostContentType, string> = {
+  morning_prayer: AUTOPOST_GREETING_DEFAULT,
+  saint_of_day: AUTOPOST_GREETING_DEFAULT,
+  gospel: AUTOPOST_GREETING_DEFAULT,
+  faith_story: AUTOPOST_GREETING_DEFAULT,
+  evening_prayer: AUTOPOST_GREETING_EVENING,
+};
+
+/** Mandatory closing signature, exact and literal, on every publication --
+ * preceded by a closing wish that should vary naturally rather than being
+ * copy-pasted verbatim every time (see lib/ai/openai.ts's system prompt). */
+export const AUTOPOST_SIGNATURE = '☦️ «Світло ікони»';
+
+/**
+ * Target character-count range for the FULL finished text (not a hard
+ * limit -- see lib/ai/openai.ts's system prompt: this is a goal, never a
+ * reason to invent facts). Counted as the length of the complete returned
+ * string, greeting and signature included.
+ */
+export const CONTENT_TYPE_TARGET_LENGTH: Record<AutopostContentType, { min: number; max: number }> = {
+  morning_prayer: { min: 1200, max: 2200 },
+  saint_of_day: { min: 1800, max: 3000 },
+  gospel: { min: 2000, max: 3500 },
+  faith_story: { min: 2500, max: 4000 },
+  evening_prayer: { min: 1200, max: 2200 },
+};
+
+/** Per-type section outline handed to OpenAI alongside the facts -- see
+ * lib/ai/openai.ts's system prompt for the shared rules (Ukrainian only,
+ * no invented facts, no altering the church date, mandatory greeting/
+ * signature, target length is a goal not a mandate). Each entry describes
+ * the FULL structure (greeting through signature) so the model sees one
+ * coherent outline rather than reassembling fragments itself. */
 export const CONTENT_TYPE_FORMAT_HINTS: Record<AutopostContentType, string> = {
-  morning_prayer:
-    'Почни рядком "🙏 Ранкова молитва". Далі подай сам текст молитви за фактами нижче, без додавань від себе.',
-  evening_prayer:
-    'Почни рядком "🌙 Вечірня молитва". Далі подай сам текст молитви за фактами нижче, без додавань від себе.',
   saint_of_day:
-    'Почни рядком "🌟 Сьогодні Церква вшановує...". Далі — 2-4 коротких абзаци лише на основі реальних фактів нижче.',
+    `Структура: привітання "${AUTOPOST_GREETING_DEFAULT}" -> хто сьогодні вшановується -> короткий життєпис -> ` +
+    'важливі підтверджені події життя -> чого ця історія може навчити сучасну людину -> "💭 Думка дня" -> ' +
+    `"🙏" і коротка молитва -> природне завершальне побажання -> підпис "${AUTOPOST_SIGNATURE}". ` +
+    'Усі календарні та біографічні твердження бери ЛИШЕ з перевірених фактів нижче -- нічого понад них.',
   gospel:
-    'Почни рядком "📖 Євангеліє дня". Вкажи посилання (reference) з фактів. Короткий уривок або опис і пояснення додавай ЛИШЕ якщо вони присутні у фактах нижче -- не переказуй і не додумуй текст читання, якого там немає.',
-  faith_story: 'Почни рядком "🕊️ Історія віри". Далі короткий текст лише на основі фактів нижче.',
+    `Структура: привітання "${AUTOPOST_GREETING_DEFAULT}" -> "📖 Євангеліє дня" -> короткий переказ змісту читання -> ` +
+    'зрозуміле пояснення сенсу -> як застосувати це у повсякденному житті -> "💭 Думка дня" -> "🙏" і молитва -> ' +
+    `природне завершальне побажання -> підпис "${AUTOPOST_SIGNATURE}". ` +
+    'Не вигадуй цитат з Євангелія: якщо точного тексту читання немає у фактах нижче, не подавай переказ як пряму цитату.',
+  faith_story:
+    `Структура: привітання "${AUTOPOST_GREETING_DEFAULT}" -> назва або тема історії -> сама історія -> ` +
+    'підтверджений історичний чи церковний контекст -> духовний сенс -> "💭 Думка дня" -> ' +
+    `коротка молитва або духовне звернення, якщо це доречно -> природне завершальне побажання -> підпис "${AUTOPOST_SIGNATURE}".`,
+  morning_prayer:
+    `Структура: "${AUTOPOST_GREETING_DEFAULT}" -> короткий вступ до нового дня -> "🙏 Ранкова молитва" -> ` +
+    `повноцінний текст молитви за фактами нижче -> коротке духовне побажання на день -> підпис "${AUTOPOST_SIGNATURE}".`,
+  evening_prayer:
+    `Структура: "${AUTOPOST_GREETING_EVENING}" -> спокійний вступ про завершення дня -> за наявності ПЕРЕВІРЕНИХ ` +
+    'календарних фактів можна коротко згадати пам\'ять сьогоднішніх святих -> "🙏 Вечірня молитва" -> ' +
+    `повноцінний текст молитви за фактами нижче -> побажання спокійної ночі, миру і Божої допомоги -> підпис "${AUTOPOST_SIGNATURE}".`,
 };
 
 /** Shared "Світло Ікони" house style, prepended to every image prompt (see

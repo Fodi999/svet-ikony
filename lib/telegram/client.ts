@@ -7,16 +7,13 @@
  * log call in this file logs the HTTP status/method/description only. */
 
 const TELEGRAM_API_BASE = 'https://api.telegram.org';
-/** Telegram's hard message-length limit is 4096 UTF-16 code units; cut a
- * little earlier to stay safely under it regardless of encoding overhead. */
-const MAX_MESSAGE_CHARS = 3900;
-/** Telegram's hard photo-caption limit is 1024 UTF-16 code units --
- * unrelated to and much shorter than MAX_MESSAGE_CHARS above. Added for
- * the autopost image pipeline (lib/telegram/autopost-image.ts), the first
- * caller that pairs AI-generated (i.e. not admin-reviewed) text with
- * sendPhoto, so an over-length caption fails closed with a truncated post
- * instead of a raw "MESSAGE_CAPTION_TOO_LONG" Telegram API error. */
-const MAX_CAPTION_CHARS = 950;
+/** Telegram's hard message-length limit is 4096 UTF-16 code units -- JS
+ * string .length also counts UTF-16 code units, so there's no encoding
+ * mismatch to guard against (unlike byte-oriented limits); this margin
+ * only needs to comfortably clear the longest real autopost target
+ * (faith_story's 4000-char ceiling, see content-format.ts's
+ * CONTENT_TYPE_TARGET_LENGTH) so a long post is never silently cut. */
+const MAX_MESSAGE_CHARS = 4050;
 
 export type InlineKeyboardButton = { text: string; callback_data: string };
 export type InlineKeyboardMarkup = { inline_keyboard: InlineKeyboardButton[][] };
@@ -33,11 +30,6 @@ export class TelegramApiError extends Error {
 function truncateForTelegram(text: string): string {
   if (text.length <= MAX_MESSAGE_CHARS) return text;
   return `${text.slice(0, MAX_MESSAGE_CHARS)}…`;
-}
-
-function truncateForCaption(text: string): string {
-  if (text.length <= MAX_CAPTION_CHARS) return text;
-  return `${text.slice(0, MAX_CAPTION_CHARS)}…`;
 }
 
 export class TelegramClient {
@@ -94,11 +86,19 @@ export class TelegramClient {
     return { messageId: result.message_id };
   }
 
+  /**
+   * `caption` is sent as-is, never truncated here -- Telegram's real photo-
+   * caption limit is 1024 UTF-16 code units, much shorter than a text
+   * message's; callers must decide whether a caption fits (see
+   * lib/telegram/deliver-post.ts's planDelivery, used by the autopost
+   * pipeline) rather than have it silently cut at this layer. Passing an
+   * over-limit caption surfaces Telegram's own error instead.
+   */
   async sendPhoto(chatId: number | string, photoUrl: string, caption?: string): Promise<{ messageId: number }> {
     const result = await this.request<{ message_id: number }>('sendPhoto', {
       chat_id: chatId,
       photo: photoUrl,
-      ...(caption ? { caption: truncateForCaption(caption) } : {}),
+      ...(caption ? { caption } : {}),
     });
     return { messageId: result.message_id };
   }

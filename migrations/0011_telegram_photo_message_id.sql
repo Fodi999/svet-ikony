@@ -1,0 +1,12 @@
+-- Additive only: a long autopost text no longer gets truncated to fit a
+-- Telegram photo caption (see lib/telegram/deliver-post.ts) -- when it
+-- doesn't fit, the photo is sent on its own first, then the full text as a
+-- separate message, both counted as ONE telegram_posts row (duplicate
+-- protection unaffected). telegram_message_id keeps its existing meaning
+-- ("the message carrying the readable text" -- either the caption message
+-- when everything fit in one, or the follow-up text message when split).
+-- This new column holds the *photo-only* message id only in the split
+-- case; NULL whenever a single message covered both, or there was no
+-- photo at all -- lets a retry skip re-sending an already-successful
+-- photo and only retry the text half.
+ALTER TABLE telegram_posts ADD COLUMN telegram_photo_message_id INTEGER;

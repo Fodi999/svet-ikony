@@ -1,0 +1,55 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TelegramClient } from './client';
+
+function mockTelegramFetch(resultMessageId: number) {
+  return vi.fn(async (_url: string, init?: RequestInit) => {
+    const body = JSON.parse(init?.body as string);
+    return new Response(JSON.stringify({ ok: true, result: { message_id: resultMessageId, ...body } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  });
+}
+
+describe('TelegramClient', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('sendMessage does not truncate a realistic long text (up to faith_story\'s 4000-char target)', async () => {
+    const longText = 'а'.repeat(4000);
+    const fetchMock = mockTelegramFetch(1);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new TelegramClient('fake-token');
+    await client.sendMessage(-100999, longText);
+
+    const sentBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(sentBody.text).toBe(longText);
+    expect(sentBody.text).toHaveLength(4000);
+  });
+
+  it('sendMessage still truncates text that exceeds Telegram\'s real hard limit (safety net, not a normal autopost case)', async () => {
+    const excessiveText = 'а'.repeat(5000);
+    const fetchMock = mockTelegramFetch(1);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new TelegramClient('fake-token');
+    await client.sendMessage(-100999, excessiveText);
+
+    const sentBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(sentBody.text.length).toBeLessThan(5000);
+  });
+
+  it('sendPhoto passes the caption through exactly as given, never truncating it', async () => {
+    const longCaption = 'б'.repeat(1500); // longer than the old 950-char cap this replaced
+    const fetchMock = mockTelegramFetch(2);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new TelegramClient('fake-token');
+    await client.sendPhoto(-100999, 'https://svetikony.com/media/x.png', longCaption);
+
+    const sentBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(sentBody.caption).toBe(longCaption);
+  });
+});

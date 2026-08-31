@@ -215,6 +215,7 @@ export type PostRow = {
   verification_checked_at: string | null;
   verification_sources: string | null;
   verification_error: string | null;
+  telegram_photo_message_id: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -250,6 +251,13 @@ export type TelegramPostDto = {
   /** JSON-encoded array of source names actually consulted. */
   verificationSources: string | null;
   verificationError: string | null;
+  /** Set only when a long post had to be split into a photo-only message
+   * plus a separate text message (migration 0011) -- see
+   * lib/telegram/deliver-post.ts. Null when a single message covered both
+   * (no photo, or the text fit in the caption) or nothing was sent yet.
+   * telegramMessageId always refers to the message carrying the readable
+   * text, regardless of which delivery shape was used. */
+  telegramPhotoMessageId: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -288,13 +296,14 @@ export function toPostDto(row: PostRow): TelegramPostDto {
     verificationCheckedAt: row.verification_checked_at,
     verificationSources: row.verification_sources,
     verificationError: row.verification_error,
+    telegramPhotoMessageId: row.telegram_photo_message_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
 export const POST_COLUMNS =
-  'id, telegram_chat_id, source_type, source_id, text, media_url, telegram_message_id, status, scheduled_at, sent_at, error_message, content_type, publish_date, image_error, verification_status, verification_checked_at, verification_sources, verification_error, created_at, updated_at';
+  'id, telegram_chat_id, source_type, source_id, text, media_url, telegram_message_id, status, scheduled_at, sent_at, error_message, content_type, publish_date, image_error, verification_status, verification_checked_at, verification_sources, verification_error, telegram_photo_message_id, created_at, updated_at';
 
 /** Admin "Публікації" tab — full history, newest first. */
 export async function listTelegramPosts(): Promise<TelegramPostDto[]> {
@@ -359,14 +368,44 @@ export async function updateTelegramPost(id: number, input: TelegramPostUpdateIn
   return toPostDto(row!);
 }
 
-/** Called by the publish route after a successful sendMessage/sendPhoto. */
-export async function markTelegramPostSent(id: number, telegramMessageId: number): Promise<TelegramPostDto> {
+/**
+ * Called after a successful delivery (sendMessage, or sendPhoto with a
+ * caption, or the photo+text pair for a long post -- see
+ * lib/telegram/deliver-post.ts). `telegramMessageId` always identifies the
+ * message carrying the readable text; `photoMessageId` is set only for the
+ * split (photo_then_text) case -- pass null otherwise, including when a
+ * photo already existed from setTelegramPostPhotoMessageId and this call
+ * is only completing the text half.
+ */
+export async function markTelegramPostSent(id: number, telegramMessageId: number, photoMessageId: number | null = null): Promise<TelegramPostDto> {
   const row = await d1First<PostRow>(
     `UPDATE telegram_posts SET
-       status = 'sent', telegram_message_id = ?, sent_at = CURRENT_TIMESTAMP, error_message = NULL, updated_at = CURRENT_TIMESTAMP
+       status = 'sent', telegram_message_id = ?,
+       telegram_photo_message_id = COALESCE(?, telegram_photo_message_id),
+       sent_at = CURRENT_TIMESTAMP, error_message = NULL, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?
      RETURNING ${POST_COLUMNS}`,
     telegramMessageId,
+    photoMessageId,
+    id
+  );
+  if (!row) throw ApiError.notFound('telegram post not found');
+  return toPostDto(row);
+}
+
+/**
+ * Incremental persistence for the split (photo_then_text) delivery case --
+ * called right after the photo-only sendPhoto succeeds, before the
+ * follow-up sendMessage is attempted, so a failure on the text half still
+ * leaves a record that the photo actually went out (and a retry can skip
+ * re-sending it -- see the admin publish route). Does not touch `status`;
+ * the caller still marks the row sent/failed afterward based on the text
+ * attempt's own outcome.
+ */
+export async function setTelegramPostPhotoMessageId(id: number, photoMessageId: number): Promise<TelegramPostDto> {
+  const row = await d1First<PostRow>(
+    `UPDATE telegram_posts SET telegram_photo_message_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING ${POST_COLUMNS}`,
+    photoMessageId,
     id
   );
   if (!row) throw ApiError.notFound('telegram post not found');

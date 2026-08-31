@@ -160,6 +160,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         text: post.text ?? '',
         mediaUrl: post.mediaUrl,
         existingPhotoMessageId: post.telegramPhotoMessageId,
+        contentType: post.contentType,
       });
       const updated = await markTelegramPostSent(postId, textMessageId, photoMessageId);
       await recordDeliveryLog({

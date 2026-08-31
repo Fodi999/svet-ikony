@@ -223,6 +223,7 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
         text,
         mediaUrl,
         existingPhotoMessageId: null,
+        contentType,
       });
       await markTelegramPostSent(claimed.id, textMessageId, photoMessageId);
       await recordDeliveryLog({

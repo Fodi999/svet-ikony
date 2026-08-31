@@ -5,6 +5,7 @@ import {
   AUTOPOST_SIGNATURE,
   CONTENT_TYPE_FORMAT_HINTS,
   CONTENT_TYPE_GREETINGS,
+  CONTENT_TYPE_LINKED_CAPTIONS,
   CONTENT_TYPE_TARGET_LENGTH,
 } from './content-format';
 
@@ -60,5 +61,24 @@ describe('CONTENT_TYPE_GREETINGS / CONTENT_TYPE_FORMAT_HINTS', () => {
     const hint = CONTENT_TYPE_FORMAT_HINTS.evening_prayer;
     expect(hint).toContain('🙏 Вечірня молитва');
     expect(hint.toUpperCase()).toContain('ПЕРЕВІРЕНИХ');
+  });
+});
+
+describe('CONTENT_TYPE_LINKED_CAPTIONS', () => {
+  it('matches the exact required caption for every content type', () => {
+    expect(CONTENT_TYPE_LINKED_CAPTIONS).toEqual({
+      morning_prayer: '☀️ Ранкова молитва\n🙏 Продовження — у наступному повідомленні.',
+      evening_prayer: '🌙 Вечірня молитва\n🙏 Продовження — у наступному повідомленні.',
+      saint_of_day: '☀️ Святий дня\n☦️ Продовження — у наступному повідомленні.',
+      gospel: '📖 Євангеліє дня\n☦️ Продовження — у наступному повідомленні.',
+      faith_story: '☀️ Історія віри\n🙏 Продовження — у наступному повідомленні.',
+    });
+  });
+
+  it('every caption points the reader to the next message, never repeating or summarizing the full text', () => {
+    for (const caption of Object.values(CONTENT_TYPE_LINKED_CAPTIONS)) {
+      expect(caption).toContain('Продовження');
+      expect(caption).toContain('наступному повідомленні');
+    }
   });
 });

@@ -300,8 +300,12 @@ describe('runAutopostTick', () => {
     // Exactly one claim -- duplicate protection is unaffected by needing
     // two real Telegram calls for one logical post.
     expect(mockClaimAutopostSlot).toHaveBeenCalledTimes(1);
-    expect(mockSendPhoto).toHaveBeenCalledWith(-100999, 'https://svetikony.com/media/telegram/42/post-image/abc.png'); // no caption
-    expect(mockSendMessage).toHaveBeenCalledWith(-100999, longText); // full, untruncated text
+    expect(mockSendPhoto).toHaveBeenCalledWith(
+      -100999,
+      'https://svetikony.com/media/telegram/42/post-image/abc.png',
+      '☀️ Ранкова молитва\n🙏 Продовження — у наступному повідомленні.', // fixed linked caption, not the full text
+    );
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, longText); // full, untruncated text, unchanged
     expect(mockSetTelegramPostPhotoMessageId).toHaveBeenCalledWith(42, 777);
     expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(42, 888, 777);
     expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'sent' }]);

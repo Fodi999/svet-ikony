@@ -293,6 +293,35 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     expect(response.status).toBe(200);
   });
 
+  it('long text (retry): photo gets the fixed linked caption for the content type, full text goes out unchanged as a separate message', async () => {
+    const longText = 'Вже згенерований текст. '.repeat(60); // > 1000 chars
+    mockGetTelegramPost.mockResolvedValue({
+      id: 10,
+      status: 'failed',
+      text: longText,
+      mediaUrl: 'https://svetikony.com/media/telegram/10/post-image/existing.png',
+      contentType: 'saint_of_day',
+      publishDate: '2026-08-30',
+      verificationStatus: 'verified',
+      telegramPhotoMessageId: null,
+    });
+    mockSendPhoto.mockResolvedValue({ messageId: 1001 });
+    mockSendMessage.mockResolvedValue({ messageId: 1002 });
+    mockMarkTelegramPostSent.mockResolvedValue({ id: 10, status: 'sent', telegramMessageId: 1002 });
+
+    const response = await POST(publishRequest('10', token), ctx('10'));
+
+    expect(mockSendPhoto).toHaveBeenCalledWith(
+      -100999,
+      'https://svetikony.com/media/telegram/10/post-image/existing.png',
+      '☀️ Святий дня\n☦️ Продовження — у наступному повідомленні.'
+    );
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, longText); // full, untruncated text
+    expect(mockSetTelegramPostPhotoMessageId).toHaveBeenCalledWith(10, 1001);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(10, 1002, 1001);
+    expect(response.status).toBe(200);
+  });
+
   it('falls back to sendMessage when image generation fails during retry, and still publishes the text', async () => {
     mockGetTelegramPost.mockResolvedValue({
       id: 9,

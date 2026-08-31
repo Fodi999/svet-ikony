@@ -101,6 +101,23 @@ export const CONTENT_TYPE_IMAGE_PROMPTS: Record<AutopostContentType, string> = {
 };
 
 /**
+ * Short, programmatically-assembled caption used ONLY for the photo
+ * message of a split (photo_then_text) long-post delivery -- see
+ * lib/telegram/deliver-post.ts. Generated from fixed strings, never a
+ * separate OpenAI call, so the photo doesn't read as visually detached
+ * from the post that immediately follows it. The full, untruncated AI
+ * text always goes out unchanged as the second message regardless of
+ * this caption.
+ */
+export const CONTENT_TYPE_LINKED_CAPTIONS: Record<AutopostContentType, string> = {
+  morning_prayer: '☀️ Ранкова молитва\n🙏 Продовження — у наступному повідомленні.',
+  evening_prayer: '🌙 Вечірня молитва\n🙏 Продовження — у наступному повідомленні.',
+  saint_of_day: '☀️ Святий дня\n☦️ Продовження — у наступному повідомленні.',
+  gospel: '📖 Євангеліє дня\n☦️ Продовження — у наступному повідомленні.',
+  faith_story: '☀️ Історія віри\n🙏 Продовження — у наступному повідомленні.',
+};
+
+/**
  * Content types that assert a specific saint/commemoration for the day
  * (the "Сьогодні Церква вшановує..." claim) and therefore require
  * mandatory pre-publish calendar verification against independent sources

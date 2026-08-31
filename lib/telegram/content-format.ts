@@ -51,3 +51,14 @@ export const CONTENT_TYPE_IMAGE_PROMPTS: Record<AutopostContentType, string> = {
   faith_story: `${IMAGE_HOUSE_STYLE} Сюжет: атмосферна духовна сцена всередині храму, свічки та ікони на відстані, тепле світло.`,
   evening_prayer: `${IMAGE_HOUSE_STYLE} Сюжет: вечір, запалена свічка на тлі темного силуету православного храму.`,
 };
+
+/**
+ * Content types that assert a specific saint/commemoration for the day
+ * (the "Сьогодні Церква вшановує..." claim) and therefore require
+ * mandatory pre-publish calendar verification against independent sources
+ * before OpenAI/Telegram are called -- see
+ * lib/telegram/orthodox-calendar-verifier.ts. morning_prayer/
+ * evening_prayer/gospel/faith_story don't name a specific saint for the
+ * day, so they're exempt (see the feature's own requirement #10).
+ */
+export const CONTENT_TYPES_REQUIRING_CALENDAR_VERIFICATION: ReadonlySet<AutopostContentType> = new Set(['saint_of_day']);

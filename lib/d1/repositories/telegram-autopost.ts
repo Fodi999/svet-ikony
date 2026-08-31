@@ -149,3 +149,30 @@ export async function setAutopostImageResult(id: number, mediaUrl: string | null
   if (!row) throw ApiError.notFound('telegram post not found');
   return toPostDto(row);
 }
+
+export type AutopostVerificationResultInput = {
+  status: 'verified' | 'failed';
+  checkedAt: string;
+  sources: string[];
+  error: string | null;
+};
+
+/**
+ * Records the outcome of the mandatory pre-publish calendar verification
+ * (migration 0010) -- see lib/telegram/orthodox-calendar-verifier.ts.
+ * Called right after claimAutopostSlot for content types that require it
+ * (saint_of_day), before OpenAI/image/Telegram are ever touched -- a
+ * `status: 'failed'` row is never followed by a generation or send call.
+ */
+export async function setAutopostVerificationResult(id: number, input: AutopostVerificationResultInput): Promise<TelegramPostDto> {
+  const row = await d1First<PostRow>(
+    `UPDATE telegram_posts SET verification_status = ?, verification_checked_at = ?, verification_sources = ?, verification_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING ${POST_COLUMNS}`,
+    input.status,
+    input.checkedAt,
+    JSON.stringify(input.sources),
+    input.error,
+    id
+  );
+  if (!row) throw ApiError.notFound('telegram post not found');
+  return toPostDto(row);
+}

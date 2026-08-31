@@ -179,6 +179,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
+      verificationStatus: 'verified',
     });
     mockLoadAutopostFacts.mockResolvedValue({
       status: 'ok',
@@ -192,6 +193,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
+      verificationStatus: 'verified',
     });
     mockMarkTelegramPostSent.mockResolvedValue({ id: 3, status: 'sent', telegramMessageId: 999 });
     mockSendMessage.mockResolvedValue({ messageId: 999 });
@@ -224,6 +226,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
+      verificationStatus: 'verified',
     });
     mockMarkTelegramPostSent.mockResolvedValue({ id: 4, status: 'sent', telegramMessageId: 111 });
     mockSendMessage.mockResolvedValue({ messageId: 111 });
@@ -244,6 +247,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       mediaUrl: 'https://svetikony.com/media/telegram/7/post-image/existing.png',
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
+      verificationStatus: 'verified',
     });
     mockSendPhoto.mockResolvedValue({ messageId: 777 });
     mockMarkTelegramPostSent.mockResolvedValue({ id: 7, status: 'sent', telegramMessageId: 777 });
@@ -267,6 +271,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
+      verificationStatus: 'verified',
     });
     mockEnsureAutopostImage.mockResolvedValue('https://svetikony.com/media/telegram/8/post-image/new.png');
     mockSendPhoto.mockResolvedValue({ messageId: 888 });
@@ -294,6 +299,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
+      verificationStatus: 'verified',
     });
     mockEnsureAutopostImage.mockResolvedValue(null); // ensureAutopostImage itself never throws -- see autopost-image.test.ts
     mockSendMessage.mockResolvedValue({ messageId: 999 });
@@ -314,6 +320,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
+      verificationStatus: 'verified',
     });
     mockLoadAutopostFacts.mockResolvedValue({ status: 'missing_source' });
 
@@ -332,6 +339,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
+      verificationStatus: 'verified',
     });
     mockLoadAutopostFacts.mockResolvedValue({ status: 'ok', facts: { facts: 'real facts', sourceType: 'saint', sourceId: 'abc' } });
     mockGenerateTelegramPost.mockRejectedValueOnce(new Error('no credits remaining'));

@@ -56,6 +56,14 @@ export interface GenerateTelegramPostInput {
    * above were looked up by (see lib/telegram/julian-calendar.ts) — this is
    * the church's own date and must never be presented as the new style. */
   julianDateIso: string;
+  /** Set only when this content type required and passed mandatory
+   * pre-publish calendar verification (see
+   * lib/telegram/orthodox-calendar-verifier.ts) -- appends an explicit
+   * instruction not to alter the already-verified date/name/commemoration
+   * or add other saints/facts. Absent for content types that don't
+   * require verification (morning_prayer/evening_prayer/gospel/
+   * faith_story). */
+  verifiedFacts?: boolean;
 }
 
 interface ChatCompletionResponse {
@@ -77,7 +85,11 @@ export async function generateTelegramPost(input: GenerateTelegramPostInput): Pr
         { role: 'system', content: SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `Тип публікації: ${input.contentTypeLabel}\nФормат: ${input.formatHint}\n\nМетадані (не факти для тексту, лише контекст):\nCivil date (Europe/Kyiv): ${input.civilDateIso}\nJulian/old-style date: ${input.julianDateIso}\n\nФакти:\n${input.facts}`,
+          content: `Тип публікації: ${input.contentTypeLabel}\nФормат: ${input.formatHint}\n\nМетадані (не факти для тексту, лише контекст):\nCivil date (Europe/Kyiv): ${input.civilDateIso}\nJulian/old-style date: ${input.julianDateIso}\n\n${
+            input.verifiedFacts
+              ? 'Ці календарні дані вже перевірені. Не змінюй дату, ім\'я святого або церковне найменування. Не додавай інших святих чи фактів.\n\n'
+              : ''
+          }Факти:\n${input.facts}`,
         },
       ],
     }),

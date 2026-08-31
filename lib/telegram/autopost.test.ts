@@ -4,12 +4,17 @@ const mockGetAutopostSettings = vi.fn();
 const mockClaimAutopostSlot = vi.fn();
 const mockSetAutopostDraftText = vi.fn();
 const mockSetAutopostImageResult = vi.fn();
+const mockSetAutopostVerificationResult = vi.fn();
+
+const AUTOPOST_CONTENT_TYPES = ['morning_prayer', 'saint_of_day', 'gospel', 'faith_story', 'evening_prayer'];
 
 vi.mock('@/lib/d1/repositories/telegram-autopost', () => ({
   getAutopostSettings: mockGetAutopostSettings,
   claimAutopostSlot: mockClaimAutopostSlot,
   setAutopostDraftText: mockSetAutopostDraftText,
   setAutopostImageResult: mockSetAutopostImageResult,
+  setAutopostVerificationResult: mockSetAutopostVerificationResult,
+  isAutopostContentType: (value: string) => AUTOPOST_CONTENT_TYPES.includes(value),
 }));
 
 const mockMarkTelegramPostSent = vi.fn();
@@ -335,5 +340,112 @@ describe('runAutopostTick', () => {
       { contentType: 'morning_prayer', outcome: 'sent' },
       { contentType: 'saint_of_day', outcome: 'skipped_already_claimed' },
     ]);
+  });
+});
+
+/** Mandatory pre-publish calendar verification (saint_of_day only) -- uses
+ * the REAL lib/telegram/orthodox-calendar-verifier.ts (not mocked), whose
+ * only curated entry is old-style '08-18'. Civil 2026-08-31 (Europe/Kyiv)
+ * is Julian 2026-08-18 -- see julian-calendar.test.ts. */
+describe('runAutopostTick -- mandatory calendar verification for saint_of_day', () => {
+  const VERIFICATION_FIXED_NOW = new Date('2026-08-31T04:02:00.000Z');
+  const VERIFICATION_CIVIL_DATE_ISO = '2026-08-31';
+  const VERIFICATION_DUE_HHMM = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Kyiv',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(VERIFICATION_FIXED_NOW);
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(VERIFICATION_FIXED_NOW);
+    vi.clearAllMocks();
+    mockGetOrResolveChannelChat.mockResolvedValue({ telegramChatId: -100999 });
+    mockGetTelegramConfig.mockResolvedValue({ botToken: 'fake', webhookSecret: null, channel: '@svit_ikony' });
+    mockGetOpenAiConfig.mockResolvedValue({ apiKey: 'fake-openai-key', model: undefined, imageModel: undefined });
+    mockSendMessage.mockResolvedValue({ messageId: 555 });
+    mockSendPhoto.mockResolvedValue({ messageId: 555 });
+    mockEnsureAutopostImage.mockResolvedValue(null);
+    mockGetAutopostSettings.mockResolvedValue({
+      globalEnabled: true,
+      items: [{ contentType: 'saint_of_day', enabled: true, scheduleTime: VERIFICATION_DUE_HHMM }],
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('VERIFICATION_FAILED: D1 offers a saint (Cyprian of Carthage) that does not match the two-source consensus (Florus and Laurus) for old-style Aug 18 -- OpenAI/Image/Telegram are never called', async () => {
+    mockLoadAutopostFacts.mockResolvedValue({
+      status: 'ok',
+      facts: {
+        facts: 'Церковний календар (старий стиль): Священномученик Кипріан...',
+        sourceType: 'saint',
+        sourceId: 'cyprian-id',
+        candidateName: 'Священномученик Кипріан, єпископ Карфагенський',
+      },
+    });
+    mockClaimAutopostSlot.mockResolvedValue({ id: 100, status: 'draft' });
+
+    const result = await runAutopostTick();
+
+    expect(result.attempted).toEqual([{ contentType: 'saint_of_day', outcome: 'skipped_verification_failed' }]);
+    expect(mockSetAutopostVerificationResult).toHaveBeenCalledWith(
+      100,
+      expect.objectContaining({ status: 'failed', error: 'candidate_name_mismatch' }),
+    );
+    expect(mockMarkTelegramPostFailed).toHaveBeenCalledWith(100, expect.stringContaining('candidate_name_mismatch'));
+    expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
+    expect(mockEnsureAutopostImage).not.toHaveBeenCalled();
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(mockSendPhoto).not.toHaveBeenCalled();
+  });
+
+  it('VERIFIED: D1 offers the saint (Florus and Laurus) that two independent sources confirm for old-style Aug 18 -- pipeline proceeds to OpenAI/Telegram', async () => {
+    mockLoadAutopostFacts.mockResolvedValue({
+      status: 'ok',
+      facts: {
+        facts: 'Церковний календар (старий стиль): Мученики Флор і Лавр...',
+        sourceType: 'saint',
+        sourceId: 'florus-laurus-id',
+        candidateName: 'Мученики Флор і Лавр',
+      },
+    });
+    mockClaimAutopostSlot.mockResolvedValue({ id: 101, status: 'draft' });
+    mockGenerateTelegramPost.mockResolvedValue('🌟 Сьогодні Церква вшановує мучеників Флора і Лавра...');
+
+    const result = await runAutopostTick();
+
+    expect(mockSetAutopostVerificationResult).toHaveBeenCalledWith(
+      101,
+      expect.objectContaining({ status: 'verified', error: null }),
+    );
+    expect(mockGenerateTelegramPost).toHaveBeenCalledWith(expect.objectContaining({ verifiedFacts: true }));
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, '🌟 Сьогодні Церква вшановує мучеників Флора і Лавра...');
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(101, 555);
+    expect(result.attempted).toEqual([{ contentType: 'saint_of_day', outcome: 'sent' }]);
+  });
+
+  it('fails closed (skipped_verification_failed) when there is no reference data for the Julian date at all', async () => {
+    vi.setSystemTime(new Date('2026-01-05T04:02:00.000Z')); // civil date with no curated reference entry
+    const dueHhMm = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit', hour12: false }).format(
+      new Date('2026-01-05T04:02:00.000Z'),
+    );
+    mockGetAutopostSettings.mockResolvedValue({
+      globalEnabled: true,
+      items: [{ contentType: 'saint_of_day', enabled: true, scheduleTime: dueHhMm }],
+    });
+    mockLoadAutopostFacts.mockResolvedValue({
+      status: 'ok',
+      facts: { facts: 'some facts', sourceType: 'saint', sourceId: 'any-id', candidateName: 'Будь-який святий' },
+    });
+    mockClaimAutopostSlot.mockResolvedValue({ id: 102, status: 'draft' });
+
+    const result = await runAutopostTick();
+
+    expect(result.attempted).toEqual([{ contentType: 'saint_of_day', outcome: 'skipped_verification_failed' }]);
+    expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
   });
 });

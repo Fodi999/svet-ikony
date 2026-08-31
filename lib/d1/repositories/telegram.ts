@@ -211,6 +211,10 @@ export type PostRow = {
   content_type: string | null;
   publish_date: string | null;
   image_error: string | null;
+  verification_status: string | null;
+  verification_checked_at: string | null;
+  verification_sources: string | null;
+  verification_error: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -236,6 +240,16 @@ export type TelegramPostDto = {
    * publish step. Null means either not attempted or mediaUrl is already
    * set (succeeded). See lib/telegram/autopost-image.ts. */
   imageError: string | null;
+  /** Pre-publish calendar verification outcome (migration 0010) -- see
+   * lib/telegram/orthodox-calendar-verifier.ts. Null for content types
+   * that don't require it (morning_prayer/evening_prayer/gospel/
+   * faith_story) and for rows predating this feature -- never treat null
+   * as "verified". */
+  verificationStatus: string | null;
+  verificationCheckedAt: string | null;
+  /** JSON-encoded array of source names actually consulted. */
+  verificationSources: string | null;
+  verificationError: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -270,13 +284,17 @@ export function toPostDto(row: PostRow): TelegramPostDto {
     contentType: row.content_type,
     publishDate: row.publish_date,
     imageError: row.image_error,
+    verificationStatus: row.verification_status,
+    verificationCheckedAt: row.verification_checked_at,
+    verificationSources: row.verification_sources,
+    verificationError: row.verification_error,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
 export const POST_COLUMNS =
-  'id, telegram_chat_id, source_type, source_id, text, media_url, telegram_message_id, status, scheduled_at, sent_at, error_message, content_type, publish_date, image_error, created_at, updated_at';
+  'id, telegram_chat_id, source_type, source_id, text, media_url, telegram_message_id, status, scheduled_at, sent_at, error_message, content_type, publish_date, image_error, verification_status, verification_checked_at, verification_sources, verification_error, created_at, updated_at';
 
 /** Admin "Публікації" tab — full history, newest first. */
 export async function listTelegramPosts(): Promise<TelegramPostDto[]> {

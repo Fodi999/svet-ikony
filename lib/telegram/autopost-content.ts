@@ -17,6 +17,11 @@ export type AutopostFacts = {
   facts: string;
   sourceType: string;
   sourceId: string;
+  /** The D1 saint's own name/title (church_saints.name) -- set only for
+   * saint_of_day, where it's the "candidate" checked against independent
+   * sources by lib/telegram/orthodox-calendar-verifier.ts before OpenAI is
+   * ever called. Undefined for every other content type. */
+  candidateName?: string;
 };
 
 export type AutopostFactsResult =
@@ -75,6 +80,7 @@ export async function loadAutopostFacts(contentType: AutopostContentType, julian
         facts: `${calendarLine}\nСвятий дня: ${saint.name}\n${saint.shortDescription}${saint.biography ? `\n${saint.biography}` : ''}`,
         sourceType: 'saint',
         sourceId: saint.id,
+        candidateName: saint.name,
       },
     };
   }

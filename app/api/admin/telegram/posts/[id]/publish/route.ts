@@ -16,6 +16,7 @@ import { TelegramApiError, TelegramClient } from '@/lib/telegram/client';
 import { CONTENT_TYPE_FORMAT_HINTS, CONTENT_TYPE_LABELS } from '@/lib/telegram/content-format';
 import { getOpenAiConfig, getTelegramConfig } from '@/lib/telegram/env';
 import { gregorianToJulianCalendarDate } from '@/lib/telegram/julian-calendar';
+import { requiresCalendarVerification, validateBeforeSend } from '@/lib/telegram/pre-send-validator';
 
 function parsePostId(raw: string): number {
   const id = Number(raw);
@@ -39,6 +40,16 @@ function parsePostId(raw: string): number {
 async function regenerateAutopostTextIfMissing(post: TelegramPostDto): Promise<TelegramPostDto> {
   if (post.text || !post.contentType || !isAutopostContentType(post.contentType) || !post.publishDate) {
     return post;
+  }
+
+  // A content type requiring calendar verification (saint_of_day) can only
+  // ever have empty text here because either verification itself failed
+  // (verificationStatus: 'failed') or this row predates the feature
+  // entirely (verificationStatus: null) -- fail closed either way. Retry
+  // cannot bypass a failed/missing verification; the underlying D1 data
+  // must be fixed and a fresh tick must claim and verify a new row.
+  if (requiresCalendarVerification(post.contentType) && post.verificationStatus !== 'verified') {
+    throw ApiError.validation(`Calendar verification is not passed for this post (status: ${post.verificationStatus ?? 'never checked'})`);
   }
 
   const openAiConfig = await getOpenAiConfig();
@@ -119,6 +130,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     post = await regenerateAutopostTextIfMissing(post);
     post = await ensureAutopostImageIfMissing(post);
+
+    // Final gate before any Telegram call, independent of the checks
+    // above -- refuses to send if the row's own stored state doesn't
+    // actually satisfy "verified" for a content type that requires it,
+    // regardless of how it got here (a stale pre-feature row, a future
+    // bug upstream, ...). See pre-send-validator.ts.
+    const preSendCheck = validateBeforeSend({
+      contentType: post.contentType,
+      verificationStatus: post.verificationStatus,
+      text: post.text,
+    });
+    if (!preSendCheck.ok) {
+      throw ApiError.validation(`Pre-send validation failed: ${preSendCheck.reason}`);
+    }
 
     const client = new TelegramClient(config.botToken);
     const channelChat = await getOrResolveChannelChat(client, config.channel);

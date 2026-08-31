@@ -3,6 +3,7 @@ import {
   claimAutopostSlot,
   getAutopostSettings,
   setAutopostDraftText,
+  setAutopostVerificationResult,
   type AutopostContentType,
 } from '@/lib/d1/repositories/telegram-autopost';
 import { generateTelegramPost, OpenAiError } from '@/lib/ai/openai';
@@ -13,6 +14,8 @@ import { TelegramApiError, TelegramClient } from './client';
 import { CONTENT_TYPE_FORMAT_HINTS, CONTENT_TYPE_LABELS } from './content-format';
 import { getOpenAiConfig, getTelegramConfig } from './env';
 import { getJulianCalendarDate } from './julian-calendar';
+import { verifySaintOfDay } from './orthodox-calendar-verifier';
+import { requiresCalendarVerification, validateBeforeSend } from './pre-send-validator';
 
 /** The autonomous pipeline: Cloudflare Cron (via the standalone cron/
  * pinger Worker) → this → D1 church data → OpenAI → telegram_posts →
@@ -56,7 +59,13 @@ function isDue(nowHhMm: string, scheduledHhMm: string): boolean {
   return diff >= 0 && diff < DUE_WINDOW_MINUTES;
 }
 
-export type AutopostOutcome = 'sent' | 'failed' | 'skipped_insufficient_data' | 'skipped_already_claimed' | 'skipped_missing_source';
+export type AutopostOutcome =
+  | 'sent'
+  | 'failed'
+  | 'skipped_insufficient_data'
+  | 'skipped_already_claimed'
+  | 'skipped_missing_source'
+  | 'skipped_verification_failed';
 
 export type AutopostTickResult = {
   ranAt: string;
@@ -128,6 +137,40 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
       continue;
     }
 
+    // Mandatory for content types that assert a specific saint/
+    // commemoration ("Сьогодні Церква вшановує...") -- D1 alone is never
+    // sufficient (see orthodox-calendar-verifier.ts's own doc comment for
+    // the real incident that made this mandatory). Runs *after* the claim
+    // (so the failure is recorded and visible, not a silent skip) but
+    // *before* OpenAI/image/Telegram are ever touched.
+    let verifiedFacts = false;
+    if (requiresCalendarVerification(contentType)) {
+      const verification = await verifySaintOfDay({
+        civilDateIso,
+        julianDateIso,
+        candidateName: facts.candidateName ?? '',
+      });
+      const checkedAt = new Date().toISOString();
+      if (!verification.verified) {
+        await setAutopostVerificationResult(claimed.id, {
+          status: 'failed',
+          checkedAt,
+          sources: verification.sources,
+          error: verification.reason,
+        });
+        await markTelegramPostFailed(claimed.id, `Calendar verification failed: ${verification.reason}`);
+        attempted.push({ contentType, outcome: 'skipped_verification_failed' });
+        continue;
+      }
+      await setAutopostVerificationResult(claimed.id, {
+        status: 'verified',
+        checkedAt,
+        sources: verification.sources,
+        error: null,
+      });
+      verifiedFacts = true;
+    }
+
     try {
       const text = await generateTelegramPost({
         apiKey: openAiConfig.apiKey,
@@ -137,6 +180,7 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
         facts: facts.facts,
         civilDateIso,
         julianDateIso,
+        verifiedFacts,
       });
       // Persisted before the Telegram call so a send failure still leaves
       // the generated text on the row for a manual edit/retry, instead of
@@ -154,6 +198,19 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
         apiKey: openAiConfig.apiKey,
         imageModel: openAiConfig.imageModel,
       });
+
+      // Final gate, independent of the verification step above -- refuses
+      // to send if the row's own state doesn't actually satisfy
+      // "verified" for a content type that requires it, regardless of how
+      // it got here. See pre-send-validator.ts.
+      const preSendCheck = validateBeforeSend({
+        contentType,
+        verificationStatus: verifiedFacts ? 'verified' : null,
+        text,
+      });
+      if (!preSendCheck.ok) {
+        throw new Error(`Pre-send validation failed: ${preSendCheck.reason}`);
+      }
 
       const { messageId } = mediaUrl
         ? await client.sendPhoto(channelChat.telegramChatId, mediaUrl, text)

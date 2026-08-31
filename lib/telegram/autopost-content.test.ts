@@ -100,6 +100,9 @@ describe('loadAutopostFacts', () => {
     expect(result.facts.sourceId).toBe('saint-1');
     expect(result.facts.facts).toContain('Святитель Олександр');
     expect(result.facts.facts).toContain('старий стиль');
+    // candidateName is what orthodox-calendar-verifier.ts checks against
+    // independent sources before OpenAI is ever called -- see autopost.ts.
+    expect(result.facts.candidateName).toBe('Святитель Олександр');
   });
 
   it('requests the Ukrainian gospel reading for the matched calendar day', async () => {

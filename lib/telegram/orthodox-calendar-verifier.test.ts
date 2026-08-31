@@ -49,6 +49,20 @@ describe('verifySaintOfDay', () => {
     expect(result.verified).toBe(true);
   });
 
+  it('VERIFIES Martyr Andrew Stratelates for old-style August 19 (civil September 1)', async () => {
+    const { verifySaintOfDay } = await import('./orthodox-calendar-verifier');
+
+    const result = await verifySaintOfDay({
+      civilDateIso: '2026-09-01',
+      julianDateIso: '2026-08-19',
+      candidateName: 'Мученик Андрій Стратилат',
+    });
+
+    expect(result.verified).toBe(true);
+    expect(result.reason).toBe('consensus_confirmed');
+    expect(result.sources).toEqual(['OCA (oca.org/saints/all-lives/2020/08/19)', 'OrthodoxWiki (orthodoxwiki.org/August_19)']);
+  });
+
   it('fails closed with no_reference_data for a date with no curated entry at all', async () => {
     const { verifySaintOfDay } = await import('./orthodox-calendar-verifier');
 

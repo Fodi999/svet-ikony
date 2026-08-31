@@ -27,6 +27,11 @@ export type ReferenceSourceEntry = {
  * Menaion day numbering), which an Old-Style/Julian-calendar church
  * celebrates 13 days later, on civil Gregorian August 31 -- see
  * julian-calendar.ts for the calendar policy this cross-references.
+ *
+ * '08-19': verified 2026-09-01 against oca.org/saints/all-lives/2020/08/19
+ * and orthodoxwiki.org/August_19 -- both independently list "Martyr Andrew
+ * Stratelates" (with his soldiers) for August 19, corresponding to civil
+ * Gregorian September 1.
  */
 const SOURCE_A_DATA: Record<string, ReferenceSourceEntry> = {
   '08-18': {
@@ -35,6 +40,10 @@ const SOURCE_A_DATA: Record<string, ReferenceSourceEntry> = {
       { name: 'Флор', rank: 'мученик' },
       { name: 'Лавр', rank: 'мученик' },
     ],
+  },
+  '08-19': {
+    source: 'OCA (oca.org/saints/all-lives/2020/08/19)',
+    commemorations: [{ name: 'Андрій Стратилат', rank: 'мученик' }],
   },
 };
 
@@ -45,6 +54,10 @@ const SOURCE_B_DATA: Record<string, ReferenceSourceEntry> = {
       { name: 'Флор', rank: 'мученик' },
       { name: 'Лавр', rank: 'мученик' },
     ],
+  },
+  '08-19': {
+    source: 'OrthodoxWiki (orthodoxwiki.org/August_19)',
+    commemorations: [{ name: 'Андрій Стратилат', rank: 'мученик' }],
   },
 };
 

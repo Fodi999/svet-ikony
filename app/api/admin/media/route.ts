@@ -4,7 +4,7 @@ import { getMediaBucket } from '@/lib/d1/env';
 import { mediaKindForPurpose } from '@/lib/media/constants';
 import { isAllowedModule, validateMediaKey } from '@/lib/media/keys';
 import type { MediaObjectDto } from '@/lib/media/types';
-import { absoluteSiteUrl } from '@/lib/site';
+import { getSiteUrl } from '@/lib/site';
 
 /**
  * GET /api/admin/media — lists existing R2 objects under `media/`, newest
@@ -33,9 +33,10 @@ export async function GET(request: Request) {
       include: ['customMetadata', 'httpMetadata'],
     });
 
+    const base = await getSiteUrl();
     const items: MediaObjectDto[] = result.objects.map((object) => ({
       key: object.key,
-      url: absoluteSiteUrl(`/${object.key}`),
+      url: `${base}/${object.key}`,
       contentType: object.httpMetadata?.contentType ?? 'application/octet-stream',
       size: object.size,
       etag: object.etag,

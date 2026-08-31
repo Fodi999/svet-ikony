@@ -477,7 +477,7 @@ function normalizeSiteContent(value: unknown): SiteContent {
  */
 async function apiGet<T>(path: string, fallback: T): Promise<T> {
   try {
-    const response = await fetch(absoluteSiteUrl(path), { cache: 'no-store' });
+    const response = await fetch(await absoluteSiteUrl(path), { cache: 'no-store' });
     if (!response.ok) return fallback;
     return await response.json() as T;
   } catch {
@@ -497,7 +497,7 @@ async function churchApiGet<T>(path: string, fallback: T, previewToken?: string,
  * returning a fallback, so callers (e.g. the order form) can show the user
  * a real validation error instead of a swallowed failure. */
 async function apiPostOrThrow<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(absoluteSiteUrl(path), {
+  const response = await fetch(await absoluteSiteUrl(path), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -510,7 +510,7 @@ async function apiPostOrThrow<T>(path: string, body: unknown): Promise<T> {
 
 async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown, fallback?: T): Promise<T> {
   try {
-    const response = await fetch(absoluteSiteUrl(path), {
+    const response = await fetch(await absoluteSiteUrl(path), {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined

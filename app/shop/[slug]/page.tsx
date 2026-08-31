@@ -98,7 +98,7 @@ export default async function ProductPage({ params }: Props) {
   const category = product.categoryId ? categories.find((item) => item.id === product.categoryId) : undefined;
   const galleryImages = Array.from(new Set([product.photoUrl, ...product.galleryUrls].filter(Boolean)));
   const iconSlug = linkedIcon?.translations.find((item) => item.language === locale)?.slug || linkedIcon?.translations[0]?.slug;
-  const productUrl = absoluteSiteUrl(withLocale(`/shop/${product.slug}`, locale));
+  const productUrl = await absoluteSiteUrl(withLocale(`/shop/${product.slug}`, locale));
 
   return (
     <Page>

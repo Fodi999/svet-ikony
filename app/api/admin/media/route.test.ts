@@ -5,7 +5,9 @@ import { mintTestAdminJwt, TEST_JWT_SECRET } from '@/lib/media/test-support/test
 const mockBucket = new MockR2Bucket();
 
 vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: async () => ({ env: { MEDIA_BUCKET: mockBucket, ADMIN_JWT_SECRET: TEST_JWT_SECRET } }),
+  getCloudflareContext: async () => ({
+    env: { MEDIA_BUCKET: mockBucket, ADMIN_JWT_SECRET: TEST_JWT_SECRET, SITE_URL: 'https://svetikony.com' },
+  }),
 }));
 
 const { DELETE, GET } = await import('./route');
@@ -111,17 +113,26 @@ describe('GET /api/admin/media', () => {
   it('lists every object under media/ when no module filter is given', async () => {
     const response = await GET(getRequest('', token));
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { items: { key: string; kind: string }[]; cursor: string | null };
+    const body = (await response.json()) as { items: { key: string; kind: string; url: string }[]; cursor: string | null };
     expect(body.items).toHaveLength(2);
     expect(body.cursor).toBeNull();
   });
 
   it('narrows to one module prefix', async () => {
     const response = await GET(getRequest('?module=telegram', token));
-    const body = (await response.json()) as { items: { key: string; kind: string }[] };
+    const body = (await response.json()) as { items: { key: string; kind: string; url: string }[] };
     expect(body.items).toHaveLength(1);
     expect(body.items[0]!.key).toContain('media/telegram/');
     expect(body.items[0]!.kind).toBe('image');
+  });
+
+  it('builds every URL from the server-side SITE_URL, never localhost -- this is what the admin Media Picker fetches', async () => {
+    const response = await GET(getRequest('', token));
+    const body = (await response.json()) as { items: { key: string; url: string }[] };
+    for (const item of body.items) {
+      expect(item.url).toBe(`https://svetikony.com/${item.key}`);
+      expect(item.url).not.toContain('localhost');
+    }
   });
 
   it('rejects an unknown module', async () => {

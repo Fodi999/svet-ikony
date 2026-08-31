@@ -7,7 +7,7 @@ const mockBucket = new MockR2Bucket();
 
 vi.mock('@opennextjs/cloudflare', () => ({
   getCloudflareContext: async () => ({
-    env: { MEDIA_BUCKET: mockBucket, ADMIN_JWT_SECRET: TEST_JWT_SECRET },
+    env: { MEDIA_BUCKET: mockBucket, ADMIN_JWT_SECRET: TEST_JWT_SECRET, SITE_URL: 'https://svetikony.com' },
   }),
 }));
 
@@ -46,6 +46,8 @@ describe('POST /api/admin/media/upload', () => {
     const body = (await response.json()) as MediaObjectDto;
     expect(body.key).toMatch(/^media\/alphabet\/letter-1\/card\/[0-9a-f-]{36}\.jpg$/);
     expect(body.url).toContain(body.key);
+    expect(body.url).toBe(`https://svetikony.com/${body.key}`);
+    expect(body.url).not.toContain('localhost');
     expect(body.contentType).toBe('image/jpeg');
     expect(body.size).toBe(1024);
     expect(body.kind).toBe('image');

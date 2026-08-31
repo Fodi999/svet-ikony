@@ -12,6 +12,15 @@ declare global {
      * never in wrangler.jsonc's plaintext `vars`. */
     ADMIN_JWT_SECRET?: string;
     JWT_SECRET?: string;
+    /** Canonical public site URL for server-side absolute URLs (see
+     * lib/site.ts's getSiteUrl()/absoluteSiteUrl()) -- e.g.
+     * https://svetikony.com, no trailing slash required. Not sensitive
+     * data, but deliberately set via `wrangler secret put` rather than
+     * wrangler.jsonc's `vars`: `vars` is shared with local `--local` runs,
+     * and this must never leak into local dev, which needs to keep
+     * self-referencing its own localhost instance. Unset locally ->
+     * lib/site.ts falls back to http://localhost:3001. */
+    SITE_URL?: string;
     /** Declared in wrangler.jsonc's `r2_buckets` (Stage 2D). Production
      * binds the real `svetikony-media` bucket; local `next dev` gets
      * Wrangler/Miniflare's own simulated local R2 storage automatically —

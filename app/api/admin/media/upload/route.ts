@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
     const dto: MediaObjectDto = {
       key,
-      url: absoluteSiteUrl(`/${key}`),
+      url: await absoluteSiteUrl(`/${key}`),
       contentType: file.type,
       size: file.size,
       etag: putResult.etag,

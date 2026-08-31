@@ -50,7 +50,7 @@ export async function ensureAutopostImage(input: EnsureAutopostImageInput): Prom
     });
     if (!putResult) throw new Error(`R2 put() returned no result for key ${key}`);
 
-    const mediaUrl = absoluteSiteUrl(`/${key}`);
+    const mediaUrl = await absoluteSiteUrl(`/${key}`);
     await setAutopostImageResult(input.postId, mediaUrl, null);
     return mediaUrl;
   } catch (error) {

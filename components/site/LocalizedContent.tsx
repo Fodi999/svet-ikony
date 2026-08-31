@@ -44,7 +44,7 @@ import { SvgIcon } from './SvgIcon';
 import { Dialog, DialogClose, DialogOverlay, DialogPopup, DialogPortal } from '@/components/ui/dialog';
 import { publicApi } from '@/lib/api';
 import { formatFeastDay } from '@/lib/dates';
-import { absoluteSiteUrl } from '@/lib/site';
+import { siteUrl } from '@/lib/site';
 import type { ChurchCalendarDayDto, ChurchIconDto, ChurchInfoDto, ChurchPrayerDto, Icon, Prayer, PrayerVisualizerAssetDto, Saint } from '@/lib/types';
 import { imageForPrayer, localizeIcon, paragraphsFromText, sectionsFromText, textPreview, translateSectionLabel } from '@/lib/iconContent';
 
@@ -174,6 +174,15 @@ const uiText = {
 
 function ui(locale: keyof typeof uiText, key: keyof typeof uiText.ru) {
   return uiText[locale][key];
+}
+
+/** Client-component equivalent of lib/site.ts's absoluteSiteUrl() -- that
+ * function is server-only (reads the Cloudflare Workers runtime env via
+ * getCloudflareContext, which doesn't exist in the browser), so this file
+ * ('use client') builds share/canonical links from the build-time `siteUrl`
+ * constant directly instead. */
+function clientAbsoluteUrl(path: string): string {
+  return `${siteUrl}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
 function prayerTitle(title: string, locale: keyof typeof uiText) {
@@ -381,7 +390,7 @@ export function LocalizedChurchPrayerDetail({ prayer, icon, calendarDay, categor
   const localeHref = useLocaleHref();
   const image = prayer.imageUrl || icon?.imageUrl || '';
   const title = prayerTitle(prayer.title, locale);
-  const publicUrl = absoluteSiteUrl(localeHref(`/prayers/${prayer.slug}`));
+  const publicUrl = clientAbsoluteUrl(localeHref(`/prayers/${prayer.slug}`));
   const date = calendarDay?.dateNewStyle || calendarDay?.dateOldStyle;
   const visualizerImage = prayer.visualizerImageUrl || image;
   const canUseVisualizer = Boolean(visualizerImage || prayer.visualizerEnabled);
@@ -836,7 +845,7 @@ export function LocalizedIconDetail({ icon, related }: { icon: Icon; related: Ic
     })),
     ...(qrImage ? [{ image: qrImage, label: ui(locale, 'qrCode'), kind: 'qr' } satisfies IconPhotoCatalogItem] : [])
   ];
-  const iconPageUrl = absoluteSiteUrl(localeHref(`/icons/${item.slug}`));
+  const iconPageUrl = clientAbsoluteUrl(localeHref(`/icons/${item.slug}`));
 
   return (
     <Page>

@@ -13,6 +13,13 @@ let bucket: MockR2Bucket;
 const mockGetMediaBucket = vi.fn(async () => bucket);
 vi.mock('@/lib/d1/env', () => ({ getMediaBucket: mockGetMediaBucket }));
 
+/** lib/site.ts's absoluteSiteUrl() reads SITE_URL from the Cloudflare
+ * runtime -- production-shaped here so the resulting mediaUrl is never
+ * localhost, matching what real production must produce. */
+vi.mock('@opennextjs/cloudflare', () => ({
+  getCloudflareContext: async () => ({ env: { SITE_URL: 'https://svetikony.com' } }),
+}));
+
 const { ensureAutopostImage } = await import('./autopost-image');
 
 function fakePngBytes(): ArrayBuffer {

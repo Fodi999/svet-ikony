@@ -46,6 +46,48 @@ describe('ensureAutopostImage', () => {
     expect(mockSetAutopostImageResult).not.toHaveBeenCalled();
   });
 
+  it('uses a verified saint image asset instead of AI generation, resolving a bare R2 key to an absolute URL', async () => {
+    const result = await ensureAutopostImage({
+      postId: 7,
+      existingMediaUrl: null,
+      contentType: 'saint_of_day',
+      apiKey: 'fake-key',
+      verifiedImageUrl: 'media/saints/florus-and-laurus/main/abc123.jpg',
+    });
+
+    expect(result).toBe('https://svetikony.com/media/saints/florus-and-laurus/main/abc123.jpg');
+    expect(mockGenerateTelegramImage).not.toHaveBeenCalled();
+    expect(mockGetMediaBucket).not.toHaveBeenCalled();
+    expect(mockSetAutopostImageResult).toHaveBeenCalledWith(7, result, null);
+  });
+
+  it('uses a verified saint image asset unchanged when it is already an absolute URL', async () => {
+    const result = await ensureAutopostImage({
+      postId: 7,
+      existingMediaUrl: null,
+      contentType: 'saint_of_day',
+      apiKey: 'fake-key',
+      verifiedImageUrl: 'https://cdn.example.com/icons/florus-and-laurus.jpg',
+    });
+
+    expect(result).toBe('https://cdn.example.com/icons/florus-and-laurus.jpg');
+    expect(mockGenerateTelegramImage).not.toHaveBeenCalled();
+  });
+
+  it('still prefers an existingMediaUrl (retry path) over a verifiedImageUrl', async () => {
+    const result = await ensureAutopostImage({
+      postId: 7,
+      existingMediaUrl: 'https://svetikony.com/media/telegram/7/post-image/already-there.png',
+      contentType: 'saint_of_day',
+      apiKey: 'fake-key',
+      verifiedImageUrl: 'media/saints/florus-and-laurus/main/abc123.jpg',
+    });
+
+    expect(result).toBe('https://svetikony.com/media/telegram/7/post-image/already-there.png');
+    expect(mockGenerateTelegramImage).not.toHaveBeenCalled();
+    expect(mockSetAutopostImageResult).not.toHaveBeenCalled();
+  });
+
   it('generates an image, stores it in R2 under media/telegram/<postId>/post-image/, and returns the absolute site URL', async () => {
     const result = await ensureAutopostImage({
       postId: 42,

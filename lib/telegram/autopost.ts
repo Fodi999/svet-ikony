@@ -11,7 +11,13 @@ import { loadAutopostFacts } from './autopost-content';
 import { ensureAutopostImage } from './autopost-image';
 import { getOrResolveChannelChat } from './channel';
 import { TelegramApiError, TelegramClient } from './client';
-import { CONTENT_TYPE_FORMAT_HINTS, CONTENT_TYPE_LABELS, CONTENT_TYPE_TARGET_LENGTH } from './content-format';
+import {
+  buildSaintOfDayTitle,
+  CONTENT_TYPE_FORMAT_HINTS,
+  CONTENT_TYPE_LABELS,
+  CONTENT_TYPE_TARGET_LENGTH,
+  CONTENT_TYPE_TITLES,
+} from './content-format';
 import { sendAutopostMessage } from './deliver-post';
 import { getOpenAiConfig, getTelegramConfig } from './env';
 import { getJulianCalendarDate } from './julian-calendar';
@@ -34,7 +40,10 @@ import { requiresCalendarVerification, validateBeforeSend } from './pre-send-val
 
 export { CONTENT_TYPE_LABELS };
 
-function kyivDateIso(date: Date): string {
+/** Exported for lib/telegram/source-coverage.ts's read-only preview report,
+ * so it derives "civil day in Europe/Kyiv" the exact same way the real
+ * tick does rather than a second, potentially-drifting implementation. */
+export function kyivDateIso(date: Date): string {
   // en-CA formats as YYYY-MM-DD, which happens to match SQLite's own date
   // string ordering — no separate parsing step needed.
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
@@ -50,10 +59,18 @@ function minutesSinceMidnight(hhmm: string): number {
 }
 
 /** The cron pinger fires on a 5-minute cadence (see cron/wrangler.jsonc's
- * triggers.crons); a slot counts as due from its scheduled minute up to
- * (but not including) 5 minutes after, so exactly one fire catches it even
- * if the pinger runs a little behind schedule. */
-const DUE_WINDOW_MINUTES = 5;
+ * triggers.crons), so in principle one fire lands exactly on the scheduled
+ * minute. But a single missed/failed tick (a transient fetch error between
+ * the two Workers, a cold start, Cloudflare cron jitter) must not cost the
+ * slot for the whole day -- the next tick 5 minutes later has to still
+ * catch it. 15 minutes gives three tick cycles of headroom (one on-time
+ * fire plus two retries) before a slot is given up on for today. This
+ * can never bleed into *yesterday's* slot, regardless of how wide this is:
+ * `civilDateIso` in runAutopostTick() below is always "today" in
+ * Europe/Kyiv, so a slot that's still unclaimed once its window closes
+ * simply stays unpublished for that day -- see the claim's
+ * (publish_date, content_type) uniqueness in telegram-autopost.ts. */
+const DUE_WINDOW_MINUTES = 15;
 
 function isDue(nowHhMm: string, scheduledHhMm: string): boolean {
   const diff = minutesSinceMidnight(nowHhMm) - minutesSinceMidnight(scheduledHhMm);
@@ -185,6 +202,8 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
         civilDateIso,
         julianDateIso,
         verifiedFacts,
+        titleLine: contentType === 'saint_of_day' ? buildSaintOfDayTitle(facts.candidateName ?? '') : CONTENT_TYPE_TITLES[contentType],
+        titleFlexible: contentType === 'faith_story',
       });
       // Persisted before the Telegram call so a send failure still leaves
       // the generated text on the row for a manual edit/retry, instead of
@@ -201,6 +220,7 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
         contentType,
         apiKey: openAiConfig.apiKey,
         imageModel: openAiConfig.imageModel,
+        verifiedImageUrl: facts.verifiedImageUrl,
       });
 
       // Final gate, independent of the verification step above -- refuses

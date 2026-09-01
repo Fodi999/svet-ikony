@@ -13,7 +13,13 @@ import { loadAutopostFacts } from '@/lib/telegram/autopost-content';
 import { ensureAutopostImage } from '@/lib/telegram/autopost-image';
 import { getOrResolveChannelChat } from '@/lib/telegram/channel';
 import { TelegramApiError, TelegramClient } from '@/lib/telegram/client';
-import { CONTENT_TYPE_FORMAT_HINTS, CONTENT_TYPE_LABELS, CONTENT_TYPE_TARGET_LENGTH } from '@/lib/telegram/content-format';
+import {
+  buildSaintOfDayTitle,
+  CONTENT_TYPE_FORMAT_HINTS,
+  CONTENT_TYPE_LABELS,
+  CONTENT_TYPE_TARGET_LENGTH,
+  CONTENT_TYPE_TITLES,
+} from '@/lib/telegram/content-format';
 import { sendAutopostMessage } from '@/lib/telegram/deliver-post';
 import { getOpenAiConfig, getTelegramConfig } from '@/lib/telegram/env';
 import { gregorianToJulianCalendarDate } from '@/lib/telegram/julian-calendar';
@@ -73,6 +79,11 @@ async function regenerateAutopostTextIfMissing(post: TelegramPostDto): Promise<T
       facts: factsResult.facts.facts,
       civilDateIso,
       julianDateIso,
+      titleLine:
+        post.contentType === 'saint_of_day'
+          ? buildSaintOfDayTitle(factsResult.facts.candidateName ?? '')
+          : CONTENT_TYPE_TITLES[post.contentType],
+      titleFlexible: post.contentType === 'faith_story',
     });
     return await setAutopostDraftText(post.id, text);
   } catch (error) {
@@ -90,6 +101,14 @@ async function regenerateAutopostTextIfMissing(post: TelegramPostDto): Promise<T
  * returned unchanged -- see ensureAutopostImage's own "already saved"
  * skip, which is what actually enforces "retry must not regenerate an
  * already-saved image".
+ *
+ * For saint_of_day, re-derives the day's facts first so a retry gets the
+ * same church_saints.imageUrl short-circuit as a fresh tick (see
+ * autopost-content.ts's verifiedImageUrl and autopost-image.ts) instead of
+ * always falling back to an AI-generated scene just because this is a
+ * retry. That lookup is itself best-effort: any failure here still leaves
+ * the AI-generation fallback available below rather than blocking the
+ * retry.
  */
 async function ensureAutopostImageIfMissing(post: TelegramPostDto): Promise<TelegramPostDto> {
   if (post.mediaUrl || !post.contentType || !isAutopostContentType(post.contentType)) {
@@ -99,12 +118,24 @@ async function ensureAutopostImageIfMissing(post: TelegramPostDto): Promise<Tele
   const openAiConfig = await getOpenAiConfig();
   if (!openAiConfig) return post;
 
+  let verifiedImageUrl: string | undefined;
+  if (post.contentType === 'saint_of_day' && post.publishDate) {
+    try {
+      const factsResult = await loadAutopostFacts(post.contentType, gregorianToJulianCalendarDate(post.publishDate));
+      if (factsResult.status === 'ok') verifiedImageUrl = factsResult.facts.verifiedImageUrl;
+    } catch {
+      // Best-effort lookup -- ensureAutopostImage below still falls back to
+      // AI generation when this fails, exactly as if no verified asset existed.
+    }
+  }
+
   const mediaUrl = await ensureAutopostImage({
     postId: post.id,
     existingMediaUrl: null,
     contentType: post.contentType,
     apiKey: openAiConfig.apiKey,
     imageModel: openAiConfig.imageModel,
+    verifiedImageUrl,
   });
   return mediaUrl ? { ...post, mediaUrl } : post;
 }

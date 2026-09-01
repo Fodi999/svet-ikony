@@ -38,6 +38,10 @@ const SYSTEM_PROMPT = `Ти — редактор Telegram-каналу "Світ
 ОБОВ'ЯЗКОВА СТРУКТУРА КОЖНОЇ ПУБЛІКАЦІЇ:
 - публікація завжди починається з привітання — його точний варіант
   наведено у структурі нижче для цього типу, і його не можна змінювати;
+- одразу після привітання, окремим рядком, іде назва публікації — її
+  точний варіант наведено нижче в полі "Назва"; використовуй його рівно
+  так, як подано, ЯКЩО нижче явно не дозволено власну тематичну назву
+  (тоді власна назва має спиратися ЛИШЕ на надані факти);
 - перед підписом завжди має бути природне завершальне побажання, яке
   відповідає темі цієї конкретної публікації (не повторюй одне й те саме
   формулювання щодня — воно може природно змінюватися);
@@ -85,6 +89,17 @@ export interface GenerateTelegramPostInput {
    * require verification (morning_prayer/evening_prayer/gospel/
    * faith_story). */
   verifiedFacts?: boolean;
+  /** Title line the post must place immediately after its greeting, on its
+   * own line (task: "content titles") -- see
+   * lib/telegram/content-format.ts's CONTENT_TYPE_TITLES/
+   * buildSaintOfDayTitle. Reproduced verbatim unless titleFlexible is set. */
+  titleLine: string;
+  /** faith_story only: the model may substitute its own short thematic
+   * title -- built strictly from the facts below, never invented -- for
+   * titleLine's generic default. Every other content type has no
+   * meaningful "theme" independent of its fixed slot name, so this stays
+   * unset (and titleLine is reproduced exactly) for them. */
+  titleFlexible?: boolean;
 }
 
 interface ChatCompletionResponse {
@@ -106,7 +121,11 @@ export async function generateTelegramPost(input: GenerateTelegramPostInput): Pr
         { role: 'system', content: SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `Тип публікації: ${input.contentTypeLabel}\nЦільовий обсяг тексту: ${input.targetLengthMin}–${input.targetLengthMax} символів (мета, не вимога -- див. правило про обсяг вище)\nСтруктура: ${input.formatHint}\n\nМетадані (не факти для тексту, лише контекст):\nCivil date (Europe/Kyiv): ${input.civilDateIso}\nJulian/old-style date: ${input.julianDateIso}\n\n${
+          content: `Тип публікації: ${input.contentTypeLabel}\nЦільовий обсяг тексту: ${input.targetLengthMin}–${input.targetLengthMax} символів (мета, не вимога -- див. правило про обсяг вище)\nСтруктура: ${input.formatHint}\nНазва (окремим рядком одразу після привітання): "${input.titleLine}"${
+            input.titleFlexible
+              ? ' -- можеш замінити власною короткою тематичною назвою, побудованою ЛИШЕ на фактах нижче, якщо вона краще підходить; інакше використай саме цей рядок'
+              : ' -- використай рівно цей рядок, без жодних змін'
+          }\n\nМетадані (не факти для тексту, лише контекст):\nCivil date (Europe/Kyiv): ${input.civilDateIso}\nJulian/old-style date: ${input.julianDateIso}\n\n${
             input.verifiedFacts
               ? 'Ці календарні дані вже перевірені. Не змінюй дату, ім\'я святого або церковне найменування. Не додавай інших святих чи фактів.\n\n'
               : ''

@@ -20,6 +20,7 @@ function baseInput(overrides: Partial<Parameters<typeof generateTelegramPost>[0]
     facts: 'Церковний календар: тестові факти',
     civilDateIso: '2026-08-31',
     julianDateIso: '2026-08-18',
+    titleLine: '☦️ Тестовий Святий',
     ...overrides,
   };
 }
@@ -75,5 +76,32 @@ describe('generateTelegramPost', () => {
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     const userMessage = body.messages.find((m: { role: string }) => m.role === 'user').content as string;
     expect(userMessage).toContain('вже перевірені');
+  });
+
+  it('requires the exact title line to be reproduced verbatim when titleFlexible is unset', async () => {
+    const fetchMock = mockOpenAiFetch('some post text');
+    vi.stubGlobal('fetch', fetchMock);
+
+    await generateTelegramPost(baseInput({ titleLine: '☦️ Флор і Лавр' }));
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const userMessage = body.messages.find((m: { role: string }) => m.role === 'user').content as string;
+    const systemMessage = body.messages.find((m: { role: string }) => m.role === 'system').content as string;
+    expect(userMessage).toContain('☦️ Флор і Лавр');
+    expect(userMessage).toMatch(/рівно цей рядок, без жодних змін/);
+    expect(systemMessage).toMatch(/назва публікації/);
+  });
+
+  it('allows a flexible thematic title, grounded only in the facts, when titleFlexible is true', async () => {
+    const fetchMock = mockOpenAiFetch('some post text');
+    vi.stubGlobal('fetch', fetchMock);
+
+    await generateTelegramPost(baseInput({ titleLine: '☦️ Історія віри', titleFlexible: true }));
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const userMessage = body.messages.find((m: { role: string }) => m.role === 'user').content as string;
+    expect(userMessage).toContain('☦️ Історія віри');
+    expect(userMessage).toMatch(/можеш замінити власною короткою тематичною назвою/);
+    expect(userMessage).toMatch(/ЛИШЕ на фактах/);
   });
 });

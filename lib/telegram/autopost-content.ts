@@ -22,6 +22,12 @@ export type AutopostFacts = {
    * sources by lib/telegram/orthodox-calendar-verifier.ts before OpenAI is
    * ever called. Undefined for every other content type. */
   candidateName?: string;
+  /** church_saints.imageUrl, when the row has one -- a real, admin-curated
+   * media asset for this specific saint. Set only for saint_of_day. When
+   * present, ensureAutopostImage() (autopost-image.ts) uses this directly
+   * instead of ever generating an AI image, so a genuine icon/photo is
+   * always preferred over a generic AI scene next to the saint's name. */
+  verifiedImageUrl?: string;
 };
 
 export type AutopostFactsResult =
@@ -81,6 +87,7 @@ export async function loadAutopostFacts(contentType: AutopostContentType, julian
         sourceType: 'saint',
         sourceId: saint.id,
         candidateName: saint.name,
+        verifiedImageUrl: saint.imageUrl?.trim() || undefined,
       },
     };
   }

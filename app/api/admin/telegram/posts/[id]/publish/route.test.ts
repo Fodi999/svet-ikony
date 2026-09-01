@@ -235,8 +235,13 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
 
     const response = await POST(publishRequest('4', token), ctx('4'));
 
+    // loadAutopostFacts may still be called once here -- not to regenerate
+    // TEXT (that's what mockGenerateTelegramPost/mockSetAutopostDraftText
+    // guard below), but by ensureAutopostImageIfMissing's own best-effort
+    // verified-image-asset lookup for the missing mediaUrl (see
+    // "passes the verified saint image asset through..." below).
     expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
-    expect(mockLoadAutopostFacts).not.toHaveBeenCalled();
+    expect(mockSetAutopostDraftText).not.toHaveBeenCalled();
     expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Already generated earlier');
     expect(response.status).toBe(200);
   });
@@ -290,6 +295,54 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       'Already generated earlier'
     );
     expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+  });
+
+  it('passes the verified saint image asset through to ensureAutopostImage on retry, re-deriving facts from publishDate', async () => {
+    mockGetTelegramPost.mockResolvedValue({
+      id: 11,
+      status: 'failed',
+      text: 'Already generated earlier',
+      mediaUrl: null,
+      contentType: 'saint_of_day',
+      publishDate: '2026-08-30',
+      verificationStatus: 'verified',
+    });
+    mockLoadAutopostFacts.mockResolvedValue({
+      status: 'ok',
+      facts: { facts: 'real facts', sourceType: 'saint', sourceId: 'abc', verifiedImageUrl: 'media/saints/florus/main/x.jpg' },
+    });
+    mockEnsureAutopostImage.mockResolvedValue('https://svetikony.com/media/saints/florus/main/x.jpg');
+    mockSendPhoto.mockResolvedValue({ messageId: 1101 });
+    mockMarkTelegramPostSent.mockResolvedValue({ id: 11, status: 'sent', telegramMessageId: 1101 });
+
+    const response = await POST(publishRequest('11', token), ctx('11'));
+
+    expect(mockLoadAutopostFacts).toHaveBeenCalledWith('saint_of_day', '2026-08-17');
+    expect(mockEnsureAutopostImage).toHaveBeenCalledWith(
+      expect.objectContaining({ postId: 11, contentType: 'saint_of_day', verifiedImageUrl: 'media/saints/florus/main/x.jpg' })
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it('still falls back to AI-generation-eligible behavior when re-deriving facts for the verified image fails on retry', async () => {
+    mockGetTelegramPost.mockResolvedValue({
+      id: 12,
+      status: 'failed',
+      text: 'Already generated earlier',
+      mediaUrl: null,
+      contentType: 'saint_of_day',
+      publishDate: '2026-08-30',
+      verificationStatus: 'verified',
+    });
+    mockLoadAutopostFacts.mockRejectedValue(new Error('D1 unavailable'));
+    mockEnsureAutopostImage.mockResolvedValue('https://svetikony.com/media/telegram/12/post-image/new.png');
+    mockSendPhoto.mockResolvedValue({ messageId: 1201 });
+    mockMarkTelegramPostSent.mockResolvedValue({ id: 12, status: 'sent', telegramMessageId: 1201 });
+
+    const response = await POST(publishRequest('12', token), ctx('12'));
+
+    expect(mockEnsureAutopostImage).toHaveBeenCalledWith(expect.objectContaining({ postId: 12, verifiedImageUrl: undefined }));
     expect(response.status).toBe(200);
   });
 

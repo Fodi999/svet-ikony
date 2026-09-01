@@ -80,12 +80,12 @@ const { runAutopostTick } = await import('./autopost');
 const FIXED_NOW = new Date('2026-08-30T04:02:00.000Z');
 const CIVIL_DATE_ISO = '2026-08-30';
 const JULIAN_DATE_ISO = '2026-08-17';
-const DUE_HHMM = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/Kyiv',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-}).format(FIXED_NOW);
+function kyivHhMmOffset(date: Date, offsetMinutes: number): string {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit', hour12: false }).format(
+    new Date(date.getTime() + offsetMinutes * 60_000),
+  );
+}
+const DUE_HHMM = kyivHhMmOffset(FIXED_NOW, 0);
 const NOT_DUE_HHMM = '23:45';
 
 function settingsWith(overrides: { globalEnabled?: boolean; items?: { contentType: string; enabled: boolean; scheduleTime: string }[] }) {
@@ -152,6 +152,35 @@ describe('runAutopostTick', () => {
     const result = await runAutopostTick();
 
     expect(result.attempted).toEqual([]);
+  });
+
+  it('still treats a slot as due after a missed tick, within the cron-jitter tolerance window', async () => {
+    // Schedule time 10 minutes in the past: two 5-minute cron cycles have
+    // gone by (one on-time fire that presumably failed/never landed, one
+    // retry), and the slot must still be caught rather than lost for the
+    // day -- see autopost.ts's DUE_WINDOW_MINUTES comment.
+    const laggedHhMm = kyivHhMmOffset(FIXED_NOW, -10);
+    mockGetAutopostSettings.mockResolvedValue(
+      settingsWith({ items: [{ contentType: 'morning_prayer', enabled: true, scheduleTime: laggedHhMm }] }),
+    );
+    mockLoadAutopostFacts.mockResolvedValue({ status: 'insufficient_data' });
+
+    const result = await runAutopostTick();
+
+    expect(mockLoadAutopostFacts).toHaveBeenCalledWith('morning_prayer', JULIAN_DATE_ISO);
+    expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'skipped_insufficient_data' }]);
+  });
+
+  it('stops treating a slot as due once the tolerance window has fully elapsed (does not reach back into a missed day)', async () => {
+    const tooLateHhMm = kyivHhMmOffset(FIXED_NOW, -15);
+    mockGetAutopostSettings.mockResolvedValue(
+      settingsWith({ items: [{ contentType: 'morning_prayer', enabled: true, scheduleTime: tooLateHhMm }] }),
+    );
+
+    const result = await runAutopostTick();
+
+    expect(result.attempted).toEqual([]);
+    expect(mockLoadAutopostFacts).not.toHaveBeenCalled();
   });
 
   it('looks up source facts by the Julian (old-style) date, not the civil Europe/Kyiv date', async () => {

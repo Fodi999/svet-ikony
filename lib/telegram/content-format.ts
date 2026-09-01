@@ -32,6 +32,31 @@ export const CONTENT_TYPE_GREETINGS: Record<AutopostContentType, string> = {
 export const AUTOPOST_SIGNATURE = '☦️ «Світло ікони»';
 
 /**
+ * Explicit title line every publication must place immediately after its
+ * greeting, on its own line (task: "content titles"). Fixed and literal
+ * for the four types below. saint_of_day is deliberately absent from this
+ * table -- its title must be built from that day's own already-verified
+ * saint name (AutopostFacts.candidateName, checked by
+ * orthodox-calendar-verifier.ts before OpenAI is ever called), never a
+ * static string, so callers build it with buildSaintOfDayTitle() below at
+ * call time instead of reading it out of this table.
+ */
+export const CONTENT_TYPE_TITLES: Record<Exclude<AutopostContentType, 'saint_of_day'>, string> = {
+  morning_prayer: '🙏 Ранкова молитва',
+  evening_prayer: '🙏 Вечірня молитва',
+  gospel: '📖 Євангеліє дня',
+  faith_story: '☦️ Історія віри',
+};
+
+/** saint_of_day's title line is always the exact, already-verified saint
+ * name -- never left to the model to retype from the facts text on its
+ * own, so a paraphrase or misspelling in the title can't slip past the
+ * verification step that already confirmed this exact string. */
+export function buildSaintOfDayTitle(verifiedCandidateName: string): string {
+  return `☦️ ${verifiedCandidateName}`;
+}
+
+/**
  * Target character-count range for the FULL finished text (not a hard
  * limit -- see lib/ai/openai.ts's system prompt: this is a goal, never a
  * reason to invent facts). Counted as the length of the complete returned
@@ -53,7 +78,8 @@ export const CONTENT_TYPE_TARGET_LENGTH: Record<AutopostContentType, { min: numb
  * coherent outline rather than reassembling fragments itself. */
 export const CONTENT_TYPE_FORMAT_HINTS: Record<AutopostContentType, string> = {
   saint_of_day:
-    `Структура: привітання "${AUTOPOST_GREETING_DEFAULT}" -> хто сьогодні вшановується -> короткий життєпис -> ` +
+    `Структура: привітання "${AUTOPOST_GREETING_DEFAULT}" -> назва (окремим рядком: ім'я святого, наведене в полі назви нижче) -> ` +
+    'хто сьогодні вшановується -> короткий життєпис -> ' +
     'важливі підтверджені події життя -> чого ця історія може навчити сучасну людину -> "💭 Думка дня" -> ' +
     `"🙏" і коротка молитва -> природне завершальне побажання -> підпис "${AUTOPOST_SIGNATURE}". ` +
     'Усі календарні та біографічні твердження бери ЛИШЕ з перевірених фактів нижче -- нічого понад них.',
@@ -67,11 +93,11 @@ export const CONTENT_TYPE_FORMAT_HINTS: Record<AutopostContentType, string> = {
     'підтверджений історичний чи церковний контекст -> духовний сенс -> "💭 Думка дня" -> ' +
     `коротка молитва або духовне звернення, якщо це доречно -> природне завершальне побажання -> підпис "${AUTOPOST_SIGNATURE}".`,
   morning_prayer:
-    `Структура: "${AUTOPOST_GREETING_DEFAULT}" -> короткий вступ до нового дня -> "🙏 Ранкова молитва" -> ` +
+    `Структура: "${AUTOPOST_GREETING_DEFAULT}" -> "🙏 Ранкова молитва" -> короткий вступ до нового дня -> ` +
     `повноцінний текст молитви за фактами нижче -> коротке духовне побажання на день -> підпис "${AUTOPOST_SIGNATURE}".`,
   evening_prayer:
-    `Структура: "${AUTOPOST_GREETING_EVENING}" -> спокійний вступ про завершення дня -> за наявності ПЕРЕВІРЕНИХ ` +
-    'календарних фактів можна коротко згадати пам\'ять сьогоднішніх святих -> "🙏 Вечірня молитва" -> ' +
+    `Структура: "${AUTOPOST_GREETING_EVENING}" -> "🙏 Вечірня молитва" -> спокійний вступ про завершення дня -> за наявності ` +
+    'ПЕРЕВІРЕНИХ календарних фактів можна коротко згадати пам\'ять сьогоднішніх святих -> ' +
     `повноцінний текст молитви за фактами нижче -> побажання спокійної ночі, миру і Божої допомоги -> підпис "${AUTOPOST_SIGNATURE}".`,
 };
 
@@ -93,7 +119,21 @@ const IMAGE_HOUSE_STYLE =
  * not a prompt-level request the model could ignore.
  */
 export const CONTENT_TYPE_IMAGE_PROMPTS: Record<AutopostContentType, string> = {
-  saint_of_day: `${IMAGE_HOUSE_STYLE} Сюжет: інтер’єр православного храму або іконописна майстерня, шанобливе, урочисте освітлення.`,
+  // AI-generated -- used only when no verified image asset exists for
+  // today's saint (see autopost-content.ts's verifiedImageUrl and
+  // ensureAutopostImage's own skip-generation check). Deliberately more
+  // explicit than the shared house style's own negative constraint: a
+  // generic AI temple scene next to a saint's real name is easy for a
+  // reader to mistake for an actual depiction of that saint, so this
+  // fallback names concrete, saint-agnostic objects (lampada, candles, a
+  // closed Gospel book, a distant iconostasis) rather than anything a
+  // viewer could read as "this is what he/she looked like".
+  saint_of_day:
+    `${IMAGE_HOUSE_STYLE} Сюжет: інтер’єр православного храму -- лампада, запалені свічки, закрите Євангеліє на аналої, іконостас удалині ` +
+    'у м’якому золотому світлі на тлі глибоких синьо-темних тонів, молитовна атмосфера. ' +
+    'КАТЕГОРИЧНО ЗАБОРОНЕНО: не малювати портрет чи обличчя жодного конкретного святого, не створювати псевдоікону з іменем чи ' +
+    'впізнаваними рисами конкретної людини, не робити Христа чи будь-яку конкретну постать центральним персонажем зображення -- ' +
+    'лише узагальнена атмосфера храму, без жодної людської постаті.',
   gospel: `${IMAGE_HOUSE_STYLE} Сюжет: розгорнута книга Євангелія на аналої, поруч запалена свічка, у православному храмі.`,
   morning_prayer: `${IMAGE_HOUSE_STYLE} Сюжет: світанок, м’яке проміння сонця крізь вікна православного храму.`,
   faith_story: `${IMAGE_HOUSE_STYLE} Сюжет: атмосферна духовна сцена всередині храму, свічки та ікони на відстані, тепле світло.`,

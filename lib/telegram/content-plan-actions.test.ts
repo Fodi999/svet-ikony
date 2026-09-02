@@ -55,6 +55,7 @@ const {
   generateSlotText,
   markSlotReady,
   markSlotUnready,
+  prepareContentPlanDay,
   regenerateSlotImage,
   regenerateSlotText,
 } = await import('./content-plan-actions');
@@ -388,6 +389,197 @@ describe('content-plan-actions', () => {
       const result = await markSlotUnready(PLAIN_CIVIL_DATE, 'morning_prayer');
 
       expect(result.status).toBe('draft');
+    });
+  });
+
+  describe('prepareContentPlanDay', () => {
+    const ID_BY_TYPE: Record<string, number> = {
+      morning_prayer: 1,
+      saint_of_day: 2,
+      gospel: 3,
+      faith_story: 4,
+      evening_prayer: 5,
+    };
+
+    it('prepares every slot when nothing exists yet and every source is available (incl. a verifying saint_of_day)', async () => {
+      mockFindTelegramPostBySlot.mockResolvedValue(null);
+      mockLoadAutopostFacts.mockResolvedValue({
+        status: 'ok',
+        facts: { facts: 'факти', sourceType: 'x', sourceId: '1', candidateName: 'Флор і Лавр' },
+      });
+      mockFindOrCreatePreparedSlot.mockImplementation(async (input: { contentType: string }) =>
+        draftPost({ id: ID_BY_TYPE[input.contentType], status: 'draft', contentType: input.contentType }),
+      );
+      mockGenerateTelegramPost.mockResolvedValue('Текст.');
+      mockEnsureAutopostImage.mockResolvedValue('https://x/img.png');
+      mockGetTelegramPost.mockImplementation(async (id: number) => draftPost({ id, mediaUrl: 'https://x/img.png' }));
+
+      const report = await prepareContentPlanDay(VERIFIED_CIVIL_DATE);
+
+      expect(report.date).toBe(VERIFIED_CIVIL_DATE);
+      expect(report.total).toBe(5);
+      expect(report.prepared).toBe(5);
+      expect(report.alreadyPrepared + report.skippedReady + report.skippedSent + report.skippedSending).toBe(0);
+      expect(report.missingSource + report.reviewRequired + report.imageFailed + report.failed).toBe(0);
+      expect(report.results.map((r) => r.contentType)).toEqual([
+        'morning_prayer',
+        'saint_of_day',
+        'gospel',
+        'faith_story',
+        'evening_prayer',
+      ]);
+      expect(mockGenerateTelegramPost).toHaveBeenCalledTimes(5);
+      expect(mockEnsureAutopostImage).toHaveBeenCalledTimes(5);
+      // Prepare Day fills DRAFT content only -- it never confirms a slot ready.
+      expect(mockSetAutopostSlotReady).not.toHaveBeenCalled();
+    });
+
+    it('skips sent/sending/ready slots untouched and never calls generation for them', async () => {
+      mockFindTelegramPostBySlot.mockImplementation(async (contentType: string) => {
+        if (contentType === 'morning_prayer') return draftPost({ id: 1, status: 'sent', text: 'x' });
+        if (contentType === 'saint_of_day') return draftPost({ id: 2, status: 'sending', text: 'x' });
+        if (contentType === 'gospel') return draftPost({ id: 3, status: 'ready', text: 'x' });
+        return null; // faith_story, evening_prayer -- no row yet
+      });
+      mockLoadAutopostFacts.mockResolvedValue({ status: 'missing_source' });
+
+      const report = await prepareContentPlanDay(PLAIN_CIVIL_DATE);
+
+      expect(report.skippedSent).toBe(1);
+      expect(report.skippedSending).toBe(1);
+      expect(report.skippedReady).toBe(1);
+      expect(report.missingSource).toBe(2);
+      expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
+      expect(mockFindOrCreatePreparedSlot).not.toHaveBeenCalled();
+    });
+
+    it('preserves an existing text and only fills the missing image -- fully-prepared slots are left completely alone', async () => {
+      mockFindTelegramPostBySlot.mockImplementation(async (contentType: string) =>
+        contentType === 'morning_prayer'
+          ? draftPost({ id: 10, status: 'draft', text: 'Вже написаний текст', mediaUrl: null })
+          : draftPost({ id: 20, status: 'draft', text: 'Текст', mediaUrl: 'https://x/existing.png' }),
+      );
+      mockLoadAutopostFacts.mockResolvedValue(OK_FACTS);
+      mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 10, status: 'draft', text: 'Вже написаний текст', mediaUrl: null }));
+      mockEnsureAutopostImage.mockResolvedValue('https://x/new.png');
+      mockGetTelegramPost.mockResolvedValue(draftPost({ id: 10, text: 'Вже написаний текст', mediaUrl: 'https://x/new.png' }));
+
+      const report = await prepareContentPlanDay(PLAIN_CIVIL_DATE);
+
+      expect(report.prepared).toBe(1);
+      expect(report.alreadyPrepared).toBe(4);
+      expect(mockGenerateTelegramPost).not.toHaveBeenCalled(); // no slot needed text
+      expect(mockSetPreparedPostText).not.toHaveBeenCalled();
+      expect(mockEnsureAutopostImage).toHaveBeenCalledTimes(1); // morning_prayer only
+    });
+
+    it('one slot failing (review required / missing source / a failed image) never stops the rest of the day', async () => {
+      mockFindTelegramPostBySlot.mockResolvedValue(null);
+      mockLoadAutopostFacts.mockImplementation(async (contentType: string) => {
+        if (contentType === 'gospel') return { status: 'missing_source' };
+        return { status: 'ok', facts: { facts: 'x', sourceType: 'x', sourceId: '1', candidateName: 'Хтось' } };
+      });
+      mockFindOrCreatePreparedSlot.mockImplementation(async (input: { contentType: string }) =>
+        draftPost({ id: ID_BY_TYPE[input.contentType], status: 'draft', contentType: input.contentType }),
+      );
+      mockGenerateTelegramPost.mockResolvedValue('Текст.');
+      mockEnsureAutopostImage.mockResolvedValue('https://x/img.png');
+      mockGetTelegramPost.mockImplementation(async (id: number) =>
+        id === ID_BY_TYPE.faith_story
+          ? draftPost({ id, text: 'Текст.', mediaUrl: null, imageError: 'OpenAI quota exceeded' })
+          : draftPost({ id, mediaUrl: 'https://x/img.png' }),
+      );
+
+      // saint_of_day never verifies at UNVERIFIED_CIVIL_DATE regardless of candidateName (no real entry for that date).
+      const report = await prepareContentPlanDay(UNVERIFIED_CIVIL_DATE);
+
+      expect(report.total).toBe(5);
+      expect(report.results).toEqual([
+        { contentType: 'morning_prayer', result: 'prepared' },
+        { contentType: 'saint_of_day', result: 'review_required', error: expect.stringContaining('REVIEW_REQUIRED') },
+        { contentType: 'gospel', result: 'missing_source', error: expect.stringContaining('MISSING_SOURCE') },
+        { contentType: 'faith_story', result: 'image_failed', error: 'OpenAI quota exceeded' },
+        { contentType: 'evening_prayer', result: 'prepared' },
+      ]);
+      expect(report.prepared).toBe(2);
+      expect(report.reviewRequired).toBe(1);
+      expect(report.missingSource).toBe(1);
+      expect(report.imageFailed).toBe(1);
+      expect(report.failed).toBe(0);
+    });
+
+    it('isolates an unexpected AI text-generation failure to just that slot ("failed"), the rest still complete', async () => {
+      mockFindTelegramPostBySlot.mockResolvedValue(null);
+      mockLoadAutopostFacts.mockImplementation(async (contentType: string) => {
+        if (contentType === 'saint_of_day') return { status: 'missing_source' }; // kept deterministic, not the point of this test
+        if (contentType === 'gospel') return { status: 'ok', facts: { facts: 'FAIL_MARKER', sourceType: 'x', sourceId: '1' } };
+        return { status: 'ok', facts: { facts: 'ok facts', sourceType: 'x', sourceId: '1' } };
+      });
+      mockFindOrCreatePreparedSlot.mockImplementation(async (input: { contentType: string }) =>
+        draftPost({ id: ID_BY_TYPE[input.contentType], status: 'draft', contentType: input.contentType }),
+      );
+      mockGenerateTelegramPost.mockImplementation(async (args: { facts: string }) => {
+        if (args.facts === 'FAIL_MARKER') throw new Error('OpenAI rate limit exceeded');
+        return 'Текст.';
+      });
+      mockEnsureAutopostImage.mockResolvedValue('https://x/img.png');
+      mockGetTelegramPost.mockImplementation(async (id: number) => draftPost({ id, mediaUrl: 'https://x/img.png' }));
+
+      const report = await prepareContentPlanDay(PLAIN_CIVIL_DATE);
+
+      expect(report.failed).toBe(1);
+      expect(report.results.find((r) => r.contentType === 'gospel')).toEqual({
+        contentType: 'gospel',
+        result: 'failed',
+        error: 'OpenAI rate limit exceeded',
+      });
+      expect(report.missingSource).toBe(1); // saint_of_day
+      expect(report.prepared).toBe(3); // morning_prayer, faith_story, evening_prayer
+      expect(mockGenerateTelegramPost).toHaveBeenCalledTimes(4); // not saint_of_day, which never reaches it
+    });
+
+    it('never touches a slot that becomes sent between its own status check and its generation call (concurrency with the live cron)', async () => {
+      let morningCallCount = 0;
+      mockFindTelegramPostBySlot.mockImplementation(async (contentType: string) => {
+        if (contentType === 'morning_prayer') {
+          morningCallCount += 1;
+          return morningCallCount === 1 ? null : draftPost({ id: 1, status: 'sent', text: 'Опубліковано' });
+        }
+        return draftPost({ id: 99, status: 'sent' }); // other four slots: trivially already sent
+      });
+      mockLoadAutopostFacts.mockResolvedValue(OK_FACTS);
+      // Simulates the autopost tick claiming and sending this exact slot in the moment between
+      // prepareSlot's own read and generateSlotText's resolveOrCreateSlot call.
+      mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 1, status: 'sent', text: 'Опубліковано' }));
+
+      const report = await prepareContentPlanDay(PLAIN_CIVIL_DATE);
+
+      expect(report.results[0]).toEqual({ contentType: 'morning_prayer', result: 'skipped_sent' });
+      expect(report.skippedSent).toBe(5);
+      expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
+      expect(mockSetPreparedPostText).not.toHaveBeenCalled();
+    });
+
+    it('treats a concurrent "already has text" conflict as filled-in, not a failure -- never overwrites what was just written', async () => {
+      mockFindTelegramPostBySlot.mockResolvedValueOnce(null).mockResolvedValue(draftPost({ id: 99, status: 'sent' }));
+      mockLoadAutopostFacts.mockResolvedValue(OK_FACTS);
+      // Simulates another admin action filling the text in between this function's own
+      // read (null) and generateSlotText's resolveOrCreateSlot call.
+      mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 1, status: 'draft', text: 'Вже хтось написав', mediaUrl: null }));
+      mockEnsureAutopostImage.mockResolvedValue('https://x/img.png');
+      mockGetTelegramPost.mockResolvedValue(draftPost({ id: 1, mediaUrl: 'https://x/img.png' }));
+
+      const report = await prepareContentPlanDay(PLAIN_CIVIL_DATE);
+
+      expect(report.results[0]).toEqual({ contentType: 'morning_prayer', result: 'prepared' });
+      expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
+      expect(mockSetPreparedPostText).not.toHaveBeenCalled();
+      expect(mockEnsureAutopostImage).toHaveBeenCalledTimes(1);
+    });
+
+    it('never calls Telegram, regardless of outcome mix -- content-plan-actions.ts has no Telegram-sending import at all', () => {
+      const source = readFileSync(join(__dirname, 'content-plan-actions.ts'), 'utf8');
+      expect(source).not.toMatch(/sendAutopostMessage|client\.sendMessage|client\.sendPhoto/);
     });
   });
 });

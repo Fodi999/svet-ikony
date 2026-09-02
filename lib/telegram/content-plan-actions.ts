@@ -2,6 +2,7 @@ import { generateTelegramPost } from '@/lib/ai/openai';
 import { ApiError } from '@/lib/d1/errors';
 import { getTelegramPost, type TelegramPostDto } from '@/lib/d1/repositories/telegram';
 import {
+  AUTOPOST_CONTENT_TYPES,
   findOrCreatePreparedSlot,
   findTelegramPostBySlot,
   isAutopostContentType,
@@ -300,4 +301,203 @@ export async function markSlotUnready(civilDateIso: string, contentTypeInput: st
   const updated = await setAutopostSlotUnready(post.id);
   if (!updated) throw ApiError.conflict('slot is not currently ready');
   return updated;
+}
+
+// ---------------------------------------------------------------------------
+// "Підготувати весь день" -- orchestration over the actions above.
+// ---------------------------------------------------------------------------
+
+export type PrepareDaySlotOutcome =
+  | 'prepared'
+  | 'already_prepared'
+  | 'skipped_ready'
+  | 'skipped_sent'
+  | 'skipped_sending'
+  | 'missing_source'
+  | 'review_required'
+  | 'image_failed'
+  | 'failed';
+
+export type PrepareDaySlotResult = { contentType: AutopostContentType; result: PrepareDaySlotOutcome; error?: string };
+
+export type PrepareDayReport = {
+  date: string;
+  total: number;
+  prepared: number;
+  alreadyPrepared: number;
+  skippedReady: number;
+  skippedSent: number;
+  skippedSending: number;
+  missingSource: number;
+  reviewRequired: number;
+  imageFailed: number;
+  failed: number;
+  results: PrepareDaySlotResult[];
+};
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'unknown error';
+}
+
+/** `generateSlotText`/`generateSlotImage` mark "no source"/"review required"
+ * with the same `(MISSING_SOURCE)`/`(REVIEW_REQUIRED)` markers their own
+ * tests already assert on (see content-plan-actions.test.ts) -- reused here
+ * rather than re-running loadAutopostFacts/verifySaintOfDay a second time,
+ * so this orchestration never re-implements source-loading or verification. */
+function classifySourceError(error: unknown): 'missing_source' | 'review_required' | null {
+  if (!(error instanceof ApiError)) return null;
+  const details = error.details ?? '';
+  if (details.includes('MISSING_SOURCE')) return 'missing_source';
+  if (details.includes('REVIEW_REQUIRED')) return 'review_required';
+  return null;
+}
+
+/** True when the error is generateSlotText/generateSlotImage's own "already
+ * has text/an image -- use regenerate" guard -- only reachable here via a
+ * genuine concurrent edit between this function's own read and its call, in
+ * which case the missing piece was in fact filled in by someone else and
+ * this is not a failure. */
+function isAlreadyPreparedConflict(error: unknown, marker: 'text' | 'an image'): boolean {
+  return error instanceof ApiError && error.code === 'CONFLICT' && (error.details ?? '').includes(`already has ${marker}`);
+}
+
+/** True when the error is `assertMutable`'s "already been sent" guard --
+ * reachable here only if the cron tick claimed/sent/started-sending this
+ * exact slot between this function's own status check and its call. Never
+ * a data-loss risk: assertMutable throws *before* any write, so the sent/
+ * sending row is never touched either way -- this only affects how the
+ * outcome is reported. */
+function isSentImmutableConflict(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'CONFLICT' && (error.details ?? '').includes('already been sent');
+}
+
+/**
+ * "Fill missing only" for one slot -- never overwrites text/an image that
+ * already exists (that is what the explicit single-slot Regenerate actions
+ * are for), never sends Telegram, never marks a slot ready. Reuses
+ * generateSlotText/generateSlotImage verbatim (which already own source
+ * loading, calendar verification, and image-safety) rather than
+ * reimplementing any of that here -- this function's only job is deciding,
+ * per slot, whether those actions should run at all.
+ */
+async function prepareSlot(civilDateIso: string, contentType: AutopostContentType): Promise<PrepareDaySlotResult> {
+  const existing = await findTelegramPostBySlot(contentType, civilDateIso);
+  if (existing?.status === 'sent') return { contentType, result: 'skipped_sent' };
+  if (existing?.status === 'sending') return { contentType, result: 'skipped_sending' };
+  if (existing?.status === 'ready') return { contentType, result: 'skipped_ready' };
+
+  const needsText = !existing?.text?.trim();
+  const needsImage = !existing?.mediaUrl;
+  if (!needsText && !needsImage) return { contentType, result: 'already_prepared' };
+
+  if (needsText) {
+    try {
+      await generateSlotText(civilDateIso, contentType);
+    } catch (error) {
+      const sourceIssue = classifySourceError(error);
+      if (sourceIssue) return { contentType, result: sourceIssue, error: error instanceof ApiError ? error.details : undefined };
+      if (isSentImmutableConflict(error)) {
+        const latest = await findTelegramPostBySlot(contentType, civilDateIso);
+        return { contentType, result: latest?.status === 'sending' ? 'skipped_sending' : 'skipped_sent' };
+      }
+      if (!isAlreadyPreparedConflict(error, 'text')) {
+        return { contentType, result: 'failed', error: errorMessage(error) };
+      }
+      // else: someone else already filled the text in moments ago -- fall through to the image step.
+    }
+  }
+
+  if (needsImage) {
+    try {
+      // generateSlotImage() itself never throws for a failed generation --
+      // ensureAutopostImage()'s own contract is "best-effort, records
+      // image_error and returns null, never throws" (see its doc comment),
+      // and generateSlotImage always returns the fresh row afterward
+      // regardless of that outcome. So the only reliable signal here is the
+      // returned row's own mediaUrl.
+      const updated = await generateSlotImage(civilDateIso, contentType);
+      if (!updated.mediaUrl) {
+        return { contentType, result: 'image_failed', error: updated.imageError ?? undefined };
+      }
+    } catch (error) {
+      const sourceIssue = classifySourceError(error);
+      if (sourceIssue) return { contentType, result: sourceIssue, error: error instanceof ApiError ? error.details : undefined };
+      if (isSentImmutableConflict(error)) {
+        const latest = await findTelegramPostBySlot(contentType, civilDateIso);
+        return { contentType, result: latest?.status === 'sending' ? 'skipped_sending' : 'skipped_sent' };
+      }
+      if (!isAlreadyPreparedConflict(error, 'an image')) {
+        return { contentType, result: 'failed', error: errorMessage(error) };
+      }
+      // else: someone else already added an image moments ago -- not a failure.
+    }
+  }
+
+  return { contentType, result: 'prepared' };
+}
+
+/**
+ * "Підготувати весь день" -- fills missing text/images for every slot of
+ * `civilDateIso` that can be prepared right now, in schedule order
+ * (07:00 → 20:00). Never touches a slot that is `sent`/`sending`/`ready`,
+ * never overwrites text or an image that already exists, never marks
+ * anything ready, and never calls Telegram (see prepareSlot() above). One
+ * slot's failure never stops the rest of the day -- processed sequentially
+ * (also keeping this from firing five concurrent OpenAI/image calls at
+ * once) and every outcome is collected before returning.
+ */
+export async function prepareContentPlanDay(civilDateIso: string): Promise<PrepareDayReport> {
+  const results: PrepareDaySlotResult[] = [];
+  for (const contentType of AUTOPOST_CONTENT_TYPES) {
+    results.push(await prepareSlot(civilDateIso, contentType));
+  }
+
+  const report: PrepareDayReport = {
+    date: civilDateIso,
+    total: results.length,
+    prepared: 0,
+    alreadyPrepared: 0,
+    skippedReady: 0,
+    skippedSent: 0,
+    skippedSending: 0,
+    missingSource: 0,
+    reviewRequired: 0,
+    imageFailed: 0,
+    failed: 0,
+    results,
+  };
+
+  for (const { result } of results) {
+    switch (result) {
+      case 'prepared':
+        report.prepared += 1;
+        break;
+      case 'already_prepared':
+        report.alreadyPrepared += 1;
+        break;
+      case 'skipped_ready':
+        report.skippedReady += 1;
+        break;
+      case 'skipped_sent':
+        report.skippedSent += 1;
+        break;
+      case 'skipped_sending':
+        report.skippedSending += 1;
+        break;
+      case 'missing_source':
+        report.missingSource += 1;
+        break;
+      case 'review_required':
+        report.reviewRequired += 1;
+        break;
+      case 'image_failed':
+        report.imageFailed += 1;
+        break;
+      case 'failed':
+        report.failed += 1;
+        break;
+    }
+  }
+
+  return report;
 }

@@ -349,7 +349,7 @@ describe('buildContentPlanDayDetail', () => {
     expect(report.days[0].slots.morning_prayer.publicationStatus).toBe('READY');
   });
 
-  it('maps a "sending" telegram_posts row (mid-flight autopost claim) to READY, not DRAFT', async () => {
+  it('maps a "sending" telegram_posts row (mid-flight autopost claim) to its own SENDING status, not READY/DRAFT', async () => {
     resetDefaults();
     mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
     mockListTelegramPosts.mockResolvedValue([
@@ -368,6 +368,6 @@ describe('buildContentPlanDayDetail', () => {
 
     const report = await buildContentPlan('2026-08-30', '2026-08-30');
 
-    expect(report.days[0].slots.morning_prayer.publicationStatus).toBe('READY');
+    expect(report.days[0].slots.morning_prayer.publicationStatus).toBe('SENDING');
   });
 });

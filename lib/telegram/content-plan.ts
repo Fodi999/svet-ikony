@@ -44,7 +44,7 @@ import { requiresCalendarVerification } from './pre-send-validator';
 
 export type ContentPlanSourceStatus = 'available' | 'missing_source' | 'insufficient_data';
 export type ContentPlanVerificationStatus = 'verified' | 'failed' | null;
-export type ContentPlanSlotStatus = 'SENT' | 'READY' | 'DRAFT' | 'SOURCE_READY' | 'MISSING_SOURCE' | 'REVIEW_REQUIRED' | 'FAILED';
+export type ContentPlanSlotStatus = 'SENT' | 'SENDING' | 'READY' | 'DRAFT' | 'SOURCE_READY' | 'MISSING_SOURCE' | 'REVIEW_REQUIRED' | 'FAILED';
 
 export type ContentPlanSlot = {
   contentType: AutopostContentType;
@@ -218,16 +218,19 @@ async function buildSlot(
     verificationStatus = post.verificationStatus === 'verified' || post.verificationStatus === 'failed' ? post.verificationStatus : null;
     if (post.status === 'sent') publicationStatus = 'SENT';
     else if (post.status === 'failed') publicationStatus = verificationStatus === 'failed' ? 'REVIEW_REQUIRED' : 'FAILED';
+    // 'sending' is the extremely short-lived state claimReadyAutopostSlot()
+    // puts a row in between its atomic claim and the send completing,
+    // within the same tick invocation -- unlikely to ever be observed here,
+    // but surfaced as its own bucket (Content Plan Stage 3A) so the admin
+    // never sees mutation buttons for a slot that may complete sending at
+    // any moment (see Day Drawer's SlotCard, which hides every action for
+    // SENDING exactly like it does for SENT).
+    else if (post.status === 'sending') publicationStatus = 'SENDING';
     // 'ready' (Content Plan Stage 2: an admin explicitly confirmed this
-    // slot's stored text/image are good to autopost) and 'sending' (the
-    // extremely short-lived state claimReadyAutopostSlot() puts a row in
-    // between its atomic claim and the send completing, within the same
-    // tick invocation -- unlikely to ever be observed here, but mapped
-    // deliberately rather than falling through to DRAFT, which would be
-    // misleading) both surface as the same READY bucket as a manually
-    // 'scheduled' post -- all three mean "this will go out without
-    // further admin action".
-    else if (post.status === 'scheduled' || post.status === 'ready' || post.status === 'sending') publicationStatus = 'READY';
+    // slot's stored text/image are good to autopost) and a manually
+    // 'scheduled' post both mean "this will go out without further admin
+    // action" and surface as the same READY bucket.
+    else if (post.status === 'scheduled' || post.status === 'ready') publicationStatus = 'READY';
     else publicationStatus = 'DRAFT';
   } else if (source.status !== 'available') {
     publicationStatus = 'MISSING_SOURCE';
@@ -307,6 +310,10 @@ function accumulate(summary: ContentPlanSummary, slot: ContentPlanSlot): void {
       summary.sent += 1;
       break;
     case 'READY':
+    // SENDING is folded into the same summary bucket as READY -- both mean
+    // "will go out without further admin action", and the state is too
+    // short-lived to warrant its own summary count.
+    case 'SENDING':
       summary.ready += 1;
       break;
     case 'DRAFT':

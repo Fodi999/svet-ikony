@@ -107,7 +107,11 @@ export const CONTENT_TYPE_FORMAT_HINTS: Record<AutopostContentType, string> = {
  * always generic atmosphere (church interior, candle, dawn light), never a
  * specific saint's likeness, so "no invented saint portraits" holds by
  * construction rather than by asking the model not to invent one. */
-const IMAGE_HOUSE_STYLE =
+/** Exported so lib/church/calendar-ai-actions.ts (the Church Calendar
+ * editor's AI image action) can build its own safe fallback prompt from the
+ * exact same house style, rather than a second, potentially-drifting copy
+ * of this safety-critical wording. */
+export const IMAGE_HOUSE_STYLE =
   'Єдиний фірмовий стиль проєкту "Світло Ікони". Православна атмосфера, реалістичний кінематографічний стиль, м’яке золоте світло, спокійні темні тони. ' +
   'Без будь-якого тексту, напису, літер, цифр, логотипів чи водяних знаків на зображенні. ' +
   'Без обличчя чи впізнаваної постаті конкретної людини, без портрета конкретного святого -- лише узагальнена атмосферна сцена.';

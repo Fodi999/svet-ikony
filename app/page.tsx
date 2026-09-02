@@ -37,10 +37,16 @@ export default async function HomePage({ searchParams }: { searchParams?: Promis
   const locale = await getRequestLocale();
   const year = normalizedYear(firstParam(params?.year));
   const month = normalizedMonth(firstParam(params?.month));
-  const [calendarDays, allPrayers] = await Promise.all([
+  const [allCalendarDays, allPrayers] = await Promise.all([
     listCalendarDays({ year, month }),
     listPrayers({ language: locale })
   ]);
+  // Public homepage — draft days (and any draft icon/prayer/article/gospel
+  // attached to a day) must never appear here; composeCalendarPages()
+  // itself already filters related entities, but the day list it's given
+  // has to be pre-filtered by the caller (see that function's own doc
+  // comment for why the split is at this boundary).
+  const calendarDays = allCalendarDays.filter((day) => day.status === 'published');
   const calendarPages = await composeCalendarPages(calendarDays, locale);
   const publicCalendarPages = calendarPages as unknown as PublicChurchContentPage[];
   const mapPrayer = (prayer: (typeof allPrayers)[number], icon?: (typeof calendarPages)[number]['icons'][number]) =>

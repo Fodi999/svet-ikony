@@ -61,11 +61,21 @@ describe('buildContentPlan', () => {
     expect(report.days.map((d) => d.civilDate)).toEqual(['2026-09-01', '2026-09-02', '2026-09-03']);
     for (const day of report.days) {
       expect(day.calendarTitle).toBeNull();
+      expect(day.calendarDayId).toBeNull();
       for (const slot of Object.values(day.slots)) {
         expect(slot.sourceStatus).toBe('missing_source');
         expect(slot.publicationStatus).toBe('MISSING_SOURCE');
       }
     }
+  });
+
+  it('includes calendarDayId (church_calendar_days.id) when a calendar day exists, for the admin Day Drawer\'s "Відкрити в Церковному календарі" link', async () => {
+    resetDefaults();
+    mockListCalendarDays.mockResolvedValue([{ id: 'cal-day-42', dateOldStyle: '2026-08-19', title: 'Тест' }]);
+
+    const report = await buildContentPlan('2026-09-01', '2026-09-01');
+
+    expect(report.days[0].calendarDayId).toBe('cal-day-42');
   });
 
   it('computes the Julian date via the real production conversion helper, never a hardcoded offset', async () => {

@@ -23,7 +23,9 @@ import {
   SectionHeadTitle
 } from '@/components/site/PageChrome';
 import { StableImage } from '@/components/site/StableImage';
-import { publicApi } from '@/lib/api';
+import { composeCalendarPages, type PublicChurchContentPage } from '@/lib/church-public/calendar-page';
+import { isValidPreview } from '@/lib/church-public/preview';
+import { listCalendarDays } from '@/lib/d1/repositories/calendarDays';
 import { resolveMediaUrl } from '@/lib/media/resolver';
 import { getRequestLocale } from '@/lib/serverLocale';
 import { jsonLd, pageMetadata } from '@/lib/seo';
@@ -45,16 +47,40 @@ function Paragraphs({ text }: { text?: string }) {
   );
 }
 
+/**
+ * Loads this page's data with a direct D1 repository call (same pattern
+ * app/page.tsx's homepage grid already uses) rather than the self-
+ * referencing HTTP fetch this page used to make (`publicApi.churchCalendarDay`
+ * -> `apiGet` -> `fetch(absoluteSiteUrl(...))`). That self-fetch depends on
+ * `SITE_URL` being correctly set and the Worker successfully reaching its
+ * own public origin on every single page render -- when it isn't (as found
+ * during the Content Plan Stage 3A architecture audit), the fetch throws,
+ * is silently swallowed by `apiGet`'s `catch { return fallback }`, and this
+ * page 404s even though `/api/church/calendar/:date` itself returns 200 for
+ * the same date. This removes that failure mode for this page entirely; the
+ * JSON API route stays as-is for its other callers (e.g. a future public
+ * client-side fetch), now with the same `status` gating applied below.
+ */
+async function loadCalendarDayContent(date: string, previewToken: string | undefined, language: string): Promise<PublicChurchContentPage | null> {
+  const preview = await isValidPreview(previewToken);
+  const allDays = await listCalendarDays({});
+  const day = allDays.find((item) => item.dateNewStyle === date || item.dateOldStyle === date);
+  if (!day || (day.status !== 'published' && !preview)) return null;
+
+  const [page] = await composeCalendarPages([day], language, { preview });
+  return page ?? null;
+}
+
 export async function generateMetadata({ params, searchParams }: Props) {
   const { date } = await params;
   const token = (await searchParams)?.preview_token;
   const locale = await getRequestLocale();
-  const content = await publicApi.churchCalendarDay(date, token, locale);
+  const content = await loadCalendarDayContent(date, token, locale);
   const day = content?.calendarDay;
   const image = resolveMediaUrl(day?.imageUrl) || content?.icons[0]?.imageUrl;
   return pageMetadata({
-    title: day?.title,
-    description: day?.description || day?.history?.replace(/\s+/g, ' ').trim().slice(0, 180),
+    title: day?.seoTitle || day?.title,
+    description: day?.seoDescription || day?.description || day?.history?.replace(/\s+/g, ' ').trim().slice(0, 180),
     path: `/church/calendar/${date}`,
     image,
     locale
@@ -65,7 +91,7 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
   const { date } = await params;
   const token = (await searchParams)?.preview_token;
   const locale = await getRequestLocale();
-  const content = await publicApi.churchCalendarDay(date, token, locale);
+  const content = await loadCalendarDayContent(date, token, locale);
 
   if (!content) notFound();
 

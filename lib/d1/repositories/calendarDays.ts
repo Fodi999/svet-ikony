@@ -22,6 +22,8 @@ type Row = {
   image_url: string;
   rank: number;
   status: string;
+  seo_title: string | null;
+  seo_description: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -42,6 +44,11 @@ export type ChurchCalendarDayDto = {
   imageUrl: string;
   rank: number;
   status: string;
+  /** Admin-curated SEO overrides (migration 0012) -- null means "not set",
+   * callers (the public day page's generateMetadata) fall back to
+   * title/description, same convention church_articles already uses. */
+  seoTitle: string | null;
+  seoDescription: string | null;
   isGlobal: boolean;
   createdAt: string;
   updatedAt: string;
@@ -60,6 +67,8 @@ export type ChurchCalendarDayPayload = Partial<{
   imageUrl: string;
   rank: number;
   status: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
   isGlobal: boolean;
 }>;
 
@@ -80,6 +89,8 @@ function toDto(row: Row): ChurchCalendarDayDto {
     imageUrl: row.image_url,
     rank: row.rank,
     status: row.status,
+    seoTitle: row.seo_title,
+    seoDescription: row.seo_description,
     isGlobal: IS_GLOBAL_DEFAULT,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -87,7 +98,7 @@ function toDto(row: Row): ChurchCalendarDayDto {
 }
 
 const COLUMNS =
-  'id, date_old_style, date_new_style, calendar_type, title, slug, language, translation_group_id, day_type, description, history, image_url, rank, status, created_at, updated_at';
+  'id, date_old_style, date_new_style, calendar_type, title, slug, language, translation_group_id, day_type, description, history, image_url, rank, status, seo_title, seo_description, created_at, updated_at';
 
 function filterByYearMonth(rows: ChurchCalendarDayDto[], year?: number, month?: number) {
   if (!year && !month) return rows;
@@ -128,8 +139,8 @@ export async function createCalendarDay(payload: ChurchCalendarDayPayload): Prom
   }
   const row = await d1First<Row>(
     `INSERT INTO church_calendar_days
-       (date_old_style, date_new_style, calendar_type, title, slug, language, day_type, description, history, image_url, rank, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (date_old_style, date_new_style, calendar_type, title, slug, language, day_type, description, history, image_url, rank, status, seo_title, seo_description)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      RETURNING ${COLUMNS}`,
     payload.dateOldStyle ?? null,
     payload.dateNewStyle ?? null,
@@ -142,7 +153,9 @@ export async function createCalendarDay(payload: ChurchCalendarDayPayload): Prom
     payload.history ?? '',
     payload.imageUrl ?? '',
     payload.rank ?? 0,
-    payload.status ?? 'draft'
+    payload.status ?? 'draft',
+    payload.seoTitle ?? null,
+    payload.seoDescription ?? null
   );
   return toDto(row!);
 }
@@ -152,7 +165,8 @@ export async function updateCalendarDay(id: string, payload: ChurchCalendarDayPa
   const row = await d1First<Row>(
     `UPDATE church_calendar_days SET
        date_old_style = ?, date_new_style = ?, calendar_type = ?, title = ?,
-       slug = ?, language = ?, day_type = ?, description = ?, history = ?, image_url = ?, rank = ?, status = ?
+       slug = ?, language = ?, day_type = ?, description = ?, history = ?, image_url = ?, rank = ?, status = ?,
+       seo_title = ?, seo_description = ?
      WHERE id = ?
      RETURNING ${COLUMNS}`,
     payload.dateOldStyle !== undefined ? payload.dateOldStyle : current.dateOldStyle,
@@ -167,6 +181,8 @@ export async function updateCalendarDay(id: string, payload: ChurchCalendarDayPa
     payload.imageUrl ?? current.imageUrl,
     payload.rank ?? current.rank,
     payload.status ?? current.status,
+    payload.seoTitle !== undefined ? payload.seoTitle : current.seoTitle,
+    payload.seoDescription !== undefined ? payload.seoDescription : current.seoDescription,
     id
   );
   return toDto(row!);

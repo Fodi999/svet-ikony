@@ -38,6 +38,8 @@ function calendarDay(overrides: Partial<ChurchCalendarDayDto> = {}): ChurchCalen
     imageUrl: '',
     rank: 0,
     status: 'published',
+    seoTitle: null,
+    seoDescription: null,
     isGlobal: false,
     createdAt: '',
     updatedAt: '',

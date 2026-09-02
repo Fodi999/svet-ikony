@@ -80,6 +80,12 @@ export type ContentPlanDay = {
   civilDate: string;
   julianDate: string;
   calendarTitle: string | null;
+  /** church_calendar_days.id for this Julian date, when a row exists --
+   * lets the admin Day Drawer link back to "Церковний календар" (the
+   * canonical source, see lib/church/calendar-ai-actions.ts) instead of
+   * ever letting Telegram content invent facts of its own. Null exactly
+   * when calendarTitle is null (no calendar day row for this date). */
+  calendarDayId: string | null;
   slots: Record<AutopostContentType, ContentPlanSlot>;
 };
 
@@ -354,7 +360,7 @@ export async function buildContentPlan(fromCivilDate: string, toCivilDate: strin
       accumulate(summary, slot);
     }
 
-    days.push({ civilDate: civilDateIso, julianDate: julianDateIso, calendarTitle: calendarDay?.title ?? null, slots });
+    days.push({ civilDate: civilDateIso, julianDate: julianDateIso, calendarTitle: calendarDay?.title ?? null, calendarDayId: calendarDay?.id ?? null, slots });
     summary.totalDays += 1;
   }
 
@@ -374,5 +380,5 @@ export async function buildContentPlanDayDetail(civilDateIso: string): Promise<C
     slots[contentType] = await buildSlot(data, contentType, civilDateIso, julianDateIso, calendarDay?.id, true);
   }
 
-  return { civilDate: civilDateIso, julianDate: julianDateIso, calendarTitle: calendarDay?.title ?? null, slots };
+  return { civilDate: civilDateIso, julianDate: julianDateIso, calendarTitle: calendarDay?.title ?? null, calendarDayId: calendarDay?.id ?? null, slots };
 }

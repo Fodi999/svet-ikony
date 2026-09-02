@@ -1,9 +1,15 @@
-import { generateChurchContent } from '@/lib/ai/church-content';
+import { describeSaintIconography, generateChurchContent } from '@/lib/ai/church-content';
 import { generateTelegramImage } from '@/lib/ai/openai-image';
 import { getMediaBucket } from '@/lib/d1/env';
 import { ApiError } from '@/lib/d1/errors';
-import { getCalendarDay, updateCalendarDay, type ChurchCalendarDayDto } from '@/lib/d1/repositories/calendarDays';
+import {
+  getCalendarDay,
+  updateCalendarDay,
+  type CalendarImageMetadata,
+  type ChurchCalendarDayDto,
+} from '@/lib/d1/repositories/calendarDays';
 import { listSaints, type ChurchSaintDto } from '@/lib/d1/repositories/saints';
+import { lookupVerifiedSaintReference } from '@/lib/church/saint-reference';
 import { IMAGE_HOUSE_STYLE } from '@/lib/telegram/content-format';
 import { getOpenAiConfig } from '@/lib/telegram/env';
 import { generateMediaKey } from '@/lib/media/keys';
@@ -27,11 +33,46 @@ import { verifySaintOfDay } from '@/lib/telegram/orthodox-calendar-verifier';
  *  - never calls Telegram, never touches telegram_posts.
  */
 
+/**
+ * LAST-RESORT fallback only (task: "generic fallback должен быть LAST
+ * RESORT") -- used exclusively when the day has no linked saint at all, or
+ * a linked saint's identity could not be reliably confirmed via Wikipedia
+ * (see lookupVerifiedSaintReference()). Brighter and more detailed than
+ * the near-black version this replaces (task: "сделать изображение светлее
+ * и визуально качественніше"), but still deliberately depicts no human
+ * figure at all -- unlike SAINT_ILLUSTRATION_STYLE below, which is only
+ * ever used once a specific identity has actually been verified.
+ */
 const CALENDAR_IMAGE_PROMPT =
-  `${IMAGE_HOUSE_STYLE} Сюжет: інтер'єр православного храму -- лампада, запалені свічки, ` +
-  'закрите Євангеліє на аналої, іконостас удалині у м’якому золотому світлі. ' +
+  `${IMAGE_HOUSE_STYLE} Сюжет: світлий, наповнений теплим денним світлом інтер'єр православного храму -- сонячне проміння через ` +
+  'вікна, начищена лампада, кілька запалених свічок з м’яким сяйвом, розгорнуте Євангеліє на аналої, деталізований іконостас ' +
+  'удалині у м’якому золотому світлі, чисті глибокі кольори. Високий рівень деталізації, кінематографічна якість. ' +
   'КАТЕГОРИЧНО ЗАБОРОНЕНО: не малювати портрет чи обличчя жодного конкретного святого, не створювати псевдоікону з іменем чи ' +
   'впізнаваними рисами конкретної людини -- лише узагальнена атмосфера храму, без жодної впізнаваної людської постаті.';
+
+/**
+ * Used ONLY after a specific saint identity has been positively verified
+ * (see lookupVerifiedSaintReference()) -- an explicit AI illustration, not
+ * a claim to be an icon (task: "AI результат НЕ називати 'канонічна
+ * ікона'"). `iconographyNotes` is either a vision-derived description of
+ * the verified Wikipedia reference image's characteristics (clothing,
+ * hair/beard, attributes) or, if that step failed/was unavailable, left
+ * empty -- in which case the model draws only on the saint's name and
+ * already-known local facts, still never a copy of any specific artwork.
+ */
+function buildSaintIllustrationPrompt(saintName: string, iconographyNotes: string | null): string {
+  const referenceLine = iconographyNotes
+    ? `Орієнтовні іконографічні риси цього святого (спирайся лише на це як на загальний орієнтир, не копіюй жодне конкретне зображення): ${iconographyNotes}. `
+    : '';
+  return (
+    `${IMAGE_HOUSE_STYLE} Це НОВА, самостійна ілюстрація святого на ім'я "${saintName}" у традиційній православній візуальній мові -- ` +
+    'шанобливий, реалістичний живописний стиль, детальне обличчя, природна шкіра, деталізоване вбрання, стримані золоті акценти, ' +
+    "м'яке храмове освітлення, висока деталізація, чиста композиція. Святий -- явний головний об'єкт зображення, погруддя або поясний портрет. " +
+    referenceLine +
+    'НЕ відтворюй рамку, напис, підпис, пошкодження, водяний знак чи музейну етикетку жодного конкретного історичного зображення -- ' +
+    'лише нова ілюстрація, натхненна загальною іконографічною традицією.'
+  );
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'unknown error';
@@ -181,12 +222,15 @@ export async function regenerateCalendarSeo(dayId: string): Promise<ChurchCalend
 }
 
 // ---------------------------------------------------------------------------
-// Image
+// Image -- priority chain (task section 2):
+//   1) existing verified local saint/icon image
+//   2) Wikipedia/Wikimedia identification + reference
+//   3) AI-generated saint illustration informed by that verified reference
+//   4) generic thematic fallback, ONLY when the saint can't be reliably
+//      identified -- last resort, never the default.
 // ---------------------------------------------------------------------------
 
-async function generateAndStoreImage(dayId: string): Promise<string> {
-  const openAi = await requireOpenAi();
-  const image = await generateTelegramImage({ apiKey: openAi.apiKey, model: openAi.imageModel, prompt: CALENDAR_IMAGE_PROMPT });
+async function storeGeneratedImage(dayId: string, image: { bytes: ArrayBuffer; mimeType: string }): Promise<string> {
   const key = generateMediaKey({ module: 'calendar', entityId: dayId, purpose: 'main', mimeType: image.mimeType });
   const bucket = await getMediaBucket();
   const putResult = await bucket.put(key, image.bytes, {
@@ -197,41 +241,118 @@ async function generateAndStoreImage(dayId: string): Promise<string> {
   return key;
 }
 
+type ResolvedImage = { imageUrl: string; imageMetadata: CalendarImageMetadata | null };
+
+/**
+ * Steps 2+3 of the priority chain: looks up and verifies a Wikipedia
+ * identity for `saint`, and if one is found, generates a NEW illustration
+ * informed by it (never a copy -- see buildSaintIllustrationPrompt's own
+ * doc comment). Falls back to the generic thematic image (step 4) the
+ * moment any part of this is uncertain: no saint at all, no reliable
+ * Wikipedia match, or the vision-description step failing -- this
+ * function never throws for those cases, only for the final image
+ * generation/upload actually failing outright.
+ *
+ * `existingReference` lets regenerateCalendarImage() reuse an
+ * already-verified identity without repeating the Wikipedia lookup (task:
+ * "Regenerate... не выполнять заново полный lookup без необходимости").
+ */
+async function resolveSaintIllustration(
+  dayId: string,
+  saint: ChurchSaintDto | null,
+  openAi: { apiKey: string; imageModel?: string; model?: string },
+  existingReference?: CalendarImageMetadata,
+): Promise<ResolvedImage> {
+  let reference = existingReference?.identityVerified && existingReference.referenceImageUrl ? existingReference : undefined;
+
+  if (!reference && saint) {
+    const lookup = await lookupVerifiedSaintReference({
+      name: saint.name,
+      knownFacts: `${saint.shortDescription} ${saint.biography}`,
+    });
+    if (lookup.status === 'verified') {
+      reference = {
+        origin: 'ai_generated',
+        referenceProvider: lookup.reference.sourceProvider,
+        referencePageUrl: lookup.reference.sourcePageUrl,
+        referenceImageUrl: lookup.reference.sourceImageUrl,
+        referenceTitle: lookup.reference.sourceTitle,
+        referenceAuthor: lookup.reference.sourceAuthor,
+        referenceLicense: lookup.reference.sourceLicense,
+        identityVerified: true,
+      };
+    }
+  }
+
+  if (reference && saint) {
+    const iconographyNotes = await describeSaintIconography({
+      apiKey: openAi.apiKey,
+      model: openAi.model,
+      imageUrl: reference.referenceImageUrl!,
+      saintName: saint.name,
+    }).catch(() => null);
+
+    const image = await generateTelegramImage({
+      apiKey: openAi.apiKey,
+      model: openAi.imageModel,
+      prompt: buildSaintIllustrationPrompt(saint.name, iconographyNotes),
+    });
+    const key = await storeGeneratedImage(dayId, image);
+    return { imageUrl: key, imageMetadata: reference };
+  }
+
+  const image = await generateTelegramImage({ apiKey: openAi.apiKey, model: openAi.imageModel, prompt: CALENDAR_IMAGE_PROMPT });
+  const key = await storeGeneratedImage(dayId, image);
+  return { imageUrl: key, imageMetadata: { origin: 'ai_generated', identityVerified: false } };
+}
+
 /** Priority order (task: "AI image safety"): 1) the linked saint's own
- * verified/source image, 2) a safe AI thematic fallback -- never a portrait
- * of a specific saint. A manually-picked Media Library image is handled by
- * the separate assignCalendarImage() action, not this one. */
+ * verified/source image (no AI, no Wikipedia lookup -- task section 9),
+ * 2-4) resolveSaintIllustration()'s own chain. A manually-picked Media
+ * Library image is handled by the separate assignCalendarImage() action,
+ * not this one. */
 export async function generateCalendarImage(dayId: string): Promise<ChurchCalendarDayDto> {
   const day = await getCalendarDay(dayId);
   if (day.imageUrl.trim()) throw ApiError.conflict('this day already has an image -- use regenerate to replace it');
 
   const saint = await loadLinkedSaint(dayId);
   if (saint?.imageUrl?.trim()) {
-    return updateCalendarDay(dayId, { imageUrl: saint.imageUrl });
+    return updateCalendarDay(dayId, { imageUrl: saint.imageUrl, imageMetadata: null });
   }
-  const key = await generateAndStoreImage(dayId);
-  return updateCalendarDay(dayId, { imageUrl: key });
+  const openAi = await requireOpenAi();
+  const { imageUrl, imageMetadata } = await resolveSaintIllustration(dayId, saint, openAi);
+  return updateCalendarDay(dayId, { imageUrl, imageMetadata });
 }
 
-/** Always attempts a fresh image; restores the previous one if generation
- * fails, mirroring content-plan-actions.ts's regenerateSlotImage(). */
+/** Always attempts a fresh image; restores the previous one (and its
+ * provenance metadata) if generation fails, mirroring
+ * content-plan-actions.ts's regenerateSlotImage(). Reuses an already-
+ * verified Wikipedia reference instead of re-querying it, per task
+ * section 12. */
 export async function regenerateCalendarImage(dayId: string): Promise<ChurchCalendarDayDto> {
   const day = await getCalendarDay(dayId);
   const previousImageUrl = day.imageUrl;
+  const previousImageMetadata = day.imageMetadata;
   try {
     const saint = await loadLinkedSaint(dayId);
-    const imageUrl = saint?.imageUrl?.trim() ? saint.imageUrl : await generateAndStoreImage(dayId);
-    return await updateCalendarDay(dayId, { imageUrl });
+    if (saint?.imageUrl?.trim()) {
+      return await updateCalendarDay(dayId, { imageUrl: saint.imageUrl, imageMetadata: null });
+    }
+    const openAi = await requireOpenAi();
+    const { imageUrl, imageMetadata } = await resolveSaintIllustration(dayId, saint, openAi, previousImageMetadata ?? undefined);
+    return await updateCalendarDay(dayId, { imageUrl, imageMetadata });
   } catch (error) {
-    if (previousImageUrl) return updateCalendarDay(dayId, { imageUrl: previousImageUrl });
+    if (previousImageUrl) return updateCalendarDay(dayId, { imageUrl: previousImageUrl, imageMetadata: previousImageMetadata });
     throw new ApiError(500, 'IMAGE_GENERATION_ERROR', 'Image generation failed', errorMessage(error));
   }
 }
 
 /** "Обрати з медіатеки" -- persists an already-uploaded R2 key/URL
- * directly, no AI call. */
+ * directly, no AI call. Clears any previous AI provenance metadata: this
+ * image is now a manual pick, and must never be displayed as AI-generated
+ * (task: "AI result marked AI-generated" -- the inverse must hold too). */
 export async function assignCalendarImage(dayId: string, imageUrl: string): Promise<ChurchCalendarDayDto> {
-  return updateCalendarDay(dayId, { imageUrl });
+  return updateCalendarDay(dayId, { imageUrl, imageMetadata: null });
 }
 
 // ---------------------------------------------------------------------------

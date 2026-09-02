@@ -1,0 +1,11 @@
+-- Additive only. Records where a Calendar Day's AI-generated image came
+-- from: a plain generic thematic fallback, or an AI illustration informed
+-- by a verified Wikipedia reference (see lib/church/saint-reference.ts and
+-- lib/church/calendar-ai-actions.ts). A single nullable JSON column rather
+-- than five separate ones -- this is read-only provenance for the admin UI
+-- (task: "Media tab" origin/reference display), never queried or filtered
+-- on, so there is no need for it to be relational. NULL means "no AI image
+-- has been generated yet, or the image was set manually/via Media Library"
+-- (task: "AI result marked AI-generated" -- an unset value must never be
+-- read as AI-generated).
+ALTER TABLE church_calendar_days ADD COLUMN image_metadata TEXT;

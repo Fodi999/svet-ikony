@@ -24,9 +24,38 @@ type Row = {
   status: string;
   seo_title: string | null;
   seo_description: string | null;
+  image_metadata: string | null;
   created_at: string;
   updated_at: string;
 };
+
+/** Provenance of church_calendar_days.image_url (migration 0013) -- purely
+ * informational for the admin's Media tab (task: "Media UI"), never
+ * queried/filtered on. `origin: 'ai_generated'` must only ever be set by
+ * calendar-ai-actions.ts's own generation code, right after a successful
+ * OpenAI call -- an unset/null value (manual upload, "Обрати з медіатеки")
+ * must never be displayed as AI-generated. `referenceImageUrl` is the
+ * Wikipedia image used as an AI generation INPUT, not a publishable asset
+ * in its own right -- see lib/church/saint-reference.ts's own doc comment. */
+export type CalendarImageMetadata = {
+  origin: 'ai_generated' | 'manual';
+  referenceProvider?: 'wikipedia';
+  referencePageUrl?: string;
+  referenceImageUrl?: string;
+  referenceTitle?: string;
+  referenceAuthor?: string;
+  referenceLicense?: string;
+  identityVerified: boolean;
+};
+
+function parseImageMetadata(raw: string | null): CalendarImageMetadata | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as CalendarImageMetadata;
+  } catch {
+    return null;
+  }
+}
 
 export type ChurchCalendarDayDto = {
   id: string;
@@ -49,6 +78,7 @@ export type ChurchCalendarDayDto = {
    * title/description, same convention church_articles already uses. */
   seoTitle: string | null;
   seoDescription: string | null;
+  imageMetadata: CalendarImageMetadata | null;
   isGlobal: boolean;
   createdAt: string;
   updatedAt: string;
@@ -69,6 +99,7 @@ export type ChurchCalendarDayPayload = Partial<{
   status: string;
   seoTitle: string | null;
   seoDescription: string | null;
+  imageMetadata: CalendarImageMetadata | null;
   isGlobal: boolean;
 }>;
 
@@ -91,6 +122,7 @@ function toDto(row: Row): ChurchCalendarDayDto {
     status: row.status,
     seoTitle: row.seo_title,
     seoDescription: row.seo_description,
+    imageMetadata: parseImageMetadata(row.image_metadata),
     isGlobal: IS_GLOBAL_DEFAULT,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -98,7 +130,7 @@ function toDto(row: Row): ChurchCalendarDayDto {
 }
 
 const COLUMNS =
-  'id, date_old_style, date_new_style, calendar_type, title, slug, language, translation_group_id, day_type, description, history, image_url, rank, status, seo_title, seo_description, created_at, updated_at';
+  'id, date_old_style, date_new_style, calendar_type, title, slug, language, translation_group_id, day_type, description, history, image_url, rank, status, seo_title, seo_description, image_metadata, created_at, updated_at';
 
 function filterByYearMonth(rows: ChurchCalendarDayDto[], year?: number, month?: number) {
   if (!year && !month) return rows;
@@ -139,8 +171,8 @@ export async function createCalendarDay(payload: ChurchCalendarDayPayload): Prom
   }
   const row = await d1First<Row>(
     `INSERT INTO church_calendar_days
-       (date_old_style, date_new_style, calendar_type, title, slug, language, day_type, description, history, image_url, rank, status, seo_title, seo_description)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (date_old_style, date_new_style, calendar_type, title, slug, language, day_type, description, history, image_url, rank, status, seo_title, seo_description, image_metadata)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      RETURNING ${COLUMNS}`,
     payload.dateOldStyle ?? null,
     payload.dateNewStyle ?? null,
@@ -155,7 +187,8 @@ export async function createCalendarDay(payload: ChurchCalendarDayPayload): Prom
     payload.rank ?? 0,
     payload.status ?? 'draft',
     payload.seoTitle ?? null,
-    payload.seoDescription ?? null
+    payload.seoDescription ?? null,
+    payload.imageMetadata ? JSON.stringify(payload.imageMetadata) : null
   );
   return toDto(row!);
 }
@@ -166,7 +199,7 @@ export async function updateCalendarDay(id: string, payload: ChurchCalendarDayPa
     `UPDATE church_calendar_days SET
        date_old_style = ?, date_new_style = ?, calendar_type = ?, title = ?,
        slug = ?, language = ?, day_type = ?, description = ?, history = ?, image_url = ?, rank = ?, status = ?,
-       seo_title = ?, seo_description = ?
+       seo_title = ?, seo_description = ?, image_metadata = ?
      WHERE id = ?
      RETURNING ${COLUMNS}`,
     payload.dateOldStyle !== undefined ? payload.dateOldStyle : current.dateOldStyle,
@@ -183,6 +216,13 @@ export async function updateCalendarDay(id: string, payload: ChurchCalendarDayPa
     payload.status ?? current.status,
     payload.seoTitle !== undefined ? payload.seoTitle : current.seoTitle,
     payload.seoDescription !== undefined ? payload.seoDescription : current.seoDescription,
+    payload.imageMetadata !== undefined
+      ? payload.imageMetadata
+        ? JSON.stringify(payload.imageMetadata)
+        : null
+      : current.imageMetadata
+        ? JSON.stringify(current.imageMetadata)
+        : null,
     id
   );
   return toDto(row!);

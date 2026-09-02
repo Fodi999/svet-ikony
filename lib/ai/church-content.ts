@@ -117,3 +117,94 @@ export async function generateChurchContent(input: GenerateChurchContentInput): 
   }
   return text;
 }
+
+const ICONOGRAPHY_SYSTEM_PROMPT = `Ти аналізуєш зображення з Вікіпедії, яке було ідентифіковане як історичне
+церковне зображення конкретного святого (ікона, фреска, мозаїка або
+мініатюра) -- ЛИШЕ для того, щоб описати його іконографічні риси словами
+для іншого художника, який намалює НОВУ, самостійну ілюстрацію.
+
+Опиши ЛИШЕ:
+- вбрання/одяг (колір, стиль, тип одягу -- священницьке, чернече, воїнське тощо);
+- волосся та борода (довжина, колір, форма);
+- приблизний вік зображеної людини;
+- традиційні атрибути в руках чи поруч (хрест, книга, сувій, меч тощо);
+- загальну позу чи жест, якщо це частина усталеної іконографії.
+
+НІКОЛИ не описуй і не згадуй:
+- рамку, оправу чи поле зображення;
+- написи, підписи, літери чи текст на зображенні;
+- пошкодження, тріщини, потемніння чи стан збереження;
+- водяні знаки чи музейні позначки;
+- точну композицію фону -- лише загальний тип сцени (храм, пейзаж тощо), без деталей.
+
+Не намагайся точно відтворити зображення словами -- лише кілька речень
+про характерні іконографічні риси. Якщо на зображенні не видно людської
+постаті або воно не є церковним зображенням, напиши рівно: "НЕПРИДАТНО".
+
+Поверни лише сам опис, українською мовою, без заголовків і пояснень.`;
+
+interface VisionChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+  error?: { message?: string };
+}
+
+export interface DescribeSaintIconographyInput {
+  apiKey: string;
+  model?: string;
+  imageUrl: string;
+  saintName: string;
+}
+
+/**
+ * Turns a verified Wikipedia reference IMAGE into a short TEXT description
+ * of iconographic characteristics only -- this is what lets the final
+ * image-generation prompt draw on "facial/iconographic characteristics
+ * where visible, clothing, beard/hair, age, traditional attributes"
+ * (task section 6) without ever copying the reference pixel-for-pixel, and
+ * without the frame/inscriptions/damage/watermark ever entering the
+ * generation prompt at all -- the system prompt above forbids describing
+ * them, so they structurally cannot leak through this text relay.
+ * Returns null (never throws) when the model reports the image unusable or
+ * the request fails -- callers must treat that exactly like "no reference
+ * available" and fall back accordingly.
+ */
+export async function describeSaintIconography(input: DescribeSaintIconographyInput): Promise<string | null> {
+  let response: Response;
+  try {
+    response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${input.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: input.model ?? DEFAULT_MODEL,
+        temperature: 0.2,
+        messages: [
+          { role: 'system', content: ICONOGRAPHY_SYSTEM_PROMPT },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: `Це історичне церковне зображення, ідентифіковане як "${input.saintName}".` },
+              { type: 'image_url', image_url: { url: input.imageUrl } },
+            ],
+          },
+        ],
+      }),
+    });
+  } catch {
+    return null;
+  }
+
+  let body: VisionChatCompletionResponse;
+  try {
+    body = await response.json();
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+
+  const text = body.choices?.[0]?.message?.content?.trim();
+  if (!text || text === 'НЕПРИДАТНО') return null;
+  return text;
+}

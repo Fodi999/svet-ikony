@@ -31,6 +31,7 @@ function day(overrides: Partial<ChurchCalendarDayDto> = {}): ChurchCalendarDayDt
     status: 'published',
     seoTitle: null,
     seoDescription: null,
+    imageMetadata: null,
     isGlobal: true,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',

@@ -14,3 +14,9 @@ tsconfig.tsbuildinfo
 # Postgres -> D1 data migration: real customer/order data, never committed
 scripts/d1-migration/export/
 scripts/d1-migration/import-sql/
+
+# Calendar content seed: seed.sql is a generated artifact (fresh UUIDs each
+# run of generate-sql.mjs) -- data.mjs (source content) and
+# generate-sql.mjs (the idempotent generator) are the real, reviewable
+# inputs kept in the repo.
+scripts/calendar-seed/seed.sql

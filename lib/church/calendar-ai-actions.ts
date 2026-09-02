@@ -264,6 +264,7 @@ async function resolveSaintIllustration(
   existingReference?: CalendarImageMetadata,
 ): Promise<ResolvedImage> {
   let reference = existingReference?.identityVerified && existingReference.referenceImageUrl ? existingReference : undefined;
+  let fallbackReason: string | undefined;
 
   if (!reference && saint) {
     const lookup = await lookupVerifiedSaintReference({
@@ -274,13 +275,20 @@ async function resolveSaintIllustration(
       reference = {
         origin: 'ai_generated',
         referenceProvider: lookup.reference.sourceProvider,
+        referenceLanguage: lookup.reference.sourceLanguage,
         referencePageUrl: lookup.reference.sourcePageUrl,
         referenceImageUrl: lookup.reference.sourceImageUrl,
         referenceTitle: lookup.reference.sourceTitle,
         referenceAuthor: lookup.reference.sourceAuthor,
         referenceLicense: lookup.reference.sourceLicense,
+        referenceAttribution: lookup.reference.sourceAttribution,
+        wikidataId: lookup.reference.wikidataId,
+        commonsFileTitle: lookup.reference.commonsFileTitle,
+        commonsCategory: lookup.reference.commonsCategory,
         identityVerified: true,
       };
+    } else {
+      fallbackReason = lookup.reason ?? lookup.status;
     }
   }
 
@@ -303,7 +311,7 @@ async function resolveSaintIllustration(
 
   const image = await generateTelegramImage({ apiKey: openAi.apiKey, model: openAi.imageModel, prompt: CALENDAR_IMAGE_PROMPT });
   const key = await storeGeneratedImage(dayId, image);
-  return { imageUrl: key, imageMetadata: { origin: 'ai_generated', identityVerified: false } };
+  return { imageUrl: key, imageMetadata: { origin: 'ai_generated', identityVerified: false, fallbackReason } };
 }
 
 /** Priority order (task: "AI image safety"): 1) the linked saint's own

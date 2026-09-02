@@ -306,9 +306,12 @@ describe('calendar-ai-actions', () => {
       expect(mockGenerateTelegramImage).toHaveBeenCalledWith(
         expect.objectContaining({ prompt: expect.stringContaining('без жодної впізнаваної людської постаті') }),
       );
+      // fallbackReason records WHY the generic fallback was used (task:
+      // "fallbackReason если fallback") -- defaults to the lookup status
+      // when the resolver didn't supply a more specific reason string.
       expect(mockUpdateCalendarDay).toHaveBeenCalledWith(
         'day-1',
-        expect.objectContaining({ imageMetadata: { origin: 'ai_generated', identityVerified: false } }),
+        expect.objectContaining({ imageMetadata: { origin: 'ai_generated', identityVerified: false, fallbackReason: 'not_found' } }),
       );
     });
 

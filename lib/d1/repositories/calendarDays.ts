@@ -34,24 +34,50 @@ type Row = {
  * queried/filtered on. `origin: 'ai_generated'` must only ever be set by
  * calendar-ai-actions.ts's own generation code, right after a successful
  * OpenAI call -- an unset/null value (manual upload, "Обрати з медіатеки")
- * must never be displayed as AI-generated. `referenceImageUrl` is the
- * Wikipedia image used as an AI generation INPUT, not a publishable asset
- * in its own right -- see lib/church/saint-reference.ts's own doc comment. */
+ * must never be displayed as AI-generated. `referenceImageUrl` is a
+ * Wikipedia/Commons image used as an AI generation INPUT, not a publishable
+ * asset in its own right -- see lib/church/saint-reference.ts's own doc
+ * comment. Fields beyond the original set (referenceLanguage, wikidataId,
+ * commonsFileTitle/Category, referenceAttribution, fallbackReason) were
+ * added by the general multi-provider resolver rewrite -- all additive and
+ * optional, so a pre-existing row's JSON (written by the earlier
+ * Wikipedia-only resolver) still parses correctly without them. */
 export type CalendarImageMetadata = {
   origin: 'ai_generated' | 'manual';
-  referenceProvider?: 'wikipedia';
+  referenceProvider?: 'wikipedia' | 'commons';
+  referenceLanguage?: 'uk' | 'ru' | 'en';
   referencePageUrl?: string;
   referenceImageUrl?: string;
   referenceTitle?: string;
   referenceAuthor?: string;
   referenceLicense?: string;
+  referenceAttribution?: string;
+  wikidataId?: string;
+  commonsFileTitle?: string;
+  commonsCategory?: string;
   identityVerified: boolean;
+  /** Why the generic fallback was used, when it was (e.g. 'not_found',
+   * 'ambiguous', 'network_error', or a more specific reason string from the
+   * resolver) -- absent when there was no saint to look up at all (a plain
+   * feast/event day), or when identityVerified is true. */
+  fallbackReason?: string;
 };
 
-function parseImageMetadata(raw: string | null): CalendarImageMetadata | null {
+/** Fail-safe: malformed JSON, a non-object value (e.g. a bare string or
+ * array from some pre-migration data shape), or an object missing the two
+ * fields every valid record must have all resolve to `null` (treated as
+ * "no metadata") rather than throwing or returning a half-formed value a
+ * caller might read fields off of unsafely (task: "malformed/null старый
+ * image_metadata -- parsing должен быть fail-safe"). */
+export function parseImageMetadata(raw: string | null): CalendarImageMetadata | null {
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as CalendarImageMetadata;
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    const candidate = parsed as Record<string, unknown>;
+    if (candidate.origin !== 'ai_generated' && candidate.origin !== 'manual') return null;
+    if (typeof candidate.identityVerified !== 'boolean') return null;
+    return candidate as CalendarImageMetadata;
   } catch {
     return null;
   }

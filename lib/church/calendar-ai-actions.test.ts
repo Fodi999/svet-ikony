@@ -48,6 +48,7 @@ const {
   generateCalendarDescription,
   generateCalendarHistory,
   generateCalendarImage,
+  generateCalendarImageFromPrompt,
   generateCalendarSeo,
   regenerateCalendarDescription,
   regenerateCalendarHistory,
@@ -490,6 +491,65 @@ describe('calendar-ai-actions', () => {
         imageUrl: 'media/calendar/day-1/main/picked.png',
         imageMetadata: null,
       });
+    });
+  });
+
+  describe('generateCalendarImageFromPrompt', () => {
+    it('generates directly from the given prompt, bypassing the saint-reference resolver entirely', async () => {
+      mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: '' }));
+
+      const result = await generateCalendarImageFromPrompt('day-1', 'Byzantine icon of a bearded martyr saint, golden halo');
+
+      expect(mockLookupVerifiedSaintReference).not.toHaveBeenCalled();
+      expect(mockGenerateTelegramImage).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: 'Byzantine icon of a bearded martyr saint, golden halo' }),
+      );
+      expect(mockUpdateCalendarDay).toHaveBeenCalledWith('day-1', {
+        imageUrl: expect.stringMatching(/^media\/calendar\/day-1\/main\//),
+        imageMetadata: { origin: 'ai_generated', identityVerified: false, customPrompt: 'Byzantine icon of a bearded martyr saint, golden halo' },
+      });
+      expect(result.imageMetadata).toEqual({
+        origin: 'ai_generated',
+        identityVerified: false,
+        customPrompt: 'Byzantine icon of a bearded martyr saint, golden halo',
+      });
+    });
+
+    it('sends the prompt to OpenAI verbatim, with no house-style prefix or rewriting', async () => {
+      mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: '' }));
+      await generateCalendarImageFromPrompt('day-1', '  A simple test prompt.  ');
+      expect(mockGenerateTelegramImage).toHaveBeenCalledWith(expect.objectContaining({ prompt: 'A simple test prompt.' }));
+    });
+
+    it('rejects an empty or whitespace-only prompt without calling OpenAI', async () => {
+      mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: '' }));
+      await expectRejectionDetails(generateCalendarImageFromPrompt('day-1', '   '), /prompt is required/);
+      expect(mockGenerateTelegramImage).not.toHaveBeenCalled();
+    });
+
+    it('always overwrites an existing image -- no "already has an image" guard, unlike generateCalendarImage', async () => {
+      mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: 'media/calendar/day-1/main/existing.png' }));
+      await generateCalendarImageFromPrompt('day-1', 'New custom prompt');
+      expect(mockGenerateTelegramImage).toHaveBeenCalled();
+    });
+
+    it('restores the previous image and its provenance metadata when generation fails', async () => {
+      const existingMetadata = { origin: 'ai_generated' as const, identityVerified: true, referenceProvider: 'wikipedia' as const };
+      mockGetCalendarDay.mockResolvedValue(
+        calendarDay({ imageUrl: 'media/calendar/day-1/main/old.png', imageMetadata: existingMetadata }),
+      );
+      mockGenerateTelegramImage.mockRejectedValue(new Error('OpenAI quota exceeded'));
+
+      const result = await generateCalendarImageFromPrompt('day-1', 'A prompt that will fail');
+
+      expect(result.imageUrl).toBe('media/calendar/day-1/main/old.png');
+      expect(result.imageMetadata).toEqual(existingMetadata);
+    });
+
+    it('does not require a linked saint at all -- works for a plain feast/event day', async () => {
+      mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: '' }));
+      mockListSaints.mockResolvedValue([]);
+      await expect(generateCalendarImageFromPrompt('day-1', 'A generic feast scene')).resolves.toBeDefined();
     });
   });
 

@@ -263,8 +263,10 @@ async function resolveSaintIllustration(
   openAi: { apiKey: string; imageModel?: string; model?: string },
   existingReference?: CalendarImageMetadata,
 ): Promise<ResolvedImage> {
-  let reference = existingReference?.identityVerified && existingReference.referenceImageUrl ? existingReference : undefined;
+  const reused = existingReference?.identityVerified && existingReference.referenceImageUrl ? existingReference : undefined;
+  let reference = reused;
   let fallbackReason: string | undefined;
+  let referenceSource: 'reused' | 'lookup' | 'none' = reused ? 'reused' : 'none';
 
   if (!reference && saint) {
     const lookup = await lookupVerifiedSaintReference({
@@ -287,10 +289,20 @@ async function resolveSaintIllustration(
         commonsCategory: lookup.reference.commonsCategory,
         identityVerified: true,
       };
+      referenceSource = 'lookup';
     } else {
       fallbackReason = lookup.reason ?? lookup.status;
     }
   }
+
+  /** One line per image resolution, correlating this specific calendar day
+   * with the resolver's own [saint-reference] trace log above -- answers
+   * "which day used which chain" without cross-referencing timestamps by
+   * hand (task: "лог который отследит генерацию фото и поймём какая
+   * цепочка работает правильно или нет"). */
+  console.log(
+    `[calendar-image] day=${dayId} saint="${saint?.name ?? ''}" source=${referenceSource} provider=${reference?.referenceProvider ?? ''} language=${reference?.referenceLanguage ?? ''} wikidataId=${reference?.wikidataId ?? ''} identityVerified=${Boolean(reference?.identityVerified)} fallbackReason="${fallbackReason ?? ''}"`,
+  );
 
   if (reference && saint) {
     const iconographyNotes = await describeSaintIconography({
@@ -349,6 +361,43 @@ export async function regenerateCalendarImage(dayId: string): Promise<ChurchCale
     const openAi = await requireOpenAi();
     const { imageUrl, imageMetadata } = await resolveSaintIllustration(dayId, saint, openAi, previousImageMetadata ?? undefined);
     return await updateCalendarDay(dayId, { imageUrl, imageMetadata });
+  } catch (error) {
+    if (previousImageUrl) return updateCalendarDay(dayId, { imageUrl: previousImageUrl, imageMetadata: previousImageMetadata });
+    throw new ApiError(500, 'IMAGE_GENERATION_ERROR', 'Image generation failed', errorMessage(error));
+  }
+}
+
+/**
+ * Admin-authored English prompt, bypassing lookupVerifiedSaintReference()
+ * entirely -- an explicit escape hatch for exactly the case the automatic
+ * chain exists to handle conservatively: when the resolver can't (yet)
+ * find a reliable reference for a given saint, the admin can still get a
+ * specific illustration by describing it directly (Media tab "Промпт для
+ * AI"), instead of being stuck with the generic thematic fallback. Sent to
+ * OpenAI verbatim, with no house-style prefix or other rewriting -- typing
+ * a prompt is a deliberate, explicit request for exactly that image, the
+ * same trust boundary "Обрати з медіатеки" already extends to admin input.
+ * Always overwrites any existing image (like regenerate*, not generate*):
+ * typing a new prompt and clicking this action is itself the explicit
+ * intent to replace whatever is there, so there is no separate
+ * "already has an image" guard to bypass.
+ */
+export async function generateCalendarImageFromPrompt(dayId: string, prompt: string): Promise<ChurchCalendarDayDto> {
+  const trimmed = prompt.trim();
+  if (!trimmed) throw ApiError.validation('prompt is required');
+
+  const day = await getCalendarDay(dayId);
+  const previousImageUrl = day.imageUrl;
+  const previousImageMetadata = day.imageMetadata;
+  const openAi = await requireOpenAi();
+  try {
+    const image = await generateTelegramImage({ apiKey: openAi.apiKey, model: openAi.imageModel, prompt: trimmed });
+    const key = await storeGeneratedImage(dayId, image);
+    console.log(`[calendar-image] day=${dayId} source=custom_prompt`);
+    return await updateCalendarDay(dayId, {
+      imageUrl: key,
+      imageMetadata: { origin: 'ai_generated', identityVerified: false, customPrompt: trimmed },
+    });
   } catch (error) {
     if (previousImageUrl) return updateCalendarDay(dayId, { imageUrl: previousImageUrl, imageMetadata: previousImageMetadata });
     throw new ApiError(500, 'IMAGE_GENERATION_ERROR', 'Image generation failed', errorMessage(error));

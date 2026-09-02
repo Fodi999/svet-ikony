@@ -61,6 +61,13 @@ export type CalendarImageMetadata = {
    * resolver) -- absent when there was no saint to look up at all (a plain
    * feast/event day), or when identityVerified is true. */
   fallbackReason?: string;
+  /** Set when the admin typed their own English prompt (Media tab
+   * "Промпт для AI") instead of relying on the automatic saint-reference
+   * resolver -- see generateCalendarImageFromPrompt() in
+   * calendar-ai-actions.ts. Its mere presence is the signal this image came
+   * from a manual prompt, not the resolver chain; identityVerified stays
+   * false and referenceProvider stays unset for this path. */
+  customPrompt?: string;
 };
 
 /** Fail-safe: malformed JSON, a non-object value (e.g. a bare string or

@@ -53,18 +53,31 @@ async function resolveVerifiedImageUrl(raw: string): Promise<string | null> {
  * a text-only send -- never throws, so a failure here can never prevent
  * the text from still being published. */
 export async function ensureAutopostImage(input: EnsureAutopostImageInput): Promise<string | null> {
-  if (input.existingMediaUrl) return input.existingMediaUrl;
+  if (input.existingMediaUrl) {
+    console.log(`[telegram-image] post=${input.postId} type=${input.contentType} source=existing`);
+    return input.existingMediaUrl;
+  }
 
   if (input.verifiedImageUrl) {
     const mediaUrl = await resolveVerifiedImageUrl(input.verifiedImageUrl);
     if (mediaUrl) {
       await setAutopostImageResult(input.postId, mediaUrl, null);
+      console.log(`[telegram-image] post=${input.postId} type=${input.contentType} source=verified_saint_image`);
       return mediaUrl;
     }
     // Falls through to AI generation only if the stored value couldn't be
     // resolved to anything usable (e.g. empty after trimming upstream).
   }
 
+  /** Deliberately generic (see this file's own top comment) -- unlike
+   * calendar-ai-actions.ts's resolveSaintIllustration(), this path never
+   * consults church_calendar_days.image_url/image_metadata (the Wikipedia/
+   * Wikidata/Commons-verified illustration Calendar may have already
+   * generated for the same saint today), so this log line will show
+   * source=ai_generic_fallback even when Calendar's own log for the same
+   * day shows a verified reference -- exactly the "no reuse between
+   * Calendar and Telegram" gap flagged in the architecture audit, made
+   * visible here instead of only in a manual investigation. */
   try {
     const prompt = CONTENT_TYPE_IMAGE_PROMPTS[input.contentType];
     const image = await generateTelegramImage({ apiKey: input.apiKey, model: input.imageModel, prompt });
@@ -81,9 +94,12 @@ export async function ensureAutopostImage(input: EnsureAutopostImageInput): Prom
 
     const mediaUrl = await absoluteSiteUrl(`/${key}`);
     await setAutopostImageResult(input.postId, mediaUrl, null);
+    console.log(`[telegram-image] post=${input.postId} type=${input.contentType} source=ai_generic_fallback`);
     return mediaUrl;
   } catch (error) {
-    await setAutopostImageResult(input.postId, null, errorMessage(error));
+    const message = errorMessage(error);
+    await setAutopostImageResult(input.postId, null, message);
+    console.log(`[telegram-image] post=${input.postId} type=${input.contentType} source=failed error="${message}"`);
     return null;
   }
 }

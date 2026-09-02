@@ -745,9 +745,36 @@ async function tryCommonsUpgrade(verifiedTitle: string, commonsCategory: string 
  * callers can fall back to the generic thematic image without special-
  * casing errors.
  */
+/**
+ * One structured log line per lookup, emitted right before every return
+ * point below -- the exact diagnostic this was missing when the toponym-
+ * adjective bug shipped: without it, confirming "which provider actually
+ * fired, and why the chain ended where it did" required manually curling
+ * each API by hand instead of reading `wrangler tail`. `chain` records
+ * each provider attempted, in order, as `provider:outcome` (e.g.
+ * `uk:not_found,ru:not_found,wikidata:verified`), so a single line answers
+ * "did it even try Wikidata?" / "did Commons upgrade the image or was it
+ * skipped?" without needing to reproduce the call locally.
+ */
+function logResolution(originalName: string, coreName: string, chain: string[], result: SaintLookupResult): void {
+  const status = result.status;
+  const reason = status !== 'verified' ? (result.reason ?? '') : '';
+  const provider = status === 'verified' ? result.reference.sourceProvider : '';
+  const language = status === 'verified' ? (result.reference.sourceLanguage ?? '') : '';
+  const wikidataId = status === 'verified' ? (result.reference.wikidataId ?? '') : '';
+  console.log(
+    `[saint-reference] name="${originalName}" core="${coreName}" chain=[${chain.join(',')}] result=${status} provider=${provider} language=${language} wikidataId=${wikidataId} reason="${reason}"`,
+  );
+}
+
 export async function lookupVerifiedSaintReference(query: SaintIdentityQuery): Promise<SaintLookupResult> {
+  const chain: string[] = [];
   const coreName = stripRolePrefixes(query.name);
-  if (!coreName) return { status: 'not_found', reason: 'empty name after stripping role prefixes' };
+  if (!coreName) {
+    const result: SaintLookupResult = { status: 'not_found', reason: 'empty name after stripping role prefixes' };
+    logResolution(query.name, coreName, chain, result);
+    return result;
+  }
 
   let sawAmbiguous = false;
   let sawNetworkError = false;
@@ -755,6 +782,7 @@ export async function lookupVerifiedSaintReference(query: SaintIdentityQuery): P
 
   for (const language of ['uk', 'ru'] as const) {
     const outcome = await searchAndVerifyOnWikipedia(language, coreName, query.knownFacts);
+    chain.push(`${language}:${outcome.outcome}`);
     if (outcome.outcome === 'verified') {
       verified = outcome;
       break;
@@ -765,6 +793,7 @@ export async function lookupVerifiedSaintReference(query: SaintIdentityQuery): P
 
   if (!verified) {
     const wikidataOutcome = await tryWikidataIdentity(coreName, query.knownFacts).catch(() => ({ outcome: 'network_error' as const }));
+    chain.push(`wikidata:${wikidataOutcome.outcome}`);
     if (wikidataOutcome.outcome === 'verified') {
       verified = wikidataOutcome;
     } else if (wikidataOutcome.outcome === 'network_error') {
@@ -773,13 +802,20 @@ export async function lookupVerifiedSaintReference(query: SaintIdentityQuery): P
   }
 
   if (!verified) {
-    if (sawAmbiguous) return { status: 'ambiguous', reason: 'a candidate was found but rejected by identity verification' };
-    if (sawNetworkError) return { status: 'network_error', reason: 'one or more identity providers were unreachable' };
-    return { status: 'not_found', reason: 'no provider (uk/ru wikipedia, wikidata sitelinks) returned a verifiable identity' };
+    let result: SaintLookupResult;
+    if (sawAmbiguous) result = { status: 'ambiguous', reason: 'a candidate was found but rejected by identity verification' };
+    else if (sawNetworkError) result = { status: 'network_error', reason: 'one or more identity providers were unreachable' };
+    else result = { status: 'not_found', reason: 'no provider (uk/ru wikipedia, wikidata sitelinks) returned a verifiable identity' };
+    logResolution(query.name, coreName, chain, result);
+    return result;
   }
 
   const sourceImageUrl = verified.summary.originalimage?.source || verified.summary.thumbnail?.source;
-  if (!sourceImageUrl) return { status: 'not_found', reason: 'verified identity has no usable image on any resolved provider' };
+  if (!sourceImageUrl) {
+    const result: SaintLookupResult = { status: 'not_found', reason: 'verified identity has no usable image on any resolved provider' };
+    logResolution(query.name, coreName, chain, result);
+    return result;
+  }
 
   const qid = verified.qid ?? verified.summary.wikibase_item;
   let commonsCategory = verified.commonsCategory;
@@ -798,9 +834,12 @@ export async function lookupVerifiedSaintReference(query: SaintIdentityQuery): P
   };
 
   const commonsUpgrade = await tryCommonsUpgrade(reference.sourceTitle, commonsCategory).catch(() => null);
+  chain.push(commonsUpgrade ? 'commons:upgraded' : 'commons:kept_wikipedia_image');
   if (commonsUpgrade) {
     reference = { ...reference, sourceProvider: 'commons', ...commonsUpgrade };
   }
 
-  return { status: 'verified', reference };
+  const result: SaintLookupResult = { status: 'verified', reference };
+  logResolution(query.name, coreName, chain, result);
+  return result;
 }

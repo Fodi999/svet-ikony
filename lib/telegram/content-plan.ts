@@ -5,6 +5,8 @@ import { listPrayers } from '@/lib/d1/repositories/prayers';
 import { listSaints } from '@/lib/d1/repositories/saints';
 import { listTelegramPosts, type TelegramPostDto } from '@/lib/d1/repositories/telegram';
 import { AUTOPOST_CONTENT_TYPES, getAutopostSettings, type AutopostContentType } from '@/lib/d1/repositories/telegram-autopost';
+import { CONTENT_TYPE_LINKED_CAPTIONS } from './content-format';
+import { planDelivery, type DeliveryPlan } from './deliver-post';
 import { gregorianToJulianCalendarDate } from './julian-calendar';
 import { verifySaintOfDay } from './orthodox-calendar-verifier';
 import { requiresCalendarVerification } from './pre-send-validator';
@@ -29,6 +31,15 @@ import { requiresCalendarVerification } from './pre-send-validator';
  * reusing loadAutopostFacts() directly, since that function re-queries
  * listCalendarDays() on every single call -- fine for one slot at tick
  * time, ruinous for 365 days here.
+ *
+ * The Telegram delivery preview (buildContentPlanDayDetail's
+ * `deliveryPreview`) imports `planDelivery` from deliver-post.ts -- a
+ * pure, side-effect-free function -- rather than reimplementing its
+ * caption-length threshold. That module also exports `sendAutopostMessage`
+ * (which does call Telegram), but this file never references it; its only
+ * `TelegramClient` reference anywhere is a type-only import (erased at
+ * compile time), so this module still never gains any actual capability
+ * to send anything.
  */
 
 export type ContentPlanSourceStatus = 'available' | 'missing_source' | 'insufficient_data';
@@ -53,6 +64,16 @@ export type ContentPlanSlot = {
    * для всего года"). */
   textPreview?: string;
   imageUrl?: string;
+  /** Untruncated current text -- unlike textPreview (always capped at 200
+   * chars, kept for the smaller display use case), this is what an editor
+   * needs to actually show/edit the real content. */
+  fullText?: string;
+  /** What production delivery would actually do with the current text +
+   * image, computed via the real planDelivery() -- never a reimplemented
+   * approximation. `photoCaption` is the fixed linked caption for a
+   * photo_then_text plan, or null for the other two kinds (no caption
+   * needed, or the full text itself becomes sendPhoto's caption). */
+  deliveryPreview?: { kind: DeliveryPlan['kind']; photoCaption: string | null };
 };
 
 export type ContentPlanDay = {
@@ -197,7 +218,16 @@ async function buildSlot(
     verificationStatus = post.verificationStatus === 'verified' || post.verificationStatus === 'failed' ? post.verificationStatus : null;
     if (post.status === 'sent') publicationStatus = 'SENT';
     else if (post.status === 'failed') publicationStatus = verificationStatus === 'failed' ? 'REVIEW_REQUIRED' : 'FAILED';
-    else if (post.status === 'scheduled') publicationStatus = 'READY';
+    // 'ready' (Content Plan Stage 2: an admin explicitly confirmed this
+    // slot's stored text/image are good to autopost) and 'sending' (the
+    // extremely short-lived state claimReadyAutopostSlot() puts a row in
+    // between its atomic claim and the send completing, within the same
+    // tick invocation -- unlikely to ever be observed here, but mapped
+    // deliberately rather than falling through to DRAFT, which would be
+    // misleading) both surface as the same READY bucket as a manually
+    // 'scheduled' post -- all three mean "this will go out without
+    // further admin action".
+    else if (post.status === 'scheduled' || post.status === 'ready' || post.status === 'sending') publicationStatus = 'READY';
     else publicationStatus = 'DRAFT';
   } else if (source.status !== 'available') {
     publicationStatus = 'MISSING_SOURCE';
@@ -223,10 +253,21 @@ async function buildSlot(
   };
 
   if (withPreview) {
-    const previewText = post?.text?.trim() || source.text?.trim();
-    if (previewText) slot.textPreview = previewText.slice(0, 200);
+    const fullText = post?.text?.trim() || source.text?.trim();
+    if (fullText) {
+      slot.textPreview = fullText.slice(0, 200);
+      slot.fullText = fullText;
+    }
     const previewImage = post?.mediaUrl || source.imageUrl;
     if (previewImage) slot.imageUrl = previewImage;
+
+    if (fullText) {
+      const plan = planDelivery(fullText, previewImage ?? null);
+      slot.deliveryPreview = {
+        kind: plan.kind,
+        photoCaption: plan.kind === 'photo_then_text' ? CONTENT_TYPE_LINKED_CAPTIONS[contentType] : null,
+      };
+    }
   }
 
   return slot;

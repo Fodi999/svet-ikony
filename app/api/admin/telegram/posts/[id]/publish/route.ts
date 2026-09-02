@@ -156,8 +156,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const postId = parsePostId(id);
 
     let post = await getTelegramPost(postId);
-    if (post.status === 'sent') {
-      throw ApiError.conflict('telegram post has already been sent');
+    if (post.status === 'sent' || post.status === 'sending') {
+      // 'sending' is the short-lived state a Content Plan "ready" slot
+      // occupies between the autopost tick's atomic claim
+      // (claimReadyAutopostSlot) and its send completing -- blocking a
+      // manual retry here too closes the only race that new state
+      // introduces (a retry click landing mid-tick-send). See
+      // lib/telegram/autopost.ts and lib/telegram/content-plan-actions.ts.
+      throw ApiError.conflict('telegram post has already been sent or is currently being sent');
     }
 
     const config = await getTelegramConfig();

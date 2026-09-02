@@ -98,22 +98,151 @@ export type ClaimAutopostSlotInput = {
 
 /**
  * Atomic claim on (publish_date, content_type) — migration 0008's partial
- * unique index. Returns the newly-created draft row when this call won the
- * claim, or `null` when a row for that slot+day already exists (an earlier
- * tick today, whether it went on to succeed or fail). Callers must not call
- * OpenAI/Telegram unless this returns non-null.
+ * unique index. Returns the row this call won the claim on (either a
+ * fresh insert, or an existing but still-`draft` row reclaimed for a
+ * retry — see below), or `null` when the slot is already occupied by a
+ * row this call must not touch (`sent`/`failed`/`ready`/`sending`).
+ * Callers must not call OpenAI/Telegram unless this returns non-null.
+ *
+ * The `DO UPDATE ... WHERE telegram_posts.status = 'draft'` branch exists
+ * for Content Plan Stage 2: an admin's "generate text"/"save draft" action
+ * (see content-plan-actions.ts's findOrCreatePreparedSlot) can leave a
+ * `draft` row sitting in this slot before it's ever marked `ready`. Without
+ * this branch, this INSERT would conflict on that row, return nothing, and
+ * the tick would log `skipped_already_claimed` forever — an abandoned
+ * draft would silently block autonomous publishing for that slot with
+ * nothing ever sent. Reclaiming it (refreshing the chat/source columns and
+ * letting the existing generation flow run against it) is a strict
+ * superset of the old behavior: a `sent`/`failed`/`ready`/`sending`
+ * conflict still falls through the `WHERE` unmatched, which SQLite treats
+ * as `DO NOTHING` — `null` returned, identical to before this change.
+ * `ready`/`sending` slots are handled separately and first by
+ * claimReadyAutopostSlot(), which is always tried before this function.
  */
 export async function claimAutopostSlot(input: ClaimAutopostSlotInput): Promise<TelegramPostDto | null> {
   const row = await d1First<PostRow>(
     `INSERT INTO telegram_posts (telegram_chat_id, source_type, source_id, status, content_type, publish_date)
      VALUES (?, ?, ?, 'draft', ?, ?)
-     ON CONFLICT(publish_date, content_type) WHERE content_type IS NOT NULL DO NOTHING
+     ON CONFLICT(publish_date, content_type) WHERE content_type IS NOT NULL
+     DO UPDATE SET telegram_chat_id = excluded.telegram_chat_id, source_type = excluded.source_type,
+                   source_id = excluded.source_id, updated_at = CURRENT_TIMESTAMP
+     WHERE telegram_posts.status = 'draft'
      RETURNING ${POST_COLUMNS}`,
     input.channelChatId,
     input.sourceType ?? null,
     input.sourceId ?? null,
     input.contentType,
     input.publishDate
+  );
+  return row ? toPostDto(row) : null;
+}
+
+/**
+ * Content Plan Stage 2's "use the prepared slot" fast path: atomically
+ * transitions an admin-confirmed `ready` row to `sending` so exactly one
+ * caller (this tick, not a second overlapping one, not a concurrent
+ * manual retry) proceeds to actually call Telegram for it. Returns `null`
+ * when no `ready` row exists for this slot (nothing prepared -- the
+ * ordinary claimAutopostSlot()/generation fallback applies instead) or
+ * when another caller already won the transition moments earlier.
+ * Never reverted back to `ready` on failure -- see
+ * lib/telegram/autopost.ts, which marks it `failed` instead, matching the
+ * existing "a failed autopost slot is never auto-retried" rule.
+ */
+export async function claimReadyAutopostSlot(contentType: AutopostContentType, publishDate: string): Promise<TelegramPostDto | null> {
+  const row = await d1First<PostRow>(
+    `UPDATE telegram_posts SET status = 'sending', updated_at = CURRENT_TIMESTAMP
+     WHERE publish_date = ? AND content_type = ? AND status = 'ready'
+     RETURNING ${POST_COLUMNS}`,
+    publishDate,
+    contentType
+  );
+  return row ? toPostDto(row) : null;
+}
+
+/**
+ * Looks up the (at most one, per migration 0008's unique index) row for a
+ * slot without claiming/creating anything -- used by the Content Plan
+ * admin actions to decide "does this slot already have a prepared row?"
+ * before deciding to create one. Read-only.
+ */
+export async function findTelegramPostBySlot(contentType: AutopostContentType, publishDate: string): Promise<TelegramPostDto | null> {
+  const row = await d1First<PostRow>(
+    `SELECT ${POST_COLUMNS} FROM telegram_posts WHERE publish_date = ? AND content_type = ?`,
+    publishDate,
+    contentType
+  );
+  return row ? toPostDto(row) : null;
+}
+
+/**
+ * Content Plan Stage 2's admin-facing "get me a row to work with" --
+ * unlike claimAutopostSlot() (the tick's exclusive claim, which refuses to
+ * touch anything but a fresh or abandoned-`draft` slot), this always
+ * returns the existing row untouched if one exists in ANY status, or
+ * creates a fresh `draft` one if none does. Callers (generateSlotText,
+ * editSlotText, etc.) are responsible for rejecting a `sent`/`sending` row
+ * themselves before mutating it -- this function only ever fetches-or-
+ * creates, it never mutates an existing row's content.
+ */
+export async function findOrCreatePreparedSlot(input: ClaimAutopostSlotInput): Promise<TelegramPostDto> {
+  const row = await d1First<PostRow>(
+    `INSERT INTO telegram_posts (telegram_chat_id, source_type, source_id, status, content_type, publish_date)
+     VALUES (?, ?, ?, 'draft', ?, ?)
+     ON CONFLICT(publish_date, content_type) WHERE content_type IS NOT NULL
+     DO UPDATE SET status = telegram_posts.status
+     RETURNING ${POST_COLUMNS}`,
+    input.channelChatId,
+    input.sourceType ?? null,
+    input.sourceId ?? null,
+    input.contentType,
+    input.publishDate
+  );
+  if (!row) throw ApiError.conflict('failed to resolve the prepared slot row');
+  return toPostDto(row);
+}
+
+/**
+ * Persists text from any of generateSlotText/regenerateSlotText/
+ * editSlotText (content-plan-actions.ts) -- always demotes `ready` back to
+ * `draft` (a text change invalidates a prior "confirmed good to send"),
+ * and is a defensive no-op on status for an already-`sent` row (callers
+ * must reject `sent` before ever reaching this, this is belt-and-suspenders
+ * against ever silently rewriting delivered content).
+ */
+export async function setPreparedPostText(id: number, text: string): Promise<TelegramPostDto> {
+  const row = await d1First<PostRow>(
+    `UPDATE telegram_posts
+     SET text = ?, status = CASE WHEN status = 'sent' THEN status ELSE 'draft' END, updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?
+     RETURNING ${POST_COLUMNS}`,
+    text,
+    id
+  );
+  if (!row) throw ApiError.notFound('telegram post not found');
+  return toPostDto(row);
+}
+
+/**
+ * Content Plan Stage 2's "Позначити готовим" -- only ever transitions
+ * `draft` -> `ready`; a `sent`/`failed`/`ready`/`sending` row is returned
+ * unchanged (callers check the returned row's own status to detect a
+ * no-op and surface a clear error, since D1 can't distinguish "not found"
+ * from "found but wrong status" via RETURNING alone).
+ */
+export async function setAutopostSlotReady(id: number): Promise<TelegramPostDto | null> {
+  const row = await d1First<PostRow>(
+    `UPDATE telegram_posts SET status = 'ready', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'draft' RETURNING ${POST_COLUMNS}`,
+    id
+  );
+  return row ? toPostDto(row) : null;
+}
+
+/** The inverse of setAutopostSlotReady() -- only `ready` -> `draft`. */
+export async function setAutopostSlotUnready(id: number): Promise<TelegramPostDto | null> {
+  const row = await d1First<PostRow>(
+    `UPDATE telegram_posts SET status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'ready' RETURNING ${POST_COLUMNS}`,
+    id
   );
   return row ? toPostDto(row) : null;
 }

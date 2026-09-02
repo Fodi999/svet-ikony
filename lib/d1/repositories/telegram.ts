@@ -194,7 +194,18 @@ export async function getTelegramStats(): Promise<TelegramStats> {
 
 // ── telegram_posts ─────────────────────────────────────────────────────────
 
-export type TelegramPostStatus = 'draft' | 'scheduled' | 'sent' | 'failed';
+/**
+ * 'ready' and 'sending' were added for admin-prepared autopost slots
+ * (Content Plan Stage 2) -- 'ready' means an admin confirmed a slot's
+ * text/image are good to publish at its scheduled time without further
+ * AI generation; 'sending' is a short-lived transient state a slot only
+ * occupies between claimReadyAutopostSlot()'s atomic claim and the actual
+ * Telegram send completing (see lib/telegram/autopost.ts) -- it exists so
+ * a second concurrent claim attempt (an overlapping cron tick, a manual
+ * retry) can never also send the same slot. Both values are plain TEXT,
+ * no migration needed -- see migrations/0007_telegram_bot.sql's `status`
+ * column, which has no CHECK constraint. */
+export type TelegramPostStatus = 'draft' | 'scheduled' | 'sent' | 'failed' | 'ready' | 'sending';
 
 export type PostRow = {
   id: number;
@@ -272,8 +283,10 @@ export type TelegramPostCreateInput = {
 
 export type TelegramPostUpdateInput = Partial<TelegramPostCreateInput>;
 
+const KNOWN_NON_DRAFT_STATUSES: readonly string[] = ['scheduled', 'sent', 'failed', 'ready', 'sending'];
+
 function toPostStatus(value: string): TelegramPostStatus {
-  return value === 'scheduled' || value === 'sent' || value === 'failed' ? value : 'draft';
+  return KNOWN_NON_DRAFT_STATUSES.includes(value) ? (value as TelegramPostStatus) : 'draft';
 }
 
 export function toPostDto(row: PostRow): TelegramPostDto {
@@ -345,7 +358,7 @@ export async function createTelegramPost(
  * similar "can't touch this anymore" case. */
 export async function updateTelegramPost(id: number, input: TelegramPostUpdateInput): Promise<TelegramPostDto> {
   const current = await getTelegramPost(id);
-  if (current.status === 'sent') {
+  if (current.status === 'sent' || current.status === 'sending') {
     throw ApiError.conflict('telegram post has already been sent and can no longer be edited');
   }
 

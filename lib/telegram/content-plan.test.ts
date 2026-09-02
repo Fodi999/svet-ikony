@@ -239,6 +239,10 @@ describe('buildContentPlan', () => {
 
     expect(importLines).not.toMatch(/TelegramClient|generateTelegramPost|claimAutopostSlot|markTelegramPostSent|markTelegramPostFailed|setAutopostDraftText/);
     expect(importLines).not.toMatch(/from ['"]\.\/client['"]|from ['"]@\/lib\/ai\/openai['"]/);
+    // deliver-post.ts is imported for its pure planDelivery() (the
+    // Telegram preview) -- sendAutopostMessage, its one actually
+    // Telegram-calling export, must never be among the named imports.
+    expect(importLines).not.toMatch(/\bsendAutopostMessage\b/);
   });
 });
 
@@ -262,5 +266,108 @@ describe('buildContentPlanDayDetail', () => {
     const day = await buildContentPlanDayDetail('2026-08-30');
 
     expect(day.slots.faith_story.textPreview).toHaveLength(200);
+  });
+
+  it('returns the full untruncated text separately from the 200-char preview, for editing', async () => {
+    resetDefaults();
+    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListArticles.mockResolvedValue([{ calendarDayId: 'day-1', content: 'A'.repeat(500) }]);
+
+    const day = await buildContentPlanDayDetail('2026-08-30');
+
+    expect(day.slots.faith_story.fullText).toHaveLength(500);
+    expect(day.slots.faith_story.textPreview).toHaveLength(200);
+  });
+
+  it('computes the Telegram delivery preview via the real planDelivery(): short text + image -> photo_with_caption', async () => {
+    resetDefaults();
+    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListSaints.mockResolvedValue([{ calendarDayId: 'day-1', name: 'Коротке ім’я', imageUrl: 'https://x/icon.png' }]);
+
+    const day = await buildContentPlanDayDetail('2026-08-30');
+
+    expect(day.slots.saint_of_day.deliveryPreview).toEqual({ kind: 'photo_with_caption', photoCaption: null });
+  });
+
+  it('computes the Telegram delivery preview for long text + image -> photo_then_text, with the real fixed linked caption', async () => {
+    resetDefaults();
+    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListGospel.mockResolvedValue([{ calendarDayId: 'day-1', text: 'А'.repeat(1500) }]);
+    mockListSaints.mockResolvedValue([]); // no image source for gospel in this fixture
+    // Give the gospel slot an image via a persisted post row instead.
+    mockListTelegramPosts.mockResolvedValue([
+      {
+        publishDate: '2026-08-30',
+        contentType: 'gospel',
+        status: 'draft',
+        text: null,
+        mediaUrl: 'https://x/gospel.png',
+        telegramMessageId: null,
+        sentAt: null,
+        verificationStatus: null,
+        errorMessage: null,
+      },
+    ]);
+
+    const day = await buildContentPlanDayDetail('2026-08-30');
+
+    expect(day.slots.gospel.deliveryPreview).toEqual({
+      kind: 'photo_then_text',
+      photoCaption: '📖 Євангеліє дня\n☦️ Продовження — у наступному повідомленні.',
+    });
+  });
+
+  it('computes the delivery preview as text_only when there is no image', async () => {
+    resetDefaults();
+    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListArticles.mockResolvedValue([{ calendarDayId: 'day-1', content: 'Текст без зображення' }]);
+
+    const day = await buildContentPlanDayDetail('2026-08-30');
+
+    expect(day.slots.faith_story.deliveryPreview).toEqual({ kind: 'text_only', photoCaption: null });
+  });
+
+  it('maps a "ready" telegram_posts row to the READY publication status', async () => {
+    resetDefaults();
+    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListTelegramPosts.mockResolvedValue([
+      {
+        publishDate: '2026-08-30',
+        contentType: 'morning_prayer',
+        status: 'ready',
+        text: 'Готовий текст',
+        mediaUrl: null,
+        telegramMessageId: null,
+        sentAt: null,
+        verificationStatus: null,
+        errorMessage: null,
+      },
+    ]);
+
+    const report = await buildContentPlan('2026-08-30', '2026-08-30');
+
+    expect(report.days[0].slots.morning_prayer.publicationStatus).toBe('READY');
+  });
+
+  it('maps a "sending" telegram_posts row (mid-flight autopost claim) to READY, not DRAFT', async () => {
+    resetDefaults();
+    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListTelegramPosts.mockResolvedValue([
+      {
+        publishDate: '2026-08-30',
+        contentType: 'morning_prayer',
+        status: 'sending',
+        text: 'Готовий текст',
+        mediaUrl: null,
+        telegramMessageId: null,
+        sentAt: null,
+        verificationStatus: null,
+        errorMessage: null,
+      },
+    ]);
+
+    const report = await buildContentPlan('2026-08-30', '2026-08-30');
+
+    expect(report.days[0].slots.morning_prayer.publicationStatus).toBe('READY');
   });
 });

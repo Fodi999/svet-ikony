@@ -1,6 +1,7 @@
 import { markTelegramPostFailed, markTelegramPostSent, recordDeliveryLog } from '@/lib/d1/repositories/telegram';
 import {
   claimAutopostSlot,
+  claimReadyAutopostSlot,
   getAutopostSettings,
   setAutopostDraftText,
   setAutopostVerificationResult,
@@ -131,6 +132,62 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
 
   for (const item of dueTypes) {
     const { contentType } = item;
+
+    // Content Plan Stage 2's fast path: an admin may have already
+    // generated/edited and explicitly confirmed ("Позначити готовим") this
+    // exact slot ahead of time. claimReadyAutopostSlot() atomically
+    // transitions that one row from 'ready' to 'sending' -- only one
+    // caller can ever win it, so a second overlapping tick or a manual
+    // retry hitting the same slot at the same moment can't also send it.
+    // No OpenAI call, no image generation, no re-verification: the stored
+    // text/media and the verification already recorded at "mark ready"
+    // time are trusted, with only the same final validateBeforeSend() gate
+    // every other send path already goes through. See
+    // lib/d1/repositories/telegram-autopost.ts and
+    // lib/telegram/content-plan-actions.ts.
+    const readyRow = await claimReadyAutopostSlot(contentType, civilDateIso);
+    if (readyRow) {
+      try {
+        const preSendCheck = validateBeforeSend({
+          contentType,
+          verificationStatus: readyRow.verificationStatus,
+          text: readyRow.text,
+        });
+        if (!preSendCheck.ok) {
+          throw new Error(`Pre-send validation failed: ${preSendCheck.reason}`);
+        }
+
+        const { textMessageId, photoMessageId } = await sendAutopostMessage({
+          client,
+          chatId: channelChat.telegramChatId,
+          postId: readyRow.id,
+          text: readyRow.text ?? '',
+          mediaUrl: readyRow.mediaUrl,
+          existingPhotoMessageId: readyRow.telegramPhotoMessageId,
+          contentType,
+        });
+        await markTelegramPostSent(readyRow.id, textMessageId, photoMessageId);
+        await recordDeliveryLog({
+          telegramPostId: readyRow.id,
+          telegramChatId: channelChat.telegramChatId,
+          telegramMessageId: textMessageId,
+          status: 'success',
+        });
+        attempted.push({ contentType, outcome: 'sent' });
+      } catch (error) {
+        const message = errorMessage(error);
+        await markTelegramPostFailed(readyRow.id, message);
+        await recordDeliveryLog({
+          telegramPostId: readyRow.id,
+          telegramChatId: channelChat.telegramChatId,
+          telegramMessageId: null,
+          status: 'failed',
+          errorMessage: message,
+        });
+        attempted.push({ contentType, outcome: 'failed' });
+      }
+      continue;
+    }
 
     const factsResult = await loadAutopostFacts(contentType, julianDateIso);
     if (factsResult.status === 'missing_source') {

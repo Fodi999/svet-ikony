@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGetAutopostSettings = vi.fn();
 const mockClaimAutopostSlot = vi.fn();
+/** Defaults to "nothing prepared" so every pre-existing test below keeps
+ * exercising the unchanged fresh-generation fallback path; dedicated tests
+ * further down override this to exercise the Content Plan Stage 2
+ * ready-fast-path instead. */
+const mockClaimReadyAutopostSlot = vi.fn<() => Promise<unknown | null>>(async () => null);
 const mockSetAutopostDraftText = vi.fn();
 const mockSetAutopostImageResult = vi.fn();
 const mockSetAutopostVerificationResult = vi.fn();
@@ -11,6 +16,7 @@ const AUTOPOST_CONTENT_TYPES = ['morning_prayer', 'saint_of_day', 'gospel', 'fai
 vi.mock('@/lib/d1/repositories/telegram-autopost', () => ({
   getAutopostSettings: mockGetAutopostSettings,
   claimAutopostSlot: mockClaimAutopostSlot,
+  claimReadyAutopostSlot: mockClaimReadyAutopostSlot,
   setAutopostDraftText: mockSetAutopostDraftText,
   setAutopostImageResult: mockSetAutopostImageResult,
   setAutopostVerificationResult: mockSetAutopostVerificationResult,
@@ -507,5 +513,124 @@ describe('runAutopostTick -- mandatory calendar verification for saint_of_day', 
 
     expect(result.attempted).toEqual([{ contentType: 'saint_of_day', outcome: 'skipped_verification_failed' }]);
     expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
+  });
+});
+
+describe('runAutopostTick -- Content Plan Stage 2 ready-slot fast path', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
+    vi.clearAllMocks();
+    mockGetOrResolveChannelChat.mockResolvedValue({ telegramChatId: -100999 });
+    mockGetTelegramConfig.mockResolvedValue({ botToken: 'fake', webhookSecret: null, channel: '@svit_ikony' });
+    mockGetOpenAiConfig.mockResolvedValue({ apiKey: 'fake-openai-key', model: undefined, imageModel: undefined });
+    mockSendMessage.mockResolvedValue({ messageId: 777 });
+    mockSendPhoto.mockResolvedValue({ messageId: 777 });
+    mockGetAutopostSettings.mockResolvedValue(settingsWith({}));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('uses the stored text/media and skips OpenAI/image generation entirely when a ready row exists', async () => {
+    mockClaimReadyAutopostSlot.mockResolvedValue({
+      id: 900,
+      text: 'Вже підготовлений адміністратором текст.',
+      mediaUrl: 'https://svetikony.com/media/telegram/900/post-image/x.png',
+      telegramPhotoMessageId: null,
+      verificationStatus: null,
+    });
+
+    const result = await runAutopostTick();
+
+    expect(mockClaimReadyAutopostSlot).toHaveBeenCalledWith('morning_prayer', CIVIL_DATE_ISO);
+    expect(mockLoadAutopostFacts).not.toHaveBeenCalled();
+    expect(mockClaimAutopostSlot).not.toHaveBeenCalled();
+    expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
+    expect(mockEnsureAutopostImage).not.toHaveBeenCalled();
+    expect(mockSendPhoto).toHaveBeenCalledWith(-100999, 'https://svetikony.com/media/telegram/900/post-image/x.png', 'Вже підготовлений адміністратором текст.');
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(900, 777, null);
+    expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'sent' }]);
+  });
+
+  it('falls back to existing generation when no ready row exists for the slot', async () => {
+    mockClaimReadyAutopostSlot.mockResolvedValue(null);
+    mockLoadAutopostFacts.mockResolvedValue({ status: 'ok', facts: { facts: 'x', sourceType: 'prayer', sourceId: 'p1' } });
+    mockClaimAutopostSlot.mockResolvedValue({ id: 42, status: 'draft' });
+    mockGenerateTelegramPost.mockResolvedValue('Свіжий текст.');
+
+    const result = await runAutopostTick();
+
+    expect(mockClaimAutopostSlot).toHaveBeenCalled();
+    expect(mockGenerateTelegramPost).toHaveBeenCalled();
+    expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'sent' }]);
+  });
+
+  it('re-validates a ready row before sending and marks it failed (not reverted to ready) if validation fails', async () => {
+    mockClaimReadyAutopostSlot.mockResolvedValue({
+      id: 901,
+      text: '', // empty text should never happen for a real 'ready' row, but the tick must still defend against it
+      mediaUrl: null,
+      telegramPhotoMessageId: null,
+      verificationStatus: null,
+    });
+
+    const result = await runAutopostTick();
+
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(mockSendPhoto).not.toHaveBeenCalled();
+    expect(mockMarkTelegramPostFailed).toHaveBeenCalledWith(901, expect.stringContaining('Pre-send validation failed'));
+    expect(mockMarkTelegramPostSent).not.toHaveBeenCalled();
+    expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'failed' }]);
+  });
+
+  it('marks a ready row failed (never reverted to ready) when the Telegram send itself throws', async () => {
+    mockClaimReadyAutopostSlot.mockResolvedValue({
+      id: 902,
+      text: 'Текст готовий до відправки.',
+      mediaUrl: null,
+      telegramPhotoMessageId: null,
+      verificationStatus: null,
+    });
+    mockSendMessage.mockRejectedValueOnce(new Error('Telegram is down'));
+
+    const result = await runAutopostTick();
+
+    expect(mockMarkTelegramPostFailed).toHaveBeenCalledWith(902, 'Telegram is down');
+    expect(mockRecordDeliveryLog).toHaveBeenCalledWith(expect.objectContaining({ telegramPostId: 902, status: 'failed' }));
+    expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'failed' }]);
+  });
+
+  it('respects saint_of_day verification stored on the ready row -- refuses to send if not verified', async () => {
+    mockGetAutopostSettings.mockResolvedValue(settingsWith({ items: [{ contentType: 'saint_of_day', enabled: true, scheduleTime: DUE_HHMM }] }));
+    mockClaimReadyAutopostSlot.mockResolvedValue({
+      id: 903,
+      text: 'Текст про святого.',
+      mediaUrl: null,
+      telegramPhotoMessageId: null,
+      verificationStatus: 'failed', // should never really happen (mark-ready enforces this) -- defense in depth
+    });
+
+    const result = await runAutopostTick();
+
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(result.attempted).toEqual([{ contentType: 'saint_of_day', outcome: 'failed' }]);
+  });
+
+  it('reuses an already-sent photo message id on a retried ready send (photo_then_text long-post continuation)', async () => {
+    mockClaimReadyAutopostSlot.mockResolvedValue({
+      id: 904,
+      text: 'Дуже довгий текст. '.repeat(60),
+      mediaUrl: 'https://svetikony.com/media/telegram/904/post-image/x.png',
+      telegramPhotoMessageId: 1234, // photo already sent in a previous attempt
+      verificationStatus: null,
+    });
+
+    await runAutopostTick();
+
+    expect(mockSendPhoto).not.toHaveBeenCalled();
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Дуже довгий текст. '.repeat(60));
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(904, 777, 1234);
   });
 });

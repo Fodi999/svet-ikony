@@ -20,6 +20,12 @@
  *      calendar's own (Ukrainian) saint name. Cheapest path, works whenever
  *      that language edition happens to have a matching article under a
  *      spelling our search can find.
+ *      Every search here also retries with the trailing toponym-adjective
+ *      word stripped (e.g. "Агафоник Никомидійський" -> "Агафоник") when
+ *      the full phrase finds nothing -- confirmed live that MediaWiki
+ *      full-text search AND Wikidata's label search both routinely return
+ *      zero results for that two-word compound even when the bare
+ *      personal name resolves cleanly (see stripTrailingToponymAdjective).
  *   2. If both fail: Wikidata entity search (wbsearchentities) using the
  *      SAME Ukrainian name against the 'uk' and then 'ru' label/alias
  *      index. This is the mechanism that actually reaches the English
@@ -318,6 +324,28 @@ function normalize(text: string): string {
   return text.toLowerCase().trim();
 }
 
+/** Ukrainian relative/toponymic adjectives (formed from a place name) use
+ * these suffixes almost universally (e.g. "Никомидійський", "Едеський",
+ * "Александрійський", "Карфагенський", "Мирлікійський") -- confirmed
+ * directly against the live APIs that BOTH MediaWiki's full-text search
+ * (uk/ru Wikipedia) and Wikidata's label search return ZERO results for a
+ * "<PersonalName> <ToponymAdjective>" compound phrase, even when the bare
+ * personal name alone finds the correct article/entity (the exact
+ * production gap this function exists to close: "Агафоник
+ * Никомидійський"/"Агафоник Нікомидійський" both find nothing anywhere,
+ * but "Агафоник" alone resolves cleanly). Every search step below retries
+ * with just the personal name when the full phrase finds nothing -- this
+ * is a general Ukrainian-language pattern, not specific to this one saint. */
+const TOPONYM_ADJECTIVE_SUFFIXES = ['ський', 'зький', 'цький'];
+
+function stripTrailingToponymAdjective(coreName: string): string | null {
+  const words = coreName.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 2) return null;
+  const last = words[words.length - 1].toLowerCase();
+  if (!TOPONYM_ADJECTIVE_SUFFIXES.some((suffix) => last.endsWith(suffix))) return null;
+  return words.slice(0, -1).join(' ');
+}
+
 /** Requires only the PRIMARY (first) word of each compound-name part to
  * appear in the candidate text, not the entire literal phrase. A saint's
  * calendar title is often "<PersonalName> <ToponymAdjective>" (e.g.
@@ -444,6 +472,10 @@ async function searchAndVerifyOnWikipedia(language: WikiLanguage, coreName: stri
   let title: string | null;
   try {
     title = await searchWikipediaLang(language, coreName);
+    if (!title) {
+      const shortened = stripTrailingToponymAdjective(coreName);
+      if (shortened) title = await searchWikipediaLang(language, shortened);
+    }
   } catch {
     return { outcome: 'network_error' };
   }
@@ -511,6 +543,13 @@ async function tryWikidataIdentity(coreName: string, knownFacts: string | undefi
   try {
     hits = await searchWikidataEntities('uk', coreName);
     if (hits.length === 0) hits = await searchWikidataEntities('ru', coreName);
+    if (hits.length === 0) {
+      const shortened = stripTrailingToponymAdjective(coreName);
+      if (shortened) {
+        hits = await searchWikidataEntities('uk', shortened);
+        if (hits.length === 0) hits = await searchWikidataEntities('ru', shortened);
+      }
+    }
   } catch {
     return { outcome: 'network_error' };
   }

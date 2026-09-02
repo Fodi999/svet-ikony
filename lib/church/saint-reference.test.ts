@@ -60,9 +60,21 @@ function wikiSummaryRoute(host: string, title: string, overrides: Record<string,
   };
 }
 
-function wikidataSearchRoute(language: 'uk' | 'ru', hits: { id: string; description?: string }[]): Route {
+/** `expectedQuery`, when given, requires the route to only match a
+ * wbsearchentities call whose `search=` param is EXACTLY that string --
+ * without this, a test could pass while the resolver silently searched
+ * the wrong (un-shortened) phrase, which is exactly how the toponym-
+ * adjective bug (see stripTrailingToponymAdjective) slipped past the
+ * first version of this test suite: the route matched by language alone,
+ * so it "succeeded" regardless of whether the code ever actually queried
+ * the shortened name it was supposed to retry with. */
+function wikidataSearchRoute(language: 'uk' | 'ru', hits: { id: string; description?: string }[], expectedQuery?: string): Route {
   return {
-    test: (url) => url.includes('wikidata.org') && url.includes('action=wbsearchentities') && url.includes(`language=${language}`),
+    test: (url) =>
+      url.includes('wikidata.org') &&
+      url.includes('action=wbsearchentities') &&
+      url.includes(`language=${language}`) &&
+      (expectedQuery === undefined || url.includes(`search=${encodeURIComponent(expectedQuery)}&`)),
     response: () => jsonResponse({ search: hits }),
   };
 }
@@ -286,6 +298,44 @@ describe('lookupVerifiedSaintReference', () => {
   });
 
   // ---------------------------------------------------------------------
+  // Toponym-adjective retry (stripTrailingToponymAdjective) -- the fix for
+  // the exact bug caught live in production: the resolver's FIRST version
+  // never retried with a shortened query, so it fell back to the generic
+  // image for every saint whose calendar title is "<Name> <Toponym>ський"
+  // even after the Wikidata/Commons chain below was already deployed.
+  // ---------------------------------------------------------------------
+
+  describe('toponym-adjective retry', () => {
+    it('retries the direct uk search with the toponym adjective stripped when the full phrase finds nothing', async () => {
+      installRoutes([
+        // Only the shortened query ("Агафоник") has a route -- the full
+        // "Агафоник Никомидійський" phrase falls through to the default
+        // empty response, matching the live-confirmed MediaWiki behavior.
+        { test: (url) => url.includes('uk.wikipedia.org') && url.includes('list=search') && url.includes(`srsearch=${encodeURIComponent('Агафоник')}&`), response: () => jsonResponse({ query: { search: [{ title: 'Агафоник Никомидійський' }] } }) },
+        wikiSummaryRoute('uk.wikipedia.org', 'Агафоник Никомидійський', { description: 'мученик', extract: 'Святий мученик Агафоник Никомидійський постраждав за Христа.' }),
+      ]);
+
+      const result = await lookupVerifiedSaintReference({ name: 'Мученик Агафоник Никомидійський' });
+
+      expect(result.status).toBe('verified');
+      if (result.status !== 'verified') throw new Error('unreachable');
+      expect(result.reference.sourceLanguage).toBe('uk');
+    });
+
+    it('does not shorten a name with no toponym-adjective suffix (single-word names are left alone)', async () => {
+      // A single-word name that finds nothing anywhere -- if the resolver
+      // incorrectly tried to "shorten" it (e.g. into an empty string), that
+      // would show up as an extra uk search call below.
+      installRoutes([]);
+      const result = await lookupVerifiedSaintReference({ name: 'Невідомий' });
+      expect(result.status).toBe('not_found');
+      const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+      const ukSearchCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes('uk.wikipedia.org') && String(url).includes('list=search'));
+      expect(ukSearchCalls.length).toBe(1);
+    });
+  });
+
+  // ---------------------------------------------------------------------
   // Cross-language identity resolution (general architecture, not an
   // Agathonicus-only special case -- see the module's own doc comment).
   // ---------------------------------------------------------------------
@@ -348,16 +398,27 @@ describe('lookupVerifiedSaintReference', () => {
      * production (uk.wikipedia.org has totalhits: 0 for this saint under
      * any spelling tested; en.wikipedia.org has a dedicated "Agathonicus"
      * article sharing Wikidata item Q3564977 with ru.wikipedia.org).
+     *
+     * The Wikidata route below only matches the SHORTENED query
+     * ("Агафоник", personal name only) -- confirmed live that
+     * wbsearchentities returns ZERO results for the full "Агафоник
+     * Никомидійський" phrase, so this test only passes if the resolver
+     * actually retries with the toponym adjective stripped
+     * (stripTrailingToponymAdjective). This is a genuine regression test
+     * for a bug caught live in production AFTER this suite's first
+     * version already passed: that version's route matched by language
+     * alone, so it "verified" even though the code never actually
+     * shortened the query -- production then failed for exactly that
+     * reason. Query-aware routes throughout this file now guard against
+     * that class of false-positive test.
      */
-    it('regression: Мученик Агафоник Никомидійський -> Agathonicus (Q3564977) via Wikidata, when uk/ru direct search both miss', async () => {
+    it('regression: Мученик Агафоник Никомидійський -> Agathonicus (Q3564977) via Wikidata, when uk/ru direct search AND the un-shortened Wikidata search both miss', async () => {
       installRoutes([
-        // uk/ru direct search: both empty, matching the real production finding.
-        wikidataSearchRoute('uk', []),
         wikidataSearchRoute('ru', [
           { id: 'Q527379', description: 'asteroid' }, // decoy: "3326 Agafonikov" -- rejected by description filter
           { id: 'Q3564977', description: '3rd-century Christian martyr' }, // the real saint
           { id: 'Q30887603', description: 'Roman Catholic bishop' }, // decoy: modern namesake, never reached (candidate cap)
-        ]),
+        ], 'Агафоник'),
         wikidataEntityRoute('Q3564977', { en: 'Agathonicus', ru: 'Мученики Агафоник, Зотик, Феопрепий, Акиндин, Севериан, Зинон' }, 'Agathonikos of Nikomedeia'),
         wikiSummaryRoute('en.wikipedia.org', 'Agathonicus', {
           description: '3rd-century Christian martyr',

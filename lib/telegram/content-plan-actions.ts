@@ -139,7 +139,10 @@ async function buildText(
     civilDateIso,
     julianDateIso,
     verifiedFacts,
-    titleLine: contentType === 'saint_of_day' ? buildSaintOfDayTitle(facts.candidateName ?? '') : CONTENT_TYPE_TITLES[contentType],
+    titleLine:
+      contentType === 'saint_of_day'
+        ? buildSaintOfDayTitle(facts.candidateName ?? '', civilDateIso, julianDateIso)
+        : CONTENT_TYPE_TITLES[contentType],
     titleFlexible: contentType === 'faith_story',
   });
 }

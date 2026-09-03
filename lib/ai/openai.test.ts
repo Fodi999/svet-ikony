@@ -104,4 +104,47 @@ describe('generateTelegramPost', () => {
     expect(userMessage).toMatch(/можеш замінити власною короткою тематичною назвою/);
     expect(userMessage).toMatch(/ЛИШЕ на фактах/);
   });
+
+  // Task: "Исправь date presentation во всём Telegram church content" --
+  // both dates must reach the model as an immutable, ready-made fact it
+  // can just insert, never something it derives itself from the raw ISO
+  // strings.
+  describe('both civil and Julian dates are handed over as an immutable, ready-made fact', () => {
+    it('the user message contains the pre-formatted "both dates" phrase, not just the raw ISO strings', async () => {
+      const fetchMock = mockOpenAiFetch('some post text');
+      vi.stubGlobal('fetch', fetchMock);
+
+      await generateTelegramPost(baseInput({ civilDateIso: '2026-09-03', julianDateIso: '2026-08-21' }));
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+      const userMessage = body.messages.find((m: { role: string }) => m.role === 'user').content as string;
+      expect(userMessage).toContain('3 вересня — 21 серпня за юліанським календарем');
+    });
+
+    it('the system prompt mandates stating both dates together and forbids stating only the old style', async () => {
+      const fetchMock = mockOpenAiFetch('some post text');
+      vi.stubGlobal('fetch', fetchMock);
+
+      await generateTelegramPost(baseInput());
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+      const systemMessage = body.messages.find((m: { role: string }) => m.role === 'system').content as string;
+      expect(systemMessage).toMatch(/ОБИДВІ дати/);
+      expect(systemMessage).toMatch(/НІКОЛИ не пиши лише одну/);
+      expect(systemMessage).toMatch(/не рахуй/);
+    });
+
+    it('never sends only the raw ISO date strings without the formatted phrase (regression guard for the original bug)', async () => {
+      const fetchMock = mockOpenAiFetch('some post text');
+      vi.stubGlobal('fetch', fetchMock);
+
+      await generateTelegramPost(baseInput({ civilDateIso: '2026-09-03', julianDateIso: '2026-08-21' }));
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+      const userMessage = body.messages.find((m: { role: string }) => m.role === 'user').content as string;
+      // The old wording framed dates as "Метадані (не факти для тексту, лише
+      // контекст)" -- confirms that framing is gone.
+      expect(userMessage).not.toMatch(/лише контекст/);
+    });
+  });
 });

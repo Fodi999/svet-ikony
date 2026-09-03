@@ -153,7 +153,12 @@ describe('content-plan-actions', () => {
       await generateSlotText(VERIFIED_CIVIL_DATE, 'saint_of_day');
 
       expect(mockSetAutopostVerificationResult).toHaveBeenCalledWith(7, expect.objectContaining({ status: 'verified' }));
-      expect(mockGenerateTelegramPost).toHaveBeenCalledWith(expect.objectContaining({ verifiedFacts: true, titleLine: '☦️ Флор і Лавр' }));
+      // Title now leads with the canonical civil+Julian date heading (task:
+      // "Исправь date presentation во всём Telegram church content") --
+      // 2026-08-31 civil is 2026-08-18 Julian.
+      expect(mockGenerateTelegramPost).toHaveBeenCalledWith(
+        expect.objectContaining({ verifiedFacts: true, titleLine: '☦️ 31 серпня (18 серпня за юліанським календарем) — Флор і Лавр' }),
+      );
     });
 
     it('never calls Telegram -- content-plan-actions.ts has no Telegram-sending import at all', () => {

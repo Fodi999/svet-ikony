@@ -4,6 +4,7 @@ import { listGospel } from '@/lib/d1/repositories/gospel';
 import { listPrayers } from '@/lib/d1/repositories/prayers';
 import { listSaints } from '@/lib/d1/repositories/saints';
 import type { AutopostContentType } from '@/lib/d1/repositories/telegram-autopost';
+import { formatChurchDatesProse } from './church-date-format';
 
 /** Telegram autopost is Julian-calendar-only (Orthodox "old style") --
  * every lookup below is keyed by church_calendar_days.date_old_style, never
@@ -63,7 +64,15 @@ export async function loadAutopostFacts(contentType: AutopostContentType, julian
   const calendarDay = await findCalendarDayByOldStyle(julianDateIso);
   if (!calendarDay) return { status: 'missing_source' };
 
-  const calendarLine = `Церковний календар (старий стиль): ${calendarDay.title}${calendarDay.description ? ` — ${calendarDay.description}` : ''}`;
+  // Both dates, always -- this used to state only "старий стиль" with no
+  // civil date anywhere in the facts, which is exactly why generated text
+  // sometimes surfaced only the Julian date ("Сьогодні, 21 серпня за
+  // юліанським календарем..."): the model had no civil date to draw from.
+  // dateNewStyle falls back to julianDateIso (both dates are guaranteed to
+  // exist for a real calendar row; this is only a defensive fallback, not
+  // a computation) since the field is nullable at the type level.
+  const datesLine = `Дата: ${formatChurchDatesProse(calendarDay.dateNewStyle ?? julianDateIso, julianDateIso)}`;
+  const calendarLine = `${datesLine}. Церковний календар (старий стиль): ${calendarDay.title}${calendarDay.description ? ` — ${calendarDay.description}` : ''}`;
 
   if (contentType === 'morning_prayer' || contentType === 'evening_prayer') {
     const prayerType = contentType === 'morning_prayer' ? 'morning' : 'evening';

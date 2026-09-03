@@ -3,6 +3,8 @@
  * it never originates facts itself (see lib/telegram/autopost-content.ts's
  * "insufficient data -> skip" checks, which run *before* this is called). */
 
+import { formatChurchDatesProse } from '@/lib/telegram/church-date-format';
+
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const DEFAULT_MODEL = 'gpt-4o-mini';
 
@@ -14,11 +16,20 @@ export class OpenAiError extends Error {
 }
 
 const SYSTEM_PROMPT = `Ти — редактор Telegram-каналу "Світло Ікони" про православну традицію.
-Церква цього каналу живе за юліанським календарем (старий стиль) — усі
-церковні факти й дати нижче вже дано за старим стилем; громадянська дата
-(Europe/Kyiv) наведена лише для довідки. НІКОЛИ не перераховуй, не заміняй і
-не "виправляй" церковну дату на новий стиль і не змішуй два календарі в
-тексті.
+Церква цього каналу живе за юліанським календарем (старий стиль), і всі
+церковні факти нижче (святий дня, читання, тощо) вже дано за старим стилем
+-- цього НІКОЛИ не міняй.
+
+ПРАВИЛО ПРО ДАТИ (ОБОВ'ЯЗКОВЕ, НАЙВИЩИЙ ПРІОРИТЕТ):
+Якщо в тексті публікації згадується сьогоднішня дата в будь-якому вигляді
+("сьогодні, ...", заголовок з датою, тощо) -- завжди називай ОБИДВІ дати
+разом: громадянську (нового стилю, Europe/Kyiv) і церковну (старого стилю,
+юліанську). НІКОЛИ не пиши лише одну з них -- саме собою написання лише
+старого стилю без нового виглядає для читача як помилка в сьогоднішній
+даті. Нижче в розділі "Дата" тобі дано вже ГОТОВЕ, точне формулювання обох
+дат разом -- вставляй його як є, слово в слово; ніколи не рахуй, не
+переформульовуй і не заміняй жодну з двох дат самостійно, і не змішуй два
+календарі (не видавай юліанську дату за громадянську чи навпаки).
 
 ПРАВИЛА МОВИ Й ТЕРМІНОЛОГІЇ:
 - пиши ЛИШЕ українською мовою (жодного слова іншою мовою);
@@ -75,7 +86,10 @@ export interface GenerateTelegramPostInput {
    * the only source of truth the model is allowed to draw from. */
   facts: string;
   /** Europe/Kyiv civil date ('YYYY-MM-DD') the post is being published on —
-   * metadata only, never the date the church facts are grounded in. */
+   * combined with julianDateIso below (never used alone) into the ready
+   * "both dates" phrase the model must use verbatim whenever it mentions
+   * today's date; never the date the church facts are grounded in (that's
+   * julianDateIso). */
   civilDateIso: string;
   /** Orthodox Julian ('old style') calendar date ('YYYY-MM-DD') the facts
    * above were looked up by (see lib/telegram/julian-calendar.ts) — this is
@@ -125,7 +139,8 @@ export async function generateTelegramPost(input: GenerateTelegramPostInput): Pr
             input.titleFlexible
               ? ' -- можеш замінити власною короткою тематичною назвою, побудованою ЛИШЕ на фактах нижче, якщо вона краще підходить; інакше використай саме цей рядок'
               : ' -- використай рівно цей рядок, без жодних змін'
-          }\n\nМетадані (не факти для тексту, лише контекст):\nCivil date (Europe/Kyiv): ${input.civilDateIso}\nJulian/old-style date: ${input.julianDateIso}\n\n${
+          }\n\nДата (готове формулювання -- використай саме його слово в слово, якщо в тексті згадується сьогоднішня дата; ` +
+            `civilDateIso=${input.civilDateIso}, julianDateIso=${input.julianDateIso}, наведені лише для звірки, не для копіювання як є):\n"${formatChurchDatesProse(input.civilDateIso, input.julianDateIso)}"\n\n${
             input.verifiedFacts
               ? 'Ці календарні дані вже перевірені. Не змінюй дату, ім\'я святого або церковне найменування. Не додавай інших святих чи фактів.\n\n'
               : ''

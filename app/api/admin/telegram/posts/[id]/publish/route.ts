@@ -81,7 +81,7 @@ async function regenerateAutopostTextIfMissing(post: TelegramPostDto): Promise<T
       julianDateIso,
       titleLine:
         post.contentType === 'saint_of_day'
-          ? buildSaintOfDayTitle(factsResult.facts.candidateName ?? '')
+          ? buildSaintOfDayTitle(factsResult.facts.candidateName ?? '', civilDateIso, julianDateIso)
           : CONTENT_TYPE_TITLES[post.contentType],
       titleFlexible: post.contentType === 'faith_story',
     });

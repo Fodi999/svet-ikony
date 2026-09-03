@@ -3,11 +3,29 @@ import {
   AUTOPOST_GREETING_DEFAULT,
   AUTOPOST_GREETING_EVENING,
   AUTOPOST_SIGNATURE,
+  buildSaintOfDayTitle,
   CONTENT_TYPE_FORMAT_HINTS,
   CONTENT_TYPE_GREETINGS,
   CONTENT_TYPE_LINKED_CAPTIONS,
   CONTENT_TYPE_TARGET_LENGTH,
 } from './content-format';
+
+describe('buildSaintOfDayTitle', () => {
+  it('heading contains both the civil and Julian dates, never just one (task: "Исправь date presentation")', () => {
+    const title = buildSaintOfDayTitle('Апостол Тадей від сімдесяти', '2026-09-03', '2026-08-21');
+    expect(title).toContain('3 вересня');
+    expect(title).toContain('21 серпня');
+    expect(title).toBe('☦️ 3 вересня (21 серпня за юліанським календарем) — Апостол Тадей від сімдесяти');
+  });
+
+  it('never computes the dates itself -- passing the same civil date twice does not produce a Julian-looking value', () => {
+    // Sanity check that this is a pure formatter over its inputs, not a
+    // second Julian calculation (that stays exclusively in
+    // lib/telegram/julian-calendar.ts, untouched by this task).
+    const title = buildSaintOfDayTitle('Свята Ольга', '2026-09-03', '2026-09-03');
+    expect(title).toBe('☦️ 3 вересня (3 вересня за юліанським календарем) — Свята Ольга');
+  });
+});
 
 describe('CONTENT_TYPE_TARGET_LENGTH', () => {
   it('matches the specified ranges exactly', () => {

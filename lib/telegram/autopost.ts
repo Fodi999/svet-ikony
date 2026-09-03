@@ -259,7 +259,10 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
         civilDateIso,
         julianDateIso,
         verifiedFacts,
-        titleLine: contentType === 'saint_of_day' ? buildSaintOfDayTitle(facts.candidateName ?? '') : CONTENT_TYPE_TITLES[contentType],
+        titleLine:
+          contentType === 'saint_of_day'
+            ? buildSaintOfDayTitle(facts.candidateName ?? '', civilDateIso, julianDateIso)
+            : CONTENT_TYPE_TITLES[contentType],
         titleFlexible: contentType === 'faith_story',
       });
       // Persisted before the Telegram call so a send failure still leaves

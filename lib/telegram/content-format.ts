@@ -1,4 +1,5 @@
 import type { AutopostContentType } from '@/lib/d1/repositories/telegram-autopost';
+import { formatChurchDatesHeading } from './church-date-format';
 
 /** Shared between the autopost orchestrator, the OpenAI prompt builder,
  * and the admin publish/retry route (for regenerating a row that failed
@@ -48,12 +49,19 @@ export const CONTENT_TYPE_TITLES: Record<Exclude<AutopostContentType, 'saint_of_
   faith_story: '☦️ Історія віри',
 };
 
-/** saint_of_day's title line is always the exact, already-verified saint
- * name -- never left to the model to retype from the facts text on its
- * own, so a paraphrase or misspelling in the title can't slip past the
- * verification step that already confirmed this exact string. */
-export function buildSaintOfDayTitle(verifiedCandidateName: string): string {
-  return `☦️ ${verifiedCandidateName}`;
+/**
+ * saint_of_day's title line is always the exact, already-verified saint
+ * name, prefixed with the canonical civil+Julian date heading -- never
+ * left to the model to retype from the facts text or format the date
+ * itself, so neither a name paraphrase nor an old-style-only date can
+ * slip past the verification step that already confirmed both.
+ *
+ * `civilDateIso` and `julianDateIso` are the same already-resolved dates
+ * every caller already threads through to generateTelegramPost() (see
+ * lib/ai/openai.ts) -- this never computes either one itself.
+ */
+export function buildSaintOfDayTitle(verifiedCandidateName: string, civilDateIso: string, julianDateIso: string): string {
+  return `☦️ ${formatChurchDatesHeading(civilDateIso, julianDateIso)} — ${verifiedCandidateName}`;
 }
 
 /**

@@ -144,4 +144,34 @@ describe('loadAutopostFacts', () => {
     expect(mockListArticles).toHaveBeenCalledWith({ calendarDayId: 'day-1', language: 'uk' });
     expect(result.status).toBe('ok');
   });
+
+  // Task: "Исправь date presentation во всём Telegram church content" --
+  // the facts handed to OpenAI must always carry BOTH dates (this is what
+  // "morning prayer intro содержит обе даты" and "AI prompt получает обе
+  // даты как immutable facts" actually depend on: the model can only state
+  // both if both are in front of it). Covers all 5 content types, since
+  // calendarLine is shared code, not per-type.
+  describe('facts always carry both civil and Julian dates, never Julian-only', () => {
+    it.each([
+      ['morning_prayer', () => mockListPrayers.mockResolvedValue([{ id: 'p1', prayerType: 'morning', title: 'Т', text: 'Т' }])],
+      ['evening_prayer', () => mockListPrayers.mockResolvedValue([{ id: 'p2', prayerType: 'evening', title: 'Т', text: 'Т' }])],
+      ['saint_of_day', () => mockListSaints.mockResolvedValue([{ id: 's1', name: 'Святий', shortDescription: 'Опис' }])],
+      ['gospel', () => mockListGospel.mockResolvedValue([{ id: 'g1', title: 'Т', reference: 'Мт. 1:1', text: 'Т' }])],
+      ['faith_story', () => mockListArticles.mockResolvedValue([{ id: 'a1', title: 'Т', content: 'Т' }])],
+    ] as const)('%s facts contain both the civil date prose and the Julian date prose', async (contentType, seedContentRepo) => {
+      mockListCalendarDays.mockResolvedValue([calendarDay()]);
+      seedContentRepo();
+
+      const result = await loadAutopostFacts(contentType, JULIAN_DATE_ISO);
+
+      expect(result.status).toBe('ok');
+      if (result.status !== 'ok') throw new Error('unreachable');
+      // CIVIL_DATE_ISO=2026-08-30 -> "30 серпня"; JULIAN_DATE_ISO=2026-08-17 -> "17 серпня".
+      expect(result.facts.facts).toContain('30 серпня');
+      expect(result.facts.facts).toContain('17 серпня');
+      expect(result.facts.facts).toContain('за юліанським календарем');
+      // The old bug: only "старий стиль" ever appeared, no civil date at all.
+      expect(result.facts.facts.indexOf('30 серпня')).toBeLessThan(result.facts.facts.indexOf('старий стиль'));
+    });
+  });
 });

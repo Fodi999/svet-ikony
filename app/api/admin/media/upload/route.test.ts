@@ -27,6 +27,10 @@ function smallJpeg(sizeBytes = 1024): File {
   return new File([new Uint8Array(sizeBytes)], 'photo.jpg', { type: 'image/jpeg' });
 }
 
+function smallMp3(sizeBytes = 1024): File {
+  return new File([new Uint8Array(sizeBytes)], 'audio.mp3', { type: 'audio/mpeg' });
+}
+
 describe('POST /api/admin/media/upload', () => {
   let token: string;
 
@@ -55,6 +59,15 @@ describe('POST /api/admin/media/upload', () => {
     expect(body).not.toHaveProperty('bucket');
     expect(body).not.toHaveProperty('accountId');
     expect(JSON.stringify(body)).not.toContain('svetikony-media');
+  });
+
+  it('uploads a valid audio file for the Telegram Content Plan\'s "post-audio" purpose (regression: mediaKindForPurpose used to only recognize the literal purpose "audio", so a real MP3 here was misclassified as an image and rejected with 415)', async () => {
+    const response = await POST(uploadRequest({ file: smallMp3(), module: 'telegram', entityId: '2026-09-02-morning_prayer', purpose: 'post-audio' }, token));
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as MediaObjectDto;
+    expect(body.key).toMatch(/^media\/telegram\/2026-09-02-morning_prayer\/post-audio\/[0-9a-f-]{36}\.mp3$/);
+    expect(body.contentType).toBe('audio/mpeg');
+    expect(body.kind).toBe('audio');
   });
 
   it('rejects an unauthenticated request with 401', async () => {

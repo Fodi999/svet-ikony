@@ -30,8 +30,14 @@ export const ALLOWED_MODULE_PURPOSES: Record<string, readonly string[]> = {
 export type AllowedModule = keyof typeof ALLOWED_MODULE_PURPOSES;
 
 /** Which media kind (image vs audio) each purpose implies, independent of
- * module — every purpose above is either always-image or always-audio. */
-const AUDIO_PURPOSES = new Set(['audio']);
+ * module — every purpose above is either always-image or always-audio.
+ * 'post-audio' (Telegram Content Plan's audio purpose) belongs here too --
+ * missing it here made mediaKindForPurpose() silently fall through to
+ * 'image' for every Telegram audio upload, so the upload route validated
+ * the file against IMAGE_MIME_EXTENSIONS/MAX_IMAGE_BYTES instead of the
+ * audio ones, rejecting every real audio file (even a plain MP3) with 415
+ * UNSUPPORTED_MEDIA_TYPE. */
+const AUDIO_PURPOSES = new Set(['audio', 'post-audio']);
 
 export function mediaKindForPurpose(purpose: string): MediaKind {
   return AUDIO_PURPOSES.has(purpose) ? 'audio' : 'image';

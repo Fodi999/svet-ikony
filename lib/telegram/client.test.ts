@@ -52,4 +52,30 @@ describe('TelegramClient', () => {
     const sentBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(sentBody.caption).toBe(longCaption);
   });
+
+  it('sendAudio calls the sendAudio method with the audio URL and returns its message id', async () => {
+    const fetchMock = mockTelegramFetch(3);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new TelegramClient('fake-token');
+    const result = await client.sendAudio(-100999, 'https://svetikony.com/media/a.mp3', 'caption');
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('/sendAudio');
+    const sentBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(sentBody.audio).toBe('https://svetikony.com/media/a.mp3');
+    expect(sentBody.caption).toBe('caption');
+    expect(result).toEqual({ messageId: 3 });
+  });
+
+  it('sendAudio omits the caption field entirely when none is given', async () => {
+    const fetchMock = mockTelegramFetch(3);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new TelegramClient('fake-token');
+    await client.sendAudio(-100999, 'https://svetikony.com/media/a.mp3');
+
+    const sentBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(sentBody).not.toHaveProperty('caption');
+  });
 });

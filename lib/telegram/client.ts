@@ -103,6 +103,24 @@ export class TelegramClient {
     return { messageId: result.message_id };
   }
 
+  /**
+   * `caption` follows the same not-truncated-here contract as sendPhoto's
+   * own doc comment -- callers decide whether it fits (see
+   * lib/telegram/deliver-post.ts's planDelivery). Only MP3/M4A are ever
+   * passed as `audioUrl` in practice (see lib/telegram/media-limits.ts's
+   * TELEGRAM_AUDIO_ALLOWED_MIME, enforced at assignment time, well before
+   * this call) -- Telegram renders those with its native audio-player UI;
+   * other formats aren't guaranteed to.
+   */
+  async sendAudio(chatId: number | string, audioUrl: string, caption?: string): Promise<{ messageId: number }> {
+    const result = await this.request<{ message_id: number }>('sendAudio', {
+      chat_id: chatId,
+      audio: audioUrl,
+      ...(caption ? { caption } : {}),
+    });
+    return { messageId: result.message_id };
+  }
+
   async answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> {
     await this.call('answerCallbackQuery', {
       callback_query_id: callbackQueryId,

@@ -227,6 +227,8 @@ export type PostRow = {
   verification_sources: string | null;
   verification_error: string | null;
   telegram_photo_message_id: number | null;
+  audio_url: string | null;
+  telegram_audio_message_id: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -269,6 +271,15 @@ export type TelegramPostDto = {
    * telegramMessageId always refers to the message carrying the readable
    * text, regardless of which delivery shape was used. */
   telegramPhotoMessageId: number | null;
+  /** Manually-assigned audio URL (new -- migration 0012), parallel to
+   * mediaUrl (photo). Never AI-generated -- set only via assignSlotAudio,
+   * the audio counterpart of assignSlotImage. See lib/telegram/
+   * content-plan-actions.ts. */
+  audioUrl: string | null;
+  /** Set only for the split-message case (photo+audio+text or
+   * audio+text), mirroring telegramPhotoMessageId's own role for the
+   * audio half -- see lib/telegram/deliver-post.ts. */
+  telegramAudioMessageId: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -310,13 +321,15 @@ export function toPostDto(row: PostRow): TelegramPostDto {
     verificationSources: row.verification_sources,
     verificationError: row.verification_error,
     telegramPhotoMessageId: row.telegram_photo_message_id,
+    audioUrl: row.audio_url,
+    telegramAudioMessageId: row.telegram_audio_message_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
 export const POST_COLUMNS =
-  'id, telegram_chat_id, source_type, source_id, text, media_url, telegram_message_id, status, scheduled_at, sent_at, error_message, content_type, publish_date, image_error, verification_status, verification_checked_at, verification_sources, verification_error, telegram_photo_message_id, created_at, updated_at';
+  'id, telegram_chat_id, source_type, source_id, text, media_url, telegram_message_id, status, scheduled_at, sent_at, error_message, content_type, publish_date, image_error, verification_status, verification_checked_at, verification_sources, verification_error, telegram_photo_message_id, audio_url, telegram_audio_message_id, created_at, updated_at';
 
 /** Admin "Публікації" tab — full history, newest first. */
 export async function listTelegramPosts(): Promise<TelegramPostDto[]> {
@@ -382,24 +395,32 @@ export async function updateTelegramPost(id: number, input: TelegramPostUpdateIn
 }
 
 /**
- * Called after a successful delivery (sendMessage, or sendPhoto with a
- * caption, or the photo+text pair for a long post -- see
+ * Called after a successful delivery (sendMessage, or sendPhoto/sendAudio
+ * with a caption, or any of the split-message combinations -- see
  * lib/telegram/deliver-post.ts). `telegramMessageId` always identifies the
- * message carrying the readable text; `photoMessageId` is set only for the
- * split (photo_then_text) case -- pass null otherwise, including when a
- * photo already existed from setTelegramPostPhotoMessageId and this call
- * is only completing the text half.
+ * message carrying the readable text; `photoMessageId`/`audioMessageId`
+ * are set only for a plan that sent that half as its own message -- pass
+ * null otherwise, including when a photo/audio message id already existed
+ * from setTelegramPostPhotoMessageId/setTelegramPostAudioMessageId and
+ * this call is only completing the text half.
  */
-export async function markTelegramPostSent(id: number, telegramMessageId: number, photoMessageId: number | null = null): Promise<TelegramPostDto> {
+export async function markTelegramPostSent(
+  id: number,
+  telegramMessageId: number,
+  photoMessageId: number | null = null,
+  audioMessageId: number | null = null
+): Promise<TelegramPostDto> {
   const row = await d1First<PostRow>(
     `UPDATE telegram_posts SET
        status = 'sent', telegram_message_id = ?,
        telegram_photo_message_id = COALESCE(?, telegram_photo_message_id),
+       telegram_audio_message_id = COALESCE(?, telegram_audio_message_id),
        sent_at = CURRENT_TIMESTAMP, error_message = NULL, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?
      RETURNING ${POST_COLUMNS}`,
     telegramMessageId,
     photoMessageId,
+    audioMessageId,
     id
   );
   if (!row) throw ApiError.notFound('telegram post not found');
@@ -407,18 +428,29 @@ export async function markTelegramPostSent(id: number, telegramMessageId: number
 }
 
 /**
- * Incremental persistence for the split (photo_then_text) delivery case --
- * called right after the photo-only sendPhoto succeeds, before the
- * follow-up sendMessage is attempted, so a failure on the text half still
- * leaves a record that the photo actually went out (and a retry can skip
- * re-sending it -- see the admin publish route). Does not touch `status`;
- * the caller still marks the row sent/failed afterward based on the text
- * attempt's own outcome.
+ * Incremental persistence for a split delivery case -- called right after
+ * the photo-only sendPhoto succeeds, before the follow-up message(s) are
+ * attempted, so a failure on the rest still leaves a record that the photo
+ * actually went out (and a retry can skip re-sending it -- see the admin
+ * publish route). Does not touch `status`; the caller still marks the row
+ * sent/failed afterward based on the overall attempt's outcome.
  */
 export async function setTelegramPostPhotoMessageId(id: number, photoMessageId: number): Promise<TelegramPostDto> {
   const row = await d1First<PostRow>(
     `UPDATE telegram_posts SET telegram_photo_message_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING ${POST_COLUMNS}`,
     photoMessageId,
+    id
+  );
+  if (!row) throw ApiError.notFound('telegram post not found');
+  return toPostDto(row);
+}
+
+/** Audio counterpart of setTelegramPostPhotoMessageId -- same incremental,
+ * retry-safe persistence, for the audio half of a split delivery. */
+export async function setTelegramPostAudioMessageId(id: number, audioMessageId: number): Promise<TelegramPostDto> {
+  const row = await d1First<PostRow>(
+    `UPDATE telegram_posts SET telegram_audio_message_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING ${POST_COLUMNS}`,
+    audioMessageId,
     id
   );
   if (!row) throw ApiError.notFound('telegram post not found');

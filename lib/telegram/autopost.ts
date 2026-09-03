@@ -157,16 +157,18 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
           throw new Error(`Pre-send validation failed: ${preSendCheck.reason}`);
         }
 
-        const { textMessageId, photoMessageId } = await sendAutopostMessage({
+        const { textMessageId, photoMessageId, audioMessageId } = await sendAutopostMessage({
           client,
           chatId: channelChat.telegramChatId,
           postId: readyRow.id,
           text: readyRow.text ?? '',
           mediaUrl: readyRow.mediaUrl,
+          audioUrl: readyRow.audioUrl,
           existingPhotoMessageId: readyRow.telegramPhotoMessageId,
+          existingAudioMessageId: readyRow.telegramAudioMessageId,
           contentType,
         });
-        await markTelegramPostSent(readyRow.id, textMessageId, photoMessageId);
+        await markTelegramPostSent(readyRow.id, textMessageId, photoMessageId, audioMessageId);
         await recordDeliveryLog({
           telegramPostId: readyRow.id,
           telegramChatId: channelChat.telegramChatId,
@@ -296,13 +298,18 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
         throw new Error(`Pre-send validation failed: ${preSendCheck.reason}`);
       }
 
+      // No audio here -- this is the full auto-generation path (no admin
+      // preparation happened for this slot), and audio is manual-only,
+      // never AI-generated (see media-limits.ts / assignSlotAudio).
       const { textMessageId, photoMessageId } = await sendAutopostMessage({
         client,
         chatId: channelChat.telegramChatId,
         postId: claimed.id,
         text,
         mediaUrl,
+        audioUrl: null,
         existingPhotoMessageId: null,
+        existingAudioMessageId: null,
         contentType,
       });
       await markTelegramPostSent(claimed.id, textMessageId, photoMessageId);

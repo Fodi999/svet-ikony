@@ -4,6 +4,7 @@ import {
   AUTOPOST_GREETING_EVENING,
   AUTOPOST_SIGNATURE,
   buildSaintOfDayTitle,
+  CONTENT_TYPE_AUDIO_CAPTIONS,
   CONTENT_TYPE_FORMAT_HINTS,
   CONTENT_TYPE_GREETINGS,
   CONTENT_TYPE_LINKED_CAPTIONS,
@@ -97,6 +98,23 @@ describe('CONTENT_TYPE_LINKED_CAPTIONS', () => {
     for (const caption of Object.values(CONTENT_TYPE_LINKED_CAPTIONS)) {
       expect(caption).toContain('Продовження');
       expect(caption).toContain('наступному повідомленні');
+    }
+  });
+});
+
+describe('CONTENT_TYPE_AUDIO_CAPTIONS', () => {
+  it('has an entry for every content type', () => {
+    expect(Object.keys(CONTENT_TYPE_AUDIO_CAPTIONS).sort()).toEqual(
+      ['evening_prayer', 'faith_story', 'gospel', 'morning_prayer', 'saint_of_day'].sort(),
+    );
+  });
+
+  it('every caption points the reader to the next message and is worded distinctly from the photo caption (🎧 prefix)', () => {
+    for (const [contentType, caption] of Object.entries(CONTENT_TYPE_AUDIO_CAPTIONS)) {
+      expect(caption).toContain('🎧');
+      expect(caption).toContain('Текст');
+      expect(caption).toContain('наступному повідомленні');
+      expect(caption).not.toBe(CONTENT_TYPE_LINKED_CAPTIONS[contentType as keyof typeof CONTENT_TYPE_LINKED_CAPTIONS]);
     }
   });
 });

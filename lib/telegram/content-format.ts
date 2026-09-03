@@ -170,6 +170,23 @@ export const CONTENT_TYPE_LINKED_CAPTIONS: Record<AutopostContentType, string> =
 };
 
 /**
+ * Short, programmatically-assembled caption for the AUDIO message of a
+ * split delivery that includes audio (audio_then_text or
+ * photo_and_audio_then_text) -- audio counterpart of
+ * CONTENT_TYPE_LINKED_CAPTIONS above, same reasoning (fixed strings, never
+ * a separate OpenAI call). Deliberately worded distinctly from the photo
+ * caption ("🎧 Аудіо" prefix) so a reader who gets both in the same plan
+ * (photo_and_audio_then_text) can tell the two messages apart at a glance.
+ */
+export const CONTENT_TYPE_AUDIO_CAPTIONS: Record<AutopostContentType, string> = {
+  morning_prayer: '🎧 Ранкова молитва — аудіо\n🙏 Текст — у наступному повідомленні.',
+  evening_prayer: '🎧 Вечірня молитва — аудіо\n🙏 Текст — у наступному повідомленні.',
+  saint_of_day: '🎧 Святий дня — аудіо\n☦️ Текст — у наступному повідомленні.',
+  gospel: '🎧 Євангеліє дня — аудіо\n☦️ Текст — у наступному повідомленні.',
+  faith_story: '🎧 Історія віри — аудіо\n🙏 Текст — у наступному повідомленні.',
+};
+
+/**
  * Content types that assert a specific saint/commemoration for the day
  * (the "Сьогодні Церква вшановує..." claim) and therefore require
  * mandatory pre-publish calendar verification against independent sources

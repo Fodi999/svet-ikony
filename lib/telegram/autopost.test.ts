@@ -27,12 +27,14 @@ const mockMarkTelegramPostSent = vi.fn();
 const mockMarkTelegramPostFailed = vi.fn();
 const mockRecordDeliveryLog = vi.fn();
 const mockSetTelegramPostPhotoMessageId = vi.fn();
+const mockSetTelegramPostAudioMessageId = vi.fn();
 
 vi.mock('@/lib/d1/repositories/telegram', () => ({
   markTelegramPostSent: mockMarkTelegramPostSent,
   markTelegramPostFailed: mockMarkTelegramPostFailed,
   recordDeliveryLog: mockRecordDeliveryLog,
   setTelegramPostPhotoMessageId: mockSetTelegramPostPhotoMessageId,
+  setTelegramPostAudioMessageId: mockSetTelegramPostAudioMessageId,
 }));
 
 const mockGenerateTelegramPost = vi.fn();
@@ -55,11 +57,12 @@ vi.mock('./channel', () => ({ getOrResolveChannelChat: mockGetOrResolveChannelCh
 
 const mockSendMessage = vi.fn(async () => ({ messageId: 555 }));
 const mockSendPhoto = vi.fn(async () => ({ messageId: 555 }));
+const mockSendAudio = vi.fn(async () => ({ messageId: 555 }));
 vi.mock('./client', async () => {
   const actual = await vi.importActual<typeof import('./client')>('./client');
   return {
     ...actual,
-    TelegramClient: vi.fn().mockImplementation(() => ({ sendMessage: mockSendMessage, sendPhoto: mockSendPhoto })),
+    TelegramClient: vi.fn().mockImplementation(() => ({ sendMessage: mockSendMessage, sendPhoto: mockSendPhoto, sendAudio: mockSendAudio })),
   };
 });
 
@@ -538,7 +541,9 @@ describe('runAutopostTick -- Content Plan Stage 2 ready-slot fast path', () => {
       id: 900,
       text: 'Вже підготовлений адміністратором текст.',
       mediaUrl: 'https://svetikony.com/media/telegram/900/post-image/x.png',
+      audioUrl: null,
       telegramPhotoMessageId: null,
+      telegramAudioMessageId: null,
       verificationStatus: null,
     });
 
@@ -550,8 +555,82 @@ describe('runAutopostTick -- Content Plan Stage 2 ready-slot fast path', () => {
     expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
     expect(mockEnsureAutopostImage).not.toHaveBeenCalled();
     expect(mockSendPhoto).toHaveBeenCalledWith(-100999, 'https://svetikony.com/media/telegram/900/post-image/x.png', 'Вже підготовлений адміністратором текст.');
-    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(900, 777, null);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(900, 777, null, null);
     expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'sent' }]);
+  });
+
+  it('sends a manually-assigned audio file for a ready row (audio_then_text), independent of any photo', async () => {
+    mockClaimReadyAutopostSlot.mockResolvedValue({
+      id: 905,
+      text: 'Текст із аудіо.',
+      mediaUrl: null,
+      audioUrl: 'https://svetikony.com/media/telegram/905/post-audio/a.mp3',
+      telegramPhotoMessageId: null,
+      telegramAudioMessageId: null,
+      verificationStatus: null,
+    });
+    mockSendAudio.mockResolvedValue({ messageId: 951 });
+    mockSendMessage.mockResolvedValue({ messageId: 900 });
+
+    const result = await runAutopostTick();
+
+    expect(mockSendAudio).toHaveBeenCalledWith(-100999, 'https://svetikony.com/media/telegram/905/post-audio/a.mp3', expect.any(String));
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Текст із аудіо.');
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(905, 900, null, 951);
+    expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'sent' }]);
+  });
+
+  it('sends both a manually-assigned photo and audio for a ready row (photo_and_audio_then_text) as three independent messages', async () => {
+    mockClaimReadyAutopostSlot.mockResolvedValue({
+      id: 906,
+      text: 'Текст із фото і аудіо.',
+      mediaUrl: 'https://svetikony.com/media/telegram/906/post-image/x.png',
+      audioUrl: 'https://svetikony.com/media/telegram/906/post-audio/a.mp3',
+      telegramPhotoMessageId: null,
+      telegramAudioMessageId: null,
+      verificationStatus: null,
+    });
+    mockSendPhoto.mockResolvedValue({ messageId: 901 });
+    mockSendAudio.mockResolvedValue({ messageId: 951 });
+    mockSendMessage.mockResolvedValue({ messageId: 900 });
+
+    const result = await runAutopostTick();
+
+    expect(mockSendPhoto).toHaveBeenCalledWith(-100999, 'https://svetikony.com/media/telegram/906/post-image/x.png', expect.any(String));
+    expect(mockSendAudio).toHaveBeenCalledWith(-100999, 'https://svetikony.com/media/telegram/906/post-audio/a.mp3', expect.any(String));
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Текст із фото і аудіо.');
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(906, 900, 901, 951);
+    expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'sent' }]);
+  });
+
+  it('reuses an already-sent audio message id on a retried ready send, never re-sending it', async () => {
+    mockClaimReadyAutopostSlot.mockResolvedValue({
+      id: 907,
+      text: 'Текст.',
+      mediaUrl: null,
+      audioUrl: 'https://svetikony.com/media/telegram/907/post-audio/a.mp3',
+      telegramPhotoMessageId: null,
+      telegramAudioMessageId: 951, // audio already sent in a previous attempt
+      verificationStatus: null,
+    });
+    mockSendMessage.mockResolvedValue({ messageId: 900 });
+
+    await runAutopostTick();
+
+    expect(mockSendAudio).not.toHaveBeenCalled();
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Текст.');
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(907, 900, null, 951);
+  });
+
+  it('the full auto-generation path (no admin preparation) never sends audio -- audio is manual-only', async () => {
+    mockClaimReadyAutopostSlot.mockResolvedValue(null);
+    mockLoadAutopostFacts.mockResolvedValue({ status: 'ok', facts: { facts: 'x', sourceType: 'prayer', sourceId: 'p1' } });
+    mockClaimAutopostSlot.mockResolvedValue({ id: 43, status: 'draft' });
+    mockGenerateTelegramPost.mockResolvedValue('Свіжий текст.');
+
+    await runAutopostTick();
+
+    expect(mockSendAudio).not.toHaveBeenCalled();
   });
 
   it('falls back to existing generation when no ready row exists for the slot', async () => {
@@ -623,7 +702,9 @@ describe('runAutopostTick -- Content Plan Stage 2 ready-slot fast path', () => {
       id: 904,
       text: 'Дуже довгий текст. '.repeat(60),
       mediaUrl: 'https://svetikony.com/media/telegram/904/post-image/x.png',
+      audioUrl: null,
       telegramPhotoMessageId: 1234, // photo already sent in a previous attempt
+      telegramAudioMessageId: null,
       verificationStatus: null,
     });
 
@@ -631,6 +712,6 @@ describe('runAutopostTick -- Content Plan Stage 2 ready-slot fast path', () => {
 
     expect(mockSendPhoto).not.toHaveBeenCalled();
     expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Дуже довгий текст. '.repeat(60));
-    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(904, 777, 1234);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(904, 777, 1234, null);
   });
 });

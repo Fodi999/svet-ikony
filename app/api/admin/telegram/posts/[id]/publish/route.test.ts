@@ -6,6 +6,7 @@ const mockMarkTelegramPostSent = vi.fn();
 const mockMarkTelegramPostFailed = vi.fn();
 const mockRecordDeliveryLog = vi.fn();
 const mockSetTelegramPostPhotoMessageId = vi.fn();
+const mockSetTelegramPostAudioMessageId = vi.fn();
 
 vi.mock('@/lib/d1/repositories/telegram', () => ({
   getTelegramPost: mockGetTelegramPost,
@@ -13,6 +14,7 @@ vi.mock('@/lib/d1/repositories/telegram', () => ({
   markTelegramPostFailed: mockMarkTelegramPostFailed,
   recordDeliveryLog: mockRecordDeliveryLog,
   setTelegramPostPhotoMessageId: mockSetTelegramPostPhotoMessageId,
+  setTelegramPostAudioMessageId: mockSetTelegramPostAudioMessageId,
 }));
 
 const mockIsAutopostContentType = vi.fn((value: string) =>
@@ -50,6 +52,7 @@ vi.mock('@/lib/telegram/channel', () => ({
 
 const mockSendMessage = vi.fn(async () => ({ messageId: 555 }));
 const mockSendPhoto = vi.fn(async () => ({ messageId: 556 }));
+const mockSendAudio = vi.fn(async () => ({ messageId: 951 }));
 vi.mock('@/lib/telegram/client', async () => {
   const actual = await vi.importActual<typeof import('@/lib/telegram/client')>('@/lib/telegram/client');
   return {
@@ -57,6 +60,7 @@ vi.mock('@/lib/telegram/client', async () => {
     TelegramClient: vi.fn().mockImplementation(() => ({
       sendMessage: mockSendMessage,
       sendPhoto: mockSendPhoto,
+      sendAudio: mockSendAudio,
     })),
   };
 });
@@ -127,7 +131,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
     expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Hello');
     expect(mockSendPhoto).not.toHaveBeenCalled();
-    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(1, 555, null);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(1, 555, null, null);
     expect(mockRecordDeliveryLog).toHaveBeenCalledWith({
       telegramPostId: 1,
       telegramChatId: -100999,
@@ -216,7 +220,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     );
     expect(mockSetAutopostDraftText).toHaveBeenCalledWith(3, 'Generated Ukrainian post text');
     expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Generated Ukrainian post text');
-    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(3, 999, null);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(3, 999, null, null);
     expect(response.status).toBe(200);
   });
 
@@ -371,7 +375,60 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     );
     expect(mockSendMessage).toHaveBeenCalledWith(-100999, longText); // full, untruncated text
     expect(mockSetTelegramPostPhotoMessageId).toHaveBeenCalledWith(10, 1001);
-    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(10, 1002, 1001);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(10, 1002, 1001, null);
+    expect(response.status).toBe(200);
+  });
+
+  it('sends a manually-assigned audio file alongside a photo (photo_and_audio_then_text) with independent message ids', async () => {
+    mockGetTelegramPost.mockResolvedValue({
+      id: 13,
+      status: 'failed',
+      text: 'Короткий текст.',
+      mediaUrl: 'https://svetikony.com/media/telegram/13/post-image/x.png',
+      audioUrl: 'https://svetikony.com/media/telegram/13/post-audio/a.mp3',
+      contentType: 'saint_of_day',
+      publishDate: '2026-08-30',
+      verificationStatus: 'verified',
+      telegramPhotoMessageId: null,
+      telegramAudioMessageId: null,
+    });
+    mockSendPhoto.mockResolvedValue({ messageId: 1301 });
+    mockSendAudio.mockResolvedValue({ messageId: 1351 });
+    mockSendMessage.mockResolvedValue({ messageId: 1302 });
+    mockMarkTelegramPostSent.mockResolvedValue({ id: 13, status: 'sent', telegramMessageId: 1302 });
+
+    const response = await POST(publishRequest('13', token), ctx('13'));
+
+    expect(mockSendPhoto).toHaveBeenCalledWith(-100999, 'https://svetikony.com/media/telegram/13/post-image/x.png', expect.any(String));
+    expect(mockSendAudio).toHaveBeenCalledWith(-100999, 'https://svetikony.com/media/telegram/13/post-audio/a.mp3', expect.any(String));
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Короткий текст.');
+    expect(mockSetTelegramPostAudioMessageId).toHaveBeenCalledWith(13, 1351);
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(13, 1302, 1301, 1351);
+    expect(response.status).toBe(200);
+  });
+
+  it('retry: reuses an already-sent audio message id, never re-sending it', async () => {
+    mockGetTelegramPost.mockResolvedValue({
+      id: 14,
+      status: 'failed',
+      text: 'Текст.',
+      mediaUrl: null,
+      audioUrl: 'https://svetikony.com/media/telegram/14/post-audio/a.mp3',
+      contentType: 'saint_of_day',
+      publishDate: '2026-08-30',
+      verificationStatus: 'verified',
+      telegramPhotoMessageId: null,
+      telegramAudioMessageId: 1351, // already sent in a previous attempt
+    });
+    mockSendMessage.mockResolvedValue({ messageId: 1402 });
+    mockMarkTelegramPostSent.mockResolvedValue({ id: 14, status: 'sent', telegramMessageId: 1402 });
+
+    const response = await POST(publishRequest('14', token), ctx('14'));
+
+    expect(mockSendAudio).not.toHaveBeenCalled();
+    expect(mockSetTelegramPostAudioMessageId).not.toHaveBeenCalled();
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Текст.');
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(14, 1402, null, 1351);
     expect(response.status).toBe(200);
   });
 

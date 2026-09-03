@@ -6,6 +6,7 @@ import {
   findOrCreatePreparedSlot,
   findTelegramPostBySlot,
   isAutopostContentType,
+  setAutopostAudioResult,
   setAutopostImageResult,
   setAutopostSlotReady,
   setAutopostSlotUnready,
@@ -20,6 +21,7 @@ import { TelegramClient } from './client';
 import { buildSaintOfDayTitle, CONTENT_TYPE_FORMAT_HINTS, CONTENT_TYPE_LABELS, CONTENT_TYPE_TARGET_LENGTH, CONTENT_TYPE_TITLES } from './content-format';
 import { getOpenAiConfig, getTelegramConfig } from './env';
 import { gregorianToJulianCalendarDate } from './julian-calendar';
+import { validateTelegramMediaAsset } from './media-limits';
 import { verifySaintOfDay } from './orthodox-calendar-verifier';
 import { requiresCalendarVerification, validateBeforeSend } from './pre-send-validator';
 
@@ -258,7 +260,12 @@ export async function regenerateSlotImage(civilDateIso: string, contentTypeInput
 }
 
 /** "Обрати з медіатеки" -- persists an already-uploaded R2 URL directly,
- * no new upload, no AI call. Creates the row if none exists yet. */
+ * no new upload, no AI call. Creates the row if none exists yet. Validates
+ * the asset against Telegram's own by-URL send limits (5 MB for photos --
+ * see media-limits.ts) before persisting, so an oversized pick fails here
+ * with a clear reason instead of at actual publish time. Never demotes a
+ * ready slot back to draft (see setAutopostImageResult's own doc comment
+ * -- this task's explicit "no demotion on media edit" decision). */
 export async function assignSlotImage(civilDateIso: string, contentTypeInput: string, mediaUrl: string): Promise<TelegramPostDto> {
   const contentType = requireContentType(contentTypeInput);
   const julianDateIso = gregorianToJulianCalendarDate(civilDateIso);
@@ -269,7 +276,47 @@ export async function assignSlotImage(civilDateIso: string, contentTypeInput: st
 
   const post = await resolveOrCreateSlot(civilDateIso, contentType, factsResult.facts);
   assertMutable(post);
+  await validateTelegramMediaAsset(mediaUrl, 'photo');
   return setAutopostImageResult(post.id, mediaUrl, null);
+}
+
+/** "Видалити фото" -- clears mediaUrl without touching text/status. Does
+ * not require source data to exist (unlike assignSlotImage) since it only
+ * ever operates on a slot that already has a row -- nothing to remove
+ * otherwise. */
+export async function removeSlotImage(civilDateIso: string, contentTypeInput: string): Promise<TelegramPostDto> {
+  const contentType = requireContentType(contentTypeInput);
+  const post = await findTelegramPostBySlot(contentType, civilDateIso);
+  if (!post) throw ApiError.notFound('nothing has been prepared for this slot yet');
+  assertMutable(post);
+  return setAutopostImageResult(post.id, null, null);
+}
+
+/** Audio counterpart of assignSlotImage -- "Обрати з медіатеки" for the
+ * audio slot, same no-upload/no-AI persistence, validated against
+ * Telegram's audio-by-URL limit (20 MB) and format allowlist (MP3/M4A
+ * only -- see media-limits.ts) before persisting. */
+export async function assignSlotAudio(civilDateIso: string, contentTypeInput: string, audioUrl: string): Promise<TelegramPostDto> {
+  const contentType = requireContentType(contentTypeInput);
+  const julianDateIso = gregorianToJulianCalendarDate(civilDateIso);
+  const factsResult = await loadAutopostFacts(contentType, julianDateIso);
+  if (factsResult.status !== 'ok') {
+    throw ApiError.validation('no source data exists for this date/type yet (MISSING_SOURCE)');
+  }
+
+  const post = await resolveOrCreateSlot(civilDateIso, contentType, factsResult.facts);
+  assertMutable(post);
+  await validateTelegramMediaAsset(audioUrl, 'audio');
+  return setAutopostAudioResult(post.id, audioUrl);
+}
+
+/** Audio counterpart of removeSlotImage -- "Видалити аудіо". */
+export async function removeSlotAudio(civilDateIso: string, contentTypeInput: string): Promise<TelegramPostDto> {
+  const contentType = requireContentType(contentTypeInput);
+  const post = await findTelegramPostBySlot(contentType, civilDateIso);
+  if (!post) throw ApiError.notFound('nothing has been prepared for this slot yet');
+  assertMutable(post);
+  return setAutopostAudioResult(post.id, null);
 }
 
 /**

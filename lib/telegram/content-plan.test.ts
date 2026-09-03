@@ -296,7 +296,7 @@ describe('buildContentPlanDayDetail', () => {
 
     const day = await buildContentPlanDayDetail('2026-08-30');
 
-    expect(day.slots.saint_of_day.deliveryPreview).toEqual({ kind: 'photo_with_caption', photoCaption: null });
+    expect(day.slots.saint_of_day.deliveryPreview).toEqual({ kind: 'photo_with_caption', photoCaption: null, audioCaption: null });
   });
 
   it('computes the Telegram delivery preview for long text + image -> photo_then_text, with the real fixed linked caption', async () => {
@@ -324,6 +324,7 @@ describe('buildContentPlanDayDetail', () => {
     expect(day.slots.gospel.deliveryPreview).toEqual({
       kind: 'photo_then_text',
       photoCaption: '📖 Євангеліє дня\n☦️ Продовження — у наступному повідомленні.',
+      audioCaption: null,
     });
   });
 
@@ -334,7 +335,76 @@ describe('buildContentPlanDayDetail', () => {
 
     const day = await buildContentPlanDayDetail('2026-08-30');
 
-    expect(day.slots.faith_story.deliveryPreview).toEqual({ kind: 'text_only', photoCaption: null });
+    expect(day.slots.faith_story.deliveryPreview).toEqual({ kind: 'text_only', photoCaption: null, audioCaption: null });
+  });
+
+  it('reflects a manually-assigned audio URL: audioAvailable/audioUrl set, delivery preview becomes audio_then_text', async () => {
+    resetDefaults();
+    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListArticles.mockResolvedValue([{ calendarDayId: 'day-1', content: 'Текст історії' }]);
+    mockListTelegramPosts.mockResolvedValue([
+      {
+        publishDate: '2026-08-30',
+        contentType: 'faith_story',
+        status: 'draft',
+        text: 'Текст історії',
+        mediaUrl: null,
+        audioUrl: 'https://x/story.mp3',
+        telegramMessageId: null,
+        sentAt: null,
+        verificationStatus: null,
+        errorMessage: null,
+      },
+    ]);
+
+    const day = await buildContentPlanDayDetail('2026-08-30');
+
+    expect(day.slots.faith_story.audioAvailable).toBe(true);
+    expect(day.slots.faith_story.audioUrl).toBe('https://x/story.mp3');
+    expect(day.slots.faith_story.deliveryPreview).toEqual({
+      kind: 'audio_then_text',
+      photoCaption: null,
+      audioCaption: '🎧 Історія віри — аудіо\n🙏 Текст — у наступному повідомленні.',
+    });
+  });
+
+  it('reflects both a photo and audio assigned to the same slot: delivery preview becomes photo_and_audio_then_text with both captions', async () => {
+    resetDefaults();
+    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListArticles.mockResolvedValue([{ calendarDayId: 'day-1', content: 'Текст історії' }]);
+    mockListTelegramPosts.mockResolvedValue([
+      {
+        publishDate: '2026-08-30',
+        contentType: 'faith_story',
+        status: 'draft',
+        text: 'Текст історії',
+        mediaUrl: 'https://x/story.png',
+        audioUrl: 'https://x/story.mp3',
+        telegramMessageId: null,
+        sentAt: null,
+        verificationStatus: null,
+        errorMessage: null,
+      },
+    ]);
+
+    const day = await buildContentPlanDayDetail('2026-08-30');
+
+    expect(day.slots.faith_story.deliveryPreview).toEqual({
+      kind: 'photo_and_audio_then_text',
+      photoCaption: '☀️ Історія віри\n🙏 Продовження — у наступному повідомленні.',
+      audioCaption: '🎧 Історія віри — аудіо\n🙏 Текст — у наступному повідомленні.',
+    });
+  });
+
+  it('audioAvailable is never a "source" fallback -- false when no post row has an audioUrl, unlike imageAvailable', async () => {
+    resetDefaults();
+    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListSaints.mockResolvedValue([{ calendarDayId: 'day-1', name: 'Тестовий святий', imageUrl: 'https://x/icon.png' }]);
+
+    const day = await buildContentPlanDayDetail('2026-08-30');
+
+    expect(day.slots.saint_of_day.imageAvailable).toBe(true); // source fallback applies to image
+    expect(day.slots.saint_of_day.audioAvailable).toBe(false); // no such fallback exists for audio
   });
 
   it('maps a "ready" telegram_posts row to the READY publication status', async () => {

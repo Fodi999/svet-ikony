@@ -5,7 +5,7 @@ import { listPrayers } from '@/lib/d1/repositories/prayers';
 import { listSaints } from '@/lib/d1/repositories/saints';
 import { listTelegramPosts, type TelegramPostDto } from '@/lib/d1/repositories/telegram';
 import { AUTOPOST_CONTENT_TYPES, getAutopostSettings, type AutopostContentType } from '@/lib/d1/repositories/telegram-autopost';
-import { CONTENT_TYPE_LINKED_CAPTIONS } from './content-format';
+import { CONTENT_TYPE_AUDIO_CAPTIONS, CONTENT_TYPE_LINKED_CAPTIONS } from './content-format';
 import { planDelivery, type DeliveryPlan } from './deliver-post';
 import { gregorianToJulianCalendarDate } from './julian-calendar';
 import { verifySaintOfDay } from './orthodox-calendar-verifier';
@@ -54,6 +54,11 @@ export type ContentPlanSlot = {
   publicationStatus: ContentPlanSlotStatus;
   textAvailable: boolean;
   imageAvailable: boolean;
+  /** Whether a manually-assigned audio file exists for this slot (new --
+   * migration 0012). Unlike imageAvailable, there's no "source" fallback
+   * here -- audio is never AI-generated and no calendar/saint table has an
+   * audio field, so this is purely post?.audioUrl. */
+  audioAvailable: boolean;
   sentAt: string | null;
   telegramMessageId: number | null;
   errorMessage: string | null;
@@ -64,16 +69,20 @@ export type ContentPlanSlot = {
    * для всего года"). */
   textPreview?: string;
   imageUrl?: string;
+  /** Detail-only, same reasoning as imageUrl -- the assigned audio file's
+   * public URL, for the "Медіа" block's player/file-name display. */
+  audioUrl?: string;
   /** Untruncated current text -- unlike textPreview (always capped at 200
    * chars, kept for the smaller display use case), this is what an editor
    * needs to actually show/edit the real content. */
   fullText?: string;
   /** What production delivery would actually do with the current text +
-   * image, computed via the real planDelivery() -- never a reimplemented
-   * approximation. `photoCaption` is the fixed linked caption for a
-   * photo_then_text plan, or null for the other two kinds (no caption
-   * needed, or the full text itself becomes sendPhoto's caption). */
-  deliveryPreview?: { kind: DeliveryPlan['kind']; photoCaption: string | null };
+   * photo + audio, computed via the real planDelivery() -- never a
+   * reimplemented approximation. `photoCaption`/`audioCaption` are the
+   * fixed linked captions for whichever split plan kinds include that
+   * part, null otherwise (no caption needed, or that part isn't present
+   * in this plan). */
+  deliveryPreview?: { kind: DeliveryPlan['kind']; photoCaption: string | null; audioCaption: string | null };
 };
 
 export type ContentPlanDay = {
@@ -256,6 +265,7 @@ async function buildSlot(
     publicationStatus,
     textAvailable: !!(post?.text?.trim() || source.text?.trim()),
     imageAvailable: !!(post?.mediaUrl || source.imageUrl),
+    audioAvailable: !!post?.audioUrl,
     sentAt: post?.sentAt ?? null,
     telegramMessageId: post?.telegramMessageId ?? null,
     errorMessage: post?.errorMessage ?? null,
@@ -269,12 +279,15 @@ async function buildSlot(
     }
     const previewImage = post?.mediaUrl || source.imageUrl;
     if (previewImage) slot.imageUrl = previewImage;
+    const previewAudio = post?.audioUrl ?? null;
+    if (previewAudio) slot.audioUrl = previewAudio;
 
     if (fullText) {
-      const plan = planDelivery(fullText, previewImage ?? null);
+      const plan = planDelivery(fullText, previewImage ?? null, previewAudio);
       slot.deliveryPreview = {
         kind: plan.kind,
-        photoCaption: plan.kind === 'photo_then_text' ? CONTENT_TYPE_LINKED_CAPTIONS[contentType] : null,
+        photoCaption: plan.kind === 'photo_then_text' || plan.kind === 'photo_and_audio_then_text' ? CONTENT_TYPE_LINKED_CAPTIONS[contentType] : null,
+        audioCaption: plan.kind === 'audio_then_text' || plan.kind === 'photo_and_audio_then_text' ? CONTENT_TYPE_AUDIO_CAPTIONS[contentType] : null,
       };
     }
   }

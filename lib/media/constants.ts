@@ -24,7 +24,7 @@ export const ALLOWED_MODULE_PURPOSES: Record<string, readonly string[]> = {
   church: ['gallery'],
   categories: ['main'],
   products: ['photo', 'gallery'],
-  telegram: ['post-image'], // telegram_posts.media_url, picked via the Telegram composer's media picker
+  telegram: ['post-image', 'post-audio'], // telegram_posts.media_url/audio_url, picked via the Content Plan media picker
 };
 
 export type AllowedModule = keyof typeof ALLOWED_MODULE_PURPOSES;

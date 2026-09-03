@@ -190,16 +190,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const channelChat = await getOrResolveChannelChat(client, config.channel);
 
     try {
-      const { textMessageId, photoMessageId } = await sendAutopostMessage({
+      const { textMessageId, photoMessageId, audioMessageId } = await sendAutopostMessage({
         client,
         chatId: channelChat.telegramChatId,
         postId,
         text: post.text ?? '',
         mediaUrl: post.mediaUrl,
+        audioUrl: post.audioUrl,
         existingPhotoMessageId: post.telegramPhotoMessageId,
+        existingAudioMessageId: post.telegramAudioMessageId,
         contentType: post.contentType,
       });
-      const updated = await markTelegramPostSent(postId, textMessageId, photoMessageId);
+      const updated = await markTelegramPostSent(postId, textMessageId, photoMessageId, audioMessageId);
       await recordDeliveryLog({
         telegramPostId: postId,
         telegramChatId: channelChat.telegramChatId,

@@ -8,6 +8,7 @@ vi.mock('@/lib/d1/repositories/telegram', () => ({ getTelegramPost: mockGetTeleg
 const mockFindOrCreatePreparedSlot = vi.fn();
 const mockFindTelegramPostBySlot = vi.fn();
 const mockSetAutopostImageResult = vi.fn();
+const mockSetAutopostAudioResult = vi.fn();
 const mockSetAutopostSlotReady = vi.fn();
 const mockSetAutopostSlotUnready = vi.fn();
 const mockSetAutopostVerificationResult = vi.fn();
@@ -20,12 +21,16 @@ vi.mock('@/lib/d1/repositories/telegram-autopost', async () => {
     findOrCreatePreparedSlot: mockFindOrCreatePreparedSlot,
     findTelegramPostBySlot: mockFindTelegramPostBySlot,
     setAutopostImageResult: mockSetAutopostImageResult,
+    setAutopostAudioResult: mockSetAutopostAudioResult,
     setAutopostSlotReady: mockSetAutopostSlotReady,
     setAutopostSlotUnready: mockSetAutopostSlotUnready,
     setAutopostVerificationResult: mockSetAutopostVerificationResult,
     setPreparedPostText: mockSetPreparedPostText,
   };
 });
+
+const mockValidateTelegramMediaAsset = vi.fn(async () => {});
+vi.mock('./media-limits', () => ({ validateTelegramMediaAsset: mockValidateTelegramMediaAsset }));
 
 const mockLoadAutopostFacts = vi.fn();
 vi.mock('./autopost-content', () => ({ loadAutopostFacts: mockLoadAutopostFacts }));
@@ -49,6 +54,7 @@ const mockGetTelegramConfig = vi.fn(async () => ({ botToken: 'fake', webhookSecr
 vi.mock('./env', () => ({ getOpenAiConfig: mockGetOpenAiConfig, getTelegramConfig: mockGetTelegramConfig }));
 
 const {
+  assignSlotAudio,
   assignSlotImage,
   editSlotText,
   generateSlotImage,
@@ -58,6 +64,8 @@ const {
   prepareContentPlanDay,
   regenerateSlotImage,
   regenerateSlotText,
+  removeSlotAudio,
+  removeSlotImage,
 } = await import('./content-plan-actions');
 
 /** Real orthodox-calendar-sources.ts / orthodox-calendar-verifier.ts are
@@ -90,6 +98,8 @@ function draftPost(overrides: Record<string, unknown> = {}) {
     verificationSources: null,
     verificationError: null,
     telegramPhotoMessageId: null,
+    audioUrl: null,
+    telegramAudioMessageId: null,
     createdAt: '2026-08-30T00:00:00Z',
     updatedAt: '2026-08-30T00:00:00Z',
     ...overrides,
@@ -116,6 +126,8 @@ describe('content-plan-actions', () => {
     mockSetAutopostImageResult.mockImplementation(async (id: number, mediaUrl: string | null, imageError: string | null) =>
       draftPost({ id, mediaUrl, imageError }),
     );
+    mockSetAutopostAudioResult.mockImplementation(async (id: number, audioUrl: string | null) => draftPost({ id, audioUrl }));
+    mockValidateTelegramMediaAsset.mockResolvedValue(undefined);
   });
 
   describe('generateSlotText', () => {
@@ -324,13 +336,14 @@ describe('content-plan-actions', () => {
   });
 
   describe('assignSlotImage', () => {
-    it('persists a Media Library URL directly, no OpenAI/R2 call', async () => {
+    it('persists a Media Library URL directly, no OpenAI/R2 call, after validating against the Telegram photo limit', async () => {
       mockLoadAutopostFacts.mockResolvedValue(OK_FACTS);
       mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 5 }));
 
       await assignSlotImage(PLAIN_CIVIL_DATE, 'morning_prayer', 'https://svetikony.com/media/library/pick.png');
 
       expect(mockEnsureAutopostImage).not.toHaveBeenCalled();
+      expect(mockValidateTelegramMediaAsset).toHaveBeenCalledWith('https://svetikony.com/media/library/pick.png', 'photo');
       expect(mockSetAutopostImageResult).toHaveBeenCalledWith(5, 'https://svetikony.com/media/library/pick.png', null);
     });
 
@@ -339,6 +352,96 @@ describe('content-plan-actions', () => {
       mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 5, status: 'sent' }));
 
       await expectRejectionDetails(assignSlotImage(PLAIN_CIVIL_DATE, 'morning_prayer', 'https://x/pick.png'), /already been sent/);
+    });
+
+    it('rejects and never persists when the asset fails Telegram validation (oversized, wrong format, etc.)', async () => {
+      mockLoadAutopostFacts.mockResolvedValue(OK_FACTS);
+      mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 5 }));
+      mockValidateTelegramMediaAsset.mockRejectedValue(new Error("File exceeds Telegram's 5 MB limit for photos sent by URL"));
+
+      await expect(assignSlotImage(PLAIN_CIVIL_DATE, 'morning_prayer', 'https://svetikony.com/media/library/big.png')).rejects.toThrow(
+        /5 MB limit/,
+      );
+      expect(mockSetAutopostImageResult).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removeSlotImage', () => {
+    it('clears mediaUrl without touching text/status', async () => {
+      mockFindTelegramPostBySlot.mockResolvedValue(draftPost({ id: 5, mediaUrl: 'https://x/pick.png' }));
+
+      await removeSlotImage(PLAIN_CIVIL_DATE, 'morning_prayer');
+
+      expect(mockSetAutopostImageResult).toHaveBeenCalledWith(5, null, null);
+    });
+
+    it('404s when nothing has been prepared for the slot yet', async () => {
+      mockFindTelegramPostBySlot.mockResolvedValue(null);
+      await expectRejectionDetails(removeSlotImage(PLAIN_CIVIL_DATE, 'morning_prayer'), /nothing has been prepared/);
+    });
+
+    it('rejects removing the image of a sent slot', async () => {
+      mockFindTelegramPostBySlot.mockResolvedValue(draftPost({ id: 5, status: 'sent' }));
+      await expectRejectionDetails(removeSlotImage(PLAIN_CIVIL_DATE, 'morning_prayer'), /already been sent/);
+    });
+  });
+
+  describe('assignSlotAudio', () => {
+    it('persists a Media Library URL directly, no OpenAI/R2 call, after validating against the Telegram audio limit/format', async () => {
+      mockLoadAutopostFacts.mockResolvedValue(OK_FACTS);
+      mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 5 }));
+
+      await assignSlotAudio(PLAIN_CIVIL_DATE, 'morning_prayer', 'https://svetikony.com/media/library/pick.mp3');
+
+      expect(mockValidateTelegramMediaAsset).toHaveBeenCalledWith('https://svetikony.com/media/library/pick.mp3', 'audio');
+      expect(mockSetAutopostAudioResult).toHaveBeenCalledWith(5, 'https://svetikony.com/media/library/pick.mp3');
+    });
+
+    it('rejects assigning audio to a sent slot', async () => {
+      mockLoadAutopostFacts.mockResolvedValue(OK_FACTS);
+      mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 5, status: 'sent' }));
+
+      await expectRejectionDetails(assignSlotAudio(PLAIN_CIVIL_DATE, 'morning_prayer', 'https://x/pick.mp3'), /already been sent/);
+    });
+
+    it('rejects and never persists when the asset fails Telegram validation (oversized, wrong format, etc.)', async () => {
+      mockLoadAutopostFacts.mockResolvedValue(OK_FACTS);
+      mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 5 }));
+      mockValidateTelegramMediaAsset.mockRejectedValue(new Error('Unsupported audio format for Telegram: audio/ogg -- use MP3 or M4A'));
+
+      await expect(assignSlotAudio(PLAIN_CIVIL_DATE, 'morning_prayer', 'https://svetikony.com/media/library/pick.ogg')).rejects.toThrow(
+        /MP3 or M4A/,
+      );
+      expect(mockSetAutopostAudioResult).not.toHaveBeenCalled();
+    });
+
+    it('does not require an image to exist -- audio and photo are independent', async () => {
+      mockLoadAutopostFacts.mockResolvedValue(OK_FACTS);
+      mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 5, mediaUrl: null }));
+
+      await assignSlotAudio(PLAIN_CIVIL_DATE, 'morning_prayer', 'https://svetikony.com/media/library/pick.mp3');
+
+      expect(mockSetAutopostAudioResult).toHaveBeenCalledWith(5, 'https://svetikony.com/media/library/pick.mp3');
+    });
+  });
+
+  describe('removeSlotAudio', () => {
+    it('clears audioUrl without touching text/status/mediaUrl', async () => {
+      mockFindTelegramPostBySlot.mockResolvedValue(draftPost({ id: 5, audioUrl: 'https://x/pick.mp3' }));
+
+      await removeSlotAudio(PLAIN_CIVIL_DATE, 'morning_prayer');
+
+      expect(mockSetAutopostAudioResult).toHaveBeenCalledWith(5, null);
+    });
+
+    it('404s when nothing has been prepared for the slot yet', async () => {
+      mockFindTelegramPostBySlot.mockResolvedValue(null);
+      await expectRejectionDetails(removeSlotAudio(PLAIN_CIVIL_DATE, 'morning_prayer'), /nothing has been prepared/);
+    });
+
+    it('rejects removing the audio of a sent slot', async () => {
+      mockFindTelegramPostBySlot.mockResolvedValue(draftPost({ id: 5, status: 'sent' }));
+      await expectRejectionDetails(removeSlotAudio(PLAIN_CIVIL_DATE, 'morning_prayer'), /already been sent/);
     });
   });
 

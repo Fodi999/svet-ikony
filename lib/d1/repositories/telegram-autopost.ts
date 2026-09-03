@@ -279,6 +279,28 @@ export async function setAutopostImageResult(id: number, mediaUrl: string | null
   return toPostDto(row);
 }
 
+/**
+ * Audio counterpart of setAutopostImageResult -- but audio has no
+ * generation step to fail (manual assignment only, see
+ * content-plan-actions.ts's assignSlotAudio/removeSlotAudio), so there's
+ * no error column to set alongside it. Deliberately does NOT touch
+ * `status` -- matches setAutopostImageResult's own existing behavior
+ * (confirmed during the pre-implementation audit: assigning/regenerating
+ * an image never demotes a 'ready' slot back to 'draft', unlike
+ * setPreparedPostText for text edits), so a READY slot stays READY when
+ * its audio is assigned, changed, or removed (mediaUrl: null), per this
+ * task's explicit "no demotion on media edit" decision.
+ */
+export async function setAutopostAudioResult(id: number, audioUrl: string | null): Promise<TelegramPostDto> {
+  const row = await d1First<PostRow>(
+    `UPDATE telegram_posts SET audio_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING ${POST_COLUMNS}`,
+    audioUrl,
+    id
+  );
+  if (!row) throw ApiError.notFound('telegram post not found');
+  return toPostDto(row);
+}
+
 export type AutopostVerificationResultInput = {
   status: 'verified' | 'failed';
   checkedAt: string;

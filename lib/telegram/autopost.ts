@@ -1,3 +1,4 @@
+import { checkUkrainianLanguage, describeLanguageGuardFailure } from '@/lib/ai/language-guard';
 import { markTelegramPostFailed, markTelegramPostSent, recordDeliveryLog } from '@/lib/d1/repositories/telegram';
 import {
   claimAutopostSlot,
@@ -267,6 +268,19 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
             : CONTENT_TYPE_TITLES[contentType],
         titleFlexible: contentType === 'faith_story',
       });
+
+      // Checked BEFORE the text is ever persisted -- a language leak (task:
+      // "Найден production content-quality bug", real incident
+      // telegram_posts.id=19) must never reach the row at all here, not
+      // just be caught later by validateBeforeSend's own backstop check
+      // below. Throwing here falls into this block's own catch, which
+      // already marks the post 'failed' and logs it, same as every other
+      // failure in this tick.
+      const languageCheck = checkUkrainianLanguage(text);
+      if (!languageCheck.ok) {
+        throw new Error(describeLanguageGuardFailure(languageCheck));
+      }
+
       // Persisted before the Telegram call so a send failure still leaves
       // the generated text on the row for a manual edit/retry, instead of
       // an empty 'failed' post nobody can do anything with.

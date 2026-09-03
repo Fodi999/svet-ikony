@@ -43,4 +43,47 @@ describe('validateBeforeSend', () => {
     const result = validateBeforeSend({ contentType: 'saint_of_day', verificationStatus: 'verified', text: 'text' });
     expect(result).toEqual({ ok: true });
   });
+
+  // Task: "Найден production content-quality bug" -- the real telegram_
+  // posts.id=19 text (saint_of_day, 2026-09-03) would have been caught here
+  // had this check existed at the time; it's now the shared backstop gate
+  // (see this function's own doc comment) for every send/ready path.
+  describe('language guard', () => {
+    it('rejects text with an embedded English phrase, regardless of calendar verification passing', () => {
+      const result = validateBeforeSend({
+        contentType: 'saint_of_day',
+        verificationStatus: 'verified',
+        text: 'Він є одним із сімдесяти апостолів Христових, які spread the Gospel, несучи світло віри в різні куточки світу.',
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('unreachable');
+      expect(result.reason).toContain('Виявлено текст іншою мовою');
+      expect(result.reason).toContain('latin_phrase');
+    });
+
+    it('allows the corrected Ukrainian version of the same text', () => {
+      const result = validateBeforeSend({
+        contentType: 'saint_of_day',
+        verificationStatus: 'verified',
+        text: 'Він є одним із сімдесяти апостолів Христових, які поширювали Євангеліє, несучи світло віри в різні куточки світу.',
+      });
+      expect(result).toEqual({ ok: true });
+    });
+
+    it('rejects a manually-composed post (no calendar verification requirement) with a language leak too', () => {
+      const result = validateBeforeSend({ contentType: null, verificationStatus: null, text: 'Доброго ранку, have a nice day.' });
+      expect(result.ok).toBe(false);
+    });
+
+    it('rejects a Russian-letter leak the same way', () => {
+      const result = validateBeforeSend({
+        contentType: 'morning_prayer',
+        verificationStatus: null,
+        text: 'Доброго ранку, которые моляться разом з нами.',
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('unreachable');
+      expect(result.reason).toContain('russian_letters');
+    });
+  });
 });

@@ -281,6 +281,31 @@ describe('runAutopostTick', () => {
     expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'sent' }]);
   });
 
+  // Task: "Найден production content-quality bug" -- the real incident
+  // (saint_of_day, publish_date 2026-09-03, telegram_posts.id=19) went out
+  // through exactly this fully-automatic path, with no human review step
+  // at all. Proves the language leak is now caught right after generation,
+  // never persisted, and never sent.
+  it('marks the post failed and never sends when the generated text leaks a foreign-language phrase', async () => {
+    mockGetAutopostSettings.mockResolvedValue(settingsWith({}));
+    mockLoadAutopostFacts.mockResolvedValue({
+      status: 'ok',
+      facts: { facts: 'Молитва: ...', sourceType: 'prayer', sourceId: 'p1' },
+    });
+    mockClaimAutopostSlot.mockResolvedValue({ id: 42, status: 'draft' });
+    mockGenerateTelegramPost.mockResolvedValue(
+      'Він є одним із сімдесяти апостолів Христових, які spread the Gospel, несучи світло віри в різні куточки світу.',
+    );
+
+    const result = await runAutopostTick();
+
+    expect(mockSetAutopostDraftText).not.toHaveBeenCalled();
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(mockSendPhoto).not.toHaveBeenCalled();
+    expect(mockMarkTelegramPostFailed).toHaveBeenCalledWith(42, expect.stringContaining('Виявлено текст іншою мовою'));
+    expect(result.attempted).toEqual([{ contentType: 'morning_prayer', outcome: 'failed' }]);
+  });
+
   it('sends a photo (not sendMessage) when image generation succeeds, with the generated text as caption', async () => {
     mockGetAutopostSettings.mockResolvedValue(settingsWith({}));
     mockLoadAutopostFacts.mockResolvedValue({

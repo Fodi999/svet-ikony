@@ -56,6 +56,24 @@ describe('generateTelegramPost', () => {
     expect(systemMessage).toMatch(/не привід вигадувати факти|непідтверджені відомості/i);
   });
 
+  // Task: "Найден production content-quality bug" -- a real published post
+  // (saint_of_day, 2026-09-03) leaked "spread the Gospel" into otherwise-
+  // Ukrainian prose. The system prompt's language rule is reinforced (not
+  // relied on alone -- see lib/ai/language-guard.ts for the deterministic
+  // post-generation check), but it must still explicitly forbid this.
+  it('the system prompt explicitly forbids English/Russian/Polish/transliterated phrases mid-sentence, with a concrete example of the real incident', async () => {
+    const fetchMock = mockOpenAiFetch('some post text');
+    vi.stubGlobal('fetch', fetchMock);
+
+    await generateTelegramPost(baseInput());
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const systemMessage = body.messages.find((m: { role: string }) => m.role === 'system').content as string;
+    expect(systemMessage).toMatch(/ВИКЛЮЧНО українською/);
+    expect(systemMessage).toMatch(/англійською, російською, польською/);
+    expect(systemMessage).toContain('spread the Gospel');
+  });
+
   it('never truncates the returned text, regardless of length', async () => {
     const longCompletion = 'Текст. '.repeat(700); // ~4900 chars, above every target ceiling
     const fetchMock = mockOpenAiFetch(longCompletion);

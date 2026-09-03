@@ -192,6 +192,21 @@ describe('content-plan-actions', () => {
       expect(result.text).toBe('Ранкова молитва.');
     });
 
+    // Task: "Найден production content-quality bug" -- the real incident
+    // (telegram_posts.id=19) never went through this generation-time gate;
+    // this proves a language leak is now caught here, before the row is
+    // ever touched at all.
+    it('rejects and never persists when the generated text leaks a foreign-language phrase', async () => {
+      mockLoadAutopostFacts.mockResolvedValue(OK_FACTS);
+      mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 5 }));
+      mockGenerateTelegramPost.mockResolvedValue(
+        'Він є одним із сімдесяти апостолів Христових, які spread the Gospel, несучи світло віри в різні куточки світу.',
+      );
+
+      await expectRejectionDetails(generateSlotText(PLAIN_CIVIL_DATE, 'morning_prayer'), /Виявлено текст іншою мовою/);
+      expect(mockSetPreparedPostText).not.toHaveBeenCalled();
+    });
+
     it('refuses to overwrite text that already exists -- use regenerate instead', async () => {
       mockLoadAutopostFacts.mockResolvedValue(OK_FACTS);
       mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 5, text: 'Вже є текст' }));
@@ -227,6 +242,15 @@ describe('content-plan-actions', () => {
 
       expect(mockSetPreparedPostText).toHaveBeenCalledWith(5, 'Новий текст.');
       expect(result.text).toBe('Новий текст.');
+    });
+
+    it('rejects and never persists a regenerated text that leaks a foreign-language phrase, leaving the old text untouched', async () => {
+      mockLoadAutopostFacts.mockResolvedValue(OK_FACTS);
+      mockFindOrCreatePreparedSlot.mockResolvedValue(draftPost({ id: 5, text: 'Старий текст' }));
+      mockGenerateTelegramPost.mockResolvedValue('Ми молимося разом, have a blessed day, амінь.');
+
+      await expectRejectionDetails(regenerateSlotText(PLAIN_CIVIL_DATE, 'morning_prayer'), /Виявлено текст іншою мовою/);
+      expect(mockSetPreparedPostText).not.toHaveBeenCalled();
     });
 
     it('demotes an already-ready slot back to draft (setPreparedPostText"s own behavior)', async () => {

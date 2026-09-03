@@ -1,3 +1,4 @@
+import { checkUkrainianLanguage, describeLanguageGuardFailure } from '@/lib/ai/language-guard';
 import { isAutopostContentType, type AutopostContentType } from '@/lib/d1/repositories/telegram-autopost';
 import { CONTENT_TYPES_REQUIRING_CALENDAR_VERIFICATION } from './content-format';
 
@@ -26,12 +27,25 @@ export type PreSendCheckInput = {
 export type PreSendCheckResult = { ok: true } | { ok: false; reason: string };
 
 /**
- * Every post published by this pipeline is Ukrainian-only by construction
- * (lib/telegram/autopost-content.ts always queries D1 with language:
- * 'uk') -- there is no per-post language field to check against, so this
- * validator's "language = uk" requirement is satisfied structurally
- * rather than by a runtime language-detection call, which would be a
- * fragile, non-deterministic thing to bolt on here.
+ * Every post published by this pipeline is grounded in Ukrainian-only D1
+ * facts by construction (lib/telegram/autopost-content.ts always queries
+ * with language: 'uk') -- but that only guarantees the SOURCE facts are
+ * Ukrainian, not that the AI-GENERATED prose built from them stays
+ * Ukrainian throughout. It doesn't: a real published post (saint_of_day,
+ * publish_date 2026-09-03, telegram_posts.id=19) leaked "...апостолів
+ * Христових, які spread the Gospel, несучи..." to the live channel despite
+ * the system prompt already saying "пиши ЛИШЕ українською мовою" (see
+ * lib/ai/openai.ts, now further reinforced) -- proving the prompt alone is
+ * not reliable enough to skip a deterministic check here. This is the
+ * single gate every send/ready path already goes through (autopost.ts's
+ * both paths, content-plan-actions.ts's markSlotReady, the admin publish/
+ * retry route), so the language guard lives here once rather than being
+ * duplicated at each call site -- it protects manually-edited text and
+ * pre-existing rows too, not just freshly AI-generated text (which is also
+ * checked earlier, right after generation, so a language leak never even
+ * gets persisted in the first place -- see content-plan-actions.ts's
+ * buildText, autopost.ts's full-generation path, and the publish route's
+ * regenerateAutopostTextIfMissing).
  */
 export function validateBeforeSend(input: PreSendCheckInput): PreSendCheckResult {
   if (!input.text) {
@@ -42,6 +56,11 @@ export function validateBeforeSend(input: PreSendCheckInput): PreSendCheckResult
     if (input.verificationStatus !== 'verified') {
       return { ok: false, reason: `calendar_not_verified:${input.verificationStatus ?? 'null'}` };
     }
+  }
+
+  const languageCheck = checkUkrainianLanguage(input.text);
+  if (!languageCheck.ok) {
+    return { ok: false, reason: `${describeLanguageGuardFailure(languageCheck)} (${languageCheck.reason})` };
   }
 
   return { ok: true };

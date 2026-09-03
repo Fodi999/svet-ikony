@@ -191,11 +191,11 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
       status: 'ok',
       facts: { facts: 'real facts from D1', sourceType: 'saint', sourceId: 'abc' },
     });
-    mockGenerateTelegramPost.mockResolvedValue('Generated Ukrainian post text');
+    mockGenerateTelegramPost.mockResolvedValue('Згенерований текст публікації');
     mockSetAutopostDraftText.mockResolvedValue({
       id: 3,
       status: 'failed',
-      text: 'Generated Ukrainian post text',
+      text: 'Згенерований текст публікації',
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
@@ -218,8 +218,8 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
         julianDateIso: '2026-08-17',
       })
     );
-    expect(mockSetAutopostDraftText).toHaveBeenCalledWith(3, 'Generated Ukrainian post text');
-    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Generated Ukrainian post text');
+    expect(mockSetAutopostDraftText).toHaveBeenCalledWith(3, 'Згенерований текст публікації');
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Згенерований текст публікації');
     expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(3, 999, null, null);
     expect(response.status).toBe(200);
   });
@@ -228,7 +228,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     mockGetTelegramPost.mockResolvedValue({
       id: 4,
       status: 'failed',
-      text: 'Already generated earlier',
+      text: 'Текст уже згенеровано раніше',
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
@@ -246,7 +246,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     // "passes the verified saint image asset through..." below).
     expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
     expect(mockSetAutopostDraftText).not.toHaveBeenCalled();
-    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Already generated earlier');
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Текст уже згенеровано раніше');
     expect(response.status).toBe(200);
   });
 
@@ -254,7 +254,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     mockGetTelegramPost.mockResolvedValue({
       id: 7,
       status: 'failed',
-      text: 'Already generated earlier',
+      text: 'Текст уже згенеровано раніше',
       mediaUrl: 'https://svetikony.com/media/telegram/7/post-image/existing.png',
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
@@ -269,7 +269,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     expect(mockSendPhoto).toHaveBeenCalledWith(
       -100999,
       'https://svetikony.com/media/telegram/7/post-image/existing.png',
-      'Already generated earlier'
+      'Текст уже згенеровано раніше'
     );
     expect(response.status).toBe(200);
   });
@@ -278,7 +278,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     mockGetTelegramPost.mockResolvedValue({
       id: 8,
       status: 'failed',
-      text: 'Already generated earlier',
+      text: 'Текст уже згенеровано раніше',
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
@@ -296,7 +296,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     expect(mockSendPhoto).toHaveBeenCalledWith(
       -100999,
       'https://svetikony.com/media/telegram/8/post-image/new.png',
-      'Already generated earlier'
+      'Текст уже згенеровано раніше'
     );
     expect(mockSendMessage).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
@@ -306,7 +306,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     mockGetTelegramPost.mockResolvedValue({
       id: 11,
       status: 'failed',
-      text: 'Already generated earlier',
+      text: 'Текст уже згенеровано раніше',
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
@@ -333,7 +333,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     mockGetTelegramPost.mockResolvedValue({
       id: 12,
       status: 'failed',
-      text: 'Already generated earlier',
+      text: 'Текст уже згенеровано раніше',
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
@@ -436,7 +436,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     mockGetTelegramPost.mockResolvedValue({
       id: 9,
       status: 'failed',
-      text: 'Already generated earlier',
+      text: 'Текст уже згенеровано раніше',
       mediaUrl: null,
       contentType: 'saint_of_day',
       publishDate: '2026-08-30',
@@ -449,7 +449,7 @@ describe('POST /api/admin/telegram/posts/:id/publish', () => {
     const response = await POST(publishRequest('9', token), ctx('9'));
 
     expect(mockSendPhoto).not.toHaveBeenCalled();
-    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Already generated earlier');
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Текст уже згенеровано раніше');
     expect(response.status).toBe(200);
   });
 

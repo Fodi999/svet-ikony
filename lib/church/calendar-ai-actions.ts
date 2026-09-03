@@ -1,4 +1,5 @@
 import { describeSaintIconography, generateChurchContent } from '@/lib/ai/church-content';
+import { checkUkrainianLanguage, describeLanguageGuardFailure } from '@/lib/ai/language-guard';
 import { generateTelegramImage } from '@/lib/ai/openai-image';
 import { getMediaBucket } from '@/lib/d1/env';
 import { ApiError } from '@/lib/d1/errors';
@@ -133,6 +134,16 @@ async function requireOpenAi() {
   return config;
 }
 
+/** Same shared guard as the Telegram pipeline's content-plan-actions.ts
+ * (task: "не создавать две разные реализации проверки языка") -- checked
+ * right after every generateChurchContent() call, before it's ever
+ * persisted via updateCalendarDay(). A failure here throws, so the
+ * offending field is never written to the public-facing calendar day. */
+function assertUkrainianOrThrow(text: string): void {
+  const check = checkUkrainianLanguage(text);
+  if (!check.ok) throw ApiError.validation(describeLanguageGuardFailure(check));
+}
+
 // ---------------------------------------------------------------------------
 // Description
 // ---------------------------------------------------------------------------
@@ -157,6 +168,7 @@ export async function regenerateCalendarDescription(dayId: string): Promise<Chur
     facts: buildFacts(day, saint),
     verified,
   });
+  assertUkrainianOrThrow(description);
   return updateCalendarDay(dayId, { description });
 }
 
@@ -184,6 +196,7 @@ export async function regenerateCalendarHistory(dayId: string): Promise<ChurchCa
     facts: buildFacts(day, saint),
     verified,
   });
+  assertUkrainianOrThrow(history);
   return updateCalendarDay(dayId, { history });
 }
 
@@ -202,8 +215,16 @@ export async function generateCalendarSeo(dayId: string): Promise<ChurchCalendar
   const openAi = await requireOpenAi();
   const base = { apiKey: openAi.apiKey, model: openAi.model, civilDateIso: day.dateNewStyle, julianDateIso: day.dateOldStyle, title: day.title, facts: buildFacts(day, saint), verified };
 
-  const seoTitle = day.seoTitle?.trim() ? day.seoTitle : await generateChurchContent({ ...base, kind: 'seo_title' });
-  const seoDescription = day.seoDescription?.trim() ? day.seoDescription : await generateChurchContent({ ...base, kind: 'seo_description' });
+  let seoTitle = day.seoTitle?.trim() ? day.seoTitle : null;
+  if (!seoTitle) {
+    seoTitle = await generateChurchContent({ ...base, kind: 'seo_title' });
+    assertUkrainianOrThrow(seoTitle);
+  }
+  let seoDescription = day.seoDescription?.trim() ? day.seoDescription : null;
+  if (!seoDescription) {
+    seoDescription = await generateChurchContent({ ...base, kind: 'seo_description' });
+    assertUkrainianOrThrow(seoDescription);
+  }
   return updateCalendarDay(dayId, { seoTitle, seoDescription });
 }
 
@@ -218,6 +239,8 @@ export async function regenerateCalendarSeo(dayId: string): Promise<ChurchCalend
     generateChurchContent({ ...base, kind: 'seo_title' }),
     generateChurchContent({ ...base, kind: 'seo_description' }),
   ]);
+  assertUkrainianOrThrow(seoTitle);
+  assertUkrainianOrThrow(seoDescription);
   return updateCalendarDay(dayId, { seoTitle, seoDescription });
 }
 

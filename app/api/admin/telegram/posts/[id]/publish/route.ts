@@ -1,3 +1,4 @@
+import { checkUkrainianLanguage, describeLanguageGuardFailure } from '@/lib/ai/language-guard';
 import { generateTelegramPost, OpenAiError } from '@/lib/ai/openai';
 import { requireSuperAdmin } from '@/lib/d1/auth';
 import { ApiError, withErrors } from '@/lib/d1/errors';
@@ -67,9 +68,10 @@ async function regenerateAutopostTextIfMissing(post: TelegramPostDto): Promise<T
   const factsResult = await loadAutopostFacts(post.contentType, julianDateIso);
   if (factsResult.status !== 'ok') throw ApiError.validation('Source data for this post is no longer available');
 
+  let text: string;
   try {
     const targetLength = CONTENT_TYPE_TARGET_LENGTH[post.contentType];
-    const text = await generateTelegramPost({
+    text = await generateTelegramPost({
       apiKey: openAiConfig.apiKey,
       model: openAiConfig.model,
       contentTypeLabel: CONTENT_TYPE_LABELS[post.contentType],
@@ -85,12 +87,25 @@ async function regenerateAutopostTextIfMissing(post: TelegramPostDto): Promise<T
           : CONTENT_TYPE_TITLES[post.contentType],
       titleFlexible: post.contentType === 'faith_story',
     });
-    return await setAutopostDraftText(post.id, text);
   } catch (error) {
     const message = error instanceof OpenAiError ? error.message : error instanceof Error ? error.message : 'unknown error';
     await markTelegramPostFailed(post.id, message);
     throw new ApiError(502, 'OPENAI_ERROR', 'Failed to generate post text', message);
   }
+
+  // Checked separately from the OpenAI call itself (task: "Найден
+  // production content-quality bug", real incident telegram_posts.id=19)
+  // -- a language leak here is a content-quality failure, not an OpenAI
+  // API failure, so it's reported as its own validation error rather than
+  // mislabeled OPENAI_ERROR. Never persisted via setAutopostDraftText.
+  const languageCheck = checkUkrainianLanguage(text);
+  if (!languageCheck.ok) {
+    const message = describeLanguageGuardFailure(languageCheck);
+    await markTelegramPostFailed(post.id, message);
+    throw ApiError.validation(message);
+  }
+
+  return await setAutopostDraftText(post.id, text);
 }
 
 /**

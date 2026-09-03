@@ -230,7 +230,7 @@ describe('calendar-ai-actions', () => {
     it('fills only the missing SEO field, preserving the existing one', async () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ seoTitle: 'Наявний title', seoDescription: null }));
       mockListSaints.mockResolvedValue([]);
-      mockGenerateChurchContent.mockResolvedValue('Згенерований SEO description.');
+      mockGenerateChurchContent.mockResolvedValue('Згенерований опис для пошукових систем.');
 
       await generateCalendarSeo('day-1');
 
@@ -238,19 +238,22 @@ describe('calendar-ai-actions', () => {
       expect(mockGenerateChurchContent).toHaveBeenCalledWith(expect.objectContaining({ kind: 'seo_description' }));
       expect(mockUpdateCalendarDay).toHaveBeenCalledWith('day-1', {
         seoTitle: 'Наявний title',
-        seoDescription: 'Згенерований SEO description.',
+        seoDescription: 'Згенерований опис для пошукових систем.',
       });
     });
 
     it('regenerate always overwrites both fields', async () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ seoTitle: 'Old', seoDescription: 'Old' }));
       mockListSaints.mockResolvedValue([]);
-      mockGenerateChurchContent.mockResolvedValueOnce('New title').mockResolvedValueOnce('New description');
+      mockGenerateChurchContent.mockResolvedValueOnce('Новий заголовок').mockResolvedValueOnce('Новий опис для пошукових систем');
 
       await regenerateCalendarSeo('day-1');
 
       expect(mockGenerateChurchContent).toHaveBeenCalledTimes(2);
-      expect(mockUpdateCalendarDay).toHaveBeenCalledWith('day-1', { seoTitle: 'New title', seoDescription: 'New description' });
+      expect(mockUpdateCalendarDay).toHaveBeenCalledWith('day-1', {
+        seoTitle: 'Новий заголовок',
+        seoDescription: 'Новий опис для пошукових систем',
+      });
     });
   });
 

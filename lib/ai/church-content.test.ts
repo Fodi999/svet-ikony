@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { describeSaintIconography } from './church-content';
+import { describeSaintIconography, generateChurchContent } from './church-content';
 
 function chatResponse(content: string, status = 200) {
   return new Response(JSON.stringify({ choices: [{ message: { content } }] }), {
@@ -7,6 +7,35 @@ function chatResponse(content: string, status = 200) {
     headers: { 'content-type': 'application/json' },
   });
 }
+
+describe('generateChurchContent', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // Task: "Найден production content-quality bug" -- the same language
+  // rule strengthened in lib/ai/openai.ts's system prompt (see
+  // openai.test.ts), applied to the Church Calendar editor's own prompt too
+  // (task section 6: "проверить также AI generation для Church Calendar").
+  it('the system prompt explicitly forbids English/Russian/Polish/transliterated phrases mid-sentence', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(chatResponse('деякий текст'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await generateChurchContent({
+      apiKey: 'fake-key',
+      kind: 'description',
+      civilDateIso: '2026-09-03',
+      julianDateIso: '2026-08-21',
+      title: 'Тестовий Святий',
+      facts: 'Тестові факти',
+    });
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const systemMessage = body.messages.find((m: { role: string }) => m.role === 'system').content as string;
+    expect(systemMessage).toMatch(/ВИКЛЮЧНО українською/);
+    expect(systemMessage).toMatch(/англійською, російською, польською/);
+  });
+});
 
 describe('describeSaintIconography', () => {
   afterEach(() => {

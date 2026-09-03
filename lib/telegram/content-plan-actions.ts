@@ -1,3 +1,4 @@
+import { checkUkrainianLanguage, describeLanguageGuardFailure } from '@/lib/ai/language-guard';
 import { generateTelegramPost } from '@/lib/ai/openai';
 import { ApiError } from '@/lib/d1/errors';
 import { getTelegramPost, type TelegramPostDto } from '@/lib/d1/repositories/telegram';
@@ -120,6 +121,22 @@ async function resolveOrCreateSlot(civilDateIso: string, contentType: AutopostCo
   });
 }
 
+/**
+ * Checked immediately after every AI generation, before the caller ever
+ * persists the result -- a language leak (task: "Найден production
+ * content-quality bug", the real telegram_posts.id=19 incident) must never
+ * even reach `text`/`draft` on the row, not just be blocked later at
+ * markSlotReady/send time (validateBeforeSend in pre-send-validator.ts
+ * checks again there, as the final backstop for manually-edited or
+ * pre-existing text -- this is the earlier, generation-time gate that
+ * gives the admin immediate "Regenerate/Edit" feedback instead of a
+ * confusing later rejection).
+ */
+function assertUkrainianOrThrow(text: string): void {
+  const check = checkUkrainianLanguage(text);
+  if (!check.ok) throw ApiError.validation(describeLanguageGuardFailure(check));
+}
+
 async function buildText(
   contentType: AutopostContentType,
   facts: AutopostFacts,
@@ -130,7 +147,7 @@ async function buildText(
   const openAiConfig = await getOpenAiConfig();
   if (!openAiConfig) throw ApiError.validation('OpenAI is not configured');
   const targetLength = CONTENT_TYPE_TARGET_LENGTH[contentType];
-  return generateTelegramPost({
+  const text = await generateTelegramPost({
     apiKey: openAiConfig.apiKey,
     model: openAiConfig.model,
     contentTypeLabel: CONTENT_TYPE_LABELS[contentType],
@@ -147,6 +164,8 @@ async function buildText(
         : CONTENT_TYPE_TITLES[contentType],
     titleFlexible: contentType === 'faith_story',
   });
+  assertUkrainianOrThrow(text);
+  return text;
 }
 
 /** Generates fresh text for a slot -- refuses to overwrite text that

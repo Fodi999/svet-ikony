@@ -207,6 +207,15 @@ export async function regenerateSlotText(civilDateIso: string, contentTypeInput:
  * yet (this is one of the task's explicit "row is created on this action"
  * triggers), demotes ready->draft. */
 export async function editSlotText(civilDateIso: string, contentTypeInput: string, text: string): Promise<TelegramPostDto> {
+  if (!text.trim()) {
+    // Defense in depth -- the admin editor's own Save button is already
+    // disabled for empty/whitespace-only text, but without this check here
+    // too, any other caller could still persist empty text, silently
+    // demoting textAvailable to false and only surfacing as a confusing
+    // "cannot mark ready: no_text" later, disconnected from the edit that
+    // actually caused it.
+    throw ApiError.validation('text cannot be empty');
+  }
   const contentType = requireContentType(contentTypeInput);
   const julianDateIso = gregorianToJulianCalendarDate(civilDateIso);
   const factsResult = await loadAutopostFacts(contentType, julianDateIso);

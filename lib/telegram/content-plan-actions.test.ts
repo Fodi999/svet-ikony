@@ -299,6 +299,22 @@ describe('content-plan-actions', () => {
       await expectRejectionDetails(editSlotText(PLAIN_CIVIL_DATE, 'morning_prayer', 'спроба редагування'), /already been sent/);
       expect(mockSetPreparedPostText).not.toHaveBeenCalled();
     });
+
+    // Defense in depth: without this, empty text could be saved (the admin
+    // editor's Save button already disables itself for this case, but
+    // nothing enforced it server-side), silently flipping textAvailable to
+    // false and only surfacing later as a confusing, disconnected
+    // "cannot mark ready: no_text" when the admin tries to publish.
+    it('rejects empty text without ever resolving the slot or calling loadAutopostFacts', async () => {
+      await expectRejectionDetails(editSlotText(PLAIN_CIVIL_DATE, 'morning_prayer', ''), /empty/);
+      expect(mockLoadAutopostFacts).not.toHaveBeenCalled();
+      expect(mockSetPreparedPostText).not.toHaveBeenCalled();
+    });
+
+    it('rejects whitespace-only text the same way', async () => {
+      await expectRejectionDetails(editSlotText(PLAIN_CIVIL_DATE, 'morning_prayer', '   \n\t  '), /empty/);
+      expect(mockSetPreparedPostText).not.toHaveBeenCalled();
+    });
   });
 
   describe('generateSlotImage / regenerateSlotImage', () => {

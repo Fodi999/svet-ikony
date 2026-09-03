@@ -47,6 +47,24 @@ export async function getAutopostSettings(): Promise<AutopostSettingsDto> {
   return { globalEnabled: globalRow?.enabled === 1, items };
 }
 
+/** The daily "visit the site" CTA broadcast's own settings row (migration
+ * 0013) -- lives in this same table, but deliberately read separately from
+ * getAutopostSettings() above, which filters to isAutopostContentType()
+ * rows only (by design, not by accident -- see that function's own doc
+ * comment). Returns null only if the migration hasn't been applied yet. */
+export const PROMO_BROADCAST_CONTENT_TYPE = 'promo_broadcast';
+
+export type PromoBroadcastSettingsDto = { enabled: boolean; scheduleTime: string };
+
+export async function getPromoBroadcastSettings(): Promise<PromoBroadcastSettingsDto | null> {
+  const row = await d1First<SettingRow>(
+    'SELECT content_type, enabled, schedule_time, updated_at FROM telegram_autopost_settings WHERE content_type = ?',
+    PROMO_BROADCAST_CONTENT_TYPE
+  );
+  if (!row) return null;
+  return { enabled: row.enabled === 1, scheduleTime: row.schedule_time };
+}
+
 export type AutopostSettingsUpdateInput = {
   globalEnabled?: boolean;
   items?: { contentType: string; enabled?: boolean; scheduleTime?: string }[];
@@ -133,6 +151,34 @@ export async function claimAutopostSlot(input: ClaimAutopostSlotInput): Promise<
     input.sourceId ?? null,
     input.contentType,
     input.publishDate
+  );
+  return row ? toPostDto(row) : null;
+}
+
+/**
+ * Same (publish_date, content_type) atomic claim as claimAutopostSlot()
+ * above, deliberately simplified: a plain `DO NOTHING` on conflict, no
+ * "reclaim a draft row" branch. That branch exists there only to pick up
+ * a Content Plan Stage 2 admin's own pre-generated draft -- the promo
+ * broadcast has no such per-day preparation step, so there's nothing to
+ * reclaim. A failed send (this claim wins but the Telegram call throws)
+ * simply stays `failed` for today, matching the existing autopost rule
+ * ("a failed slot is never auto-retried" -- see claimReadyAutopostSlot's
+ * own doc comment) -- tomorrow's tick claims a fresh row for the new date
+ * regardless, so this recurring message is self-healing on its own
+ * cadence without needing a manual-retry path.
+ */
+export async function claimPromoBroadcastSlot(chatId: number, publishDate: string, text: string): Promise<TelegramPostDto | null> {
+  const row = await d1First<PostRow>(
+    `INSERT INTO telegram_posts (telegram_chat_id, text, status, content_type, publish_date)
+     VALUES (?, ?, 'draft', ?, ?)
+     ON CONFLICT(publish_date, content_type) WHERE content_type IS NOT NULL
+     DO NOTHING
+     RETURNING ${POST_COLUMNS}`,
+    chatId,
+    text,
+    PROMO_BROADCAST_CONTENT_TYPE,
+    publishDate
   );
   return row ? toPostDto(row) : null;
 }

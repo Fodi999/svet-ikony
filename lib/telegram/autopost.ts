@@ -2,8 +2,10 @@ import { checkUkrainianLanguage, describeLanguageGuardFailure } from '@/lib/ai/l
 import { markTelegramPostFailed, markTelegramPostSent, recordDeliveryLog } from '@/lib/d1/repositories/telegram';
 import {
   claimAutopostSlot,
+  claimPromoBroadcastSlot,
   claimReadyAutopostSlot,
   getAutopostSettings,
+  getPromoBroadcastSettings,
   setAutopostDraftText,
   setAutopostVerificationResult,
   type AutopostContentType,
@@ -19,6 +21,9 @@ import {
   CONTENT_TYPE_LABELS,
   CONTENT_TYPE_TARGET_LENGTH,
   CONTENT_TYPE_TITLES,
+  PROMO_BROADCAST_BUTTON_LABEL,
+  PROMO_BROADCAST_BUTTON_URL,
+  PROMO_BROADCAST_TEXT,
 } from './content-format';
 import { sendAutopostMessage } from './deliver-post';
 import { getOpenAiConfig, getTelegramConfig } from './env';
@@ -91,6 +96,11 @@ export type AutopostTickResult = {
   ranAt: string;
   globalEnabled: boolean;
   attempted: { contentType: AutopostContentType; outcome: AutopostOutcome }[];
+  /** Set only when the daily "visit the site" CTA broadcast was actually
+   * due this tick (see PROMO_BROADCAST_* in content-format.ts) -- omitted,
+   * not a "skipped" entry, when it wasn't due or is disabled, mirroring
+   * how `attempted` above only ever lists types that were actually due. */
+  promoBroadcast?: { outcome: 'sent' | 'failed' };
 };
 
 function errorMessage(error: unknown): string {
@@ -124,7 +134,15 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
   const julianDateIso = getJulianCalendarDate(now, 'Europe/Kyiv');
   const nowHhMm = kyivHhMm(now);
   const dueTypes = settings.items.filter((item) => item.enabled && isDue(nowHhMm, item.scheduleTime));
-  if (dueTypes.length === 0) {
+
+  // Read separately from `settings` above (see getPromoBroadcastSettings's
+  // own doc comment) -- checked here, before the early return below, so a
+  // tick where ONLY the promo broadcast is due (none of the 5 content
+  // types) doesn't return before ever reaching it.
+  const promoBroadcastSettings = await getPromoBroadcastSettings();
+  const promoBroadcastDue = !!promoBroadcastSettings?.enabled && isDue(nowHhMm, promoBroadcastSettings.scheduleTime);
+
+  if (dueTypes.length === 0 && !promoBroadcastDue) {
     return { ranAt: now.toISOString(), globalEnabled: true, attempted };
   }
 
@@ -348,5 +366,39 @@ export async function runAutopostTick(): Promise<AutopostTickResult> {
     }
   }
 
-  return { ranAt: now.toISOString(), globalEnabled: true, attempted };
+  let promoBroadcast: AutopostTickResult['promoBroadcast'];
+  if (promoBroadcastDue) {
+    const claimed = await claimPromoBroadcastSlot(channelChat.telegramChatId, civilDateIso, PROMO_BROADCAST_TEXT);
+    // null means today's slot is already claimed (a previous tick within
+    // the same DUE_WINDOW_MINUTES already sent it, or is mid-send) -- not
+    // an error, just nothing new to do this tick.
+    if (claimed) {
+      try {
+        const { messageId } = await client.sendMessage(channelChat.telegramChatId, PROMO_BROADCAST_TEXT, {
+          inline_keyboard: [[{ text: PROMO_BROADCAST_BUTTON_LABEL, url: PROMO_BROADCAST_BUTTON_URL }]],
+        });
+        await markTelegramPostSent(claimed.id, messageId);
+        await recordDeliveryLog({
+          telegramPostId: claimed.id,
+          telegramChatId: channelChat.telegramChatId,
+          telegramMessageId: messageId,
+          status: 'success',
+        });
+        promoBroadcast = { outcome: 'sent' };
+      } catch (error) {
+        const message = errorMessage(error);
+        await markTelegramPostFailed(claimed.id, message);
+        await recordDeliveryLog({
+          telegramPostId: claimed.id,
+          telegramChatId: channelChat.telegramChatId,
+          telegramMessageId: null,
+          status: 'failed',
+          errorMessage: message,
+        });
+        promoBroadcast = { outcome: 'failed' };
+      }
+    }
+  }
+
+  return { ranAt: now.toISOString(), globalEnabled: true, attempted, promoBroadcast };
 }

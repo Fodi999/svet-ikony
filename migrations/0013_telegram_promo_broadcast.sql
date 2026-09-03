@@ -1,0 +1,22 @@
+-- Additive only: seeds one extra row in the existing telegram_autopost_
+-- settings table (migration 0008) for a daily "visit the site" CTA
+-- broadcast -- reuses that table's enabled/schedule_time columns exactly
+-- as-is, no new table needed. Deliberately NOT one of the 5 real content
+-- types (morning_prayer/saint_of_day/gospel/faith_story/evening_prayer):
+-- it has no source data, no OpenAI generation, and no Content Plan
+-- per-day review -- just a fixed, repeating message with a link button.
+-- getAutopostSettings() already filters telegram_autopost_settings rows
+-- to isAutopostContentType() values only (see that function's own doc
+-- comment), so this row is structurally invisible to the existing
+-- "Автопублікація" tab/5-slot Content Plan grid -- it needs its own small
+-- read function (getPromoBroadcastSettings) instead of broadening that
+-- type, precisely to avoid rippling a 6th "content type" through code that
+-- assumes exactly 5 AI-generated slots.
+--
+-- enabled = 0 (opt-in) rather than this table's own column default of 1:
+-- unlike the 5 content types (which were reviewed before their own
+-- migration/deploy), this is a brand-new message shape going out to a
+-- live channel -- an admin must deliberately turn it on after reviewing
+-- the text/time, exactly like the global kill switch itself defaults off.
+INSERT OR IGNORE INTO telegram_autopost_settings (content_type, enabled, schedule_time) VALUES
+    ('promo_broadcast', 0, '12:00');

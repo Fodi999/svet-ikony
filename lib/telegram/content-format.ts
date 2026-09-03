@@ -196,3 +196,16 @@ export const CONTENT_TYPE_AUDIO_CAPTIONS: Record<AutopostContentType, string> = 
  * day, so they're exempt (see the feature's own requirement #10).
  */
 export const CONTENT_TYPES_REQUIRING_CALENDAR_VERIFICATION: ReadonlySet<AutopostContentType> = new Set(['saint_of_day']);
+
+/**
+ * The daily "visit the site" CTA broadcast (content_type 'promo_broadcast'
+ * in telegram_autopost_settings, see migration 0013) -- a fixed, literal
+ * message, never AI-generated, so it's a plain constant here rather than
+ * anything built from CONTENT_TYPE_* per-type tables above. Deliberately
+ * short and low-key, one clear button, no emoji spam -- distinct in tone
+ * from the 5 real content types so it doesn't read as another "post" but
+ * as what it is, a small recurring nudge.
+ */
+export const PROMO_BROADCAST_TEXT = '🌐 Більше молитов, ікон та статей — на нашому сайті.';
+export const PROMO_BROADCAST_BUTTON_LABEL = 'Перейти на сайт';
+export const PROMO_BROADCAST_BUTTON_URL = 'https://svetikony.com/';

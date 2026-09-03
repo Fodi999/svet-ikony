@@ -15,7 +15,11 @@ const TELEGRAM_API_BASE = 'https://api.telegram.org';
  * CONTENT_TYPE_TARGET_LENGTH) so a long post is never silently cut. */
 const MAX_MESSAGE_CHARS = 4050;
 
-export type InlineKeyboardButton = { text: string; callback_data: string };
+/** A button is either a bot-handled callback (existing menu/settings
+ * buttons, see keyboards.ts) or a plain URL button that opens a link in
+ * the user's browser -- Telegram's API allows exactly one of the two per
+ * button, never both. */
+export type InlineKeyboardButton = { text: string; callback_data: string } | { text: string; url: string };
 export type InlineKeyboardMarkup = { inline_keyboard: InlineKeyboardButton[][] };
 
 export class TelegramApiError extends Error {

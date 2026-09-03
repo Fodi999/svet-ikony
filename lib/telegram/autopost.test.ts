@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PROMO_BROADCAST_BUTTON_LABEL, PROMO_BROADCAST_BUTTON_URL, PROMO_BROADCAST_TEXT } from './content-format';
 
 const mockGetAutopostSettings = vi.fn();
 const mockClaimAutopostSlot = vi.fn();
@@ -10,6 +11,12 @@ const mockClaimReadyAutopostSlot = vi.fn<() => Promise<unknown | null>>(async ()
 const mockSetAutopostDraftText = vi.fn();
 const mockSetAutopostImageResult = vi.fn();
 const mockSetAutopostVerificationResult = vi.fn();
+/** Defaults to "not configured" (null) so every pre-existing test below is
+ * unaffected -- promoBroadcastDue is false whenever this resolves null,
+ * exactly like a fresh install before migration 0013's seeded row is ever
+ * enabled. Dedicated tests further down override this. */
+const mockGetPromoBroadcastSettings = vi.fn<() => Promise<{ enabled: boolean; scheduleTime: string } | null>>(async () => null);
+const mockClaimPromoBroadcastSlot = vi.fn();
 
 const AUTOPOST_CONTENT_TYPES = ['morning_prayer', 'saint_of_day', 'gospel', 'faith_story', 'evening_prayer'];
 
@@ -20,6 +27,8 @@ vi.mock('@/lib/d1/repositories/telegram-autopost', () => ({
   setAutopostDraftText: mockSetAutopostDraftText,
   setAutopostImageResult: mockSetAutopostImageResult,
   setAutopostVerificationResult: mockSetAutopostVerificationResult,
+  getPromoBroadcastSettings: mockGetPromoBroadcastSettings,
+  claimPromoBroadcastSlot: mockClaimPromoBroadcastSlot,
   isAutopostContentType: (value: string) => AUTOPOST_CONTENT_TYPES.includes(value),
 }));
 
@@ -738,5 +747,103 @@ describe('runAutopostTick -- Content Plan Stage 2 ready-slot fast path', () => {
     expect(mockSendPhoto).not.toHaveBeenCalled();
     expect(mockSendMessage).toHaveBeenCalledWith(-100999, 'Дуже довгий текст. '.repeat(60));
     expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(904, 777, 1234, null);
+  });
+});
+
+describe('runAutopostTick -- daily "visit the site" promo broadcast', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
+    vi.clearAllMocks();
+    mockGetTelegramConfig.mockResolvedValue({ botToken: 'fake', webhookSecret: null, channel: '@svit_ikony' });
+    mockGetOpenAiConfig.mockResolvedValue({ apiKey: 'fake-openai-key', model: undefined, imageModel: undefined });
+    mockGetOrResolveChannelChat.mockResolvedValue({ telegramChatId: -100999 });
+    // No content-type slot due in any of these tests -- isolates the promo
+    // broadcast's own behavior from the unrelated 5-type loop.
+    mockGetAutopostSettings.mockResolvedValue(settingsWith({ items: [{ contentType: 'morning_prayer', enabled: true, scheduleTime: NOT_DUE_HHMM }] }));
+    mockSendMessage.mockResolvedValue({ messageId: 900 });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('is not sent when disabled, even if its schedule time is due', async () => {
+    mockGetPromoBroadcastSettings.mockResolvedValue({ enabled: false, scheduleTime: DUE_HHMM });
+
+    const result = await runAutopostTick();
+
+    expect(mockClaimPromoBroadcastSlot).not.toHaveBeenCalled();
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(result.promoBroadcast).toBeUndefined();
+  });
+
+  it('is not sent when enabled but not due yet', async () => {
+    mockGetPromoBroadcastSettings.mockResolvedValue({ enabled: true, scheduleTime: NOT_DUE_HHMM });
+
+    const result = await runAutopostTick();
+
+    expect(mockClaimPromoBroadcastSlot).not.toHaveBeenCalled();
+    expect(result.promoBroadcast).toBeUndefined();
+  });
+
+  it('is processed even when it is the ONLY thing due (no content-type slot due this tick)', async () => {
+    mockGetPromoBroadcastSettings.mockResolvedValue({ enabled: true, scheduleTime: DUE_HHMM });
+    mockClaimPromoBroadcastSlot.mockResolvedValue({ id: 500 });
+
+    const result = await runAutopostTick();
+
+    expect(result.attempted).toEqual([]); // no content-type slot was due
+    expect(result.promoBroadcast).toEqual({ outcome: 'sent' });
+  });
+
+  it('sends the fixed text with a URL button linking to the site, and marks the claimed row sent', async () => {
+    mockGetPromoBroadcastSettings.mockResolvedValue({ enabled: true, scheduleTime: DUE_HHMM });
+    mockClaimPromoBroadcastSlot.mockResolvedValue({ id: 500 });
+
+    await runAutopostTick();
+
+    expect(mockClaimPromoBroadcastSlot).toHaveBeenCalledWith(-100999, CIVIL_DATE_ISO, PROMO_BROADCAST_TEXT);
+    expect(mockSendMessage).toHaveBeenCalledWith(-100999, PROMO_BROADCAST_TEXT, {
+      inline_keyboard: [[{ text: PROMO_BROADCAST_BUTTON_LABEL, url: PROMO_BROADCAST_BUTTON_URL }]],
+    });
+    expect(mockMarkTelegramPostSent).toHaveBeenCalledWith(500, 900);
+    expect(mockRecordDeliveryLog).toHaveBeenCalledWith(
+      expect.objectContaining({ telegramPostId: 500, status: 'success', telegramMessageId: 900 }),
+    );
+  });
+
+  it('does not send twice when the slot is already claimed by an earlier tick this window', async () => {
+    mockGetPromoBroadcastSettings.mockResolvedValue({ enabled: true, scheduleTime: DUE_HHMM });
+    mockClaimPromoBroadcastSlot.mockResolvedValue(null); // already claimed
+
+    const result = await runAutopostTick();
+
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(mockMarkTelegramPostSent).not.toHaveBeenCalled();
+    expect(result.promoBroadcast).toBeUndefined();
+  });
+
+  it('marks the claimed row failed (never auto-retried within the window) when the Telegram send itself throws', async () => {
+    mockGetPromoBroadcastSettings.mockResolvedValue({ enabled: true, scheduleTime: DUE_HHMM });
+    mockClaimPromoBroadcastSlot.mockResolvedValue({ id: 501 });
+    mockSendMessage.mockRejectedValueOnce(new Error('Telegram is down'));
+
+    const result = await runAutopostTick();
+
+    expect(mockMarkTelegramPostFailed).toHaveBeenCalledWith(501, 'Telegram is down');
+    expect(mockMarkTelegramPostSent).not.toHaveBeenCalled();
+    expect(result.promoBroadcast).toEqual({ outcome: 'failed' });
+  });
+
+  it('never touches the unrelated 5-type content loop -- attempted stays empty regardless of promo broadcast outcome', async () => {
+    mockGetPromoBroadcastSettings.mockResolvedValue({ enabled: true, scheduleTime: DUE_HHMM });
+    mockClaimPromoBroadcastSlot.mockResolvedValue({ id: 502 });
+
+    const result = await runAutopostTick();
+
+    expect(mockClaimAutopostSlot).not.toHaveBeenCalled();
+    expect(mockClaimReadyAutopostSlot).not.toHaveBeenCalled();
+    expect(result.attempted).toEqual([]);
   });
 });

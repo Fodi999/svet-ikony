@@ -68,6 +68,30 @@ describe('TelegramClient', () => {
     expect(result).toEqual({ messageId: 3 });
   });
 
+  it('sendMessage passes a URL-button inline keyboard through as reply_markup (task: daily site-link CTA broadcast)', async () => {
+    const fetchMock = mockTelegramFetch(4);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new TelegramClient('fake-token');
+    await client.sendMessage(-100999, 'text', {
+      inline_keyboard: [[{ text: 'Перейти на сайт', url: 'https://svetikony.com/' }]],
+    });
+
+    const sentBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(sentBody.reply_markup).toEqual({ inline_keyboard: [[{ text: 'Перейти на сайт', url: 'https://svetikony.com/' }]] });
+  });
+
+  it('sendMessage omits reply_markup entirely when none is given', async () => {
+    const fetchMock = mockTelegramFetch(1);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new TelegramClient('fake-token');
+    await client.sendMessage(-100999, 'text');
+
+    const sentBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(sentBody).not.toHaveProperty('reply_markup');
+  });
+
   it('sendAudio omits the caption field entirely when none is given', async () => {
     const fetchMock = mockTelegramFetch(3);
     vi.stubGlobal('fetch', fetchMock);

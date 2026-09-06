@@ -677,7 +677,7 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
             className={`min-w-0 [transform:translate3d(0,0,0)] [will-change:opacity,transform] motion-reduce:animate-none ${monthSwapClass}`}
             data-direction={monthDirection}
           >
-            <h2 className="w-full max-w-full mt-[clamp(28px,5vw,64px)] mx-0 mb-[clamp(20px,3vw,38px)] pt-[.12em] px-[.04em] pb-[.18em] font-serif font-bold text-foreground text-[clamp(48px,6.4vw,108px)] leading-[1.12] [overflow-wrap:anywhere] max-[520px]:text-[clamp(52px,22vw,84px)] max-[520px]:mt-[30px] max-[520px]:px-[.03em] max-[520px]:pb-[.2em] max-[520px]:leading-[1.14] max-[430px]:text-[clamp(40px,17vw,58px)] max-[430px]:mt-[22px] max-[430px]:mb-[18px] max-[430px]:leading-[1.16]">
+            <h2 className="w-full max-w-full mt-[clamp(28px,5vw,64px)] mx-0 mb-[clamp(20px,3vw,38px)] pt-[.12em] px-[.04em] pb-[.18em] font-serif font-bold text-foreground text-[clamp(48px,6.4vw,108px)] leading-[1.12] [overflow-wrap:anywhere] max-[520px]:text-[clamp(36px,12vw,54px)] max-[520px]:mt-[30px] max-[520px]:px-[.03em] max-[520px]:pb-[.2em] max-[520px]:leading-[1.14] max-[430px]:text-[clamp(28px,9vw,40px)] max-[430px]:mt-[22px] max-[430px]:mb-[18px] max-[430px]:leading-[1.16]">
               {t(months[monthIndex].key)}
             </h2>
             {visibleDays.length ? (

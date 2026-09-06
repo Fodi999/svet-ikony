@@ -318,6 +318,144 @@ export function CalendarGridDay(props: DayCommonProps & { todayLabel: string }) 
   );
 }
 
+/**
+ * Compact mobile-only grid cell (task: "улучшим календарь для мобильной
+ * версии"). Deliberately a SEPARATE component from CalendarGridDay rather
+ * than a responsive variant of it -- the two need fundamentally different
+ * content models (desktop shows title/note/description inline; mobile
+ * shows only the day number + a background image, with a tap opening
+ * CalendarSelectedDayCard below), so branching one component for both
+ * would be messier than two small ones. `aspect-square` + no text content
+ * beyond the 1-2 digit day number means this never needs
+ * `[overflow-wrap:anywhere]` or a min-height guess -- there's nothing long
+ * enough to wrap in the first place.
+ */
+export function CalendarMobileGridDay({
+  item,
+  imageUrl,
+  isToday,
+  isSelected,
+  onSelect,
+  todayLabel,
+  openDayLabel
+}: {
+  item: CalendarDay;
+  imageUrl: string;
+  isToday: boolean;
+  isSelected: boolean;
+  onSelect: () => void;
+  todayLabel: string;
+  openDayLabel: string;
+}) {
+  if (item.outOfMonth) {
+    return <div className="pointer-events-none aspect-square" aria-hidden="true" />;
+  }
+
+  const hasContent = Boolean(item.label);
+  const hasImage = Boolean(imageUrl);
+  const ariaLabel = `${openDayLabel} ${item.day}${hasContent ? `, ${item.label}` : ''}${isToday ? `, ${todayLabel}` : ''}`;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-label={ariaLabel}
+      aria-pressed={isSelected}
+      className={`relative aspect-square min-w-0 overflow-hidden rounded-lg border text-left transition-colors duration-150 ease-brand ${
+        isSelected ? 'border-2 border-gold' : isToday ? 'border-gold/70' : 'border-gold/28'
+      } ${hasImage ? 'bg-[#141511]' : 'bg-[linear-gradient(135deg,rgba(205,164,90,.055),transparent_50%),#141511]'}`}
+    >
+      {hasImage ? (
+        <>
+          <StableImage src={imageUrl} alt="" width={160} height={160} className="absolute inset-0 size-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" aria-hidden="true" />
+        </>
+      ) : null}
+      <span
+        className={`absolute left-1 top-1 font-serif text-[13px] leading-none [font-variant-numeric:tabular-nums] ${hasImage ? 'text-white' : 'text-foreground'}`}
+      >
+        {item.day}
+      </span>
+      {isToday ? <span className="absolute right-1 top-1 size-[6px] rounded-full bg-gold" aria-hidden="true" /> : null}
+      {!isToday && (item.feast || item.kind === 'fast') ? (
+        <span
+          className={`absolute right-1 top-1 size-[6px] rounded-full ${item.kind === 'fast' ? 'bg-[#9a3b42]' : 'bg-[#a97832]'}`}
+          aria-hidden="true"
+        />
+      ) : null}
+    </button>
+  );
+}
+
+/**
+ * Below the mobile compact grid (task section 3): appears once a day is
+ * tapped, carrying everything CalendarMobileGridDay deliberately leaves
+ * out -- the full title, description, and a link to the real page. Kept
+ * separate from CalendarListDay's own expand panel (which serves the
+ * List tab's accordion, a different interaction) even though the visual
+ * shape rhymes, since coupling the two would tie the grid tab's selection
+ * state to the list tab's expand state for no real benefit.
+ */
+export function CalendarSelectedDayCard({
+  item,
+  imageUrl,
+  detailHref,
+  dateLabel,
+  quietLabel,
+  iconFallbackAlt,
+  openDayLabel,
+  moreLabel
+}: {
+  item: CalendarDay;
+  imageUrl: string;
+  detailHref: string;
+  dateLabel: string;
+  quietLabel: string;
+  iconFallbackAlt: string;
+  openDayLabel: string;
+  moreLabel: string;
+}) {
+  const localeHref = useLocaleHref();
+  const hasContent = Boolean(item.label);
+  const summary = item.description || item.note;
+
+  return (
+    <div className="mt-3 overflow-hidden rounded-lg border border-gold/28 bg-[#141511]">
+      {imageUrl ? (
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#1b1c16]">
+          <StableImage
+            src={imageUrl}
+            alt={item.icon?.title || item.label || iconFallbackAlt}
+            width={640}
+            height={360}
+            className="absolute inset-0 size-full object-cover"
+          />
+        </div>
+      ) : null}
+      <div className="grid gap-2 p-4">
+        <span className="text-[13px] font-black tracking-[.06em] text-gold-light uppercase">
+          {item.day}
+          {dateLabel ? ` · ${dateLabel}` : ''}
+        </span>
+        <strong className="font-serif text-[20px] font-bold leading-tight text-foreground [overflow-wrap:anywhere]">
+          {hasContent ? item.label : quietLabel}
+        </strong>
+        {summary ? <p className="line-clamp-3 text-[14px] leading-snug text-muted-foreground">{summary}</p> : null}
+        {hasContent ? (
+          <Link
+            className="mt-1 inline-flex w-max max-w-full items-center gap-[7px] border-b-2 border-gold font-extrabold text-gold-light [overflow-wrap:anywhere]"
+            href={localeHref(detailHref)}
+            aria-label={`${openDayLabel} ${item.label}`}
+          >
+            {moreLabel}
+            <SvgIcon name="arrow-right" size={16} />
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function CalendarListDay(props: DayCommonProps & { itemKey: string; isExpanded: boolean; onToggle: () => void; quietLabel: string; monthLabel: string }) {
   const { item, imageUrl, detailHref, dateLabel, quietLabel, iconFallbackAlt, openDayLabel, dayLinksLabel, monthGenitiveLabel, monthLabel, actionLabels, itemKey, isExpanded, onToggle } = props;
   const localeHref = useLocaleHref();

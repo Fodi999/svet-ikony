@@ -12,6 +12,8 @@ import {
   CalendarImageCard,
   CalendarInfoCard,
   CalendarListDay,
+  CalendarMobileGridDay,
+  CalendarSelectedDayCard,
   CalendarServiceCard,
   type CalendarDay
 } from './CalendarCards';
@@ -330,6 +332,12 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
   const [filter, setFilter] = useState<FilterKind>('all');
   const [view, setView] = useState<ViewMode>('calendar');
   const [expandedDay, setExpandedDay] = useState('');
+  // Mobile compact grid's own "tap a day -> show its card below" selection
+  // (task: "улучшим календарь для мобильной версии") -- deliberately
+  // separate from `expandedDay` above, which is the List tab's own
+  // accordion state; the two tabs can be switched between independently
+  // without one clearing the other unexpectedly.
+  const [selectedDayKey, setSelectedDayKey] = useState('');
   const [activeCalendar, setActiveCalendar] = useState(calendar);
   const initialPosition = parseCalendarQueryPosition(searchYear, searchMonth) ?? calendarPositionFromContent(calendar);
   const [year, setYear] = useState(initialPosition.year);
@@ -353,6 +361,9 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
   );
   const calendarGridDays = useMemo(() => createCalendarGridDays(days, monthIndex, year), [days, monthIndex, year]);
   const visibleDays = filter === 'all' ? (view === 'calendar' ? calendarGridDays : days) : days.filter((day) => day.kind === filter);
+  const selectedMobileDay = view === 'calendar' && selectedDayKey
+    ? visibleDays.find((item) => calendarCellKey(item, year, monthIndex) === selectedDayKey)
+    : undefined;
   const now = new Date();
   const realTodayDay = String(now.getDate()).padStart(2, '0');
   const isCurrentVisibleMonth = now.getFullYear() === year && now.getMonth() === monthIndex;
@@ -482,6 +493,13 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
     previousAbsoluteMonth.current = nextAbsolute;
     const timeout = window.setTimeout(() => setMonthTransition(false), 230);
     return () => window.clearTimeout(timeout);
+  }, [monthIndex, year]);
+
+  // A day number from last month's mobile selection shouldn't linger once
+  // the grid swaps to a different month/year -- clear it so the card below
+  // the grid never shows content for the wrong day.
+  useEffect(() => {
+    setSelectedDayKey('');
   }, [monthIndex, year]);
 
   useEffect(() => {
@@ -683,70 +701,117 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
             {visibleDays.length ? (
               <>
                 {view === 'calendar' ? (
-                  <div className="grid grid-cols-7 gap-3.5 mb-3.5 max-[520px]:gap-1.5 max-[430px]:gap-1 max-[430px]:mb-1.5" aria-label={t('weekdaysLabel')}>
+                  // gap-1/md:gap-3.5 deliberately mirrors the exact gap used by
+                  // CalendarMobileGridDay's grid below md and CalendarGridDay's
+                  // grid at md+ -- a mismatched gap here would make these
+                  // labels drift out of alignment with their own day columns.
+                  <div className="grid grid-cols-7 gap-1 mb-1.5 md:gap-3.5 md:mb-3.5" aria-label={t('weekdaysLabel')}>
                     {weekdayKeys.map((key) => (
-                      <span key={key} className="min-w-0 border-b border-gold/28 pb-2.5 text-muted-foreground font-serif text-[14px] font-extrabold tracking-[.08em] uppercase max-[520px]:text-[10px] max-[520px]:tracking-[.02em] max-[430px]:border-b-0 max-[430px]:pb-1 max-[430px]:text-center max-[430px]:text-[9px]">
+                      <span key={key} className="min-w-0 text-center text-[9px] font-extrabold uppercase tracking-[.02em] text-muted-foreground md:border-b md:border-gold/28 md:pb-2.5 md:text-left md:font-serif md:text-[14px] md:tracking-[.08em]">
                         {t(key)}
                       </span>
                     ))}
                   </div>
                 ) : null}
-                <div
-                  className={
-                    view === 'list'
-                      ? 'grid gap-0 border-t border-gold/28'
-                      : 'w-full min-w-0 grid grid-cols-7 gap-3.5 items-stretch bg-[linear-gradient(180deg,rgba(205,164,90,.045),rgba(11,12,10,.16)),#0b0c0a] max-[520px]:gap-1.5 max-[520px]:bg-transparent'
-                  }
-                >
-                  {view === 'list' ? visibleDays.map((item) => {
-                    const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
-                    const detailHref = pageHrefForDay(item, pages);
-                    const itemKey = calendarCellKey(item, year, monthIndex);
-                    const isExpanded = expandedDay === itemKey;
+                {view === 'list' ? (
+                  <div className="grid gap-0 border-t border-gold/28">
+                    {visibleDays.map((item) => {
+                      const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
+                      const detailHref = pageHrefForDay(item, pages);
+                      const itemKey = calendarCellKey(item, year, monthIndex);
+                      const isExpanded = expandedDay === itemKey;
 
-                    return (
-                      <CalendarListDay
-                        key={itemKey}
-                        item={item}
-                        itemKey={itemKey}
-                        imageUrl={imageUrl}
-                        detailHref={detailHref}
-                        isToday={isCurrentVisibleMonth && item.day === realTodayDay}
-                        isExpanded={isExpanded}
-                        onToggle={() => setExpandedDay((current) => current === itemKey ? '' : itemKey)}
-                        dateLabel={dayDateLabel(item)}
-                        quietLabel={t('quietDays')}
-                        iconFallbackAlt={t('iconOfDay')}
-                        openDayLabel={t('openDay')}
-                        dayLinksLabel={t('dayLinks')}
-                        monthGenitiveLabel={t('januaryGenitive')}
-                        monthLabel={monthTitle}
-                        actionLabels={dayActionLabels}
-                      />
-                    );
-                  }) : visibleDays.map((item) => {
-                    const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
-                    const detailHref = pageHrefForDay(item, pages);
-                    const itemKey = calendarCellKey(item, year, monthIndex);
+                      return (
+                        <CalendarListDay
+                          key={itemKey}
+                          item={item}
+                          itemKey={itemKey}
+                          imageUrl={imageUrl}
+                          detailHref={detailHref}
+                          isToday={isCurrentVisibleMonth && item.day === realTodayDay}
+                          isExpanded={isExpanded}
+                          onToggle={() => setExpandedDay((current) => current === itemKey ? '' : itemKey)}
+                          dateLabel={dayDateLabel(item)}
+                          quietLabel={t('quietDays')}
+                          iconFallbackAlt={t('iconOfDay')}
+                          openDayLabel={t('openDay')}
+                          dayLinksLabel={t('dayLinks')}
+                          monthGenitiveLabel={t('januaryGenitive')}
+                          monthLabel={monthTitle}
+                          actionLabels={dayActionLabels}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <>
+                    {/* Desktop: unchanged rich cards (title/note/description inline,
+                        hover-reveal panel over an image) -- see CalendarGridDay's own
+                        doc comment. Kept exactly as it was, just gated to md+ now that
+                        mobile has its own compact grid below. */}
+                    <div className="hidden w-full min-w-0 md:grid grid-cols-7 gap-3.5 items-stretch bg-[linear-gradient(180deg,rgba(205,164,90,.045),rgba(11,12,10,.16)),#0b0c0a]">
+                      {visibleDays.map((item) => {
+                        const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
+                        const detailHref = pageHrefForDay(item, pages);
+                        const itemKey = calendarCellKey(item, year, monthIndex);
 
-                    return (
-                      <CalendarGridDay
-                        key={itemKey}
-                        item={item}
-                        imageUrl={imageUrl}
-                        detailHref={detailHref}
-                        isToday={!item.outOfMonth && isCurrentVisibleMonth && item.day === realTodayDay}
-                        dateLabel={dayDateLabel(item)}
-                        todayLabel={t('today')}
-                        iconFallbackAlt={t('iconOfDay')}
-                        openDayLabel={t('openDay')}
-                        dayLinksLabel={t('dayLinks')}
-                        monthGenitiveLabel={t('januaryGenitive')}
-                        actionLabels={dayActionLabels}
-                      />
-                    );
-                  })}
-                </div>
+                        return (
+                          <CalendarGridDay
+                            key={itemKey}
+                            item={item}
+                            imageUrl={imageUrl}
+                            detailHref={detailHref}
+                            isToday={!item.outOfMonth && isCurrentVisibleMonth && item.day === realTodayDay}
+                            dateLabel={dayDateLabel(item)}
+                            todayLabel={t('today')}
+                            iconFallbackAlt={t('iconOfDay')}
+                            openDayLabel={t('openDay')}
+                            dayLinksLabel={t('dayLinks')}
+                            monthGenitiveLabel={t('januaryGenitive')}
+                            actionLabels={dayActionLabels}
+                          />
+                        );
+                      })}
+                    </div>
+
+                    {/* Mobile: compact aspect-square cells (number + optional
+                        background image only, no inline text) -- tapping one shows
+                        its full card below instead of navigating immediately. */}
+                    <div className="grid w-full max-w-full min-w-0 grid-cols-7 gap-1 overflow-hidden md:hidden">
+                      {visibleDays.map((item) => {
+                        const imageUrl = item.imageUrl || item.icon?.imageUrl || '';
+                        const itemKey = calendarCellKey(item, year, monthIndex);
+
+                        return (
+                          <CalendarMobileGridDay
+                            key={itemKey}
+                            item={item}
+                            imageUrl={imageUrl}
+                            isToday={!item.outOfMonth && isCurrentVisibleMonth && item.day === realTodayDay}
+                            isSelected={selectedDayKey === itemKey}
+                            onSelect={() => setSelectedDayKey((current) => current === itemKey ? '' : itemKey)}
+                            todayLabel={t('today')}
+                            openDayLabel={t('openDay')}
+                          />
+                        );
+                      })}
+                    </div>
+                    {selectedMobileDay ? (
+                      <div className="md:hidden">
+                        <CalendarSelectedDayCard
+                          item={selectedMobileDay}
+                          imageUrl={selectedMobileDay.imageUrl || selectedMobileDay.icon?.imageUrl || ''}
+                          detailHref={pageHrefForDay(selectedMobileDay, pages)}
+                          dateLabel={dayDateLabel(selectedMobileDay)}
+                          quietLabel={t('quietDays')}
+                          iconFallbackAlt={t('iconOfDay')}
+                          openDayLabel={t('openDay')}
+                          moreLabel={t('more')}
+                        />
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </>
             ) : (
               <p className="m-0 border-t border-gold/28 py-6 text-muted-foreground text-[18px]">{t('noDays')}</p>

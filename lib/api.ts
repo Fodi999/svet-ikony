@@ -27,41 +27,72 @@ function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+// Fallback label shown for any prayerType this map doesn't (yet) cover --
+// never the raw technical value, since every consumer of prayerTypeLabel()
+// is public-facing display copy (see call sites: prayerFromChurchDto below,
+// app/prayers/[slug]/page.tsx, app/church/calendar/[date]/page.tsx).
+const prayerTypeFallbackLabel: Record<SiteLocale, string> = {
+  uk: 'Молитва',
+  ru: 'Молитва',
+  en: 'Prayer'
+};
+
 const prayerTypeLabels: Record<SiteLocale, Record<string, string>> = {
   uk: {
+    // Authoritative PrayerType enum (svetikony-admin's prayer.schema.ts):
+    morning: 'Ранкова молитва',
+    evening: 'Вечірня молитва',
+    before_meal: 'Молитва перед їжею',
+    after_meal: 'Молитва після їжі',
+    to_saint: 'Молитва до святого',
+    to_icon: 'Молитва перед іконою',
+    feast: 'Святкова молитва',
+    general: 'Молитва',
+    // Legacy-compatible: not part of the current admin enum, kept for any
+    // old data that may still carry these values.
     prayer: 'Канонічна молитва',
     akathist: 'Акафіст',
     troparion: 'Тропар',
     kontakion: 'Кондак',
     velichanie: 'Величання',
-    modern: 'Сучасна молитва',
-    morning: 'Ранкова молитва',
-    evening: 'Вечірня молитва'
+    modern: 'Сучасна молитва'
   },
   ru: {
+    morning: 'Утренняя молитва',
+    evening: 'Вечерняя молитва',
+    before_meal: 'Молитва перед едой',
+    after_meal: 'Молитва после еды',
+    to_saint: 'Молитва святому',
+    to_icon: 'Молитва перед иконой',
+    feast: 'Праздничная молитва',
+    general: 'Молитва',
     prayer: 'Каноническая молитва',
     akathist: 'Акафист',
     troparion: 'Тропарь',
     kontakion: 'Кондак',
     velichanie: 'Величание',
-    modern: 'Современная молитва',
-    morning: 'Утренняя молитва',
-    evening: 'Вечерняя молитва'
+    modern: 'Современная молитва'
   },
   en: {
+    morning: 'Morning prayer',
+    evening: 'Evening prayer',
+    before_meal: 'Prayer before meals',
+    after_meal: 'Prayer after meals',
+    to_saint: 'Prayer to a saint',
+    to_icon: 'Prayer before an icon',
+    feast: 'Feast-day prayer',
+    general: 'Prayer',
     prayer: 'Canonical prayer',
     akathist: 'Akathist',
     troparion: 'Troparion',
     kontakion: 'Kontakion',
     velichanie: 'Hymn of praise',
-    modern: 'Modern prayer',
-    morning: 'Morning prayer',
-    evening: 'Evening prayer'
+    modern: 'Modern prayer'
   }
 };
 
 export function prayerTypeLabel(prayerType: string, locale: SiteLocale) {
-  return prayerTypeLabels[locale]?.[prayerType] || normalizeString(prayerType);
+  return prayerTypeLabels[locale]?.[prayerType] || prayerTypeFallbackLabel[locale];
 }
 
 function normalizeStringArray(value: unknown) {

@@ -1,6 +1,70 @@
 import { describe, expect, it } from 'vitest';
-import { buildCalendarHero, calendarDayFromChurchPage, dedupeCalendarDaysByDay, monthIndexFromCalendarTitle, resolveCategoryImage, resolveProductImages } from './api';
-import type { ChurchProductCategoryDto, ChurchProductDto, PublicChurchContentPage } from './types';
+import { buildCalendarHero, calendarDayFromChurchPage, dedupeCalendarDaysByDay, monthIndexFromCalendarTitle, prayerTypeLabel, resolveCategoryImage, resolveProductImages } from './api';
+import type { ChurchProductCategoryDto, ChurchProductDto, PublicChurchContentPage, SiteLocale } from './types';
+
+const AUTHORITATIVE_PRAYER_TYPES = [
+  'morning',
+  'evening',
+  'before_meal',
+  'after_meal',
+  'to_saint',
+  'to_icon',
+  'feast',
+  'general'
+] as const;
+
+describe('prayerTypeLabel', () => {
+  const expected: Record<SiteLocale, Record<(typeof AUTHORITATIVE_PRAYER_TYPES)[number], string>> = {
+    uk: {
+      morning: 'Ранкова молитва',
+      evening: 'Вечірня молитва',
+      before_meal: 'Молитва перед їжею',
+      after_meal: 'Молитва після їжі',
+      to_saint: 'Молитва до святого',
+      to_icon: 'Молитва перед іконою',
+      feast: 'Святкова молитва',
+      general: 'Молитва'
+    },
+    ru: {
+      morning: 'Утренняя молитва',
+      evening: 'Вечерняя молитва',
+      before_meal: 'Молитва перед едой',
+      after_meal: 'Молитва после еды',
+      to_saint: 'Молитва святому',
+      to_icon: 'Молитва перед иконой',
+      feast: 'Праздничная молитва',
+      general: 'Молитва'
+    },
+    en: {
+      morning: 'Morning prayer',
+      evening: 'Evening prayer',
+      before_meal: 'Prayer before meals',
+      after_meal: 'Prayer after meals',
+      to_saint: 'Prayer to a saint',
+      to_icon: 'Prayer before an icon',
+      feast: 'Feast-day prayer',
+      general: 'Prayer'
+    }
+  };
+
+  for (const locale of ['uk', 'ru', 'en'] as const) {
+    for (const type of AUTHORITATIVE_PRAYER_TYPES) {
+      it(`maps "${type}" to the correct ${locale} label`, () => {
+        expect(prayerTypeLabel(type, locale)).toBe(expected[locale][type]);
+      });
+    }
+  }
+
+  it('never raw-leaks an unrecognized technical value into the public UI', () => {
+    expect(prayerTypeLabel('some_future_enum_value', 'uk')).toBe('Молитва');
+    expect(prayerTypeLabel('some_future_enum_value', 'ru')).toBe('Молитва');
+    expect(prayerTypeLabel('some_future_enum_value', 'en')).toBe('Prayer');
+  });
+
+  it('falls back to a locale-appropriate label for an empty value', () => {
+    expect(prayerTypeLabel('', 'uk')).toBe('Молитва');
+  });
+});
 
 describe('buildCalendarHero / monthIndexFromCalendarTitle round-trip', () => {
   it('produces a monthTitle that parses back to the same month for every month of the year', () => {

@@ -33,7 +33,19 @@ export default async function ShopPage() {
         items={[{ href: '/', label: translate(locale, 'home') }]}
         current={translate(locale, 'navShop')}
       />
-      <section className="grid grid-cols-[minmax(0,1fr)_minmax(260px,420px)] gap-[clamp(24px,5vw,80px)] items-end pt-0 px-0 pb-[clamp(30px,4vw,64px)] border-b border-gold/28 max-[900px]:items-start">
+      {/*
+       * Root cause of the mobile hero title breaking letter-by-letter: this
+       * grid always defined 2 columns (grid-cols-[minmax(0,1fr)_minmax(260px,420px)])
+       * with only ONE child ever rendered below. An empty grid track still
+       * reserves its own space -- the second column's 260px hard minimum
+       * never released on mobile, squeezing the first column (holding the
+       * <h1>) down to ~a few dozen px. HeroTitle's own max-w-[min(100%,1180px)]
+       * + [overflow-wrap:anywhere] then dutifully shrank to fit that sliver,
+       * breaking every word onto its own line. max-[900px]:grid-cols-1 below
+       * mirrors DetailHero's own established convention (PageChrome.tsx) for
+       * collapsing a 2-column hero on mobile/tablet.
+       */}
+      <section className="grid grid-cols-[minmax(0,1fr)_minmax(260px,420px)] gap-[clamp(24px,5vw,80px)] items-end pt-0 px-0 pb-[clamp(30px,4vw,64px)] border-b border-gold/28 max-[900px]:grid-cols-1 max-[900px]:items-start">
         <div>
           <Eyebrow><T k="shopSectionName" /></Eyebrow>
           <HeroTitle className="max-w-[980px]">

@@ -25,13 +25,24 @@ export function ProductCard({ product }: { product: ChurchProductDto }) {
       className="grid min-w-0 grid-rows-[auto_1fr] gap-0 rounded-md border border-gold/28 bg-background p-0 no-underline transition-[border-color,transform] duration-200 ease-brand hover:-translate-y-0.5 hover:border-gold"
       href={localeHref(`/shop/${product.slug}`)}
     >
-      <figure className="relative m-0 grid aspect-[4/5] place-items-center overflow-hidden border-b border-gold/28 bg-[linear-gradient(160deg,rgba(127,141,101,.09),transparent_62%),#1b1c16] p-[clamp(16px,2.2vw,34px)]">
+      {/*
+       * Root cause of the oversized-empty product image box: the image's own
+       * height (clamp(220px,28vw,420px)) is driven by VIEWPORT width, not
+       * this figure's actual width -- while the figure's height was driven
+       * by aspect-[4/5] of ITS OWN width. Those two independently-computed
+       * heights only coincidentally lined up; once the card goes full-width
+       * on mobile (grid-cols-1 in ShopCatalog.tsx), aspect-[4/5] pushes the
+       * figure much taller than the still-floor-clamped 220px image, leaving
+       * a large empty gap. aspect-square + h-full/w-full ties the image's
+       * size to its actual container at every breakpoint instead.
+       */}
+      <figure className="relative m-0 grid aspect-square place-items-center overflow-hidden border-b border-gold/28 bg-[linear-gradient(160deg,rgba(127,141,101,.09),transparent_62%),#1b1c16] p-[clamp(16px,2.2vw,34px)]">
         <StableImage
           src={product.photoUrl}
           alt={name}
           width={640}
-          height={800}
-          className="block h-[clamp(220px,28vw,420px)] w-full max-w-[min(100%,380px)] rounded-xs object-contain"
+          height={640}
+          className="block h-full w-full rounded-xs object-contain"
         />
         {product.stockStatus !== 'available' ? (
           <span className="absolute top-3 right-3 rounded-full border border-gold/28 bg-black/78 px-2.5 py-1 text-[11px] font-extrabold text-gold-light uppercase">

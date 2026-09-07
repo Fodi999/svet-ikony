@@ -45,7 +45,13 @@ export function Header() {
         </span>
       </Link>
       <nav
-        className="min-w-0 w-max max-w-full justify-self-center inline-flex items-center justify-center gap-1 border border-[rgba(232,211,169,.13)] rounded-full p-1 bg-[rgba(5,5,5,.18)] max-[1040px]:col-span-full max-[1040px]:row-start-2 max-[1040px]:w-full max-[1040px]:justify-self-stretch max-[1040px]:justify-start max-[1040px]:overflow-x-auto max-[1040px]:[scrollbar-width:none] max-[1040px]:[&::-webkit-scrollbar]:hidden max-[430px]:mx-0 max-[430px]:p-[3px] max-[430px]:gap-0.5"
+        // The horizontal-scroll mask (mask-image, [1040px] tier only) is a
+        // purely visual affordance -- nav items already never shrink/
+        // truncate (navLinkClass's own flex-none + whitespace-nowrap), so
+        // "items getting cut off" was really the last item's edge landing
+        // flush with the viewport with no visual hint that scrolling
+        // further reveals the rest. Fades that edge instead of hard-clipping.
+        className="min-w-0 w-max max-w-full justify-self-center inline-flex items-center justify-center gap-1 border border-[rgba(232,211,169,.13)] rounded-full p-1 bg-[rgba(5,5,5,.18)] max-[1040px]:col-span-full max-[1040px]:row-start-2 max-[1040px]:w-full max-[1040px]:justify-self-stretch max-[1040px]:justify-start max-[1040px]:overflow-x-auto max-[1040px]:[scrollbar-width:none] max-[1040px]:[&::-webkit-scrollbar]:hidden max-[1040px]:[mask-image:linear-gradient(to_right,transparent,black_14px,black_calc(100%-14px),transparent)] max-[1040px]:[-webkit-mask-image:linear-gradient(to_right,transparent,black_14px,black_calc(100%-14px),transparent)] max-[430px]:mx-0 max-[430px]:p-[3px] max-[430px]:gap-0.5"
         aria-label={t('catalog')}
       >
         {nav.map(([label, href]) => {

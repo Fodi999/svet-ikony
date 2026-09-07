@@ -54,13 +54,13 @@ export function ShopCatalog({ products, categories }: { products: ChurchProductD
 
       {categories.length ? (
         <div
-          className="mt-[clamp(18px,2.5vw,30px)] flex gap-[clamp(10px,1.4vw,16px)] overflow-x-auto pb-1.5 [scrollbar-width:thin]"
+          className="mt-[clamp(18px,2.5vw,30px)] flex snap-x snap-mandatory gap-[clamp(10px,1.4vw,16px)] overflow-x-auto pb-1.5 [scrollbar-width:thin]"
           role="tablist"
           aria-label={t('section')}
         >
           <button
             type="button"
-            className="group grid w-24 flex-none cursor-pointer justify-items-center gap-2 border-0 bg-none max-[560px]:w-[76px]"
+            className="group grid w-24 flex-none cursor-pointer snap-start justify-items-center gap-2 border-0 bg-none max-[560px]:w-[76px]"
             onClick={() => setCategoryId('all')}
           >
             <span
@@ -77,7 +77,7 @@ export function ShopCatalog({ products, categories }: { products: ChurchProductD
             <button
               key={category.id}
               type="button"
-              className="group grid w-24 flex-none cursor-pointer justify-items-center gap-2 border-0 bg-none max-[560px]:w-[76px]"
+              className="group grid w-24 flex-none cursor-pointer snap-start justify-items-center gap-2 border-0 bg-none max-[560px]:w-[76px]"
               onClick={() => setCategoryId(category.id)}
             >
               <span

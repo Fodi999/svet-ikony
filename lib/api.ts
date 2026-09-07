@@ -34,7 +34,9 @@ const prayerTypeLabels: Record<SiteLocale, Record<string, string>> = {
     troparion: 'Тропар',
     kontakion: 'Кондак',
     velichanie: 'Величання',
-    modern: 'Сучасна молитва'
+    modern: 'Сучасна молитва',
+    morning: 'Ранкова молитва',
+    evening: 'Вечірня молитва'
   },
   ru: {
     prayer: 'Каноническая молитва',
@@ -42,7 +44,9 @@ const prayerTypeLabels: Record<SiteLocale, Record<string, string>> = {
     troparion: 'Тропарь',
     kontakion: 'Кондак',
     velichanie: 'Величание',
-    modern: 'Современная молитва'
+    modern: 'Современная молитва',
+    morning: 'Утренняя молитва',
+    evening: 'Вечерняя молитва'
   },
   en: {
     prayer: 'Canonical prayer',
@@ -50,7 +54,9 @@ const prayerTypeLabels: Record<SiteLocale, Record<string, string>> = {
     troparion: 'Troparion',
     kontakion: 'Kontakion',
     velichanie: 'Hymn of praise',
-    modern: 'Modern prayer'
+    modern: 'Modern prayer',
+    morning: 'Morning prayer',
+    evening: 'Evening prayer'
   }
 };
 

@@ -3,12 +3,18 @@ import { LocalizedBackendPrayersList } from '@/components/site/LocalizedContent'
 import { Eyebrow, Hero, HeroTitle, Lead, Page } from '@/components/site/PageChrome';
 import { T } from '@/components/site/TranslatedText';
 import { publicApi } from '@/lib/api';
-import { translate } from '@/lib/i18n';
+import { pluralize, translate } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+const prayerCountWords = {
+  uk: { one: 'молитва', few: 'молитви', many: 'молитов', other: 'молитов' },
+  ru: { one: 'молитва', few: 'молитвы', many: 'молитв', other: 'молитв' },
+  en: { one: 'prayer', other: 'prayers' }
+} as const;
 
 export async function generateMetadata() {
   const locale = await getRequestLocale();
@@ -23,11 +29,7 @@ export async function generateMetadata() {
 export default async function PrayersPage() {
   const locale = await getRequestLocale();
   const prayers = await publicApi.prayers(locale);
-  const countLabel = locale === 'en'
-    ? `${prayers.length} ${prayers.length === 1 ? 'prayer' : 'prayers'}`
-    : locale === 'uk'
-      ? `${prayers.length} ${prayers.length === 1 ? 'молитва' : 'молитов'}`
-      : `${prayers.length} ${prayers.length === 1 ? 'молитва' : 'молитв'}`;
+  const countLabel = `${prayers.length} ${pluralize(prayers.length, locale, prayerCountWords[locale])}`;
   return (
     <Page>
       <Breadcrumbs

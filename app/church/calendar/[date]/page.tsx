@@ -23,6 +23,7 @@ import {
   SectionHeadTitle
 } from '@/components/site/PageChrome';
 import { StableImage } from '@/components/site/StableImage';
+import { prayerTypeLabel } from '@/lib/api';
 import { composeCalendarPages, type PublicChurchContentPage } from '@/lib/church-public/calendar-page';
 import { isValidPreview } from '@/lib/church-public/preview';
 import { listCalendarDays } from '@/lib/d1/repositories/calendarDays';
@@ -168,7 +169,7 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
 
       {prayers.map((prayer) => (
         <Panel key={prayer.id}>
-          <PanelLabel>{prayer.prayerType}</PanelLabel>
+          <PanelLabel>{prayerTypeLabel(prayer.prayerType, locale)}</PanelLabel>
           <PanelTitle>{prayer.title}</PanelTitle>
           <ReaderText><Paragraphs text={prayer.text} /></ReaderText>
         </Panel>

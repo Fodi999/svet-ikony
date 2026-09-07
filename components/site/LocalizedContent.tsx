@@ -364,7 +364,7 @@ export function LocalizedBackendPrayersList({ prayers }: { prayers: Prayer[] }) 
               </Link>
             ) : null}
             <div className="relative z-[1] min-w-0 grid content-start gap-3 p-[clamp(18px,2vw,28px)] max-[430px]:p-4">
-              <span className="text-gold-light">{prayer.category || ui(locale, 'prayerCategory')}</span>
+              <span className="text-sm font-medium tracking-wide text-gold-light">{prayer.category || ui(locale, 'prayerCategory')}</span>
               <Link className="text-foreground no-underline" href={localeHref(`/prayers/${prayer.slug}`)}>
                 <strong className="text-foreground font-black">{title}</strong>
               </Link>

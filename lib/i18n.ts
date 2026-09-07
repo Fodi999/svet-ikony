@@ -63,3 +63,23 @@ export function withLocale(href: string, locale: Locale) {
 export function translate(locale: Locale, key: TranslationKey) {
   return dictionary[locale]?.[key] ?? dictionary[defaultLocale][key];
 }
+
+const pluralRulesCache = new Map<Locale, Intl.PluralRules>();
+
+function pluralRulesFor(locale: Locale) {
+  let rules = pluralRulesCache.get(locale);
+  if (!rules) {
+    rules = new Intl.PluralRules(locale);
+    pluralRulesCache.set(locale, rules);
+  }
+  return rules;
+}
+
+/**
+ * Locale-correct plural word for a count, via Intl.PluralRules (handles
+ * uk/ru's one/few/many split, not just a singular/plural binary).
+ */
+export function pluralize(count: number, locale: Locale, forms: Partial<Record<Intl.LDMLPluralRule, string>> & { other: string }) {
+  const category = pluralRulesFor(locale).select(count);
+  return forms[category] ?? forms.other;
+}

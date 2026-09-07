@@ -1,22 +1,36 @@
 /**
- * Password hashing for admin_users.password_hash (Phase 1A). Hand-rolled via
- * Web Crypto (PBKDF2-HMAC-SHA256, crypto.subtle.importKey/deriveBits) rather
- * than a bcrypt/argon2 dependency -- SubtleCrypto is a standard Cloudflare
- * Workers API (unlike bcrypt, which needs native bindings Workers doesn't
- * support) and needs zero new dependency, matching lib/d1/auth.ts's own
- * "hand-rolled via Web Crypto rather than pulling in a library for one
- * algorithm" convention. Runs identically in Node (used by tests and the
- * bootstrap CLI, both import this module directly) and in Workers.
+ * Password hashing for admin_users.password_hash (Phase 1A). PBKDF2-HMAC-
+ * SHA256 via node:crypto rather than a bcrypt/argon2 dependency -- needs
+ * zero new dependency, and node:crypto is available in Cloudflare Workers
+ * under the `nodejs_compat` flag this project already sets (wrangler.jsonc).
+ *
+ * PRODUCTION HOTFIX (AUTH HOTFIX phase): this originally used Web Crypto
+ * (crypto.subtle.importKey/deriveBits), matching lib/d1/auth.ts's/
+ * session-token.ts's own "hand-rolled via Web Crypto rather than pulling in
+ * a library" convention for THEIR algorithms (HMAC sign/verify, SHA-256
+ * digest -- both still Web Crypto, both unaffected by this issue, since
+ * neither takes an iteration count). PBKDF2 specifically hit a real
+ * Cloudflare Workers runtime limit that no local/Node test caught:
+ * `crypto.subtle.deriveBits({name:"PBKDF2", iterations})` in the Workers
+ * runtime throws `NotSupportedError: Pbkdf2 failed: iteration counts above
+ * 100000 are not supported` -- confirmed via `wrangler tail` against real
+ * production traffic hitting POST /api/admin/auth/login. Node's own
+ * SubtleCrypto has no such cap, which is exactly why this passed every
+ * existing test and only broke in the deployed Worker. node:crypto's
+ * `pbkdf2` has no iteration ceiling in either runtime, so switching only
+ * this one internal function's implementation (never the stored format,
+ * never the public hashPassword/verifyPassword API) keeps
+ * CURRENT_PBKDF2_ITERATIONS at the real OWASP-recommended 600,000 while
+ * actually running in production. See lib/d1/password.test.ts's
+ * "AUTH HOTFIX" describe block for the direct proof that hashes the OLD
+ * Web-Crypto implementation produced still verify correctly against this
+ * new implementation -- the already-provisioned production admin row's
+ * hash does not need to change.
  *
  * Iteration count: 600,000, the current OWASP Password Storage Cheat Sheet
- * recommendation for PBKDF2-HMAC-SHA256. Benchmarked empirically against
- * this Node runtime's native SubtleCrypto: ~44ms for 600,000 iterations
- * (100k ~11ms, 310k ~26ms) -- Workers' SubtleCrypto is the same class of
- * native, non-JS-polyfilled implementation, so this is a reasonable proxy,
- * though not a guaranteed-identical measurement; worth a real Workers-
- * environment timing check before production rollout. Login is a
- * deliberate, infrequent, user-initiated action, not a hot per-request
- * path, so this cost is acceptable.
+ * recommendation for PBKDF2-HMAC-SHA256. Login is a deliberate, infrequent,
+ * user-initiated action, not a hot per-request path, so this cost is
+ * acceptable.
  *
  * Stored format is versioned and self-describing so raising the iteration
  * count later never requires a mass password reset:
@@ -28,6 +42,8 @@
  * current target so a caller can transparently rehash-and-store on a
  * successful login -- see needsRehash().
  */
+
+import { pbkdf2 as nodePbkdf2 } from 'node:crypto';
 
 export const CURRENT_PBKDF2_ITERATIONS = 600_000;
 const ALGORITHM_TAG = 'pbkdf2-sha256';
@@ -47,10 +63,13 @@ function base64ToBytes(value: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
-async function pbkdf2(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: salt as BufferSource, iterations }, key, HASH_BITS);
-  return new Uint8Array(bits);
+function pbkdf2(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    nodePbkdf2(password, salt, iterations, HASH_BITS / 8, 'sha256', (error, derivedKey) => {
+      if (error) reject(error);
+      else resolve(derivedKey);
+    });
+  });
 }
 
 /** Constant-time byte comparison -- verifyPassword must not leak timing

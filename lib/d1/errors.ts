@@ -11,6 +11,10 @@ export class ApiError extends Error {
   status: number;
   code: string;
   details?: string;
+  /** Extra response headers (e.g. Retry-After for rate limiting).
+   * Deliberately opt-in and empty by default -- every other ApiError kind
+   * keeps its existing header-free response shape unchanged. */
+  headers?: Record<string, string>;
 
   constructor(status: number, code: string, message: string, details?: string) {
     super(message);
@@ -34,6 +38,14 @@ export class ApiError extends Error {
   static conflict(details: string) {
     return new ApiError(409, 'CONFLICT', 'Conflict', details);
   }
+  /** Phase 1D.2 login rate limiting. `retryAfterSeconds` is always >= 1
+   * (seconds remaining until the block clears) -- never the exact
+   * remaining-attempts count, which would ease enumeration. */
+  static rateLimited(details: string, retryAfterSeconds: number) {
+    const error = new ApiError(429, 'RATE_LIMITED', 'Too many attempts. Try again later.', details);
+    error.headers = { 'Retry-After': String(retryAfterSeconds) };
+    return error;
+  }
   static internal(loggedDetail: unknown) {
     console.error('Internal error:', loggedDetail);
     return new ApiError(500, 'INTERNAL_ERROR', 'Internal server error');
@@ -46,7 +58,7 @@ export class ApiError extends Error {
   toResponse() {
     return NextResponse.json(
       { code: this.code, message: this.message, ...(this.details ? { details: this.details } : {}) },
-      { status: this.status }
+      { status: this.status, headers: this.headers }
     );
   }
 }

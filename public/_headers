@@ -1,3 +1,20 @@
+# Phase 1D.2: X-Content-Type-Options only, not the full security header set.
+# This file governs pure static files served directly by Cloudflare's
+# assets binding (wrangler.jsonc's `assets.directory`) -- those requests
+# never reach the Worker script (`main: .open-next/worker.js`), so
+# next.config.ts's `headers()` (CSP, Permissions-Policy, frame-ancestors,
+# HSTS, etc.) never applies to them; those headers instead cover every
+# actual page/API response, which OpenNext *does* route through the
+# Worker (verified against @opennextjs/aws's routingHandler.js /
+# routing/matcher.js during design). CSP and friends are meaningless on a
+# standalone .js/.css/image file anyway (they govern what a *document* may
+# load, not a file requested directly) -- nosniff is the one header that's
+# genuinely still worth sending here, and is duplicated in neither place
+# (see next.config.ts's own SECURITY_HEADERS, which does not repeat it for
+# static-asset paths).
+/*
+  X-Content-Type-Options: nosniff
+
 # Static asset caching for Cloudflare Workers assets.
 /_next/static/*
   Cache-Control: public, max-age=31536000, immutable

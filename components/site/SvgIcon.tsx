@@ -4,6 +4,7 @@ import {
   ChevronDown,
   Copy,
   Download,
+  LayoutGrid,
   Minus,
   Plus,
   ZoomIn
@@ -18,7 +19,8 @@ type SvgIconName =
   | 'minus'
   | 'download'
   | 'copy'
-  | 'zoom';
+  | 'zoom'
+  | 'grid';
 
 export function SvgIcon({ name, className = '', size = 18 }: { name: SvgIconName; className?: string; size?: number }) {
   const icons = {
@@ -29,7 +31,8 @@ export function SvgIcon({ name, className = '', size = 18 }: { name: SvgIconName
     minus: Minus,
     download: Download,
     copy: Copy,
-    zoom: ZoomIn
+    zoom: ZoomIn,
+    grid: LayoutGrid
   } satisfies Record<SvgIconName, LucideIcon>;
   const Icon = icons[name];
 

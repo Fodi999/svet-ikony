@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import type { ChurchProductCategoryDto, ChurchProductDto } from '@/lib/types';
 import { useI18n } from './LanguageProvider';
 import { ProductCard } from './ProductCard';
+import { SvgIcon } from './SvgIcon';
 
 function normalized(value: string) {
   return value.toLowerCase().replace(/ё/g, 'е').trim();
@@ -53,23 +54,31 @@ export function ShopCatalog({ products, categories }: { products: ChurchProductD
       </label>
 
       {categories.length ? (
+        // Mobile-first horizontal chip strip. Each chip is a real bordered
+        // card (was: bare circle + label floating on nothing, border-0
+        // bg-none -- read as "unstyled placeholder", not a category chip),
+        // sized to the container's own aspect (size-16 thumb / h-full
+        // w-full object-cover) instead of a fixed circle diameter that left
+        // empty space around smaller source photos.
         <div
-          className="mt-[clamp(18px,2.5vw,30px)] flex snap-x snap-mandatory gap-[clamp(10px,1.4vw,16px)] overflow-x-auto pb-1.5 [scrollbar-width:thin]"
+          className="mt-[clamp(18px,2.5vw,30px)] flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:thin]"
           role="tablist"
           aria-label={t('section')}
         >
           <button
             type="button"
-            className="group grid w-24 flex-none cursor-pointer snap-start justify-items-center gap-2 border-0 bg-none max-[560px]:w-[76px]"
+            className={`group flex w-28 shrink-0 snap-start cursor-pointer flex-col items-center gap-2 rounded-2xl border p-2.5 text-center transition-[border-color,background,box-shadow,transform] duration-200 ease-brand hover:-translate-y-0.5 hover:border-gold ${
+              categoryId === 'all' ? 'border-gold bg-[#1b1c16] shadow-[0_0_0_3px_rgba(214,168,79,.16)]' : 'border-gold/28 bg-[#141511]'
+            }`}
             onClick={() => setCategoryId('all')}
           >
             <span
               aria-hidden="true"
-              className={`grid size-21 place-items-center overflow-hidden rounded-full border-2 bg-[linear-gradient(135deg,rgba(214,168,79,.28),rgba(127,141,101,.18))] transition-[border-color,transform] duration-200 ease-brand group-hover:-translate-y-0.5 group-hover:border-gold max-[560px]:size-[66px] ${
-                categoryId === 'all' ? 'border-gold shadow-[0_0_0_3px_rgba(214,168,79,.22)]' : 'border-gold/28'
-              }`}
-            />
-            <b className={`text-center text-xs leading-tight font-extrabold transition-colors duration-200 ease-brand ${categoryId === 'all' ? 'text-gold-light' : 'text-muted-foreground'}`}>
+              className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border border-gold/20 bg-[linear-gradient(135deg,rgba(214,168,79,.28),rgba(127,141,101,.18))] text-gold-light"
+            >
+              <SvgIcon name="grid" size={22} />
+            </span>
+            <b className={`line-clamp-2 text-sm leading-tight font-semibold transition-colors duration-200 ease-brand ${categoryId === 'all' ? 'text-gold-light' : 'text-muted-foreground'}`}>
               {t('allSections')}
             </b>
           </button>
@@ -77,18 +86,20 @@ export function ShopCatalog({ products, categories }: { products: ChurchProductD
             <button
               key={category.id}
               type="button"
-              className="group grid w-24 flex-none cursor-pointer snap-start justify-items-center gap-2 border-0 bg-none max-[560px]:w-[76px]"
+              className={`group flex w-28 shrink-0 snap-start cursor-pointer flex-col items-center gap-2 rounded-2xl border p-2.5 text-center transition-[border-color,background,box-shadow,transform] duration-200 ease-brand hover:-translate-y-0.5 hover:border-gold ${
+                categoryId === category.id ? 'border-gold bg-[#1b1c16] shadow-[0_0_0_3px_rgba(214,168,79,.16)]' : 'border-gold/28 bg-[#141511]'
+              }`}
               onClick={() => setCategoryId(category.id)}
             >
-              <span
-                className={`grid size-21 place-items-center overflow-hidden rounded-full border-2 bg-[#1b1c16] transition-[border-color,transform] duration-200 ease-brand group-hover:-translate-y-0.5 group-hover:border-gold max-[560px]:size-[66px] ${
-                  categoryId === category.id ? 'border-gold shadow-[0_0_0_3px_rgba(214,168,79,.22)]' : 'border-gold/28'
-                }`}
-              >
-                {category.imageUrl ? <img src={category.imageUrl} alt="" loading="lazy" className="size-full object-cover" /> : null}
+              <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border border-gold/20 bg-[#1b1c16]">
+                {category.imageUrl ? (
+                  <img src={category.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                ) : (
+                  <SvgIcon name="grid" size={20} className="text-gold-light/70" />
+                )}
               </span>
               <b
-                className={`text-center text-xs leading-tight font-extrabold transition-colors duration-200 ease-brand ${
+                className={`line-clamp-2 text-sm leading-tight font-semibold transition-colors duration-200 ease-brand ${
                   categoryId === category.id ? 'text-gold-light' : 'text-muted-foreground'
                 }`}
               >

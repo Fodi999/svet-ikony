@@ -121,11 +121,19 @@ for (const [index, day] of DAYS.entries()) {
 
   if (day.gospel) {
     const gospelId = randomUUID();
+    // church_gospel_readings.translation_group_id was added via
+    // migration 0017's ALTER TABLE (no column-level DEFAULT is possible
+    // there -- SQLite rejects a non-constant DEFAULT on ADD COLUMN
+    // against a non-empty table, see that migration's own comment) --
+    // unlike church_saints above (whose column got its DEFAULT from the
+    // original CREATE TABLE and is safe to omit), this one must be
+    // supplied explicitly or the row is left with a NULL group id.
+    const gospelGroupId = randomUUID();
     emit(`
       INSERT INTO church_gospel_readings
-        (id, calendar_day_id, slug, title, reference, text, explanation, language, status)
+        (id, calendar_day_id, slug, title, reference, text, explanation, language, status, translation_group_id)
       SELECT ${sqlString(gospelId)}, ${calendarDaySubquery}, ${sqlString(`${day.oldStyle}-${gospelId.slice(0, 8)}`)},
-        ${sqlString(day.gospel.title)}, ${sqlString(day.gospel.reference)}, '', ${sqlString(day.gospel.explanation)}, 'uk', 'published'
+        ${sqlString(day.gospel.title)}, ${sqlString(day.gospel.reference)}, '', ${sqlString(day.gospel.explanation)}, 'uk', 'published', ${sqlString(gospelGroupId)}
       WHERE NOT EXISTS (
         SELECT 1 FROM church_gospel_readings WHERE calendar_day_id = ${calendarDaySubquery} AND language = 'uk'
       )
@@ -134,11 +142,14 @@ for (const [index, day] of DAYS.entries()) {
 
   if (day.faithStory) {
     const articleId = randomUUID();
+    // Same reasoning as church_gospel_readings above -- church_articles'
+    // translation_group_id has no column-level default either.
+    const articleGroupId = randomUUID();
     emit(`
       INSERT INTO church_articles
-        (id, calendar_day_id, title, slug, content, language, status)
+        (id, calendar_day_id, title, slug, content, language, status, translation_group_id)
       SELECT ${sqlString(articleId)}, ${calendarDaySubquery}, ${sqlString(day.faithStory.title)},
-        ${sqlString(`${day.oldStyle}-${articleId.slice(0, 8)}`)}, ${sqlString(day.faithStory.content)}, 'uk', 'published'
+        ${sqlString(`${day.oldStyle}-${articleId.slice(0, 8)}`)}, ${sqlString(day.faithStory.content)}, 'uk', 'published', ${sqlString(articleGroupId)}
       WHERE NOT EXISTS (
         SELECT 1 FROM church_articles WHERE calendar_day_id = ${calendarDaySubquery} AND language = 'uk'
       )

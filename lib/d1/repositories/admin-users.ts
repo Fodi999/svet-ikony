@@ -68,6 +68,16 @@ export async function getAdminUserByEmail(email: string): Promise<AdminUserRecor
   return row ? toRecord(row) : null;
 }
 
+/** Added for Phase 3 (Telegram login): the exchange endpoint resolves a
+ * user by id (from the consumed login request row), not by email. */
+export async function getAdminUserById(id: string): Promise<AdminUserRecord | null> {
+  const row = await d1First<Row>(
+    'SELECT id, email, name, password_hash, role, active, created_at, updated_at, last_login_at FROM admin_users WHERE id = ?',
+    id,
+  );
+  return row ? toRecord(row) : null;
+}
+
 export async function listAdminUsers(): Promise<AdminUserRecord[]> {
   const rows = await d1All<Row>(
     'SELECT id, email, name, password_hash, role, active, created_at, updated_at, last_login_at FROM admin_users ORDER BY created_at',

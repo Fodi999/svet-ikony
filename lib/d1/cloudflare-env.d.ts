@@ -46,6 +46,18 @@ declare global {
     /** Shared secret the standalone cron pinger Worker (see cron/) sends as
      * X-Autopost-Secret — distinct from TELEGRAM_WEBHOOK_SECRET. */
     AUTOPOST_TICK_SECRET?: string;
+    /** Phase 3: Telegram passwordless admin login (@svit_ikony_admin_bot).
+     * Deliberately separate from TELEGRAM_BOT_TOKEN/TELEGRAM_WEBHOOK_SECRET
+     * above — a distinct bot, a distinct webhook, a distinct trust
+     * boundary (lib/telegram/admin-env.ts, lib/telegram/admin-bot-client.ts).
+     * Secrets via `wrangler secret put` in production, `.dev.vars` locally. */
+    ADMIN_TELEGRAM_BOT_TOKEN?: string;
+    ADMIN_TELEGRAM_WEBHOOK_SECRET?: string;
+    /** Not sensitive — the admin panel's real origin the /login command's
+     * button links to. Belongs in wrangler.jsonc's plaintext `vars` for a
+     * real deployment; deliberately no hardcoded fallback anywhere in code
+     * (see getAdminTelegramConfig). */
+    ADMIN_PANEL_URL?: string;
   }
 }
 

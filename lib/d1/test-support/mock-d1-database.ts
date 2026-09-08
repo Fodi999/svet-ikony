@@ -10,7 +10,10 @@
  *
  * Supports exactly the statement shapes lib/d1/repositories/admin-*.ts
  * issue: single-table INSERT/UPDATE/SELECT (by one or two WHERE columns)
- * against admin_users/admin_sessions/admin_audit_log, plus the one
+ * against admin_users/admin_sessions/admin_audit_log/admin_login_rate_limit/
+ * admin_telegram_identities/admin_telegram_login_requests (Phase 3 added
+ * the last two -- the Telegram login route tests need all six tables
+ * together in one coherent fake, not a second parallel one), plus the one
  * session+user JOIN. If a repository starts issuing a new query shape,
  * this fake needs a matching new branch -- it deliberately does not try to
  * be a general-purpose SQL interpreter.
@@ -18,12 +21,22 @@
 
 type Row = Record<string, unknown>;
 
+type TableName =
+  | 'admin_users'
+  | 'admin_sessions'
+  | 'admin_audit_log'
+  | 'admin_login_rate_limit'
+  | 'admin_telegram_identities'
+  | 'admin_telegram_login_requests';
+
 export class MockD1Database {
-  tables: Record<'admin_users' | 'admin_sessions' | 'admin_audit_log' | 'admin_login_rate_limit', Row[]> = {
+  tables: Record<TableName, Row[]> = {
     admin_users: [],
     admin_sessions: [],
     admin_audit_log: [],
     admin_login_rate_limit: [],
+    admin_telegram_identities: [],
+    admin_telegram_login_requests: [],
   };
 
   reset(): void {
@@ -31,6 +44,8 @@ export class MockD1Database {
     this.tables.admin_sessions = [];
     this.tables.admin_audit_log = [];
     this.tables.admin_login_rate_limit = [];
+    this.tables.admin_telegram_identities = [];
+    this.tables.admin_telegram_login_requests = [];
   }
 
   prepare(sql: string): MockD1PreparedStatement {
@@ -233,6 +248,100 @@ class MockD1PreparedStatement {
       this.writeCount = before - this.db.tables.admin_login_rate_limit.length;
       this.wasWrite = true;
       return [];
+    }
+
+    // ---- Phase 3: Telegram passwordless admin login ----
+
+    if (/^INSERT INTO admin_telegram_identities/i.test(sql)) {
+      const [id, user_id, telegram_user_id, telegram_chat_id, created_at, updated_at] = this.params;
+      if (this.db.tables.admin_telegram_identities.some((row) => row.telegram_user_id === telegram_user_id)) {
+        throw new Error('UNIQUE constraint failed: admin_telegram_identities.telegram_user_id');
+      }
+      this.db.tables.admin_telegram_identities.push({ id, user_id, telegram_user_id, telegram_chat_id, created_at, updated_at, revoked_at: null });
+      this.wasWrite = true;
+      this.writeCount = 1;
+      return [];
+    }
+
+    if (/^SELECT .* FROM admin_telegram_identities WHERE telegram_user_id = \? AND revoked_at IS NULL/i.test(sql)) {
+      const [telegramUserId] = this.params;
+      return this.db.tables.admin_telegram_identities.filter((row) => row.telegram_user_id === telegramUserId && row.revoked_at === null);
+    }
+
+    if (/^UPDATE admin_telegram_identities SET revoked_at/i.test(sql)) {
+      const [revoked_at, updated_at, telegramUserId] = this.params;
+      const row = this.db.tables.admin_telegram_identities.find((r) => r.telegram_user_id === telegramUserId && r.revoked_at === null);
+      this.writeCount = row ? 1 : 0;
+      if (row) {
+        row.revoked_at = revoked_at;
+        row.updated_at = updated_at;
+      }
+      this.wasWrite = true;
+      return [];
+    }
+
+    if (/^INSERT INTO admin_telegram_login_requests/i.test(sql)) {
+      const [id, user_id, telegram_user_id, ticket_hash, display_code, created_at, expires_at] = this.params;
+      if (this.db.tables.admin_telegram_login_requests.some((row) => row.ticket_hash === ticket_hash)) {
+        throw new Error('UNIQUE constraint failed: admin_telegram_login_requests.ticket_hash');
+      }
+      this.db.tables.admin_telegram_login_requests.push({
+        id,
+        user_id,
+        telegram_user_id,
+        ticket_hash,
+        display_code,
+        created_at,
+        expires_at,
+        consumed_at: null,
+        cancelled_at: null,
+      });
+      this.wasWrite = true;
+      this.writeCount = 1;
+      return [];
+    }
+
+    if (/^UPDATE admin_telegram_login_requests SET cancelled_at = \? WHERE telegram_user_id = \?/i.test(sql)) {
+      const [cancelled_at, telegramUserId, now] = this.params as [string, string, string];
+      let count = 0;
+      for (const row of this.db.tables.admin_telegram_login_requests) {
+        if (row.telegram_user_id === telegramUserId && row.consumed_at === null && row.cancelled_at === null && (row.expires_at as string) > now) {
+          row.cancelled_at = cancelled_at;
+          count++;
+        }
+      }
+      this.writeCount = count;
+      this.wasWrite = true;
+      return [];
+    }
+
+    if (/^SELECT COUNT\(\*\) AS count FROM admin_telegram_login_requests WHERE telegram_user_id = \? AND created_at > \?/i.test(sql)) {
+      const [telegramUserId, windowStart] = this.params as [string, string];
+      const count = this.db.tables.admin_telegram_login_requests.filter(
+        (row) => row.telegram_user_id === telegramUserId && (row.created_at as string) > windowStart,
+      ).length;
+      return [{ count }];
+    }
+
+    if (/^UPDATE admin_telegram_login_requests\s+SET consumed_at = \?\s+WHERE ticket_hash = \?/i.test(sql)) {
+      const [consumed_at, ticketHash, now] = this.params as [string, string, string];
+      const row = this.db.tables.admin_telegram_login_requests.find(
+        (r) => r.ticket_hash === ticketHash && r.consumed_at === null && r.cancelled_at === null && (r.expires_at as string) > now,
+      );
+      if (!row) {
+        this.writeCount = 0;
+        this.wasWrite = true;
+        return [];
+      }
+      row.consumed_at = consumed_at;
+      this.writeCount = 1;
+      this.wasWrite = true;
+      return [{ user_id: row.user_id, telegram_user_id: row.telegram_user_id }];
+    }
+
+    if (/^SELECT \* FROM admin_telegram_login_requests WHERE ticket_hash = \?/i.test(sql)) {
+      const [ticketHash] = this.params;
+      return this.db.tables.admin_telegram_login_requests.filter((row) => row.ticket_hash === ticketHash);
     }
 
     throw new Error(`MockD1Database: unrecognized statement shape: ${sql}`);

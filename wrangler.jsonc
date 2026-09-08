@@ -14,7 +14,13 @@
   "vars": {
     "NEXT_PUBLIC_API_URL": "https://ministerial-yetta-fodi999-c58d8823.koyeb.app",
     "NEXT_PUBLIC_SITE_URL": "https://svetikony.com",
-    "TELEGRAM_CHANNEL": "@svit_ikony"
+    "TELEGRAM_CHANNEL": "@svit_ikony",
+    // Phase 3B: the admin panel's real production origin, public (not
+    // secret) config -- lib/telegram/admin-env.ts's getAdminTelegramConfig()
+    // reads this to build the Telegram login button's URL. No hardcoded
+    // fallback exists anywhere in code (see that file's own doc comment);
+    // this is the one, real source of truth for it.
+    "ADMIN_PANEL_URL": "https://svetikony-admin.fodi85999.workers.dev"
   },
   "services": [
     {

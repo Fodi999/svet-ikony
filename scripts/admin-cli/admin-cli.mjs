@@ -181,6 +181,66 @@ async function cmdResetPassword(args) {
   );
 }
 
+// ---- Phase 3: Telegram identity binding ----
+// Same "print SQL, never touch D1 directly" convention as create/disable/
+// enable/set-role/reset-password above -- these three commands are no
+// exception. telegram-bind resolves user_id from --email via a subselect
+// (INSERT ... SELECT) rather than requiring the caller to already know the
+// admin_users.id, matching the email-addressed shape of every other
+// mutating command here.
+
+function requireTelegramUserId(args) {
+  const value = args['telegram-user-id'];
+  if (!value || !/^\d+$/.test(value)) {
+    console.error('--telegram-user-id must be the target admin\'s real numeric Telegram id (from.id) -- never guess it, never bind by @username.');
+    process.exit(1);
+  }
+  return value;
+}
+
+function cmdTelegramBind(args) {
+  if (!args.email) {
+    console.error('Usage: telegram-bind --email <email> --telegram-user-id <NUMERIC_ID>');
+    process.exit(1);
+  }
+  const telegramUserId = requireTelegramUserId(args);
+  const now = nowIso();
+  console.log(
+    `INSERT INTO admin_telegram_identities (id, user_id, telegram_user_id, telegram_chat_id, created_at, updated_at)\nSELECT ${sqlString(
+      crypto.randomUUID(),
+    )}, id, ${sqlString(telegramUserId)}, NULL, ${sqlString(now)}, ${sqlString(now)} FROM admin_users WHERE email = ${sqlString(
+      args.email.trim().toLowerCase(),
+    )};`,
+  );
+}
+
+function cmdTelegramList(args) {
+  const target = args.remote !== undefined || process.argv.includes('--remote') ? '--remote' : '--local';
+  execFileSync(
+    'wrangler',
+    [
+      'd1',
+      'execute',
+      DB_NAME,
+      target,
+      '--command',
+      `SELECT ti.telegram_user_id, u.email, u.role, ti.revoked_at, ti.created_at
+       FROM admin_telegram_identities ti JOIN admin_users u ON u.id = ti.user_id
+       ORDER BY ti.created_at`,
+    ],
+    { stdio: 'inherit' },
+  );
+}
+
+function cmdTelegramRevoke(args) {
+  const telegramUserId = requireTelegramUserId(args);
+  console.log(
+    `UPDATE admin_telegram_identities SET revoked_at = ${sqlString(nowIso())}, updated_at = ${sqlString(
+      nowIso(),
+    )} WHERE telegram_user_id = ${sqlString(telegramUserId)} AND revoked_at IS NULL;`,
+  );
+}
+
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
   const args = parseArgs(rest);
@@ -198,9 +258,15 @@ async function main() {
       return cmdSetRole(args);
     case 'reset-password':
       return cmdResetPassword(args);
+    case 'telegram-bind':
+      return cmdTelegramBind(args);
+    case 'telegram-list':
+      return cmdTelegramList(args);
+    case 'telegram-revoke':
+      return cmdTelegramRevoke(args);
     default:
       console.error(
-        'Usage: node scripts/admin-cli/admin-cli.mjs <create|list|disable|enable|set-role|reset-password> [--email ...] [--name ...] [--role ...] [--remote]',
+        'Usage: node scripts/admin-cli/admin-cli.mjs <create|list|disable|enable|set-role|reset-password|telegram-bind|telegram-list|telegram-revoke> [--email ...] [--name ...] [--role ...] [--telegram-user-id ...] [--remote]',
       );
       process.exit(1);
   }

@@ -17,6 +17,7 @@ type SlavonicPageCopy = {
   messageTitle: string;
   messageText: string;
   numberLabel: string;
+  messageLettersAria: string;
 };
 
 const slavonicCopy: Record<'uk' | 'ru' | 'en', SlavonicPageCopy> = {
@@ -31,7 +32,8 @@ const slavonicCopy: Record<'uk' | 'ru' | 'en', SlavonicPageCopy> = {
     messageEyebrow: 'Азбука як послання',
     messageTitle: 'Аз Буки Веди Глаголи Добро Есть',
     messageText: 'Я знаю букви: говори добро, добро існує.',
-    numberLabel: 'Номер'
+    numberLabel: 'Номер',
+    messageLettersAria: 'Перші літери послання'
   },
   ru: {
     eyebrow: 'Древняя книжность',
@@ -44,7 +46,8 @@ const slavonicCopy: Record<'uk' | 'ru' | 'en', SlavonicPageCopy> = {
     messageEyebrow: 'Азбука как послание',
     messageTitle: 'Аз Буки Веди Глаголи Добро Есть',
     messageText: 'Я знаю буквы: говори добро, добро существует.',
-    numberLabel: 'Номер'
+    numberLabel: 'Номер',
+    messageLettersAria: 'Первые буквы послания'
   },
   en: {
     eyebrow: 'Ancient book culture',
@@ -57,7 +60,8 @@ const slavonicCopy: Record<'uk' | 'ru' | 'en', SlavonicPageCopy> = {
     messageEyebrow: 'Alphabet as a message',
     messageTitle: 'Az Buki Vedi Glagoli Dobro Est',
     messageText: 'I know the letters: speak good; goodness exists.',
-    numberLabel: 'Number'
+    numberLabel: 'Number',
+    messageLettersAria: 'First letters of the message'
   }
 };
 
@@ -157,7 +161,7 @@ export function SlavonicAlphabetPage({ letters }: { letters: ChurchAlphabetLette
             </h2>
             <p className="font-serif text-[clamp(18px,2vw,25px)] leading-[1.42] text-muted-foreground">{copy.messageText}</p>
           </div>
-          <div className="grid grid-cols-3 gap-2 min-[821px]:grid-cols-6" aria-label="Первые буквы послания">
+          <div className="grid grid-cols-3 gap-2 min-[821px]:grid-cols-6" aria-label={copy.messageLettersAria}>
             {firstLetters.map((item) => (
               <span key={item.id} className="grid place-items-center gap-1 rounded-xs border border-gold/28 bg-gold/8 px-2 py-3.5">
                 <b className="font-serif text-[clamp(34px,4vw,54px)] leading-[.9] text-[#d1473d]">{item.letter}</b>

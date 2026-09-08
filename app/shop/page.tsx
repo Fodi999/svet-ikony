@@ -1,4 +1,5 @@
 import { Breadcrumbs } from '@/components/site/Breadcrumbs';
+import { Hreflang } from '@/components/site/Hreflang';
 import { Eyebrow, HeroTitle, Lead, Page } from '@/components/site/PageChrome';
 import { ShopCatalog } from '@/components/site/ShopCatalog';
 import { T } from '@/components/site/TranslatedText';
@@ -29,6 +30,7 @@ export default async function ShopPage() {
 
   return (
     <Page className="overflow-hidden">
+      <Hreflang locale={locale} path="/shop" />
       <Breadcrumbs
         items={[{ href: '/', label: translate(locale, 'home') }]}
         current={translate(locale, 'navShop')}

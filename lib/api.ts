@@ -256,7 +256,8 @@ function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, articl
     priceCents: item.priceCents,
     currency: item.currency,
     consecrationAvailable: item.consecrationAvailable,
-    translationGroupId: item.translationGroupId
+    translationGroupId: item.translationGroupId,
+    translated: item.translated
   };
 }
 
@@ -274,7 +275,8 @@ export function prayerFromChurchDto(item: ChurchPrayerDto, icon?: ChurchIconDto)
     seoTitle: item.title,
     seoDescription: compactText(item.text, 180),
     status: item.status === 'published' ? 'published' : 'draft',
-    source: 'church'
+    source: 'church',
+    translated: item.translated
   };
 }
 
@@ -294,11 +296,13 @@ function saintFromChurchDto(item: ChurchSaintDto, icon?: ChurchIconDto): Saint {
     seoDescription: compactText(item.shortDescription || item.biography, 180),
     status: item.status === 'published' ? 'published' : 'draft',
     updatedAt: item.updatedAt,
-    source: 'church'
+    source: 'church',
+    translated: item.translated
   };
 }
 
-function seoPageFromChurchArticle(item: ChurchArticleDto): SeoPage {
+function seoPageFromChurchArticle(item: ChurchArticleDto | null): SeoPage | null {
+  if (!item) return null;
   return {
     id: item.id,
     slug: item.slug,
@@ -446,7 +450,7 @@ function mergeChurchMonthContent(content: SiteContent, monthPages: PublicChurchC
     .map((page) => page.icons[0] ? iconFromChurchDto(page.icons[0], page.prayers[0], page.articles[0]) : null)
     .filter(Boolean) as Icon[];
   const churchPrayers = monthPages.flatMap((page) => page.prayers.map((prayer) => prayerFromChurchDto(prayer, page.icons.find((icon) => icon.id === prayer.iconId) || page.icons[0])));
-  const churchPages = monthPages.flatMap((page) => page.articles.map(seoPageFromChurchArticle));
+  const churchPages = monthPages.flatMap((page) => page.articles.map(seoPageFromChurchArticle).filter((item): item is SeoPage => item !== null));
   const churchDays = dedupeCalendarDaysByDay(monthPages.map(calendarDayFromChurchPage));
   const byDay = new Map(churchDays.map((day) => [day.day, day]));
   // `content.calendar` only ever comes from the old (now-removed) `/api/content`

@@ -51,6 +51,12 @@ export type Icon = {
   currency?: string;
   consecrationAvailable?: boolean;
   translationGroupId?: string;
+  /** PHASE MULTILINGUAL-1 / P0.2: catalog list only. `false` means this
+   * item has no row in the requested language and is shown as a same-slug
+   * fallback substitute (so the catalog isn't empty) -- render an
+   * "untranslated" marker, never as if it were genuinely localized.
+   * Absent/true on the detail page and everywhere else. */
+  translated?: boolean;
 };
 
 export type Saint = {
@@ -69,6 +75,8 @@ export type Saint = {
   status: Status;
   updatedAt?: string;
   source?: 'church';
+  /** PHASE MULTILINGUAL-1 / P0.2 -- see Icon.translated. */
+  translated?: boolean;
 };
 
 export type Prayer = {
@@ -88,6 +96,8 @@ export type Prayer = {
   /** Set when this prayer comes from the church_content system, where it has its own
    * slug/page at /church/prayers/[slug] rather than living at /prayers/[iconSlug]. */
   source?: 'church';
+  /** PHASE MULTILINGUAL-1 / P0.2 -- see Icon.translated. */
+  translated?: boolean;
 };
 
 export type GospelReading = {
@@ -289,6 +299,12 @@ export type ChurchIconDto = {
   consecrationAvailable: boolean;
   createdAt: string;
   updatedAt: string;
+  /** List endpoints only (P0.2): `false` means this row is a same-slug
+   * fallback substitute from another language, shown so a RU/EN catalog
+   * page isn't empty -- see listIcons's `language` handling. Absent/true
+   * everywhere else (admin, by-slug detail's related items), since those
+   * contexts only ever return genuine same-language rows. */
+  translated?: boolean;
 };
 
 export type ProductStockStatus = 'available' | 'made_to_order' | 'unavailable';
@@ -436,6 +452,8 @@ export type ChurchPrayerDto = {
   subtitleCues: PrayerSubtitleCue[];
   createdAt: string;
   updatedAt: string;
+  /** List endpoints only (P0.2) -- see ChurchIconDto.translated. */
+  translated?: boolean;
 };
 
 export type PrayerParticleColorMode = 'silver_gold' | 'gold' | 'silver' | 'warm_white';
@@ -498,6 +516,8 @@ export type ChurchSaintDto = {
   isGlobal: boolean;
   createdAt: string;
   updatedAt: string;
+  /** List endpoints only (P0.2) -- see ChurchIconDto.translated. */
+  translated?: boolean;
 };
 
 export type ChurchTranslationRef = {
@@ -528,6 +548,8 @@ export type ChurchAlphabetLetterDto = {
   isGlobal: boolean;
   createdAt: string;
   updatedAt: string;
+  /** List endpoints only (P0.2) -- see ChurchIconDto.translated. */
+  translated?: boolean;
 };
 
 export type ChurchArticleDto = {
@@ -545,6 +567,10 @@ export type ChurchArticleDto = {
   isGlobal: boolean;
   createdAt: string;
   updatedAt: string;
+  /** List endpoints only (P0.2) -- see ChurchIconDto.translated. No
+   * `translationGroupId` exists for this entity -- siblings are matched
+   * by slug only, see the P0.2 list-route fallback logic. */
+  translated?: boolean;
 };
 
 export type ChurchInfoTranslation = {
@@ -586,6 +612,10 @@ export type ChurchGospelDto = {
   isGlobal: boolean;
   createdAt: string;
   updatedAt: string;
+  /** List endpoints only (P0.2) -- see ChurchIconDto.translated. No
+   * `translationGroupId` exists for this entity -- siblings are matched
+   * by slug only, see the P0.2 list-route fallback logic. */
+  translated?: boolean;
 };
 
 export type PublicChurchContentPage = {
@@ -633,16 +663,26 @@ export type PublicChurchAlphabetPage = {
   translations: ChurchTranslationRef[];
 };
 
+/** `article` is null when the item exists (in some language) but has no
+ * published record in the requested language; `translations` lists what
+ * is available. Unlike icons/saints/prayers/alphabet, articles have no
+ * `translation_group_id` — siblings are linked only by matching `slug`. */
 export type PublicChurchArticlePage = {
-  article: ChurchArticleDto;
+  article: ChurchArticleDto | null;
   icon?: ChurchIconDto | null;
   calendarDay?: ChurchCalendarDayDto | null;
+  translations: ChurchTranslationRef[];
 };
 
+/** `gospel` is null when the item exists (in some language) but has no
+ * published record in the requested language; `translations` lists what
+ * is available. Unlike icons/saints/prayers/alphabet, gospel readings have
+ * no `translation_group_id` — siblings are linked only by matching `slug`. */
 export type PublicChurchGospelPage = {
-  gospel: ChurchGospelDto;
+  gospel: ChurchGospelDto | null;
   icon?: ChurchIconDto | null;
   calendarDay?: ChurchCalendarDayDto | null;
+  translations: ChurchTranslationRef[];
 };
 
 export type PublicChurchSitemapItem = {
@@ -650,4 +690,9 @@ export type PublicChurchSitemapItem = {
   slug: string;
   date?: string | null;
   updatedAt: string;
+  /** PHASE MULTILINGUAL-1 / P0.7 -- the row's own language, so
+   * app/sitemap.ts can advertise exactly one locale URL per row instead of
+   * blindly fanning out to all 3 regardless of whether a translation
+   * exists (see that file's own comment on `churchItems`). */
+  language: SiteLocale;
 };

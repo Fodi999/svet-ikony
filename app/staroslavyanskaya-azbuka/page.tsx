@@ -1,3 +1,4 @@
+import { Hreflang } from '@/components/site/Hreflang';
 import { SlavonicAlphabetPage } from '@/components/site/SlavonicAlphabetPage';
 import { publicApi } from '@/lib/api';
 import { translate } from '@/lib/i18n';
@@ -17,5 +18,10 @@ export async function generateMetadata() {
 export default async function StaroslavyanskayaAzbukaPage() {
   const locale = await getRequestLocale();
   const letters = await publicApi.churchAlphabetList(locale);
-  return <SlavonicAlphabetPage letters={letters.filter((item) => item.status === 'published')} />;
+  return (
+    <>
+      <Hreflang locale={locale} path="/staroslavyanskaya-azbuka" />
+      <SlavonicAlphabetPage letters={letters.filter((item) => item.status === 'published')} />
+    </>
+  );
 }

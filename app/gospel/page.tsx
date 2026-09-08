@@ -1,3 +1,4 @@
+import { Hreflang } from '@/components/site/Hreflang';
 import { Eyebrow, Hero, HeroTitle, Lead, MiniGrid, MiniGridLink, MiniGridSmall, Page, RelatedSection, SectionHead, SectionHeadTitle } from '@/components/site/PageChrome';
 import { publicApi } from '@/lib/api';
 import { pageMetadata } from '@/lib/seo';
@@ -46,6 +47,7 @@ export default async function GospelPage() {
 
   return (
     <Page>
+      <Hreflang locale={locale} path="/gospel" />
       <Hero>
         <Eyebrow>{t.eyebrow}</Eyebrow>
         <HeroTitle>{t.title}</HeroTitle>

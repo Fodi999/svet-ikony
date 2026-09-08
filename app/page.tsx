@@ -1,13 +1,29 @@
 import { CalendarView } from '@/components/site/CalendarView';
+import { Hreflang } from '@/components/site/Hreflang';
 import { buildCalendarHero, calendarDayFromChurchPage, dedupeCalendarDaysByDay, prayerFromChurchDto } from '@/lib/api';
 import { composeCalendarPages } from '@/lib/church-public/calendar-page';
 import { listCalendarDays } from '@/lib/d1/repositories/calendarDays';
 import { listPrayers } from '@/lib/d1/repositories/prayers';
-import { jsonLd } from '@/lib/seo';
+import { jsonLd, pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
 import type { ChurchIconDto, ChurchPrayerDto, PublicChurchContentPage } from '@/lib/types';
 
 export const revalidate = 0;
+
+/**
+ * PHASE MULTILINGUAL-1 / P0.6: the homepage previously had NO
+ * generateMetadata() at all, so /uk, /ru, /en all inherited only the root
+ * layout's static `metadata` export -- which has no `alternates` at all --
+ * leaving `/`, `/uk`, `/ru`, `/en` with no <link rel="canonical"> whatsoever
+ * (every inner page already had one via pageMetadata()). Self-referencing
+ * per locale (NOT canonicalized onto /uk): /uk -> canonical /uk, /ru ->
+ * canonical /ru, /en -> canonical /en, matching the same policy every
+ * detail/list page already follows.
+ */
+export async function generateMetadata() {
+  const locale = await getRequestLocale();
+  return pageMetadata({ path: '/', locale });
+}
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -65,6 +81,7 @@ export default async function HomePage({ searchParams }: { searchParams?: Promis
   };
   return (
     <main className="min-h-screen bg-canvas p-0">
+      <Hreflang locale={locale} path="/" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('Organization', { name: 'svetikony.com', url: 'https://svetikony.com' })) }} />
       <CalendarView icons={[]} prayers={prayers} pages={[]} calendar={calendar} />
     </main>

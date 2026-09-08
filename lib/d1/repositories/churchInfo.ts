@@ -93,16 +93,22 @@ export async function getChurchInfo(): Promise<ChurchInfoDto> {
 }
 
 export async function putChurchInfo(payload: ChurchInfoPayload): Promise<ChurchInfoDto> {
-  const existingId = await d1First<{ id: string }>('SELECT id FROM church_info LIMIT 1');
+  const current = await getChurchInfo();
+  const existingId = current.id !== NIL_UUID ? current.id : null;
 
-  const address = payload.address ?? '';
-  const mapsUrl = payload.mapsUrl ?? '';
-  const phoneOrSite = payload.phoneOrSite ?? '';
-  const priestPhone = payload.priestPhone ?? '';
-  const imageUrl = payload.imageUrl ?? '';
-  const galleryImages = toD1Json(payload.galleryImages ?? []);
-  const translations = toD1Json(payload.translations ?? {});
-  const status = payload.status ?? 'draft';
+  const address = payload.address ?? current.address;
+  const mapsUrl = payload.mapsUrl ?? current.mapsUrl;
+  const phoneOrSite = payload.phoneOrSite ?? current.phoneOrSite;
+  const priestPhone = payload.priestPhone ?? current.priestPhone;
+  const imageUrl = payload.imageUrl ?? current.imageUrl;
+  const galleryImages = toD1Json(payload.galleryImages ?? current.galleryImages);
+  // Per-language shallow merge: a language key omitted from
+  // payload.translations entirely is preserved from the current row; a
+  // language key explicitly present in payload.translations (even if its
+  // value looks empty/partial) replaces that language's entire entry --
+  // that is an intentional whole-object replace, not a bug.
+  const translations = toD1Json({ ...current.translations, ...(payload.translations ?? {}) });
+  const status = payload.status ?? current.status;
 
   const row = existingId
     ? await d1First<Row>(
@@ -111,7 +117,7 @@ export async function putChurchInfo(payload: ChurchInfoPayload): Promise<ChurchI
            gallery_images = ?, translations = ?, status = ?
          WHERE id = ?
          RETURNING ${COLUMNS}`,
-        address, mapsUrl, phoneOrSite, priestPhone, imageUrl, galleryImages, translations, status, existingId.id
+        address, mapsUrl, phoneOrSite, priestPhone, imageUrl, galleryImages, translations, status, existingId
       )
     : await d1First<Row>(
         `INSERT INTO church_info (address, maps_url, phone_or_site, priest_phone, image_url, gallery_images, translations, status)

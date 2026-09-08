@@ -4,6 +4,7 @@ import { Header } from '@/components/site/Header';
 import { Footer } from '@/components/site/Footer';
 import { LanguageProvider } from '@/components/site/LanguageProvider';
 import { PWAInstallPrompt } from '@/components/site/PWAInstallPrompt';
+import { getRequestLocale } from '@/lib/serverLocale';
 import { siteUrl } from '@/lib/site';
 
 export const metadata: Metadata = {
@@ -49,9 +50,16 @@ export const viewport: Viewport = {
   themeColor: '#0B0B0A'
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // PHASE MULTILINGUAL-1 / P0.4: SSR `lang` must match the requested
+  // locale for /uk, /ru, /en -- previously hardcoded "uk" for every page
+  // and only corrected client-side post-hydration (LanguageProvider),
+  // which meant every RU/EN response was served with the wrong `lang`
+  // attribute. Reuses the same x-site-locale middleware header every page
+  // already reads via getRequestLocale() -- no new mechanism.
+  const locale = await getRequestLocale();
   return (
-    <html lang="uk" style={{ colorScheme: 'dark' }} className="min-h-full overflow-x-hidden bg-canvas">
+    <html lang={locale} style={{ colorScheme: 'dark' }} className="min-h-full overflow-x-hidden bg-canvas">
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />

@@ -1,11 +1,12 @@
 import { notFound } from 'next/navigation';
 import { BackLink, Breadcrumbs } from '@/components/site/Breadcrumbs';
+import { Hreflang } from '@/components/site/Hreflang';
 import { LocalizedSaintDetail } from '@/components/site/LocalizedContent';
 import { Eyebrow, Hero, HeroTitle, Lead, MiniGrid, MiniGridLink, MiniGridSmall, Page } from '@/components/site/PageChrome';
 import { publicApi } from '@/lib/api';
 import { localeNames, translate, withLocale } from '@/lib/i18n';
 import { resolveMediaUrl } from '@/lib/media/resolver';
-import { pageMetadata } from '@/lib/seo';
+import { alternateLanguagesFromRefs, pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
 import type { Saint } from '@/lib/types';
 
@@ -24,8 +25,12 @@ export async function generateMetadata({ params, searchParams }: Props) {
   const page = await publicApi.churchSaint(slug, token, locale);
   const saint = page?.saint;
   if (!saint) {
+    // PHASE MULTILINGUAL-1 / P0.5: no `languages` override here -- this
+    // locale genuinely has no published saint at this slug (P0.1), so its
+    // own locale must NOT appear in the hreflang set; only the sibling
+    // translations that really exist do.
     return {
-      ...pageMetadata({ title: translate(locale, 'saintNotFound'), path: `/saints/${slug}`, locale }),
+      ...pageMetadata({ title: translate(locale, 'saintNotFound'), path: `/saints/${slug}`, locale, languages: alternateLanguagesFromRefs('/saints', page?.translations || []) }),
       robots: { index: false }
     };
   }
@@ -34,7 +39,12 @@ export async function generateMetadata({ params, searchParams }: Props) {
     description: (saint.shortDescription || saint.biography).replace(/\s+/g, ' ').trim().slice(0, 180),
     path: `/saints/${saint.slug}`,
     image: resolveMediaUrl(saint.imageUrl) || resolveMediaUrl(page?.icon?.imageUrl) || undefined,
-    locale
+    locale,
+    // Saints group by translation_group_id, not by shared slug -- a ru/en
+    // sibling can (and often will) live at a different slug, so the real
+    // per-locale slugs from `translations` (P0.1) are required here; never
+    // assume the current slug applies to every locale.
+    languages: alternateLanguagesFromRefs('/saints', page.translations || [], { locale, slug: saint.slug })
   });
 }
 
@@ -49,6 +59,7 @@ export default async function SaintPage({ params, searchParams }: Props) {
     const translations = page.translations || [];
     return (
       <Page>
+        <Hreflang locale={locale} path={`/saints/${slug}`} languages={alternateLanguagesFromRefs('/saints', translations)} />
         <Breadcrumbs
           items={[{ href: '/', label: translate(locale, 'home') }, { href: '/saints', label: translate(locale, 'navSaints') }]}
           current={translations[0]?.title || slug}
@@ -91,5 +102,10 @@ export default async function SaintPage({ params, searchParams }: Props) {
     source: 'church' as const
   };
 
-  return <LocalizedSaintDetail saint={saint} />;
+  return (
+    <>
+      <Hreflang locale={locale} path={`/saints/${saint.slug}`} languages={alternateLanguagesFromRefs('/saints', page.translations || [], { locale, slug: saint.slug })} />
+      <LocalizedSaintDetail saint={saint} />
+    </>
+  );
 }

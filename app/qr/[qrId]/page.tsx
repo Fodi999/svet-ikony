@@ -1,4 +1,5 @@
 import { AssetButton } from '@/components/site/AssetButton';
+import { Hreflang } from '@/components/site/Hreflang';
 import { DetailHero, Eyebrow, HeroCopy, HeroTitle, imageFrameImgClass, Lead, Page, SoftNote } from '@/components/site/PageChrome';
 import { StableImage } from '@/components/site/StableImage';
 import { publicApi } from '@/lib/api';
@@ -11,7 +12,15 @@ type Props = { params: Promise<{ qrId: string }> };
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export const metadata = pageMetadata({ title: 'QR-страница иконы', description: 'Страница конкретной физической иконы с молитвой и материалами.' });
+// PHASE MULTILINGUAL-1 / P0.5: this previously omitted `locale` entirely,
+// so it had no canonical/hreflang at all (unlike every other page). Same
+// qrId across every locale (it identifies one physical icon, not a
+// per-language row), so the generic same-path fan-out applies.
+export async function generateMetadata({ params }: Props) {
+  const { qrId } = await params;
+  const locale = await getRequestLocale();
+  return pageMetadata({ title: 'QR-страница иконы', description: 'Страница конкретной физической иконы с молитвой и материалами.', path: `/qr/${qrId}`, locale });
+}
 
 export default async function QrPage({ params }: Props) {
   const { qrId } = await params;
@@ -23,6 +32,7 @@ export default async function QrPage({ params }: Props) {
   if (!qr || !icon || !qr.active) return <Page><h1>{translate(locale, 'qrUnavailable')}</h1></Page>;
   return (
     <Page>
+      <Hreflang locale={locale} path={`/qr/${qrId}`} />
       <DetailHero>
         <figure className="relative m-0 grid place-items-center aspect-[4/5] border border-gold/28 rounded-[8px] bg-[linear-gradient(110deg,transparent_0_28%,rgba(241,209,138,.16)_42%,transparent_56%),#1b1c16] bg-[length:220%_100%,100%_100%] overflow-hidden shadow-[0_6px_18px_rgba(0,0,0,.18)] max-[520px]:max-h-[68vh]">
           <StableImage src={icon.imageUrl} alt={icon.title} width={800} height={1000} loading="eager" className={imageFrameImgClass} />

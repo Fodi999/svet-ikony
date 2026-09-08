@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation';
 import { BackLink, Breadcrumbs } from '@/components/site/Breadcrumbs';
+import { Hreflang } from '@/components/site/Hreflang';
 import { DetailHero, Eyebrow, Hero, HeroCopy, HeroTitle, ImageFrame, imageFrameImgClass, Lead, MiniGrid, MiniGridLink, MiniGridSmall, Page, SoftNote } from '@/components/site/PageChrome';
 import { StableImage } from '@/components/site/StableImage';
 import { publicApi } from '@/lib/api';
 import { localeNames, translate, withLocale } from '@/lib/i18n';
-import { pageMetadata } from '@/lib/seo';
+import { alternateLanguagesFromRefs, pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
 
 type Props = {
@@ -23,7 +24,7 @@ export async function generateMetadata({ params, searchParams }: Props) {
   const letter = page?.letter;
   if (!letter) {
     return {
-      ...pageMetadata({ title: translate(locale, 'alphabetNotFound'), path: `/staroslavyanskaya-azbuka/${slug}`, locale }),
+      ...pageMetadata({ title: translate(locale, 'alphabetNotFound'), path: `/staroslavyanskaya-azbuka/${slug}`, locale, languages: alternateLanguagesFromRefs('/staroslavyanskaya-azbuka', page?.translations || []) }),
       robots: { index: false }
     };
   }
@@ -32,7 +33,10 @@ export async function generateMetadata({ params, searchParams }: Props) {
     description: (letter.seoDescription || letter.shortDescription).replace(/\s+/g, ' ').trim().slice(0, 180),
     path: `/staroslavyanskaya-azbuka/${letter.slug}`,
     image: letter.mainImageUrl || letter.cardImageUrl || undefined,
-    locale
+    locale,
+    // Alphabet letters group by translation_group_id, not by shared slug
+    // -- see app/saints/[slug]/page.tsx's identical comment.
+    languages: alternateLanguagesFromRefs('/staroslavyanskaya-azbuka', page.translations || [], { locale, slug: letter.slug })
   });
 }
 
@@ -47,6 +51,7 @@ export default async function AlphabetLetterPage({ params, searchParams }: Props
     const translations = page.translations || [];
     return (
       <Page>
+        <Hreflang locale={locale} path={`/staroslavyanskaya-azbuka/${slug}`} languages={alternateLanguagesFromRefs('/staroslavyanskaya-azbuka', translations)} />
         <Breadcrumbs
           items={[{ href: '/', label: translate(locale, 'home') }, { href: '/staroslavyanskaya-azbuka', label: translate(locale, 'navAlphabet') }]}
           current={translations[0]?.title || slug}
@@ -75,6 +80,7 @@ export default async function AlphabetLetterPage({ params, searchParams }: Props
 
   return (
     <Page>
+      <Hreflang locale={locale} path={`/staroslavyanskaya-azbuka/${letter.slug}`} languages={alternateLanguagesFromRefs('/staroslavyanskaya-azbuka', page.translations || [], { locale, slug: letter.slug })} />
       <Breadcrumbs
         items={[{ href: '/', label: translate(locale, 'home') }, { href: '/staroslavyanskaya-azbuka', label: translate(locale, 'navAlphabet') }]}
         current={letter.name}

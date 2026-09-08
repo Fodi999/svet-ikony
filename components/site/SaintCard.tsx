@@ -6,6 +6,7 @@ import { formatFeastDay } from '@/lib/dates';
 import { textPreview } from '@/lib/iconContent';
 import { useI18n, useLocaleHref } from './LanguageProvider';
 import { StableImage } from './StableImage';
+import { UntranslatedBadge } from './UntranslatedBadge';
 
 export function SaintCard({ saint }: { saint: Saint }) {
   const { t, locale } = useI18n();
@@ -38,6 +39,7 @@ export function SaintCard({ saint }: { saint: Saint }) {
             ) : null}
           </div>
         ) : null}
+        {saint.translated === false ? <UntranslatedBadge /> : null}
         <h3 className="m-0 text-foreground font-black text-[clamp(22px,2vw,32px)] leading-[1.08] text-balance max-[520px]:text-[clamp(21px,6vw,30px)]">{saint.name}</h3>
         <p className="m-0 text-muted-foreground leading-[1.5] line-clamp-3">{textPreview(saint.shortDescription || saint.biography, 160)}</p>
         <small className="w-max mt-1.5 border-b border-gold pb-[3px] text-gold-light text-[12px] font-black tracking-[.08em] uppercase">{t('saintReadLife')} →</small>

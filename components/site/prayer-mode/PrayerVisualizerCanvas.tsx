@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
+import { useI18n } from '@/components/site/LanguageProvider';
 import type { PrayerSceneTimeline, PrayerSubtitleCue, PrayerVisualizerAssetDto } from '@/lib/types';
 import { loadParticleMap } from './particleMapFormat';
 import { particleFragmentShader, particleVertexShader } from './particleShaders';
@@ -125,6 +126,7 @@ export function PrayerVisualizerCanvas({
   prayerText,
   visualizerAsset
 }: Props) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const subtitleRef = useRef<HTMLParagraphElement | null>(null);
@@ -436,7 +438,7 @@ export function PrayerVisualizerCanvas({
         type="button"
         className="absolute top-3 right-3 z-[3] grid size-8 place-items-center rounded-full border border-[rgba(214,168,79,.4)] bg-black/45 text-gold-light transition-colors duration-200 ease-linear hover:border-gold hover:text-white focus-visible:border-gold focus-visible:text-white"
         onClick={toggleFullscreen}
-        aria-label="Повний екран"
+        aria-label={t('fullscreenAria')}
       >
         {isFullscreen ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
       </button>

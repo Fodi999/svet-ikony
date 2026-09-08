@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { AssetButton } from '@/components/site/AssetButton';
+import { Hreflang } from '@/components/site/Hreflang';
 import {
   DetailActions,
   DetailHero,
@@ -27,6 +28,7 @@ import { prayerTypeLabel } from '@/lib/api';
 import { composeCalendarPages, type PublicChurchContentPage } from '@/lib/church-public/calendar-page';
 import { isValidPreview } from '@/lib/church-public/preview';
 import { listCalendarDays } from '@/lib/d1/repositories/calendarDays';
+import { translate } from '@/lib/i18n';
 import { resolveMediaUrl } from '@/lib/media/resolver';
 import { getRequestLocale } from '@/lib/serverLocale';
 import { jsonLd, pageMetadata } from '@/lib/seo';
@@ -116,20 +118,21 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
   const heroCopy = (
     <HeroCopy>
       <Eyebrow>
-        Дата церковного календаря: <time dateTime={calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}>{calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}</time>
+        {translate(locale, 'calendarDateEyebrow')} <time dateTime={calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}>{calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}</time>
       </Eyebrow>
       <HeroTitle>{calendarDay.title}</HeroTitle>
       {calendarDay.description ? <Lead>{calendarDay.description}</Lead> : null}
       <DetailActions>
-        {icons[0] ? <AssetButton variant="dark" href={`/icons/${icons[0].slug}`}>Ікона</AssetButton> : null}
-        {prayers[0] ? <AssetButton href={`/church/prayers/${prayers[0].slug}`}>Молитва</AssetButton> : null}
-        {gospel[0] ? <AssetButton href={`/church/gospel/${gospel[0].slug}`}>Євангеліє</AssetButton> : null}
+        {icons[0] ? <AssetButton variant="dark" href={`/icons/${icons[0].slug}`}>{translate(locale, 'navIcons')}</AssetButton> : null}
+        {prayers[0] ? <AssetButton href={`/church/prayers/${prayers[0].slug}`}>{translate(locale, 'navPrayers')}</AssetButton> : null}
+        {gospel[0] ? <AssetButton href={`/church/gospel/${gospel[0].slug}`}>{translate(locale, 'navGospel')}</AssetButton> : null}
       </DetailActions>
     </HeroCopy>
   );
 
   return (
     <ReadPage>
+      <Hreflang locale={locale} path={`/church/calendar/${date}`} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       {heroImageUrl ? (
         <DetailHero>
@@ -144,8 +147,8 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
 
       {calendarDay.history ? (
         <Panel>
-          <PanelLabel>Історична довідка</PanelLabel>
-          <PanelTitle>Житіє і пам’ять</PanelTitle>
+          <PanelLabel>{translate(locale, 'historicalNoteLabel')}</PanelLabel>
+          <PanelTitle>{translate(locale, 'lifeAndMemoryTitle')}</PanelTitle>
           <ReaderText><Paragraphs text={calendarDay.history} /></ReaderText>
         </Panel>
       ) : null}
@@ -153,8 +156,8 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
       {icons.length ? (
         <RelatedSection>
           <SectionHead>
-            <Eyebrow>Ікони</Eyebrow>
-            <SectionHeadTitle>Пов’язані образи</SectionHeadTitle>
+            <Eyebrow>{translate(locale, 'navIcons')}</Eyebrow>
+            <SectionHeadTitle>{translate(locale, 'relatedImagesTitle')}</SectionHeadTitle>
           </SectionHead>
           <MiniGrid>
             {icons.map((icon) => (
@@ -177,22 +180,22 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
 
       {articles.map((article) => (
         <Panel key={article.id}>
-          <PanelLabel>Статья</PanelLabel>
+          <PanelLabel>{translate(locale, 'material')}</PanelLabel>
           <PanelTitle>{article.title}</PanelTitle>
           <ReaderText><Paragraphs text={article.content} /></ReaderText>
           <DetailActions>
-            <AssetButton href={`/church/articles/${article.slug}`}>Відкрити статтю</AssetButton>
+            <AssetButton href={`/church/articles/${article.slug}`}>{translate(locale, 'openArticle')}</AssetButton>
           </DetailActions>
         </Panel>
       ))}
 
       {gospel.map((item) => (
         <Panel key={item.id}>
-          <PanelLabel>{item.reference || 'Евангелие'}</PanelLabel>
+          <PanelLabel>{item.reference || translate(locale, 'navGospel')}</PanelLabel>
           <PanelTitle>{item.title}</PanelTitle>
           <ReaderText><Paragraphs text={item.explanation || item.text} /></ReaderText>
           <DetailActions>
-            <AssetButton href={`/church/gospel/${item.slug}`}>Читати Євангеліє</AssetButton>
+            <AssetButton href={`/church/gospel/${item.slug}`}>{translate(locale, 'readGospelCta')}</AssetButton>
           </DetailActions>
         </Panel>
       ))}

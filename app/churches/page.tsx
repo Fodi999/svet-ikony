@@ -1,3 +1,4 @@
+import { Hreflang } from '@/components/site/Hreflang';
 import { LocalizedChurchesPage } from '@/components/site/LocalizedContent';
 import { publicApi } from '@/lib/api';
 import { pageMetadata } from '@/lib/seo';
@@ -25,5 +26,10 @@ export async function generateMetadata() {
 export default async function ChurchesPage() {
   const locale = await getRequestLocale();
   const churchInfo = await publicApi.churchInfo(locale);
-  return <LocalizedChurchesPage churchInfo={churchInfo} />;
+  return (
+    <>
+      <Hreflang locale={locale} path="/churches" />
+      <LocalizedChurchesPage churchInfo={churchInfo} />
+    </>
+  );
 }

@@ -1,3 +1,4 @@
+import { Hreflang } from '@/components/site/Hreflang';
 import { Eyebrow, Hero, HeroTitle, Page } from '@/components/site/PageChrome';
 import { SaintsCatalog } from '@/components/site/SaintsCatalog';
 import { T } from '@/components/site/TranslatedText';
@@ -21,6 +22,7 @@ export default async function SaintsPage() {
   const saints = await publicApi.saints(locale);
   return (
     <Page>
+      <Hreflang locale={locale} path="/saints" />
       <Hero>
         <Eyebrow><T k="saintsPageEyebrow" /></Eyebrow>
         <HeroTitle><T k="saintsPageTitle" /></HeroTitle>

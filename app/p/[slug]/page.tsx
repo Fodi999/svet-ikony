@@ -1,3 +1,4 @@
+import { Hreflang } from '@/components/site/Hreflang';
 import {
   DetailHero,
   Eyebrow,
@@ -43,7 +44,9 @@ export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const locale = await getRequestLocale();
   const page = await publicApi.seoPage(slug, locale);
-  return pageMetadata({ title: page?.seoTitle || page?.title, description: page?.seoDescription || page?.content.slice(0, 150), path: `/p/${slug}`, image: page?.imageUrl, keywords: page?.seoKeywords });
+  // PHASE MULTILINGUAL-1 / P0.5: this previously omitted `locale` entirely,
+  // so it had no canonical/hreflang at all (unlike every other page).
+  return pageMetadata({ title: page?.seoTitle || page?.title, description: page?.seoDescription || page?.content.slice(0, 150), path: `/p/${slug}`, image: page?.imageUrl, keywords: page?.seoKeywords, locale });
 }
 
 export default async function SeoLandingPage({ params }: Props) {
@@ -62,6 +65,7 @@ export default async function SeoLandingPage({ params }: Props) {
 
   return (
     <ReadPage>
+      <Hreflang locale={locale} path={`/p/${slug}`} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('Article', { headline: page.h1, description: page.seoDescription, image: page.imageUrl })) }} />
       {page.imageUrl ? (
         <DetailHero>

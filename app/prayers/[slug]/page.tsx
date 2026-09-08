@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation';
 import { BackLink, Breadcrumbs } from '@/components/site/Breadcrumbs';
+import { Hreflang } from '@/components/site/Hreflang';
 import { LocalizedChurchPrayerDetail } from '@/components/site/LocalizedContent';
 import { Eyebrow, Hero, HeroTitle, Lead, MiniGrid, MiniGridLink, MiniGridSmall, Page } from '@/components/site/PageChrome';
 import { prayerTypeLabel, publicApi } from '@/lib/api';
 import { localeNames, translate, withLocale } from '@/lib/i18n';
-import { pageMetadata } from '@/lib/seo';
+import { alternateLanguagesFromRefs, pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
 
 type Props = {
@@ -23,7 +24,7 @@ export async function generateMetadata({ params, searchParams }: Props) {
   const prayer = page?.prayer;
   if (!prayer) {
     return {
-      ...pageMetadata({ title: translate(locale, 'prayerNotFound'), path: `/prayers/${slug}`, locale }),
+      ...pageMetadata({ title: translate(locale, 'prayerNotFound'), path: `/prayers/${slug}`, locale, languages: alternateLanguagesFromRefs('/prayers', page?.translations || []) }),
       robots: { index: false }
     };
   }
@@ -32,7 +33,10 @@ export async function generateMetadata({ params, searchParams }: Props) {
     description: prayer.text.replace(/\s+/g, ' ').trim().slice(0, 180),
     path: `/prayers/${prayer.slug}`,
     image: prayer.imageUrl || page?.icon?.imageUrl || undefined,
-    locale
+    locale,
+    // Prayers group by translation_group_id, not by shared slug -- see
+    // app/saints/[slug]/page.tsx's identical comment.
+    languages: alternateLanguagesFromRefs('/prayers', page.translations || [], { locale, slug: prayer.slug })
   });
 }
 
@@ -48,6 +52,7 @@ export default async function PrayerPage({ params, searchParams }: Props) {
     const translations = page.translations || [];
     return (
       <Page>
+        <Hreflang locale={locale} path={`/prayers/${slug}`} languages={alternateLanguagesFromRefs('/prayers', translations)} />
         <Breadcrumbs
           items={[{ href: '/', label: translate(locale, 'home') }, { href: '/prayers', label: translate(locale, 'navPrayers') }]}
           current={translations[0]?.title || slug}
@@ -73,11 +78,14 @@ export default async function PrayerPage({ params, searchParams }: Props) {
   }
 
   return (
-    <LocalizedChurchPrayerDetail
-      prayer={prayer}
-      icon={page.icon}
-      calendarDay={page.calendarDay}
-      categoryLabel={prayerTypeLabel(prayer.prayerType, locale)}
-    />
+    <>
+      <Hreflang locale={locale} path={`/prayers/${prayer.slug}`} languages={alternateLanguagesFromRefs('/prayers', page.translations || [], { locale, slug: prayer.slug })} />
+      <LocalizedChurchPrayerDetail
+        prayer={prayer}
+        icon={page.icon}
+        calendarDay={page.calendarDay}
+        categoryLabel={prayerTypeLabel(prayer.prayerType, locale)}
+      />
+    </>
   );
 }

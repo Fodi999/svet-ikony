@@ -41,6 +41,7 @@ import { PrayerVisualizerCanvas } from './prayer-mode/PrayerVisualizerCanvas';
 import { PrayerQr } from './PrayerQr';
 import { StableImage } from './StableImage';
 import { SvgIcon } from './SvgIcon';
+import { UntranslatedBadge } from './UntranslatedBadge';
 import { Dialog, DialogClose, DialogOverlay, DialogPopup, DialogPortal } from '@/components/ui/dialog';
 import { publicApi } from '@/lib/api';
 import { formatFeastDay } from '@/lib/dates';
@@ -365,6 +366,7 @@ export function LocalizedBackendPrayersList({ prayers }: { prayers: Prayer[] }) 
             ) : null}
             <div className="relative z-[1] min-w-0 grid content-start gap-3 p-[clamp(18px,2vw,28px)] max-[430px]:p-4">
               <span className="text-sm font-medium tracking-wide text-gold-light">{prayer.category || ui(locale, 'prayerCategory')}</span>
+              {prayer.translated === false ? <UntranslatedBadge /> : null}
               <Link className="text-foreground no-underline" href={localeHref(`/prayers/${prayer.slug}`)}>
                 <strong className="text-foreground font-black">{title}</strong>
               </Link>

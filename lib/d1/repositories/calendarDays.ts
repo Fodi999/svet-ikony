@@ -1,6 +1,6 @@
 import { d1All, d1First, d1Run } from '../db';
 import { ApiError } from '../errors';
-import { IS_GLOBAL_DEFAULT, SVETIKONY_SITE_ID } from '../mappers';
+import { genId, IS_GLOBAL_DEFAULT, SVETIKONY_SITE_ID } from '../mappers';
 
 /** Mirrors assistant/src/interfaces/http/church_content.rs
  * list_calendar_days / get_calendar_day / create_calendar_day /
@@ -202,16 +202,26 @@ export async function createCalendarDay(payload: ChurchCalendarDayPayload): Prom
   if (!payload.dateOldStyle && !payload.dateNewStyle) {
     throw ApiError.validation('dateOldStyle or dateNewStyle is required');
   }
+  const slug = payload.slug ?? '';
+  // NULL (not '') when the slug is blank: `slug = NULL` matches zero rows in
+  // SQL, so days without a slug never get silently grouped together just
+  // because they all share the empty string -- same intent as icons.ts's
+  // COALESCE-by-slug auto-join, but icons/prayers/saints/alphabet always
+  // require a real slug, so they never hit this edge case.
+  const slugForMatch = slug || null;
+  const fallbackGroupId = genId();
   const row = await d1First<Row>(
     `INSERT INTO church_calendar_days
-       (date_old_style, date_new_style, calendar_type, title, slug, language, day_type, description, history, image_url, rank, status, seo_title, seo_description, image_metadata)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (date_old_style, date_new_style, calendar_type, title, slug, language, day_type, description, history, image_url, rank, status, seo_title, seo_description, image_metadata,
+        translation_group_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        COALESCE((SELECT translation_group_id FROM church_calendar_days WHERE slug = ? LIMIT 1), ?))
      RETURNING ${COLUMNS}`,
     payload.dateOldStyle ?? null,
     payload.dateNewStyle ?? null,
     payload.calendarType ?? 'both',
     title,
-    payload.slug ?? '',
+    slug,
     payload.language ?? 'uk',
     payload.dayType ?? 'saint',
     payload.description ?? '',
@@ -221,25 +231,33 @@ export async function createCalendarDay(payload: ChurchCalendarDayPayload): Prom
     payload.status ?? 'draft',
     payload.seoTitle ?? null,
     payload.seoDescription ?? null,
-    payload.imageMetadata ? JSON.stringify(payload.imageMetadata) : null
+    payload.imageMetadata ? JSON.stringify(payload.imageMetadata) : null,
+    slugForMatch,
+    fallbackGroupId
   );
   return toDto(row!);
 }
 
 export async function updateCalendarDay(id: string, payload: ChurchCalendarDayPayload): Promise<ChurchCalendarDayDto> {
   const current = await getCalendarDay(id);
+  const slug = payload.slug ?? current.slug;
+  const slugForMatch = slug || null;
   const row = await d1First<Row>(
     `UPDATE church_calendar_days SET
        date_old_style = ?, date_new_style = ?, calendar_type = ?, title = ?,
        slug = ?, language = ?, day_type = ?, description = ?, history = ?, image_url = ?, rank = ?, status = ?,
-       seo_title = ?, seo_description = ?, image_metadata = ?
+       seo_title = ?, seo_description = ?, image_metadata = ?,
+       translation_group_id = COALESCE(
+         (SELECT other.translation_group_id FROM church_calendar_days other WHERE other.slug = ? AND other.id != ? LIMIT 1),
+         (SELECT translation_group_id FROM church_calendar_days WHERE id = ?)
+       )
      WHERE id = ?
      RETURNING ${COLUMNS}`,
     payload.dateOldStyle !== undefined ? payload.dateOldStyle : current.dateOldStyle,
     payload.dateNewStyle !== undefined ? payload.dateNewStyle : current.dateNewStyle,
     payload.calendarType ?? current.calendarType,
     payload.title?.trim() || current.title,
-    payload.slug ?? current.slug,
+    slug,
     payload.language ?? current.language,
     payload.dayType ?? current.dayType,
     payload.description ?? current.description,
@@ -256,6 +274,9 @@ export async function updateCalendarDay(id: string, payload: ChurchCalendarDayPa
       : current.imageMetadata
         ? JSON.stringify(current.imageMetadata)
         : null,
+    slugForMatch,
+    id,
+    id,
     id
   );
   return toDto(row!);

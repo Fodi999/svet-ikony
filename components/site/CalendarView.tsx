@@ -607,7 +607,7 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
             <span className="inline-grid place-items-center text-[18px] leading-none"><SvgIcon name="arrow-right" size={18} /></span>
           </button>
         </div>
-        <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-foreground max-[900px]:w-full max-[900px]:justify-stretch" aria-label="Вибір року">
+        <div className="inline-flex items-center gap-1.5 whitespace-nowrap text-foreground max-[900px]:w-full max-[900px]:justify-stretch" aria-label={t('yearPickerAria')}>
           <button
             className="h-[38px] w-[34px] rounded-md border border-gold/28 bg-[#141511] text-[18px] font-black text-gold-light cursor-pointer"
             type="button"

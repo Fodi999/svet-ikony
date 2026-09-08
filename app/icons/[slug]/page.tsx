@@ -1,4 +1,6 @@
+import { notFound } from 'next/navigation';
 import { BackLink, Breadcrumbs } from '@/components/site/Breadcrumbs';
+import { Hreflang } from '@/components/site/Hreflang';
 import { LocalizedIconDetail } from '@/components/site/LocalizedContent';
 import { AssetButton } from '@/components/site/AssetButton';
 import {
@@ -27,7 +29,7 @@ import { StableImage } from '@/components/site/StableImage';
 import { publicApi } from '@/lib/api';
 import { getRequestLocale } from '@/lib/serverLocale';
 import { localeNames, translate, withLocale, type Locale } from '@/lib/i18n';
-import { jsonLd, pageMetadata } from '@/lib/seo';
+import { alternateLanguagesFromRefs, jsonLd, pageMetadata } from '@/lib/seo';
 import type { CalendarDay, SeoPage } from '@/lib/types';
 
 type Props = {
@@ -103,12 +105,18 @@ export async function generateMetadata({ params, searchParams }: Props) {
       path: `/icons/${icon.slug}`,
       image: icon.imageUrl,
       keywords: icon.seoKeywords,
-      locale
+      locale,
+      // Icons group by translation_group_id, not by shared slug -- see
+      // app/saints/[slug]/page.tsx's identical comment.
+      languages: alternateLanguagesFromRefs('/icons', page.translations || [], { locale, slug: icon.slug })
     });
   }
   if (page) {
+    // This locale genuinely has no published icon at this slug (P0.1) --
+    // its own locale must not appear in the hreflang set, only the
+    // sibling translations that really exist.
     return {
-      ...pageMetadata({ title: translate(locale, 'pageNotFound'), path: `/icons/${slug}`, locale }),
+      ...pageMetadata({ title: translate(locale, 'pageNotFound'), path: `/icons/${slug}`, locale, languages: alternateLanguagesFromRefs('/icons', page.translations || []) }),
       robots: { index: false }
     };
   }
@@ -118,7 +126,19 @@ export async function generateMetadata({ params, searchParams }: Props) {
   if (legacy) return pageMetadata({ title: legacy.seoTitle || legacy.title, description: legacy.seoDescription || legacy.shortDescription, path: `/icons/${slug}`, image: legacy.imageUrl, keywords: legacy.seoKeywords, locale });
   const seoPage = content.pages.find((item) => item.slug === slug);
   const day = content.calendar?.days.find((item) => item.detailHref?.endsWith(`/${slug}`) || item.iconSlug === slug);
-  return pageMetadata({ title: seoPage?.seoTitle || seoPage?.title || day?.label, description: seoPage?.seoDescription || day?.description, path: `/icons/${slug}`, image: seoPage?.imageUrl || day?.imageUrl, keywords: seoPage?.seoKeywords, locale });
+  if (seoPage || day) {
+    return pageMetadata({ title: seoPage?.seoTitle || seoPage?.title || day?.label, description: seoPage?.seoDescription || day?.description, path: `/icons/${slug}`, image: seoPage?.imageUrl || day?.imageUrl, keywords: seoPage?.seoKeywords, locale });
+  }
+  // PHASE MULTILINGUAL-2.1: nothing matched anywhere -- neither a real D1
+  // icon/translation (handled above), nor the legacy content fallback.
+  // This slug genuinely does not exist; the page body below throws
+  // notFound() for this exact same condition. Distinct from the
+  // `page`-but-no-`iconView` branch above, which means "this item exists,
+  // just not in this language" and correctly stays indexable-with-links.
+  return {
+    ...pageMetadata({ title: translate(locale, 'pageNotFound'), path: `/icons/${slug}`, locale }),
+    robots: { index: false }
+  };
 }
 
 export default async function IconPage({ params, searchParams }: Props) {
@@ -133,6 +153,7 @@ export default async function IconPage({ params, searchParams }: Props) {
     const hasRelated = Boolean(date || page.prayers.length || page.articles.length || page.gospel.length);
     return (
       <>
+        <Hreflang locale={locale} path={`/icons/${icon.slug}`} languages={alternateLanguagesFromRefs('/icons', page.translations || [], { locale, slug: icon.slug })} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('IconPage', { headline: icon.title, description: icon.shortDescription, image: icon.imageUrl })) }} />
         <LocalizedIconDetail icon={icon} related={[]} />
         {hasRelated ? (
@@ -177,6 +198,7 @@ export default async function IconPage({ params, searchParams }: Props) {
     const translations = page.translations || [];
     return (
       <Page>
+        <Hreflang locale={locale} path={`/icons/${slug}`} languages={alternateLanguagesFromRefs('/icons', translations)} />
         <Breadcrumbs
           items={[{ href: '/', label: translate(locale, 'home') }, { href: '/icons', label: translate(locale, 'navIcons') }]}
           current={translations[0]?.title || slug}
@@ -207,7 +229,14 @@ export default async function IconPage({ params, searchParams }: Props) {
     const seoPage = content.pages.find((item) => item.slug === slug);
     const day = content.calendar?.days.find((item) => item.detailHref?.endsWith(`/${slug}`) || item.iconSlug === slug);
     if (seoPage || day) return <CalendarFallbackPage day={day} page={seoPage} locale={locale} />;
-    return <Page><h1>{translate(locale, 'pageNotFound')}</h1></Page>;
+    // PHASE MULTILINGUAL-2.1: was a soft "page not found" render (HTTP
+    // 200, no robots:noindex) -- the one entity that didn't 404 for a
+    // genuinely unknown slug, unlike saints/prayers/alphabet/articles/
+    // gospel, which all call notFound() at the top of this function. This
+    // branch means nothing matched anywhere (real D1, translation-missing,
+    // AND the legacy content fallback) -- a true 404, not the separate
+    // "exists but not translated" case handled above.
+    notFound();
   }
   const related = content.icons.filter((item) => item.slug !== legacy.slug).slice(0, 3);
   return (

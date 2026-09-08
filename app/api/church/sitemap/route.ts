@@ -22,25 +22,30 @@ export async function GET() {
       listSaints({}),
     ]);
 
+    // PHASE MULTILINGUAL-1 / P0.7: `language` is included per item so
+    // app/sitemap.ts can advertise exactly the one locale each row is
+    // actually published in, instead of assuming every row exists in all
+    // 3 languages (it doesn't -- e.g. calendar/article/gospel currently
+    // only have uk rows at all).
     const items = [
       ...days
         .filter((item) => item.status === 'published')
-        .map((item) => ({ kind: 'calendar' as const, slug: item.id, date: item.dateNewStyle || item.dateOldStyle || null, updatedAt: item.updatedAt })),
+        .map((item) => ({ kind: 'calendar' as const, slug: item.id, date: item.dateNewStyle || item.dateOldStyle || null, updatedAt: item.updatedAt, language: item.language })),
       ...icons
         .filter((item) => item.status === 'published')
-        .map((item) => ({ kind: 'icon' as const, slug: item.slug, updatedAt: item.updatedAt })),
+        .map((item) => ({ kind: 'icon' as const, slug: item.slug, updatedAt: item.updatedAt, language: item.language })),
       ...prayers
         .filter((item) => item.status === 'published')
-        .map((item) => ({ kind: 'prayer' as const, slug: item.slug, updatedAt: item.updatedAt })),
+        .map((item) => ({ kind: 'prayer' as const, slug: item.slug, updatedAt: item.updatedAt, language: item.language })),
       ...articles
         .filter((item) => item.status === 'published')
-        .map((item) => ({ kind: 'article' as const, slug: item.slug, updatedAt: item.updatedAt })),
+        .map((item) => ({ kind: 'article' as const, slug: item.slug, updatedAt: item.updatedAt, language: item.language })),
       ...gospel
         .filter((item) => item.status === 'published')
-        .map((item) => ({ kind: 'gospel' as const, slug: item.slug, updatedAt: item.updatedAt })),
+        .map((item) => ({ kind: 'gospel' as const, slug: item.slug, updatedAt: item.updatedAt, language: item.language })),
       ...saints
         .filter((item) => item.status === 'published')
-        .map((item) => ({ kind: 'saint' as const, slug: item.slug, updatedAt: item.updatedAt })),
+        .map((item) => ({ kind: 'saint' as const, slug: item.slug, updatedAt: item.updatedAt, language: item.language })),
     ];
 
     return Response.json(items);

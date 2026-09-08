@@ -1,4 +1,5 @@
 import { Breadcrumbs } from '@/components/site/Breadcrumbs';
+import { Hreflang } from '@/components/site/Hreflang';
 import { LocalizedBackendPrayersList } from '@/components/site/LocalizedContent';
 import { Eyebrow, Hero, HeroTitle, Lead, Page } from '@/components/site/PageChrome';
 import { T } from '@/components/site/TranslatedText';
@@ -32,6 +33,7 @@ export default async function PrayersPage() {
   const countLabel = `${prayers.length} ${pluralize(prayers.length, locale, prayerCountWords[locale])}`;
   return (
     <Page>
+      <Hreflang locale={locale} path="/prayers" />
       <Breadcrumbs
         items={[{ href: '/', label: translate(locale, 'home') }]}
         current={translate(locale, 'navPrayers')}

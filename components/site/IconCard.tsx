@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { Icon } from '@/lib/types';
 import { useI18n, useLocaleHref } from './LanguageProvider';
 import { StableImage } from './StableImage';
+import { UntranslatedBadge } from './UntranslatedBadge';
 
 export function IconCard({ icon }: { icon: Icon }) {
   const { t } = useI18n();
@@ -25,6 +26,7 @@ export function IconCard({ icon }: { icon: Icon }) {
       </figure>
       <div className="min-w-0 grid content-start gap-3 p-[clamp(18px,2vw,28px)] max-[430px]:p-4">
         <span className="text-gold-light text-[12px] font-black tracking-[.12em] uppercase">{icon.category}</span>
+        {icon.translated === false ? <UntranslatedBadge /> : null}
         <h3 className="m-0 text-foreground font-black text-[clamp(22px,2vw,32px)] leading-[1.08] text-balance max-[520px]:text-[clamp(21px,6vw,30px)]">{icon.title}</h3>
         <p className="m-0 text-muted-foreground leading-[1.5] line-clamp-3">{icon.shortDescription}</p>
         <small className="w-max mt-1.5 border-b border-gold pb-[3px] text-gold-light text-[12px] font-black tracking-[.08em] uppercase">{t('open')}</small>

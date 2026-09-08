@@ -1,16 +1,27 @@
 import Link from 'next/link';
 import { Breadcrumbs } from '@/components/site/Breadcrumbs';
+import { Hreflang } from '@/components/site/Hreflang';
 import { DetailActions, DetailHero, Eyebrow, HeroCopy, HeroTitle, Lead, Page, Panel, PanelLabel, ReaderText, RelatedSection, SectionHead } from '@/components/site/PageChrome';
 import { ProductCard } from '@/components/site/ProductCard';
 import { ProductGallery } from '@/components/site/ProductGallery';
 import { ProductOrderTrigger } from '@/components/site/ProductOrderModal';
 import { T } from '@/components/site/TranslatedText';
 import { publicApi } from '@/lib/api';
-import { translate, withLocale } from '@/lib/i18n';
-import { jsonLd, pageMetadata } from '@/lib/seo';
+import { translate, withLocale, type Locale } from '@/lib/i18n';
+import { jsonLd, localesWithNonEmpty, pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
 import { absoluteSiteUrl } from '@/lib/site';
 import type { ChurchProductCategoryDto, ChurchProductDto } from '@/lib/types';
+
+/** See lib/seo.ts's localesWithNonEmpty() doc comment: a product is one
+ * row, translated per-column (nameUk/nameRu/nameEn), so "which locales
+ * this product page should advertise as hreflang alternates" is "which
+ * name column is actually filled in" -- all pointing at the SAME slug
+ * (there's no per-locale slug for a single-row entity). */
+function productLanguages(product: ChurchProductDto): Partial<Record<Locale, string>> {
+  const present = localesWithNonEmpty({ uk: product.nameUk, ru: product.nameRu, en: product.nameEn });
+  return Object.fromEntries(present.map((locale) => [locale, `/shop/${product.slug}`]));
+}
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -76,7 +87,8 @@ export async function generateMetadata({ params }: Props) {
     description: seoDescription(page.product, locale) || page.product.description,
     path: `/shop/${slug}`,
     image: page.product.photoUrl,
-    locale
+    locale,
+    languages: productLanguages(page.product)
   });
 }
 
@@ -102,6 +114,7 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <Page>
+      <Hreflang locale={locale} path={`/shop/${product.slug}`} languages={productLanguages(product)} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

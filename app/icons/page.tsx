@@ -1,4 +1,5 @@
 import { Breadcrumbs } from '@/components/site/Breadcrumbs';
+import { Hreflang } from '@/components/site/Hreflang';
 import { IconsCatalog } from '@/components/site/IconsCatalog';
 import { Eyebrow, HeroTitle, Lead, Page } from '@/components/site/PageChrome';
 import { T } from '@/components/site/TranslatedText';
@@ -32,6 +33,7 @@ export default async function IconsPage() {
 
   return (
     <Page className="overflow-hidden">
+      <Hreflang locale={locale} path="/icons" />
       <Breadcrumbs
         items={[{ href: '/', label: translate(locale, 'home') }]}
         current={translate(locale, 'navIcons')}

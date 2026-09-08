@@ -1,6 +1,6 @@
 import { d1All, d1First, d1Run } from '../db';
 import { ApiError } from '../errors';
-import { IS_GLOBAL_DEFAULT, SVETIKONY_SITE_ID } from '../mappers';
+import { genId, IS_GLOBAL_DEFAULT, SVETIKONY_SITE_ID } from '../mappers';
 
 /** Mirrors assistant/src/interfaces/http/church_content.rs list_articles /
  * get_article / create_article / update_article / delete_article. Unlike
@@ -15,6 +15,7 @@ type Row = {
   slug: string;
   content: string;
   language: string;
+  translation_group_id: string;
   seo_title: string;
   seo_description: string;
   status: string;
@@ -31,6 +32,7 @@ export type ChurchArticleDto = {
   slug: string;
   content: string;
   language: string;
+  translationGroupId: string;
   seoTitle: string;
   seoDescription: string;
   status: string;
@@ -62,6 +64,7 @@ function toDto(row: Row): ChurchArticleDto {
     slug: row.slug,
     content: row.content,
     language: row.language,
+    translationGroupId: row.translation_group_id,
     seoTitle: row.seo_title,
     seoDescription: row.seo_description,
     status: row.status,
@@ -72,7 +75,7 @@ function toDto(row: Row): ChurchArticleDto {
 }
 
 const COLUMNS =
-  'id, icon_id, calendar_day_id, title, slug, content, language, seo_title, seo_description, status, created_at, updated_at';
+  'id, icon_id, calendar_day_id, title, slug, content, language, translation_group_id, seo_title, seo_description, status, created_at, updated_at';
 
 export async function listArticles(params: { calendarDayId?: string; iconId?: string; language?: string } = {}) {
   const rows = await d1All<Row>(
@@ -103,10 +106,12 @@ function required(value: string | undefined, field: string): string {
 export async function createArticle(payload: ChurchArticlePayload): Promise<ChurchArticleDto> {
   const title = required(payload.title, 'title');
   const slug = required(payload.slug, 'slug');
+  const fallbackGroupId = genId();
 
   const row = await d1First<Row>(
-    `INSERT INTO church_articles (icon_id, calendar_day_id, title, slug, content, language, seo_title, seo_description, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO church_articles (icon_id, calendar_day_id, title, slug, content, language, seo_title, seo_description, status, translation_group_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
+        COALESCE((SELECT translation_group_id FROM church_articles WHERE slug = ? LIMIT 1), ?))
      RETURNING ${COLUMNS}`,
     payload.iconId ?? null,
     payload.calendarDayId ?? null,
@@ -116,28 +121,38 @@ export async function createArticle(payload: ChurchArticlePayload): Promise<Chur
     payload.language ?? 'uk',
     payload.seoTitle ?? '',
     payload.seoDescription ?? '',
-    payload.status ?? 'draft'
+    payload.status ?? 'draft',
+    slug,
+    fallbackGroupId
   );
   return toDto(row!);
 }
 
 export async function updateArticle(id: string, payload: ChurchArticlePayload): Promise<ChurchArticleDto> {
   const current = await getArticle(id);
+  const slug = payload.slug?.trim() || current.slug;
   const row = await d1First<Row>(
     `UPDATE church_articles SET
        icon_id = ?, calendar_day_id = ?, title = ?, slug = ?, content = ?, language = ?,
-       seo_title = ?, seo_description = ?, status = ?
+       seo_title = ?, seo_description = ?, status = ?,
+       translation_group_id = COALESCE(
+         (SELECT other.translation_group_id FROM church_articles other WHERE other.slug = ? AND other.id != ? LIMIT 1),
+         (SELECT translation_group_id FROM church_articles WHERE id = ?)
+       )
      WHERE id = ?
      RETURNING ${COLUMNS}`,
     payload.iconId !== undefined ? payload.iconId : current.iconId,
     payload.calendarDayId !== undefined ? payload.calendarDayId : current.calendarDayId,
     payload.title?.trim() || current.title,
-    payload.slug?.trim() || current.slug,
+    slug,
     payload.content ?? current.content,
     payload.language ?? current.language,
     payload.seoTitle ?? current.seoTitle,
     payload.seoDescription ?? current.seoDescription,
     payload.status ?? current.status,
+    slug,
+    id,
+    id,
     id
   );
   return toDto(row!);

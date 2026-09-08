@@ -1,6 +1,6 @@
 import { d1All, d1First, d1Run } from '../db';
 import { ApiError } from '../errors';
-import { IS_GLOBAL_DEFAULT, SVETIKONY_SITE_ID } from '../mappers';
+import { genId, IS_GLOBAL_DEFAULT, SVETIKONY_SITE_ID } from '../mappers';
 import { slugify } from '../slug';
 
 /** Mirrors assistant/src/interfaces/http/church_content.rs list_gospel /
@@ -16,6 +16,7 @@ type Row = {
   text: string;
   explanation: string;
   language: string;
+  translation_group_id: string;
   status: string;
   created_at: string;
   updated_at: string;
@@ -32,6 +33,7 @@ export type ChurchGospelDto = {
   text: string;
   explanation: string;
   language: string;
+  translationGroupId: string;
   status: string;
   isGlobal: boolean;
   createdAt: string;
@@ -63,6 +65,7 @@ function toDto(row: Row): ChurchGospelDto {
     text: row.text,
     explanation: row.explanation,
     language: row.language,
+    translationGroupId: row.translation_group_id,
     status: row.status,
     isGlobal: IS_GLOBAL_DEFAULT,
     createdAt: row.created_at,
@@ -71,7 +74,7 @@ function toDto(row: Row): ChurchGospelDto {
 }
 
 const COLUMNS =
-  'id, icon_id, calendar_day_id, slug, title, reference, text, explanation, language, status, created_at, updated_at';
+  'id, icon_id, calendar_day_id, slug, title, reference, text, explanation, language, translation_group_id, status, created_at, updated_at';
 
 export async function listGospel(params: { calendarDayId?: string; iconId?: string; language?: string } = {}) {
   const rows = await d1All<Row>(
@@ -102,10 +105,12 @@ function required(value: string | undefined, field: string): string {
 export async function createGospel(payload: ChurchGospelPayload): Promise<ChurchGospelDto> {
   const title = required(payload.title, 'title');
   const slug = payload.slug?.trim() || slugify(title, 'gospel');
+  const fallbackGroupId = genId();
 
   const row = await d1First<Row>(
-    `INSERT INTO church_gospel_readings (icon_id, calendar_day_id, slug, title, reference, text, explanation, language, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO church_gospel_readings (icon_id, calendar_day_id, slug, title, reference, text, explanation, language, status, translation_group_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
+        COALESCE((SELECT translation_group_id FROM church_gospel_readings WHERE slug = ? LIMIT 1), ?))
      RETURNING ${COLUMNS}`,
     payload.iconId ?? null,
     payload.calendarDayId ?? null,
@@ -115,28 +120,38 @@ export async function createGospel(payload: ChurchGospelPayload): Promise<Church
     payload.text ?? '',
     payload.explanation ?? '',
     payload.language ?? 'uk',
-    payload.status ?? 'draft'
+    payload.status ?? 'draft',
+    slug,
+    fallbackGroupId
   );
   return toDto(row!);
 }
 
 export async function updateGospel(id: string, payload: ChurchGospelPayload): Promise<ChurchGospelDto> {
   const current = await getGospel(id);
+  const slug = payload.slug?.trim() || current.slug;
   const row = await d1First<Row>(
     `UPDATE church_gospel_readings SET
        icon_id = ?, calendar_day_id = ?, slug = ?, title = ?, reference = ?, text = ?, explanation = ?,
-       language = ?, status = ?
+       language = ?, status = ?,
+       translation_group_id = COALESCE(
+         (SELECT other.translation_group_id FROM church_gospel_readings other WHERE other.slug = ? AND other.id != ? LIMIT 1),
+         (SELECT translation_group_id FROM church_gospel_readings WHERE id = ?)
+       )
      WHERE id = ?
      RETURNING ${COLUMNS}`,
     payload.iconId !== undefined ? payload.iconId : current.iconId,
     payload.calendarDayId !== undefined ? payload.calendarDayId : current.calendarDayId,
-    payload.slug?.trim() || current.slug,
+    slug,
     payload.title?.trim() || current.title,
     payload.reference ?? current.reference,
     payload.text ?? current.text,
     payload.explanation ?? current.explanation,
     payload.language ?? current.language,
     payload.status ?? current.status,
+    slug,
+    id,
+    id,
     id
   );
   return toDto(row!);

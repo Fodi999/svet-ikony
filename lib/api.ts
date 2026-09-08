@@ -1,5 +1,5 @@
 import { resolveMediaUrl } from '@/lib/media/resolver';
-import { absoluteSiteUrl } from './site';
+import { absoluteSiteUrl, siteUrl } from './site';
 import type { CalendarDay, CalendarDayKind, CalendarHero, Church, ChurchAlphabetLetterDto, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchIconOrderOptionDto, ChurchIconProductCategoryDto, ChurchInfoDto, ChurchPrayerDto, ChurchProductCategoryDto, ChurchProductDto, ChurchSaintDto, CreateIconOrderPayload, CreateIconOrderResponse, CreateProductOrderPayload, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchAlphabetPage, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, PublicProductPage, PrayerVisualizerAssetDto, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
 
 const emptyDashboard: Dashboard = {
@@ -512,9 +512,31 @@ function normalizeSiteContent(value: unknown): SiteContent {
  * special-casing here — see that function's own doc comment for what part
  * of its result is affected.
  */
+/**
+ * Resolves the URL a fetch call should target, for a function that may be
+ * invoked from EITHER a server component/route handler OR a 'use client'
+ * component. `absoluteSiteUrl()` (see lib/site.ts) calls
+ * `getCloudflareContext()`, which reads a global symbol that only ever
+ * exists on the Worker's own scope -- in a real browser it throws
+ * immediately, before any fetch() ever runs. Confirmed as the actual
+ * production root cause of the public product-order form silently never
+ * reaching the Worker at all (a live wrangler tail during a real submit
+ * showed zero incoming requests): components/site/ProductOrderModal.tsx
+ * is a client component whose submit handler calls
+ * publicApi.createProductOrder() directly in the browser, hitting this
+ * exact throw. `siteUrl` (the build-time NEXT_PUBLIC_SITE_URL constant) is
+ * the correct, browser-safe equivalent for that case.
+ */
+async function resolveApiUrl(path: string): Promise<string> {
+  if (typeof window !== 'undefined') {
+    return `${siteUrl}${path.startsWith('/') ? path : `/${path}`}`;
+  }
+  return absoluteSiteUrl(path);
+}
+
 async function apiGet<T>(path: string, fallback: T): Promise<T> {
   try {
-    const response = await fetch(await absoluteSiteUrl(path), { cache: 'no-store' });
+    const response = await fetch(await resolveApiUrl(path), { cache: 'no-store' });
     if (!response.ok) return fallback;
     return await response.json() as T;
   } catch {
@@ -534,7 +556,7 @@ async function churchApiGet<T>(path: string, fallback: T, previewToken?: string,
  * returning a fallback, so callers (e.g. the order form) can show the user
  * a real validation error instead of a swallowed failure. */
 async function apiPostOrThrow<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(await absoluteSiteUrl(path), {
+  const response = await fetch(await resolveApiUrl(path), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -547,7 +569,7 @@ async function apiPostOrThrow<T>(path: string, body: unknown): Promise<T> {
 
 async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown, fallback?: T): Promise<T> {
   try {
-    const response = await fetch(await absoluteSiteUrl(path), {
+    const response = await fetch(await resolveApiUrl(path), {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined

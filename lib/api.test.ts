@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { buildCalendarHero, calendarDayFromChurchPage, dedupeCalendarDaysByDay, monthIndexFromCalendarTitle, prayerTypeLabel, resolveCategoryImage, resolveProductImages } from './api';
-import type { ChurchProductCategoryDto, ChurchProductDto, PublicChurchContentPage, SiteLocale } from './types';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { buildCalendarHero, calendarDayFromChurchPage, dedupeCalendarDaysByDay, monthIndexFromCalendarTitle, prayerTypeLabel, publicApi, resolveCategoryImage, resolveProductImages } from './api';
+import type { ChurchProductCategoryDto, ChurchProductDto, CreateProductOrderPayload, PublicChurchContentPage, SiteLocale } from './types';
 
 const AUTHORITATIVE_PRAYER_TYPES = [
   'morning',
@@ -292,5 +292,99 @@ describe('resolveProductImages / resolveCategoryImage (Stage 2J)', () => {
   it('leaves an empty category imageUrl as an empty string', () => {
     const category = resolveCategoryImage(sampleCategory({ imageUrl: '' }));
     expect(category.imageUrl).toBe('');
+  });
+});
+
+function samplePayload(overrides: Partial<CreateProductOrderPayload> = {}): CreateProductOrderPayload {
+  return {
+    productSlug: 'ikona-sviatoi-velykomuchenytsi-varvary',
+    customerName: 'Test Customer',
+    contactMethod: 'phone',
+    contactValue: '+380000000000',
+    consentGiven: true,
+    website: '',
+    ...overrides,
+  };
+}
+
+/**
+ * Regression test for the real production bug: the public product order
+ * form (components/site/ProductOrderModal.tsx, a 'use client' component)
+ * calls publicApi.createProductOrder() directly from the browser.
+ * apiPostOrThrow() used to call absoluteSiteUrl() unconditionally, which
+ * calls getCloudflareContext() -- a function that reads a global symbol
+ * only ever set on the Worker's own scope and throws immediately in a
+ * real browser (confirmed by reading @opennextjs/cloudflare's own
+ * source). The throw happened before fetch() was ever called, so the
+ * POST never reached the Worker at all -- confirmed via a live
+ * `wrangler tail` during a real production submit showing zero incoming
+ * requests. These tests simulate a real browser (`window` defined) and
+ * deliberately do NOT mock '@opennextjs/cloudflare' -- the whole point is
+ * proving the client-side code path never touches it, so if this
+ * regresses, the real (unmocked) getCloudflareContext would throw and
+ * fail these tests exactly the way it failed in production.
+ */
+describe('publicApi.createProductOrder — client-component safety (production bug regression)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('in a browser context (window defined), the POST actually reaches fetch() -- it used to throw before fetch was ever called', async () => {
+    vi.stubGlobal('window', {});
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ orderNumber: 'IK-000123' }), { status: 201, headers: { 'content-type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await publicApi.createProductOrder(samplePayload());
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toContain('/api/church/product-orders');
+    expect((init as RequestInit).method).toBe('POST');
+    expect(result.orderNumber).toBe('IK-000123');
+  });
+
+  it('the browser-context request body is exactly the submitted payload, unmodified', async () => {
+    vi.stubGlobal('window', {});
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ orderNumber: 'IK-000124' }), { status: 201, headers: { 'content-type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const payload = samplePayload({ city: 'Гданськ', country: 'Польща', comment: 'Подзвонити перед доставкою' });
+    await publicApi.createProductOrder(payload);
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual(payload);
+  });
+
+  it('a non-2xx response in a browser context throws (surfaces as a real, visible error), not a swallowed failure', async () => {
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 'VALIDATION_ERROR' }), { status: 400 })));
+
+    await expect(publicApi.createProductOrder(samplePayload())).rejects.toThrow();
+  });
+
+  it('a 429 in a browser context throws specifically "rate_limited", matching the frontend copy switch', async () => {
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 429 })));
+
+    await expect(publicApi.createProductOrder(samplePayload())).rejects.toThrow('rate_limited');
+  });
+
+  it('outside a browser context (no window -- a server component/route handler), the same call still resolves a URL and reaches fetch, via the server-side SITE_URL path', async () => {
+    vi.doMock('@opennextjs/cloudflare', () => ({
+      getCloudflareContext: async () => ({ env: { SITE_URL: 'https://svetikony.com' } }),
+    }));
+    vi.resetModules();
+    const { publicApi: freshPublicApi } = await import('./api');
+
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ orderNumber: 'IK-000125' }), { status: 201, headers: { 'content-type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await freshPublicApi.createProductOrder(samplePayload());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]![0])).toContain('/api/church/product-orders');
+    expect(result.orderNumber).toBe('IK-000125');
+
+    vi.doUnmock('@opennextjs/cloudflare');
   });
 });

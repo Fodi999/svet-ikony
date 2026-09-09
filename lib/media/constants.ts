@@ -25,6 +25,7 @@ export const ALLOWED_MODULE_PURPOSES: Record<string, readonly string[]> = {
   categories: ['main'],
   products: ['photo', 'gallery'],
   telegram: ['post-image', 'post-audio'], // telegram_posts.media_url/audio_url, picked via the Content Plan media picker
+  visualizer: ['model'], // visualizer_models.r2_key (GLB 3D models) — Візуалізатор feature
 };
 
 export type AllowedModule = keyof typeof ALLOWED_MODULE_PURPOSES;
@@ -38,8 +39,10 @@ export type AllowedModule = keyof typeof ALLOWED_MODULE_PURPOSES;
  * audio ones, rejecting every real audio file (even a plain MP3) with 415
  * UNSUPPORTED_MEDIA_TYPE. */
 const AUDIO_PURPOSES = new Set(['audio', 'post-audio']);
+const MODEL_PURPOSES = new Set(['model']);
 
 export function mediaKindForPurpose(purpose: string): MediaKind {
+  if (MODEL_PURPOSES.has(purpose)) return 'model';
   return AUDIO_PURPOSES.has(purpose) ? 'audio' : 'image';
 }
 
@@ -60,9 +63,24 @@ export const AUDIO_MIME_EXTENSIONS: Record<string, string> = {
   'audio/ogg': 'ogg',
 };
 
+/** GLB uploads (Візуалізатор). `model/gltf-binary` is the correct MIME, but
+ * browsers/OS file pickers frequently report `.glb` selections as the
+ * generic `application/octet-stream` (or leave it empty) since it isn't a
+ * universally-sniffed type — accepting both here is scoped safely: this
+ * mapping only ever takes effect for the `model` purpose, which only the
+ * `visualizer` module allows (see mediaKindForPurpose/ALLOWED_MODULE_PURPOSES
+ * above and the upload route's own kind-gated MIME check), and the upload
+ * route additionally requires the filename to end in `.glb` whenever the
+ * reported MIME is the generic octet-stream one. */
+export const MODEL_MIME_EXTENSIONS: Record<string, string> = {
+  'model/gltf-binary': 'glb',
+  'application/octet-stream': 'glb',
+};
+
 export const ALL_MIME_EXTENSIONS: Record<string, string> = {
   ...IMAGE_MIME_EXTENSIONS,
   ...AUDIO_MIME_EXTENSIONS,
+  ...MODEL_MIME_EXTENSIONS,
 };
 
 /**
@@ -75,7 +93,11 @@ export const ALL_MIME_EXTENSIONS: Record<string, string> = {
  */
 export const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 export const MAX_AUDIO_BYTES = 100 * 1024 * 1024;
+/** GLB models are typically much larger than a photo or audio clip. One
+ * named constant, per the MVP brief, so it's trivial to change later. */
+export const MAX_MODEL_BYTES = 50 * 1024 * 1024;
 
 export function maxBytesForKind(kind: MediaKind): number {
+  if (kind === 'model') return MAX_MODEL_BYTES;
   return kind === 'audio' ? MAX_AUDIO_BYTES : MAX_IMAGE_BYTES;
 }

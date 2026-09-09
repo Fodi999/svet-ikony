@@ -2,7 +2,7 @@ import { requireSuperAdmin } from '@/lib/d1/auth';
 import { withErrors, ApiError } from '@/lib/d1/errors';
 import { getMediaBucket } from '@/lib/d1/env';
 import { absoluteSiteUrl } from '@/lib/site';
-import { IMAGE_MIME_EXTENSIONS, AUDIO_MIME_EXTENSIONS, maxBytesForKind, mediaKindForPurpose } from '@/lib/media/constants';
+import { IMAGE_MIME_EXTENSIONS, AUDIO_MIME_EXTENSIONS, MODEL_MIME_EXTENSIONS, maxBytesForKind, mediaKindForPurpose } from '@/lib/media/constants';
 import { generateMediaKey, isAllowedPurpose, isSafeEntityId, isAllowedModule } from '@/lib/media/keys';
 import type { MediaObjectDto } from '@/lib/media/types';
 
@@ -39,9 +39,15 @@ export async function POST(request: Request) {
     if (file.size === 0) throw ApiError.validation('file is empty');
 
     const kind = mediaKindForPurpose(purpose);
-    const allowedMimeForKind = kind === 'audio' ? AUDIO_MIME_EXTENSIONS : IMAGE_MIME_EXTENSIONS;
+    const allowedMimeForKind = kind === 'model' ? MODEL_MIME_EXTENSIONS : kind === 'audio' ? AUDIO_MIME_EXTENSIONS : IMAGE_MIME_EXTENSIONS;
     if (!Object.prototype.hasOwnProperty.call(allowedMimeForKind, file.type)) {
       throw new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', `Unsupported ${kind} MIME type`, file.type || '(missing content type)');
+    }
+    // application/octet-stream is a generic catch-all (see MODEL_MIME_EXTENSIONS's
+    // own doc comment) -- for model uploads specifically, also require the
+    // filename to actually end in .glb before trusting it.
+    if (kind === 'model' && file.type === 'application/octet-stream' && !file.name.toLowerCase().endsWith('.glb')) {
+      throw new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Unsupported model MIME type', `filename "${file.name}" does not end in .glb`);
     }
 
     const maxBytes = maxBytesForKind(kind);

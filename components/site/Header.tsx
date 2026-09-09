@@ -13,7 +13,8 @@ const nav = [
   ['navSaints', '/saints'],
   ['navGospel', '/gospel'],
   ['navChurches', '/churches'],
-  ['navAlphabet', '/staroslavyanskaya-azbuka']
+  ['navAlphabet', '/staroslavyanskaya-azbuka'],
+  ['navHistory', '/pravoslavna-istoriya']
 ] as const;
 
 function navLinkClass(isActive: boolean) {

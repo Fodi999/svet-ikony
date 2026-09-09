@@ -1,6 +1,6 @@
 import { resolveMediaUrl } from '@/lib/media/resolver';
 import { absoluteSiteUrl, siteUrl } from './site';
-import type { CalendarDay, CalendarDayKind, CalendarHero, Church, ChurchAlphabetLetterDto, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchIconOrderOptionDto, ChurchIconProductCategoryDto, ChurchInfoDto, ChurchPrayerDto, ChurchProductCategoryDto, ChurchProductDto, ChurchSaintDto, CreateIconOrderPayload, CreateIconOrderResponse, CreateProductOrderPayload, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchAlphabetPage, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, PublicProductPage, PrayerVisualizerAssetDto, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
+import type { CalendarDay, CalendarDayKind, CalendarHero, Church, ChurchAlphabetLetterDto, ChurchArticleDto, ChurchGospelDto, ChurchIconDto, ChurchIconOrderOptionDto, ChurchIconProductCategoryDto, ChurchInfoDto, ChurchPrayerDto, ChurchProductCategoryDto, ChurchProductDto, ChurchSaintDto, ChurchVisualizerEventDto, ChurchVisualizerModelDto, CreateIconOrderPayload, CreateIconOrderResponse, CreateProductOrderPayload, Dashboard, GospelReading, Icon, IconTranslation, Prayer, PublicChurchAlphabetPage, PublicChurchArticlePage, PublicChurchContentPage, PublicChurchGospelPage, PublicChurchIconPage, PublicChurchPrayerPage, PublicChurchSaintPage, PublicChurchSitemapItem, PublicChurchVisualizerEventPage, PublicProductPage, PrayerVisualizerAssetDto, QrPage, Saint, SeoPage, SiteContent, SiteLocale } from './types';
 
 const emptyDashboard: Dashboard = {
   publishedPages: 0,
@@ -665,6 +665,9 @@ export const publicApi = {
   churchSaintList: async (locale?: SiteLocale) => churchApiGet<ChurchSaintDto[]>('/api/church/saints', [], undefined, locale),
   churchAlphabetLetter: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchAlphabetPage | null>(`/api/church/alphabet/${slug}`, null, previewToken, locale),
   churchAlphabetList: async (locale?: SiteLocale) => churchApiGet<ChurchAlphabetLetterDto[]>('/api/church/alphabet', [], undefined, locale),
+  churchVisualizerEvent: async (slug: string, previewToken?: string, locale?: SiteLocale) => churchApiGet<PublicChurchVisualizerEventPage | null>(`/api/church/visualizer-events/${slug}`, null, previewToken, locale),
+  churchVisualizerEventList: async (locale?: SiteLocale) => churchApiGet<ChurchVisualizerEventDto[]>('/api/church/visualizer-events', [], undefined, locale),
+  churchVisualizerBaseEarthModel: async () => churchApiGet<ChurchVisualizerModelDto | null>('/api/church/visualizer-models/base-earth', null),
   churchArticle: async (slug: string, previewToken?: string, locale?: SiteLocale) => {
     const result = await churchApiGet<PublicChurchArticlePage | null>(`/api/church/articles/${slug}`, null, previewToken, locale);
     return result ? { ...result, pageView: seoPageFromChurchArticle(result.article) } : null;

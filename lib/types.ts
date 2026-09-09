@@ -664,6 +664,69 @@ export type PublicChurchAlphabetPage = {
   translations: ChurchTranslationRef[];
 };
 
+/** "Візуалізатор" — mirrors lib/d1/repositories/visualizerEvents.ts's
+ * ChurchVisualizerEventDto field-for-field. */
+export type ChurchVisualizerEventDto = {
+  id: string;
+  siteId: string;
+  slug: string;
+  language: SiteLocale;
+  translationGroupId: string;
+  title: string;
+  summary: string;
+  description: string;
+  eventType: string;
+  chronologyType: string;
+  era: string;
+  calendarEra: string;
+  yearStart: number | null;
+  yearEnd: number | null;
+  century: number | null;
+  displayDate: string;
+  sortYear: number;
+  locationName: string;
+  latitude: number | null;
+  longitude: number | null;
+  calendarDayId: string | null;
+  status: ChurchContentStatus;
+  isFeatured: boolean;
+  isGlobal: boolean;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string | null;
+  /** List endpoints only (P0.2) -- see ChurchIconDto.translated. */
+  translated?: boolean;
+};
+
+/** Mirrors lib/d1/repositories/visualizerModels.ts's ChurchVisualizerModelDto,
+ * plus `url` — the public routes always resolve `r2Key` to a servable URL
+ * server-side (see resolveMediaUrl()) rather than making every consumer
+ * repeat that resolution. */
+export type ChurchVisualizerModelDto = {
+  id: string;
+  eventGroupId: string | null;
+  title: string;
+  r2Key: string;
+  url?: string;
+  filename: string;
+  mimeType: string;
+  fileSize: number;
+  isBaseEarth: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** `event` is null when the translation group exists but has no published
+ * record in the requested language; `translations` lists what is
+ * available. `models` are every GLB attached to this event's translation
+ * group (shared across its language rows), always present (possibly []). */
+export type PublicChurchVisualizerEventPage = {
+  event: ChurchVisualizerEventDto | null;
+  translations: ChurchTranslationRef[];
+  models: ChurchVisualizerModelDto[];
+};
+
 /** `article` is null when the item exists (in some language) but has no
  * published record in the requested language; `translations` lists what
  * is available. Unlike icons/saints/prayers/alphabet, articles have no

@@ -9,9 +9,18 @@ export type SelectedEventTarget = {
   modelUrl?: string | null;
 } | null;
 
+export type CameraCommand = { action: 'in' | 'out' | 'reset'; sequence: number };
+export type MapEvent = { id: string; latitude: number; longitude: number };
+const NO_MAP_EVENTS: MapEvent[] = [];
+
 type Props = {
   baseEarthModelUrl: string | null;
   selectedEvent: SelectedEventTarget;
+  fill?: boolean;
+  showHint?: boolean;
+  cameraCommand?: CameraCommand;
+  mapEvents?: MapEvent[];
+  onSelectEvent?: (id: string) => void;
 };
 
 function supportsWebGL2(): boolean {
@@ -77,6 +86,7 @@ type SceneHandle = {
   authoredScene: boolean;
   earthGroup: import('three').Group;
   eventGroup: import('three').Group;
+  pins: import('three').Group;
   transitioning: boolean;
   focused: boolean;
   controls: import("three/addons/controls/OrbitControls.js").OrbitControls;
@@ -96,7 +106,7 @@ type SceneHandle = {
  * render loop on `document.visibilitychange`, and disposing/reloading a
  * second (event-specific) GLB on selection change.
  */
-export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
+export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, showHint = true, cameraCommand, mapEvents = NO_MAP_EVENTS, onSelectEvent }: Props) {
   const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -177,7 +187,8 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
 
       const earthGroup = new THREE.Group();
       const eventGroup = new THREE.Group();
-      scene.add(earthGroup, eventGroup);
+      const pins = new THREE.Group();
+      scene.add(earthGroup, eventGroup, pins);
       sceneDispose = () => disposeObject3D(scene);
 
       const controls = new OrbitControls<import('@/lib/visualizer/base-scene').SceneCamera>(camera, renderer.domElement);
@@ -252,11 +263,13 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
       });
       resizeObserver.observe(container);
 
-      const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, transitioning: false, focused: false, controls, mixer: null, overviewCamera: camera.clone(), baseMixer: null, authoredScene: false };
+      const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, pins, transitioning: false, focused: false, controls, mixer: null, overviewCamera: camera.clone(), baseMixer: null, authoredScene: false };
       sceneRef.current = handle;
       renderer.render(scene, camera);
       setSceneReady(true);
 
+      const pinPosition = new THREE.Vector3();
+      const cameraToPin = new THREE.Vector3();
       let lastFrame = performance.now();
       function tick() {
         if (disposed || hidden) return;
@@ -268,6 +281,14 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
           if (!handle.focused) handle.baseMixer?.update(delta);
           handle.mixer?.update(delta);
           if (earthGroup.visible) eventGroup.rotation.copy(earthGroup.rotation);
+          pins.rotation.copy(earthGroup.rotation);
+          pins.visible = earthGroup.visible;
+          // Only the near hemisphere is clickable/visible (no pins through Earth).
+          pins.updateMatrixWorld(true);
+          for (const pin of pins.children) {
+            const point = pin.getWorldPosition(pinPosition);
+            pin.visible = point.dot(cameraToPin.copy(handle.camera.position).sub(point)) > 0;
+          }
           if (!handle.transitioning) controls.update();
           renderer.render(scene, handle.camera);
         }
@@ -436,22 +457,78 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
     };
   }, [selectedEvent, sceneReady]);
 
+  // Keep event GLBs lazy: these lightweight location pins contain no models.
+  useEffect(() => {
+    const handle = sceneRef.current;
+    const canvas = canvasRef.current;
+    if (!handle || !sceneReady || !canvas) return;
+    const geometry = new handle.THREE.SphereGeometry(0.045, 10, 8);
+    const material = new handle.THREE.MeshBasicMaterial({ color: 0xe9cb84 });
+    for (const event of mapEvents) {
+      const pin = new handle.THREE.Mesh(geometry, material);
+      pin.position.setFromSphericalCoords(1.86, Math.PI / 2 - event.latitude * Math.PI / 180, event.longitude * Math.PI / 180);
+      pin.userData.eventId = event.id;
+      handle.pins.add(pin);
+    }
+    const raycaster = new handle.THREE.Raycaster();
+    const pointer = new handle.THREE.Vector2();
+    let down: { x: number; y: number } | null = null;
+    function pointerDown(event: PointerEvent) { down = { x: event.clientX, y: event.clientY }; }
+    function pointerUp(event: PointerEvent) {
+      if (!down || Math.hypot(event.clientX - down.x, event.clientY - down.y) > 6 || !handle!.pins.visible) { down = null; return; }
+      down = null;
+      const rect = canvas!.getBoundingClientRect();
+      pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2);
+      raycaster.setFromCamera(pointer, handle!.camera);
+      const hit = raycaster.intersectObjects(handle!.pins.children.filter((pin) => pin.visible), false)[0];
+      if (hit) onSelectEvent?.(hit.object.userData.eventId);
+    }
+    canvas.addEventListener('pointerdown', pointerDown);
+    canvas.addEventListener('pointerup', pointerUp);
+    return () => {
+      canvas.removeEventListener('pointerdown', pointerDown);
+      canvas.removeEventListener('pointerup', pointerUp);
+      handle.pins.clear(); geometry.dispose(); material.dispose();
+    };
+  }, [mapEvents, onSelectEvent, sceneReady]);
+
+  useEffect(() => {
+    const handle = sceneRef.current;
+    if (!handle || !cameraCommand || !sceneReady || handle.transitioning) return;
+    if (cameraCommand.action === 'reset') {
+      handle.camera = handle.overviewCamera.clone();
+      handle.controls.object = handle.camera;
+      handle.controls.target.set(0, 0, 0);
+      handle.earthGroup.rotation.set(0, 0, 0);
+    } else {
+      const factor = cameraCommand.action === 'in' ? 1.25 : 0.8;
+      if (handle.camera instanceof handle.THREE.OrthographicCamera) {
+        handle.camera.zoom = Math.min(handle.controls.maxZoom, Math.max(handle.controls.minZoom, handle.camera.zoom * factor));
+        handle.camera.updateProjectionMatrix();
+      } else {
+        const distance = Math.min(handle.controls.maxDistance, Math.max(handle.controls.minDistance, handle.camera.position.length() / factor));
+        handle.camera.position.setLength(distance);
+      }
+    }
+    handle.controls.update();
+  }, [cameraCommand, sceneReady]);
+
   if (!webglSupported) {
     return (
-      <div className="grid min-h-[360px] place-items-center rounded-md border border-gold/28 bg-[#141511] p-8 text-center text-muted-foreground">
+      <div className={`grid place-items-center bg-[#141511] p-8 text-center text-muted-foreground ${fill ? 'h-full min-h-0' : 'min-h-[360px] rounded-md border border-gold/28'}`}>
         {t('historyWebglUnavailable')}
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className="relative aspect-video w-full min-h-[360px] overflow-hidden rounded-md border border-gold/28 bg-[radial-gradient(circle_at_50%_35%,rgba(205,164,90,.13),transparent_35%),#070706]">
+    <div ref={containerRef} className={`relative w-full overflow-hidden bg-[#070706] ${fill ? 'h-full min-h-0' : 'aspect-video min-h-[360px] rounded-md border border-gold/28'}`}>
       <canvas ref={canvasRef} aria-label={t('historyGlobeLabel')} className="block h-full w-full" style={{ visibility: sceneReady && !sceneError ? 'visible' : 'hidden' }} />
       {!sceneReady || sceneError ? (
         <div role="status" className="absolute inset-0 grid place-items-center p-8 text-center text-muted-foreground text-sm font-bold">{t(sceneError ? 'historySceneError' : 'historyLoadingScene')}</div>
       ) : null}
       {eventLoading || eventError ? <div role="status" className="absolute top-4 left-4 right-4 rounded-md bg-canvas/90 p-3 text-sm text-foreground">{t(eventError ? 'historyEventModelError' : 'historyEventModelLoading')}</div> : null}
-      {sceneReady && !sceneError ? (
+      {showHint && sceneReady && !sceneError ? (
         <div className="pointer-events-none absolute bottom-4 left-4 right-4 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
           <span>{t('historyGlobeHint')}</span>
           {usingDefaultEarth ? <span>{t('historyDefaultGlobe')}</span> : null}

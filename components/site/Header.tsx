@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { stripLocaleFromPathname } from '@/lib/i18n';
 import { BrandLogo } from './BrandLogo';
@@ -28,9 +29,20 @@ export function Header() {
   const localeHref = useLocaleHref();
   const pathname = usePathname();
   const currentPath = stripLocaleFromPathname(pathname || '/');
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!currentPath.startsWith('/pravoslavna-istoriya')) return;
+    const nav = navRef.current;
+    const active = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (nav && active && nav.scrollWidth > nav.clientWidth) {
+      const previous = nav.scrollLeft;
+      nav.scrollLeft = Math.max(0, active.offsetLeft - nav.offsetLeft - nav.clientWidth + active.offsetWidth + 16);
+      return () => { nav.scrollLeft = previous; };
+    }
+  }, [currentPath]);
 
   return (
-    <header className="sticky top-2.5 z-[1000] w-[calc(100%-clamp(24px,4vw,72px))] max-w-[1840px] min-h-0 mt-2.5 mx-auto grid grid-cols-[minmax(270px,360px)_minmax(0,1fr)_auto] items-center gap-[clamp(14px,2.4vw,34px)] py-[5px] px-[clamp(16px,4vw,48px)] border border-[rgba(232,211,169,.13)] rounded-[8px] bg-[rgba(11,12,10,.94)] text-foreground shadow-[0_6px_18px_rgba(0,0,0,.18)] [backdrop-filter:blur(18px)_saturate(1.08)] overflow-clip isolate max-[1040px]:grid-cols-[minmax(170px,1fr)_auto] max-[1040px]:gap-x-3.5 max-[1040px]:gap-y-2.5 max-[900px]:grid-cols-[minmax(0,1fr)_auto] max-[900px]:pt-1.5 max-[900px]:px-3 max-[900px]:pb-2 max-[640px]:w-[calc(100%-12px)] max-[640px]:mt-1.5 max-[640px]:min-h-auto max-[640px]:py-1 max-[640px]:px-2.5 max-[640px]:gap-2.5 max-[430px]:grid-cols-[minmax(0,1fr)_auto] max-[430px]:gap-x-2.5 max-[430px]:gap-y-2 max-[430px]:py-2 max-[430px]:px-2.5 [@media(display-mode:standalone)]:w-[calc(100%-max(12px,env(safe-area-inset-left))-max(12px,env(safe-area-inset-right)))] [@media(display-mode:standalone)]:mt-[max(6px,env(safe-area-inset-top))]">
+    <header data-site-header className="sticky top-2.5 z-[1000] w-[calc(100%-clamp(24px,4vw,72px))] max-w-[1840px] min-h-0 mt-2.5 mx-auto grid grid-cols-[minmax(270px,360px)_minmax(0,1fr)_auto] items-center gap-[clamp(14px,2.4vw,34px)] py-[5px] px-[clamp(16px,4vw,48px)] border border-[rgba(232,211,169,.13)] rounded-[8px] bg-[rgba(11,12,10,.94)] text-foreground shadow-[0_6px_18px_rgba(0,0,0,.18)] [backdrop-filter:blur(18px)_saturate(1.08)] overflow-clip isolate max-[1040px]:grid-cols-[minmax(170px,1fr)_auto] max-[1040px]:gap-x-3.5 max-[1040px]:gap-y-2.5 max-[900px]:grid-cols-[minmax(0,1fr)_auto] max-[900px]:pt-1.5 max-[900px]:px-3 max-[900px]:pb-2 max-[640px]:w-[calc(100%-12px)] max-[640px]:mt-1.5 max-[640px]:min-h-auto max-[640px]:py-1 max-[640px]:px-2.5 max-[640px]:gap-2.5 max-[430px]:grid-cols-[minmax(0,1fr)_auto] max-[430px]:gap-x-2.5 max-[430px]:gap-y-2 max-[430px]:py-2 max-[430px]:px-2.5 [@media(display-mode:standalone)]:w-[calc(100%-max(12px,env(safe-area-inset-left))-max(12px,env(safe-area-inset-right)))] [@media(display-mode:standalone)]:mt-[max(6px,env(safe-area-inset-top))]">
       <Link
         className="relative min-w-0 w-max inline-flex items-center gap-3 text-foreground no-underline max-[900px]:max-w-full max-[900px]:gap-[9px] max-[430px]:gap-2"
         href={localeHref('/')}
@@ -45,7 +57,7 @@ export function Header() {
           </b>
         </span>
       </Link>
-      <nav
+      <nav ref={navRef}
         // The horizontal-scroll mask (mask-image, [1040px] tier only) is a
         // purely visual affordance -- nav items already never shrink/
         // truncate (navLinkClass's own flex-none + whitespace-nowrap), so
@@ -58,7 +70,7 @@ export function Header() {
         {nav.map(([label, href]) => {
           const active = currentPath === href || currentPath.startsWith(`${href}/`);
           return (
-            <Link key={href} className={navLinkClass(active)} href={localeHref(href)}>
+            <Link key={href} aria-current={active ? 'page' : undefined} className={`${navLinkClass(active)} ${active && href === '/pravoslavna-istoriya' ? 'shadow-[0_0_14px_rgba(205,164,90,.18)] ring-1 ring-gold/30 hover:!bg-gold-light hover:!text-canvas focus-visible:!text-canvas' : ''}`} href={localeHref(href)}>
               {t(label)}
             </Link>
           );

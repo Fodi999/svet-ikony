@@ -65,8 +65,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function mount(baseEarthModelUrl: string | null, selectedEvent: import("./Earth3DCanvas").SelectedEventTarget = null) {
-  Earth3DCanvas({ baseEarthModelUrl, selectedEvent });
+function mount(baseEarthModelUrl: string | null, selectedEvent: import("./Earth3DCanvas").SelectedEventTarget = null, extra: Partial<Parameters<typeof Earth3DCanvas>[0]> = {}) {
+  Earth3DCanvas({ baseEarthModelUrl, selectedEvent, ...extra });
   harness.refs[0].current = { getBoundingClientRect: () => ({ width: 960, height: 540 }) };
   harness.refs[1].current = {};
   cleanup = harness.effects[1]();
@@ -141,5 +141,38 @@ describe('event scenes', () => {
     const camera = harness.render.mock.calls[0][1] as import('three').PerspectiveCamera;
     expect(camera.position.length()).toBeCloseTo(3.4);
     eventCleanup?.();
+  });
+});
+
+
+describe('scene toolbar', () => {
+  it('zooms the existing camera without rebuilding the renderer', async () => {
+    harness.ready = true;
+    mount(null, null, { cameraCommand: { action: 'in', sequence: 1 } });
+    await vi.waitFor(() => expect(harness.render).toHaveBeenCalled());
+    const camera = harness.render.mock.calls[0][1] as import('three').PerspectiveCamera;
+    harness.effects[4]();
+    expect(camera.position.length()).toBeCloseTo(4.8);
+    expect(harness.render).toHaveBeenCalledOnce();
+  });
+  it('selects a globe marker on click but not after orbit dragging', async () => {
+    harness.ready = true;
+    const select = vi.fn();
+    mount(null, null, { mapEvents: [{ id: 'real-event', latitude: 0, longitude: 0 }], onSelectEvent: select });
+    const listeners: Record<string, (event: { clientX: number; clientY: number }) => void> = {};
+    harness.refs[1].current = { addEventListener: (name: string, callback: typeof listeners[string]) => { listeners[name] = callback; }, removeEventListener() {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 960, height: 540 }) };
+    await vi.waitFor(() => expect(harness.render).toHaveBeenCalled());
+    // The renderer mock does not update camera matrices like WebGLRenderer.
+    (harness.render.mock.calls[0][1] as import('three').Camera).updateMatrixWorld(true);
+    const pinCleanup = harness.effects[3]();
+    const tick = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
+    tick(performance.now());
+    listeners.pointerdown({ clientX: 480, clientY: 270 });
+    listeners.pointerup({ clientX: 500, clientY: 270 });
+    expect(select).not.toHaveBeenCalled();
+    listeners.pointerdown({ clientX: 480, clientY: 270 });
+    listeners.pointerup({ clientX: 480, clientY: 270 });
+    expect(select).toHaveBeenCalledWith('real-event');
+    pinCleanup?.();
   });
 });

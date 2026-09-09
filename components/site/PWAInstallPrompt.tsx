@@ -142,7 +142,7 @@ export function PWAInstallPrompt() {
   if (!visible || (!deferredPrompt && !showIosHint)) return null;
 
   return (
-    <aside
+    <aside data-pwa-install
       className="fixed right-[clamp(12px,3vw,28px)] bottom-[calc(clamp(12px,3vw,28px)+env(safe-area-inset-bottom))] z-[1200] w-[min(420px,calc(100vw-24px))] grid grid-cols-[minmax(0,1fr)_auto] gap-3.5 items-center border border-[rgba(214,168,79,.52)] rounded-[8px] bg-[linear-gradient(135deg,rgba(214,168,79,.16),rgba(11,11,10,.92)_42%),rgba(11,11,10,.96)] shadow-lg p-3.5 text-foreground [backdrop-filter:blur(18px)_saturate(1.08)] max-[900px]:left-3 max-[900px]:right-3 max-[900px]:grid-cols-1"
       aria-live="polite"
     >

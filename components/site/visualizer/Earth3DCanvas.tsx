@@ -18,7 +18,9 @@ function supportsWebGL2(): boolean {
   if (typeof window === 'undefined') return false;
   try {
     const canvas = document.createElement('canvas');
-    return Boolean(canvas.getContext('webgl2'));
+    const context = canvas.getContext('webgl2');
+    context?.getExtension('WEBGL_lose_context')?.loseContext();
+    return Boolean(context);
   } catch {
     return false;
   }
@@ -73,11 +75,14 @@ type SceneHandle = {
   earthGroup: import('three').Group;
   eventGroup: import('three').Group;
   transitioning: boolean;
+  focused: boolean;
+  controls: import("three/addons/controls/OrbitControls.js").OrbitControls;
+  mixer: import("three").AnimationMixer | null;
 };
 
 /**
- * The actual WebGL scene: a slowly-spinning Earth (GLTFLoader-loaded base
- * model, lazy-imported), free orbit/zoom via OrbitControls when idle, and
+ * The actual WebGL scene: a built-in Earth, optionally replaced by an
+ * uploaded GLB, free orbit/zoom via OrbitControls when idle, and
  * an eased camera-to-event transition when `selectedEvent` has coordinates
  * (rotates the Earth mesh — not the camera — around Y for longitude, and
  * sweeps the camera's polar angle for latitude; see the effect below for
@@ -96,41 +101,57 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
 
   const [webglSupported, setWebglSupported] = useState(true);
   const [sceneReady, setSceneReady] = useState(false);
+  const [loadedModelUrl, setLoadedModelUrl] = useState<string | null>(null);
+  const [failedModelUrl, setFailedModelUrl] = useState<string | null>(null);
+  const eventError = !!selectedEvent?.modelUrl && failedModelUrl === selectedEvent.modelUrl;
+  const eventLoading = !!selectedEvent?.modelUrl && loadedModelUrl !== selectedEvent.modelUrl && !eventError;
+  const [sceneError, setSceneError] = useState(false);
+  const [usingDefaultEarth, setUsingDefaultEarth] = useState(true);
 
   useEffect(() => {
-    setWebglSupported(supportsWebGL2());
+    const frame = requestAnimationFrame(() => setWebglSupported(supportsWebGL2()));
+    return () => cancelAnimationFrame(frame);
   }, []);
 
-  // Builds the scene once, when WebGL2 is confirmed and the base model URL
-  // is known. Rebuilt only if the base model URL itself changes (e.g. the
+  // Builds the scene when WebGL2 is available. Rebuilt only if the base
+  // model URL itself changes (e.g. the
   // admin swaps the active Base Earth Model) -- event selection is handled
   // by the separate effect below, reaching into the already-running scene.
   useEffect(() => {
-    if (!webglSupported || !baseEarthModelUrl) return;
+    if (!webglSupported) return;
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
+
 
     let disposed = false;
     let rafId = 0;
     let resizeObserver: ResizeObserver | null = null;
     let controlsDispose: (() => void) | null = null;
     let rendererDispose: (() => void) | null = null;
+    let sceneDispose: (() => void) | null = null;
     let hidden = document.hidden;
 
+    let resumeRendering: (() => void) | null = null;
     function onVisibilityChange() {
       hidden = document.hidden;
+      if (hidden) cancelAnimationFrame(rafId);
+      else resumeRendering?.();
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     void (async () => {
       const reducedMotion = prefersReducedMotion();
-      const [THREE, { GLTFLoader }, { OrbitControls }] = await Promise.all([
+      const [THREE, { GLTFLoader }, { OrbitControls }, { createDefaultEarth }] = await Promise.all([
         import('three'),
         import('three/addons/loaders/GLTFLoader.js'),
-        import('three/addons/controls/OrbitControls.js')
+        import('three/addons/controls/OrbitControls.js'),
+        import('@/lib/visualizer/default-earth')
       ]);
       if (disposed) return;
+      setSceneError(false);
+      setSceneReady(false);
+      setUsingDefaultEarth(true);
 
       const scene = new THREE.Scene();
       const rect = container.getBoundingClientRect();
@@ -150,6 +171,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
       const earthGroup = new THREE.Group();
       const eventGroup = new THREE.Group();
       scene.add(earthGroup, eventGroup);
+      sceneDispose = () => disposeObject3D(scene);
 
       const controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
@@ -159,11 +181,40 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
       controls.enablePan = false;
       controlsDispose = () => controls.dispose();
 
-      const loader = new GLTFLoader();
-      const gltf = await loader.loadAsync(baseEarthModelUrl);
-      if (disposed) return;
-      earthGroup.add(gltf.scene);
-      setSceneReady(true);
+      // Render immediately, even when no base GLB has been uploaded or its
+      // request never completes. Replace only after a custom model is ready.
+      const defaultEarth = createDefaultEarth();
+      earthGroup.add(defaultEarth);
+      if (baseEarthModelUrl) {
+        void new GLTFLoader().loadAsync(baseEarthModelUrl).then((gltf) => {
+          if (disposed) {
+            disposeObject3D(gltf.scene);
+            return;
+          }
+          // Uploaded models can use arbitrary units and origins.
+          const box = new THREE.Box3().setFromObject(gltf.scene);
+          const size = box.getSize(new THREE.Vector3());
+          const maxSize = Math.max(size.x, size.y, size.z);
+          if (!Number.isFinite(maxSize) || maxSize <= 0) {
+            disposeObject3D(gltf.scene);
+            setUsingDefaultEarth(true);
+            return;
+          }
+          const model = new THREE.Group();
+          gltf.scene.position.sub(box.getCenter(new THREE.Vector3()));
+          model.add(gltf.scene);
+          model.scale.setScalar(3.6 / maxSize);
+          earthGroup.remove(defaultEarth);
+          disposeObject3D(defaultEarth);
+          earthGroup.add(model);
+          setUsingDefaultEarth(false);
+        }).catch((error: unknown) => {
+          if (!disposed) {
+            console.warn('Could not load the Earth model; using the built-in globe.', error);
+            setUsingDefaultEarth(true);
+          }
+        });
+      }
 
       resizeObserver = new ResizeObserver(() => {
         const box = container.getBoundingClientRect();
@@ -173,20 +224,33 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
       });
       resizeObserver.observe(container);
 
-      const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, transitioning: false };
+      const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, transitioning: false, focused: false, controls, mixer: null };
       sceneRef.current = handle;
+      renderer.render(scene, camera);
+      setSceneReady(true);
 
+      let lastFrame = performance.now();
       function tick() {
-        if (disposed) return;
+        if (disposed || hidden) return;
+        const now = performance.now();
+        const delta = Math.min((now - lastFrame) / 1000, 0.05);
+        lastFrame = now;
         if (!hidden) {
-          if (!handle.transitioning && !reducedMotion) earthGroup.rotation.y += 0.0009;
-          controls.update();
+          if (!handle.transitioning && !handle.focused && !reducedMotion) earthGroup.rotation.y += delta * 0.055;
+          handle.mixer?.update(delta);
+          if (earthGroup.visible) eventGroup.rotation.copy(earthGroup.rotation);
+          if (!handle.transitioning) controls.update();
           renderer.render(scene, camera);
         }
         rafId = requestAnimationFrame(tick);
       }
-      rafId = requestAnimationFrame(tick);
-    })();
+      resumeRendering = () => { lastFrame = performance.now(); cancelAnimationFrame(rafId); rafId = requestAnimationFrame(tick); };
+      if (!hidden) resumeRendering();
+    })().catch((error: unknown) => {
+      if (disposed) return;
+      console.error('Could not initialize the history scene.', error);
+      setSceneError(true);
+    });
 
     return () => {
       disposed = true;
@@ -194,10 +258,8 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
       cancelAnimationFrame(rafId);
       resizeObserver?.disconnect();
       controlsDispose?.();
-      if (sceneRef.current) {
-        disposeObject3D(sceneRef.current.eventGroup);
-        disposeObject3D(sceneRef.current.earthGroup);
-      }
+      sceneRef.current?.mixer?.stopAllAction();
+      sceneDispose?.();
       rendererDispose?.();
       sceneRef.current = null;
       setSceneReady(false);
@@ -213,20 +275,42 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
     if (!handle || !sceneReady) return;
     let cancelled = false;
 
+    handle.mixer?.stopAllAction();
+    handle.mixer = null;
+    handle.controls.enabled = true;
+    handle.earthGroup.visible = true;
+    handle.eventGroup.rotation.set(0, 0, 0);
+    handle.focused = !!selectedEvent;
+
     // Always clear the previously-loaded event mesh first, regardless of
     // whether the new selection has one of its own.
     while (handle.eventGroup.children.length) {
-      const child = handle.eventGroup.children.pop()!;
+      const child = handle.eventGroup.children[0];
+      handle.eventGroup.remove(child);
       disposeObject3D(child);
     }
 
-    if (!selectedEvent || selectedEvent.latitude == null || selectedEvent.longitude == null) return;
+    if (!selectedEvent) {
+      handle.camera.position.set(0, 0, 6);
+      handle.controls.target.set(0, 0, 0);
+      handle.controls.update();
+      return;
+    }
+    const hasCoordinates = selectedEvent.latitude != null && selectedEvent.longitude != null;
 
     const { latitude, longitude, modelUrl } = selectedEvent;
-    const latRad = (latitude * Math.PI) / 180;
-    const lngRad = (longitude * Math.PI) / 180;
+    const latRad = ((latitude ?? 0) * Math.PI) / 180;
+    const lngRad = ((longitude ?? 0) * Math.PI) / 180;
+    const marker = new handle.THREE.Mesh(
+      new handle.THREE.SphereGeometry(0.045, 16, 12),
+      new handle.THREE.MeshBasicMaterial({ color: 0xffdd88 })
+    );
+    marker.position.setFromSphericalCoords(1.85, Math.PI / 2 - latRad, lngRad);
+    if (hasCoordinates) handle.eventGroup.add(marker);
+    else { marker.geometry.dispose(); marker.material.dispose(); }
 
     handle.transitioning = true;
+    handle.controls.enabled = false;
     const spherical = new handle.THREE.Spherical().setFromVector3(handle.camera.position);
     const radius = spherical.radius;
     const cameraTheta = spherical.theta; // kept fixed -- only phi (latitude tilt) animates on the camera
@@ -240,32 +324,36 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
     const yawDelta = shortestAngleDelta(startYaw, targetYaw);
     // Latitude sweeps the camera's polar angle around the equatorial default
     // (PI/2), damped so near-polar events don't fully flatten the view.
-    const targetPolar = Math.PI / 2 - latRad * 0.6;
+    const targetPolar = Math.PI / 2 - latRad;
 
-    const duration = 1400;
+    const duration = prefersReducedMotion() ? 0 : 1400;
     const startTime = performance.now();
+    let transitionFrame = 0;
 
     function animate(now: number) {
       if (cancelled) return;
-      const progress = Math.min(1, (now - startTime) / duration);
+      const progress = duration === 0 ? 1 : Math.min(1, (now - startTime) / duration);
       const eased = easeInOutCubic(progress);
 
       handle!.earthGroup.rotation.y = startYaw + yawDelta * eased;
 
       const nextPolar = startPolar + (targetPolar - startPolar) * eased;
-      const nextPosition = new handle!.THREE.Vector3().setFromSphericalCoords(radius, nextPolar, cameraTheta);
+      const nextPosition = new handle!.THREE.Vector3().setFromSphericalCoords(radius + ((hasCoordinates ? 3.4 : 6) - radius) * eased, nextPolar, cameraTheta);
       handle!.camera.position.copy(nextPosition);
       handle!.camera.lookAt(0, 0, 0);
 
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        transitionFrame = requestAnimationFrame(animate);
       } else {
         handle!.transitioning = false;
+        handle!.controls.enabled = true;
       }
     }
-    requestAnimationFrame(animate);
+    transitionFrame = requestAnimationFrame(animate);
 
+    let modelTimeout: ReturnType<typeof setTimeout> | undefined;
     if (modelUrl) {
+      modelTimeout = setTimeout(() => { if (!cancelled) { setFailedModelUrl(modelUrl); } }, 30_000);
       void (async () => {
         const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
         const loader = new GLTFLoader();
@@ -274,12 +362,40 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
           disposeObject3D(gltf.scene);
           return;
         }
-        handle.eventGroup.add(gltf.scene);
-      })();
+        const bounds = new handle.THREE.Box3().setFromObject(gltf.scene);
+        const dimensions = bounds.getSize(new handle.THREE.Vector3());
+        const size = Math.max(dimensions.x, dimensions.y, dimensions.z);
+        if (!Number.isFinite(size) || size <= 0) { disposeObject3D(gltf.scene); throw new Error('Empty model'); }
+        const asset = new handle.THREE.Group();
+        gltf.scene.position.sub(bounds.getCenter(new handle.THREE.Vector3()));
+        asset.add(gltf.scene);
+        asset.scale.setScalar((hasCoordinates ? 0.8 : 2.8) / size);
+        if (hasCoordinates) {
+          asset.position.setFromSphericalCoords(2.05, Math.PI / 2 - latRad, lngRad);
+          asset.quaternion.setFromUnitVectors(new handle.THREE.Vector3(0, 1, 0), asset.position.clone().normalize());
+        } else {
+          handle.earthGroup.visible = false;
+          handle.eventGroup.rotation.set(0, 0, 0);
+        }
+        handle.eventGroup.add(asset);
+        if (gltf.animations.length && !prefersReducedMotion()) {
+          handle.mixer = new handle.THREE.AnimationMixer(gltf.scene);
+          handle.mixer.clipAction(gltf.animations[0]).play();
+        }
+        clearTimeout(modelTimeout);
+        setFailedModelUrl(null);
+        setLoadedModelUrl(modelUrl);
+      })().catch((error: unknown) => {
+        if (!cancelled) { console.warn('Could not load the event model.', error); setFailedModelUrl(modelUrl); }
+      });
     }
 
     return () => {
       cancelled = true;
+      clearTimeout(modelTimeout);
+      cancelAnimationFrame(transitionFrame);
+      handle.transitioning = false;
+      handle.controls.enabled = true;
     };
   }, [selectedEvent, sceneReady]);
 
@@ -293,9 +409,16 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
 
   return (
     <div ref={containerRef} className="relative aspect-video w-full min-h-[360px] overflow-hidden rounded-md border border-gold/28 bg-[radial-gradient(circle_at_50%_35%,rgba(205,164,90,.13),transparent_35%),#070706]">
-      <canvas ref={canvasRef} className="block h-full w-full" style={{ visibility: sceneReady ? 'visible' : 'hidden' }} />
-      {!sceneReady ? (
-        <div className="absolute inset-0 grid place-items-center text-muted-foreground text-sm font-bold">{t('historyLoadingScene')}</div>
+      <canvas ref={canvasRef} aria-label={t('historyGlobeLabel')} className="block h-full w-full" style={{ visibility: sceneReady && !sceneError ? 'visible' : 'hidden' }} />
+      {!sceneReady || sceneError ? (
+        <div role="status" className="absolute inset-0 grid place-items-center p-8 text-center text-muted-foreground text-sm font-bold">{t(sceneError ? 'historySceneError' : 'historyLoadingScene')}</div>
+      ) : null}
+      {eventLoading || eventError ? <div role="status" className="absolute top-4 left-4 right-4 rounded-md bg-canvas/90 p-3 text-sm text-foreground">{t(eventError ? 'historyEventModelError' : 'historyEventModelLoading')}</div> : null}
+      {sceneReady && !sceneError ? (
+        <div className="pointer-events-none absolute bottom-4 left-4 right-4 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+          <span>{t('historyGlobeHint')}</span>
+          {usingDefaultEarth ? <span>{t('historyDefaultGlobe')}</span> : null}
+        </div>
       ) : null}
     </div>
   );

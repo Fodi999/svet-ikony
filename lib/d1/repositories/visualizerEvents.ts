@@ -1,3 +1,4 @@
+import { validateEvent } from '@/lib/visualizer/validate-event';
 import { d1All, d1First, d1Run } from '../db';
 import { ApiError } from '../errors';
 import { fromD1Bool, genId, IS_GLOBAL_DEFAULT, SVETIKONY_SITE_ID, toD1Bool } from '../mappers';
@@ -170,6 +171,7 @@ function required(value: string | undefined, field: string): string {
 }
 
 export async function createVisualizerEvent(payload: ChurchVisualizerEventPayload): Promise<ChurchVisualizerEventDto> {
+  validateEvent(payload);
   const title = required(payload.title, 'title');
   const slug = payload.slug?.trim() || slugify(title, 'event');
   const fallbackGroupId = genId();
@@ -218,6 +220,7 @@ export async function createVisualizerEvent(payload: ChurchVisualizerEventPayloa
 
 export async function updateVisualizerEvent(id: string, payload: ChurchVisualizerEventPayload): Promise<ChurchVisualizerEventDto> {
   const current = await getVisualizerEvent(id);
+  validateEvent({ ...current, ...payload });
   const slug = payload.slug?.trim() || current.slug;
 
   const yearStart = payload.yearStart !== undefined ? payload.yearStart : current.yearStart;

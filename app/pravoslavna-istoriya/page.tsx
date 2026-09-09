@@ -1,7 +1,11 @@
 import { Hreflang } from '@/components/site/Hreflang';
 import { HistoryVisualizer } from '@/components/site/visualizer/HistoryVisualizer';
-import { publicApi } from '@/lib/api';
-import { translate } from '@/lib/i18n';
+import { listVisualizerEvents } from '@/lib/d1/repositories/visualizerEvents';
+import { getBaseEarthModel } from '@/lib/d1/repositories/visualizerModels';
+import { applyListLanguageFallback } from '@/lib/church-public/translation-fallback';
+import { resolveMediaUrl } from '@/lib/media/resolver';
+import { isLocale, translate } from '@/lib/i18n';
+import type { ChurchVisualizerEventDto } from '@/lib/types';
 import { pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
 
@@ -18,15 +22,20 @@ export async function generateMetadata() {
 export default async function PravoslavnaIstoriyaPage() {
   const locale = await getRequestLocale();
   const [events, baseEarthModel] = await Promise.all([
-    publicApi.churchVisualizerEventList(locale),
-    publicApi.churchVisualizerBaseEarthModel()
+    listVisualizerEvents({ status: 'published' }),
+    getBaseEarthModel()
   ]);
-  const publishedEvents = events.filter((item) => item.status === 'published');
+  const publishedEvents = applyListLanguageFallback(events, locale, (item) => item.translationGroupId)
+    .flatMap((event): ChurchVisualizerEventDto[] =>
+      isLocale(event.language) && event.status === 'published'
+        ? [{ ...event, language: event.language, status: event.status }]
+        : []
+    );
 
   return (
     <>
       <Hreflang locale={locale} path="/pravoslavna-istoriya" />
-      <HistoryVisualizer events={publishedEvents} baseEarthModelUrl={baseEarthModel?.url ?? null} />
+      <HistoryVisualizer events={publishedEvents} baseEarthModelUrl={resolveMediaUrl(baseEarthModel?.r2Key) ?? null} />
     </>
   );
 }

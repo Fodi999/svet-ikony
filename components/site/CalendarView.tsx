@@ -342,6 +342,13 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
   const initialPosition = parseCalendarQueryPosition(searchYear, searchMonth) ?? calendarPositionFromContent(calendar);
   const [year, setYear] = useState(initialPosition.year);
   const [monthIndex, setMonthIndex] = useState(initialPosition.monthIndex);
+  const [previousCalendarInputs, setPreviousCalendarInputs] = useState({ calendar, year, monthIndex });
+  if (previousCalendarInputs.calendar !== calendar || previousCalendarInputs.year !== year || previousCalendarInputs.monthIndex !== monthIndex) {
+    setPreviousCalendarInputs({ calendar, year, monthIndex });
+    const position = calendarPositionFromContent(calendar);
+    if (calendar && position.year === year && position.monthIndex === monthIndex) setActiveCalendar(calendar);
+    if (previousCalendarInputs.year !== year || previousCalendarInputs.monthIndex !== monthIndex) setSelectedDayKey('');
+  }
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [monthTransition, setMonthTransition] = useState(false);
   const [monthDirection, setMonthDirection] = useState<'next' | 'prev'>('next');
@@ -405,9 +412,7 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
     const { year: calendarYear, monthIndex: calendarMonthIndex } = calendarPositionFromContent(calendar);
     const key = calendarCacheKey(calendarYear, calendarMonthIndex, locale);
     calendarCache.current.set(key, calendar);
-    if (calendarYear === year && calendarMonthIndex === monthIndex) {
-      setActiveCalendar((current) => current === calendar ? current : calendar);
-    }
+
   }, [calendar, locale, monthIndex, year]);
 
   useEffect(() => {
@@ -498,9 +503,6 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
   // A day number from last month's mobile selection shouldn't linger once
   // the grid swaps to a different month/year -- clear it so the card below
   // the grid never shows content for the wrong day.
-  useEffect(() => {
-    setSelectedDayKey('');
-  }, [monthIndex, year]);
 
   useEffect(() => {
     const params = new URLSearchParams(searchParamsString);

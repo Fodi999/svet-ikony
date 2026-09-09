@@ -1,4 +1,11 @@
 import type { NextConfig } from 'next';
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
+
+// Initialize bindings before parallel page queries can start separate runtimes
+// against the same local D1 SQLite files.
+if (process.env.NODE_ENV === 'development') {
+  void initOpenNextCloudflareForDev();
+}
 
 /**
  * Phase 1D.2 production security headers. Gated on NODE_ENV === 'production'
@@ -40,7 +47,7 @@ const SECURITY_HEADERS = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' https: data:",
+      "img-src 'self' https: data: blob:",
       "font-src 'self'",
       "connect-src 'self'",
       "worker-src 'self'",

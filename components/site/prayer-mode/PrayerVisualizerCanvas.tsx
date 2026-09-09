@@ -150,7 +150,8 @@ export function PrayerVisualizerCanvas({
   }, []);
 
   useEffect(() => {
-    setWebglReady(supportsWebGL2() && !prefersReducedMotion());
+    const frame = requestAnimationFrame(() => setWebglReady(supportsWebGL2() && !prefersReducedMotion()));
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   const mapUrl = pickMapUrl(visualizerAsset);
@@ -159,10 +160,7 @@ export function PrayerVisualizerCanvas({
   // down on unmount/change. Skipped entirely for no-WebGL2/reduced-motion,
   // and whenever there's no ready map — the fallback image covers both cases.
   useEffect(() => {
-    if (!webglReady || !mapUrl) {
-      setHasScene(false);
-      return;
-    }
+    if (!webglReady || !mapUrl) return;
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;

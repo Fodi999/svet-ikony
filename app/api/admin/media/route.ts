@@ -4,6 +4,7 @@ import { getMediaBucket } from '@/lib/d1/env';
 import { mediaKindForPurpose } from '@/lib/media/constants';
 import { isAllowedModule, validateMediaKey } from '@/lib/media/keys';
 import type { MediaObjectDto } from '@/lib/media/types';
+import { mediaIsReferenced } from '@/lib/media/references';
 import { getSiteUrl } from '@/lib/site';
 
 /**
@@ -19,15 +20,15 @@ export async function GET(request: Request) {
     await requireSuperAdmin(request);
 
     const { searchParams } = new URL(request.url);
-    const module = searchParams.get('module') ?? undefined;
-    if (module && !isAllowedModule(module)) {
-      throw ApiError.validation(`Unknown module: ${module}`);
+    const mediaModule = searchParams.get('module') ?? undefined;
+    if (mediaModule && !isAllowedModule(mediaModule)) {
+      throw ApiError.validation(`Unknown module: ${mediaModule}`);
     }
     const cursor = searchParams.get('cursor') ?? undefined;
 
     const bucket = await getMediaBucket();
     const result = await bucket.list({
-      prefix: module ? `media/${module}/` : 'media/',
+      prefix: mediaModule ? `media/${mediaModule}/` : 'media/',
       cursor,
       limit: 100,
       include: ['customMetadata', 'httpMetadata'],
@@ -84,6 +85,7 @@ export async function DELETE(request: Request) {
       throw ApiError.notFound('media object not found');
     }
 
+    if (key.startsWith('media/visualizer/') && await mediaIsReferenced(key)) throw ApiError.conflict('Файл використовується. Спочатку від’єднайте його від моделі.');
     await bucket.delete(key);
     return Response.json({ key, deleted: true });
   });

@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { requireSuperAdmin } from '@/lib/d1/auth';
 import { ApiError, withErrors } from '@/lib/d1/errors';
-import { getMediaBucket } from '@/lib/d1/env';
-import { validateMediaKey } from '@/lib/media/keys';
+import { uploadedModelMetadata } from '@/lib/media/model-metadata';
+import { removeUnreferencedModelFile } from '@/lib/media/references';
 import {
   deleteVisualizerModel,
   getVisualizerModel,
@@ -23,7 +23,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     await requireSuperAdmin(request);
     const { id } = await params;
     const payload = await request.json() as ChurchVisualizerModelPayload;
-    return Response.json(await updateVisualizerModel(id, payload));
+    const previous = await getVisualizerModel(id);
+    const metadata = payload.r2Key !== undefined ? await uploadedModelMetadata(payload.r2Key) : {};
+    const updated = await updateVisualizerModel(id, { ...payload, ...metadata });
+    if (previous.r2Key !== updated.r2Key) await removeUnreferencedModelFile(previous.r2Key);
+    return Response.json(updated);
   });
 }
 
@@ -41,16 +45,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     await deleteVisualizerModel(id);
 
-    // Best-effort: the D1 delete above is the source of truth and has
-    // already succeeded, so a failure here must not fail the request.
-    if (validateMediaKey(existing.r2Key)) {
-      try {
-        const bucket = await getMediaBucket();
-        await bucket.delete(existing.r2Key);
-      } catch {
-        // opportunistic
-      }
-    }
+    await removeUnreferencedModelFile(existing.r2Key);
 
     return new Response(null, { status: 204 });
   });

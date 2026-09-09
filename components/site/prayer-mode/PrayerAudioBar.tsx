@@ -29,8 +29,17 @@ export function PrayerAudioBar({ audioRef, playLabel, pauseLabel, volumeLabel, o
   const progressTrackRef = useRef<HTMLDivElement | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(() => audioRef.current?.volume ?? 1);
-  const [isMuted, setIsMuted] = useState(() => audioRef.current?.muted ?? false);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const syncVolume = () => { setVolume(audio.volume); setIsMuted(audio.muted); };
+    const frame = requestAnimationFrame(syncVolume);
+    audio.addEventListener('volumechange', syncVolume);
+    return () => { cancelAnimationFrame(frame); audio.removeEventListener('volumechange', syncVolume); };
+  }, [audioRef]);
 
   useEffect(() => {
     const audio = audioRef.current;

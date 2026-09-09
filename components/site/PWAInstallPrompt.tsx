@@ -76,7 +76,7 @@ export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
   const [visible, setVisible] = useState(false);
-  const locale = useMemo(currentLocale, []);
+  const locale = useMemo(() => currentLocale(), []);
   const copy = text[locale] || text.uk;
 
   useEffect(() => {

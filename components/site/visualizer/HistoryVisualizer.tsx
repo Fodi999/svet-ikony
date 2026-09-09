@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Page, Hero, Eyebrow, HeroTitle, Lead, Panel } from '@/components/site/PageChrome';
 import { useI18n } from '@/components/site/LanguageProvider';
 import type { ChurchVisualizerEventDto } from '@/lib/types';
+import { centuryKey, yearKey, chronologicalOrder, centuryText, dateText } from '@/lib/visualizer/chronology';
 import type { Locale } from '@/lib/i18n';
 import { Earth3DCanvas, type SelectedEventTarget } from './Earth3DCanvas';
 
@@ -42,25 +43,8 @@ function eraLabel(era: string, locale: Locale): string {
   return (ERA_LABELS as Record<string, Record<Locale, string>>)[era]?.[locale] ?? era;
 }
 
-function centuryLabel(century: number | null, locale: Locale): string {
-  if (century == null) return locale === 'uk' ? 'Століття невідоме' : locale === 'ru' ? 'Век неизвестен' : 'Century unknown';
-  const suffix = locale === 'en' ? 'th century' : locale === 'ru' ? ' век' : ' століття';
-  const roman = century > 0 ? String(century) : String(Math.abs(century));
-  const era = century < 0 ? ' BC' : '';
-  return locale === 'en' ? `${roman}${suffix}${era}` : `${roman}${suffix}${era}`;
-}
-
-function yearLabel(event: ChurchVisualizerEventDto, locale: Locale): string {
-  if (event.yearStart == null) {
-    return locale === 'uk' ? 'Рік невідомий' : locale === 'ru' ? 'Год неизвестен' : 'Year unknown';
-  }
-  const suffix = event.calendarEra === 'BC' ? ' до н.е.' : '';
-  return locale === 'en'
-    ? `${event.yearStart}${event.calendarEra === 'BC' ? ' BC' : ''}`
-    : `${event.yearStart}${suffix}`;
-}
-
-function chronologyNoteKey(chronologyType: string): 'historyTraditionalDating' | 'historyApproximateDating' | 'historyPeriodDating' | 'historyUnknownDating' | null {
+function chronologyNoteKey(chronologyType: string): 'historyExactDating' | 'historyTraditionalDating' | 'historyApproximateDating' | 'historyPeriodDating' | 'historyUnknownDating' | null {
+  if (chronologyType === 'exact') return 'historyExactDating';
   if (chronologyType === 'traditional') return 'historyTraditionalDating';
   if (chronologyType === 'approximate') return 'historyApproximateDating';
   if (chronologyType === 'period') return 'historyPeriodDating';
@@ -73,9 +57,10 @@ type Stage = 'era' | 'century' | 'year' | 'event';
 export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: ChurchVisualizerEventDto[]; baseEarthModelUrl: string | null }) {
   const { t, locale } = useI18n();
   const [stage, setStage] = useState<Stage>('era');
+  const [trail, setTrail] = useState<Stage[]>([]);
   const [selectedEra, setSelectedEra] = useState<string | null>(null);
-  const [selectedCentury, setSelectedCentury] = useState<number | null | undefined>(undefined);
-  const [selectedYear, setSelectedYear] = useState<number | null | undefined>(undefined);
+  const [selectedCentury, setSelectedCentury] = useState<string | undefined>(undefined);
+  const [selectedYear, setSelectedYear] = useState<string | undefined>(undefined);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   // The initially-fetched event list has no `models` field (kept small on
   // purpose) -- an event's own GLB (if any) is only known once its detail
@@ -85,7 +70,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
 
   const eraGroups = useMemo(() => {
     const map = new Map<string, ChurchVisualizerEventDto[]>();
-    for (const event of events) {
+    for (const event of [...events].sort(chronologicalOrder)) {
       const list = map.get(event.era) ?? [];
       list.push(event);
       map.set(event.era, list);
@@ -95,80 +80,89 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
 
   const centuryGroups = useMemo(() => {
     const eraEvents = eraGroups.find((g) => g.era === selectedEra)?.events ?? [];
-    const map = new Map<number | null, ChurchVisualizerEventDto[]>();
+    const map = new Map<string, ChurchVisualizerEventDto[]>();
     for (const event of eraEvents) {
-      const list = map.get(event.century) ?? [];
+      const list = map.get(centuryKey(event)) ?? [];
       list.push(event);
-      map.set(event.century, list);
+      map.set(centuryKey(event), list);
     }
     return [...map.entries()]
-      .sort((a, b) => (a[0] ?? Infinity) - (b[0] ?? Infinity))
+      .sort((a, b) => chronologicalOrder(a[1][0], b[1][0]))
       .map(([century, list]) => ({ century, events: list }));
   }, [eraGroups, selectedEra]);
 
   const yearGroups = useMemo(() => {
     const centuryEvents = centuryGroups.find((g) => g.century === selectedCentury)?.events ?? [];
-    const map = new Map<number | null, ChurchVisualizerEventDto[]>();
+    const map = new Map<string, ChurchVisualizerEventDto[]>();
     for (const event of centuryEvents) {
-      const list = map.get(event.yearStart) ?? [];
+      const list = map.get(yearKey(event)) ?? [];
       list.push(event);
-      map.set(event.yearStart, list);
+      map.set(yearKey(event), list);
     }
     return [...map.entries()]
-      .sort((a, b) => (a[0] ?? Infinity) - (b[0] ?? Infinity))
+      .sort((a, b) => chronologicalOrder(a[1][0], b[1][0]))
       .map(([yearStart, list]) => ({ yearStart, events: list }));
   }, [centuryGroups, selectedCentury]);
 
   const eventsAtYear = useMemo(
-    () => yearGroups.find((g) => g.yearStart === selectedYear)?.events ?? [],
-    [yearGroups, selectedYear]
+    () => selectedYear === undefined
+      ? centuryGroups.find((g) => g.century === selectedCentury)?.events ?? []
+      : yearGroups.find((g) => g.yearStart === selectedYear)?.events ?? [],
+    [yearGroups, selectedYear, centuryGroups, selectedCentury]
   );
 
   const selectedEvent = useMemo(() => events.find((e) => e.id === selectedEventId) ?? null, [events, selectedEventId]);
 
-  const earthTarget: SelectedEventTarget = selectedEvent
+  const earthTarget = useMemo<SelectedEventTarget>(() => selectedEvent
     ? { latitude: selectedEvent.latitude, longitude: selectedEvent.longitude, modelUrl: selectedEventModelUrl }
-    : null;
+    : null, [selectedEvent, selectedEventModelUrl]);
 
+  useEffect(() => {
+    if (!selectedEvent) return;
+    const controller = new AbortController();
+    type DetailResponse = { models?: { isBaseEarth: boolean; url?: string }[] } | null;
+    void fetch(`/api/church/visualizer-events/${encodeURIComponent(selectedEvent.slug)}?language=${selectedEvent.language}`, { signal: controller.signal })
+      .then((response) => response.ok ? response.json() as Promise<DetailResponse> : null)
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          setSelectedEventModelUrl(data?.models?.find((model) => !model.isBaseEarth && model.url)?.url ?? null);
+        }
+      })
+      .catch(() => { /* The globe and event marker remain available. */ });
+    return () => controller.abort();
+  }, [selectedEvent]);
+
+  function advance(next: Stage) { setTrail((previous) => [...previous, stage]); setStage(next); }
   function chooseEra(era: string) {
     setSelectedEra(era);
     setSelectedCentury(undefined);
     setSelectedYear(undefined);
     setSelectedEventId(null);
-    setStage('century');
+    const undated = (eraGroups.find((group) => group.era === era)?.events ?? []).every((event) => centuryKey(event) === 'undated');
+    if (undated) setSelectedCentury('undated');
+    advance(undated ? 'event' : 'century');
   }
-  function chooseCentury(century: number | null) {
+  function chooseCentury(century: string) {
     setSelectedCentury(century);
     setSelectedYear(undefined);
     setSelectedEventId(null);
-    setStage('year');
+    const undated = (centuryGroups.find((group) => group.century === century)?.events ?? []).every((event) => event.yearStart == null);
+    advance(undated ? 'event' : 'year');
   }
-  function chooseYear(yearStart: number | null) {
+  function chooseYear(yearStart: string) {
     setSelectedYear(yearStart);
     setSelectedEventId(null);
-    setStage('event');
+    advance('event');
   }
   function chooseEvent(id: string) {
     setSelectedEventId(id);
     setSelectedEventModelUrl(null);
-    const event = events.find((e) => e.id === id);
-    if (!event) return;
-    type DetailResponse = { models?: { isBaseEarth: boolean; url?: string }[] } | null;
-    void fetch(`/api/church/visualizer-events/${encodeURIComponent(event.slug)}?language=${event.language}`)
-      .then((response) => (response.ok ? (response.json() as Promise<DetailResponse>) : null))
-      .then((data) => {
-        const eventModel = data?.models?.find((model) => !model.isBaseEarth && model.url);
-        if (eventModel?.url) setSelectedEventModelUrl(eventModel.url);
-      })
-      .catch(() => {
-        // Best-effort -- the scene still shows the camera pan without a
-        // model, same as an event that genuinely has no GLB of its own.
-      });
   }
   function goBack() {
-    if (stage === 'event') setStage('year');
-    else if (stage === 'year') setStage('century');
-    else if (stage === 'century') setStage('era');
+    setStage(trail.at(-1) ?? 'era');
+    setTrail((previous) => previous.slice(0, -1));
+    setSelectedEventId(null);
+    setSelectedEventModelUrl(null);
   }
 
   const optionButtonClass =
@@ -215,7 +209,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
               <div className="flex flex-wrap gap-2.5">
                 {centuryGroups.map(({ century, events: centuryEvents }) => (
                   <button key={String(century)} type="button" className={optionButtonClass} onClick={() => chooseCentury(century)}>
-                    {centuryLabel(century, locale)} ({centuryEvents.length})
+                    {centuryText(centuryEvents[0], locale)} ({centuryEvents.length})
                   </button>
                 ))}
               </div>
@@ -228,7 +222,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
               <div className="flex flex-wrap gap-2.5">
                 {yearGroups.map(({ yearStart, events: yearEvents }) => (
                   <button key={String(yearStart)} type="button" className={optionButtonClass} onClick={() => chooseYear(yearStart)}>
-                    {yearStart == null ? (locale === 'uk' ? 'Рік невідомий' : locale === 'ru' ? 'Год неизвестен' : 'Year unknown') : yearLabel(yearEvents[0], locale)} ({yearEvents.length})
+                    {dateText(yearEvents[0], locale, false)} ({yearEvents.length})
                   </button>
                 ))}
               </div>
@@ -259,7 +253,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
             <div className="grid gap-2.5">
               <h2 className="m-0 font-serif text-[clamp(22px,2vw,30px)] font-bold text-foreground">{selectedEvent.title}</h2>
               <p className="m-0 text-muted-foreground text-[13px] font-black uppercase tracking-[.08em]">
-                {t('historyDateLabel')}: {selectedEvent.displayDate || yearLabel(selectedEvent, locale)}
+                {t('historyDateLabel')}: {dateText(selectedEvent, locale)}
               </p>
               {selectedEvent.locationName ? (
                 <p className="m-0 text-muted-foreground text-[13px] font-black uppercase tracking-[.08em]">

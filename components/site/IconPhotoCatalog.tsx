@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Dialog, DialogClose, DialogOverlay, DialogPopup, DialogPortal } from '@/components/ui/dialog';
 import { AssetButton, CopyIcon, DownloadIcon } from './AssetButton';
 import { useI18n } from './LanguageProvider';
@@ -27,10 +27,12 @@ export function IconPhotoCatalog({ title, iconUrl, items }: Props) {
   const active = activeIndex === null ? null : items[activeIndex] || null;
   const fileBaseName = title.toLowerCase().replace(/[^a-z0-9а-яё]+/gi, '-').replace(/^-|-$/g, '') || 'icon';
 
-  useEffect(() => {
+  const [previousSignature, setPreviousSignature] = useState(itemsSignature);
+  if (previousSignature !== itemsSignature) {
+    setPreviousSignature(itemsSignature);
     setActiveIndex(null);
     setCopied(false);
-  }, [itemsSignature]);
+  }
 
   function imageFileName(item: IconPhotoCatalogItem, index: number) {
     const extension = item.image.split('?')[0]?.split('.').pop()?.toLowerCase();

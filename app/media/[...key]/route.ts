@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ key:
   if (!object) return notFound();
 
   const headers = new Headers();
-  headers.set('Content-Type', object.httpMetadata?.contentType ?? 'application/octet-stream');
+  headers.set('Content-Type', key.endsWith('.glb') ? 'model/gltf-binary' : object.httpMetadata?.contentType ?? 'application/octet-stream');
   headers.set('ETag', object.httpEtag);
   headers.set('Cache-Control', 'public, max-age=31536000, immutable');
   headers.set('Accept-Ranges', 'bytes');
@@ -75,7 +75,7 @@ export async function HEAD(_request: Request, { params }: { params: Promise<{ ke
   if (!object) return notFound();
 
   const headers = new Headers();
-  headers.set('Content-Type', object.httpMetadata?.contentType ?? 'application/octet-stream');
+  headers.set('Content-Type', key.endsWith('.glb') ? 'model/gltf-binary' : object.httpMetadata?.contentType ?? 'application/octet-stream');
   headers.set('ETag', object.httpEtag);
   headers.set('Cache-Control', 'public, max-age=31536000, immutable');
   headers.set('Accept-Ranges', 'bytes');

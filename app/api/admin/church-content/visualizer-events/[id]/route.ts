@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server';
 import { requireSuperAdmin } from '@/lib/d1/auth';
 import { withErrors } from '@/lib/d1/errors';
-import { getMediaBucket } from '@/lib/d1/env';
-import { validateMediaKey } from '@/lib/media/keys';
+import { removeUnreferencedModelFile } from '@/lib/media/references';
 import {
   deleteVisualizerEvent,
   getVisualizerEvent,
@@ -10,7 +9,7 @@ import {
   updateVisualizerEvent,
   type ChurchVisualizerEventPayload,
 } from '@/lib/d1/repositories/visualizerEvents';
-import { deleteVisualizerModel, listVisualizerModels } from '@/lib/d1/repositories/visualizerModels';
+import { deleteVisualizerModel, listVisualizerModels, updateVisualizerModel } from '@/lib/d1/repositories/visualizerModels';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withErrors(async () => {
@@ -43,22 +42,13 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const remainingSiblings = await listVisualizerEvents({ translationGroupId: existing.translationGroupId });
     if (remainingSiblings.length === 0) {
       const models = await listVisualizerModels({ eventGroupId: existing.translationGroupId });
-      const bucket = await getMediaBucket();
       for (const model of models) {
-        // Best-effort: the D1 delete above is the source of truth and has
-        // already succeeded, so a failure here must not fail the request.
-        try {
-          await deleteVisualizerModel(model.id);
-        } catch {
-          // opportunistic
+        if (model.isBaseEarth) {
+          await updateVisualizerModel(model.id, { eventGroupId: null });
+          continue;
         }
-        if (validateMediaKey(model.r2Key)) {
-          try {
-            await bucket.delete(model.r2Key);
-          } catch {
-            // opportunistic
-          }
-        }
+        await deleteVisualizerModel(model.id);
+        await removeUnreferencedModelFile(model.r2Key);
       }
     }
 

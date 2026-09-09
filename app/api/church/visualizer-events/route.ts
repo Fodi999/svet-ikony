@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const languageResolution = resolveRequestedLanguage(searchParams);
     if (!languageResolution.ok) return languageResolution.response;
 
-    const allEvents = await listVisualizerEvents({});
+    const allEvents = await listVisualizerEvents({ status: 'published' });
     const events = applyListLanguageFallback(allEvents, languageResolution.language, (item) => item.translationGroupId);
     return Response.json(events);
   });

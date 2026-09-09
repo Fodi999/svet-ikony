@@ -1,3 +1,4 @@
+import { uploadedModelMetadata } from '@/lib/media/model-metadata';
 import { NextRequest } from 'next/server';
 import { requireSuperAdmin } from '@/lib/d1/auth';
 import { withErrors } from '@/lib/d1/errors';
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
   return withErrors(async () => {
     await requireSuperAdmin(request);
     const payload = await request.json() as ChurchVisualizerModelPayload;
-    const model = await createVisualizerModel(payload);
+    const model = await createVisualizerModel({ ...payload, ...await uploadedModelMetadata(payload.r2Key), isBaseEarth: false });
     return Response.json(model, { status: 201 });
   });
 }

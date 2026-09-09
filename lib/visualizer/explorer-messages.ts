@@ -1,5 +1,6 @@
 import type { Locale } from '@/lib/i18n';
 const uk = {
+  chooseCompact: 'Оберіть подію\nна часовій шкалі\nабо на глобусі', notAdded: 'Подій ще не додано', collapseNav: 'Згорнути меню', expandNav: 'Розгорнути меню',
   visualizer: 'Візуалізатор', biblical: 'Біблійна історія', church: 'Історія Церкви', saints: 'Святі', chronology: 'Хронологія', map: 'Мапа подій', collections: 'Колекції',
   early: 'Рання Церква', medieval: 'Середньовіччя', modern: 'Новий час', contemporary: 'Сучасність', other: 'Інші епохи', all: 'Усі події',
   menu: 'Відкрити навігацію', close: 'Закрити', event: 'Подія', eventPanel: 'Відкрити інформацію про подію',
@@ -12,6 +13,7 @@ const uk = {
 };
 type Copy = { [K in keyof typeof uk]: string };
 const ru: Copy = {
+  chooseCompact: 'Выберите событие\nна временной шкале\nили на глобусе', notAdded: 'Событий пока нет', collapseNav: 'Свернуть меню', expandNav: 'Развернуть меню',
   visualizer: 'Визуализатор', biblical: 'Библейская история', church: 'История Церкви', saints: 'Святые', chronology: 'Хронология', map: 'Карта событий', collections: 'Коллекции',
   early: 'Ранняя Церковь', medieval: 'Средневековье', modern: 'Новое время', contemporary: 'Современность', other: 'Другие эпохи', all: 'Все события',
   menu: 'Открыть навигацию', close: 'Закрыть', event: 'Событие', eventPanel: 'Открыть информацию о событии',
@@ -23,6 +25,7 @@ const ru: Copy = {
   overview: 'Обзор', read: 'Материал события', noImage: 'Историческое событие', fullscreenFallback: 'Режим на весь экран. Escape — выйти.',
 };
 const en: Copy = {
+  chooseCompact: 'Choose an event\non the timeline\nor on the globe', notAdded: 'No events added yet', collapseNav: 'Collapse navigation', expandNav: 'Expand navigation',
   visualizer: 'Visualizer', biblical: 'Biblical history', church: 'Church history', saints: 'Saints', chronology: 'Chronology', map: 'Event map', collections: 'Collections',
   early: 'Early Church', medieval: 'Middle Ages', modern: 'Modern age', contemporary: 'Contemporary', other: 'Other eras', all: 'All events',
   menu: 'Open navigation', close: 'Close', event: 'Event', eventPanel: 'Open event information',

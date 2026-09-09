@@ -10,7 +10,7 @@ export type SelectedEventTarget = {
 } | null;
 
 export type CameraCommand = { action: 'in' | 'out' | 'reset'; sequence: number };
-export type MapEvent = { id: string; latitude: number; longitude: number };
+export type MapEvent = { id: string; latitude: number; longitude: number; title: string; date: string };
 const NO_MAP_EVENTS: MapEvent[] = [];
 
 type Props = {
@@ -87,6 +87,10 @@ type SceneHandle = {
   earthGroup: import('three').Group;
   eventGroup: import('three').Group;
   pins: import('three').Group;
+  earthSurface: import('three').Object3D | null;
+  surfaceRestInverse: import('three').Matrix4 | null;
+  layoutOverview: ((aspect: number) => void) | null;
+  updateMarkerOverlay: (() => void) | null;
   transitioning: boolean;
   focused: boolean;
   controls: import("three/addons/controls/OrbitControls.js").OrbitControls;
@@ -111,6 +115,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<SceneHandle | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
 
   const [webglSupported, setWebglSupported] = useState(true);
   const [sceneReady, setSceneReady] = useState(false);
@@ -155,7 +160,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
 
     void (async () => {
       const reducedMotion = prefersReducedMotion();
-      const [THREE, { GLTFLoader }, { OrbitControls }, { createDefaultEarth }, { prepareBaseScene, resizeSceneCamera }] = await Promise.all([
+      const [THREE, { GLTFLoader }, { OrbitControls }, { createDefaultEarth }, { prepareBaseScene, resizeSceneCamera, composeEarthOverview }] = await Promise.all([
         import('three'),
         import('three/addons/loaders/GLTFLoader.js'),
         import('three/addons/controls/OrbitControls.js'),
@@ -214,12 +219,25 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
           disposeObject3D(defaultEarth);
           earthGroup.rotation.set(0, 0, 0);
           earthGroup.add(model);
+          handle.earthSurface = model.getObjectByName('Earth') ?? null;
+          handle.earthSurface?.updateWorldMatrix(true, false);
+          handle.surfaceRestInverse = handle.earthSurface?.matrixWorld.clone().invert() ?? null;
           handle.authoredScene = !!authoredCamera;
           if (authoredCamera) {
             // An exported scene includes its intended composition; a sky dome
             // must not become the object that the viewer frames from outside.
             const box = container.getBoundingClientRect();
-            resizeSceneCamera(authoredCamera, (box.width || 1) / (box.height || 1));
+            const compose = composeEarthOverview(model, authoredCamera);
+            compose((box.width || 1) / (box.height || 1));
+            handle.layoutOverview = (aspect) => {
+              compose(aspect);
+              handle.overviewCamera = authoredCamera.clone();
+              if (handle.camera instanceof THREE.OrthographicCamera && authoredCamera instanceof THREE.OrthographicCamera) {
+                handle.camera.top = authoredCamera.top; handle.camera.bottom = authoredCamera.bottom;
+                handle.camera.left = authoredCamera.left; handle.camera.right = authoredCamera.right;
+                handle.camera.updateProjectionMatrix();
+              }
+            };
             handle.overviewCamera = authoredCamera.clone();
             controls.maxDistance = Math.max(10, authoredCamera.position.length() * 2);
             controls.minZoom = 0.5;
@@ -259,11 +277,12 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
         const box = container.getBoundingClientRect();
         resizeSceneCamera(handle.camera, (box.width || 1) / (box.height || 1));
         resizeSceneCamera(handle.overviewCamera, (box.width || 1) / (box.height || 1));
+        handle.layoutOverview?.((box.width || 1) / (box.height || 1));
         renderer.setSize(box.width || 1, box.height || 1, false);
       });
       resizeObserver.observe(container);
 
-      const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, pins, transitioning: false, focused: false, controls, mixer: null, overviewCamera: camera.clone(), baseMixer: null, authoredScene: false };
+      const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, pins, earthSurface: null, surfaceRestInverse: null, layoutOverview: null, updateMarkerOverlay: null, transitioning: false, focused: false, controls, mixer: null, overviewCamera: camera.clone(), baseMixer: null, authoredScene: false };
       sceneRef.current = handle;
       renderer.render(scene, camera);
       setSceneReady(true);
@@ -281,15 +300,25 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
           if (!handle.focused) handle.baseMixer?.update(delta);
           handle.mixer?.update(delta);
           if (earthGroup.visible) eventGroup.rotation.copy(earthGroup.rotation);
-          pins.rotation.copy(earthGroup.rotation);
+          if (handle.earthSurface && handle.surfaceRestInverse) {
+            handle.earthSurface.updateWorldMatrix(true, false);
+            pins.matrixAutoUpdate = false;
+            pins.matrix.copy(handle.earthSurface.matrixWorld).multiply(handle.surfaceRestInverse);
+          } else pins.rotation.copy(earthGroup.rotation);
           pins.visible = earthGroup.visible;
           // Only the near hemisphere is clickable/visible (no pins through Earth).
           pins.updateMatrixWorld(true);
+          const orthographic = handle.camera instanceof THREE.OrthographicCamera;
+          if (orthographic) handle.camera.getWorldDirection(cameraToPin).negate();
           for (const pin of pins.children) {
             const point = pin.getWorldPosition(pinPosition);
-            pin.visible = point.dot(cameraToPin.copy(handle.camera.position).sub(point)) > 0;
+            const direction = orthographic
+              ? cameraToPin
+              : cameraToPin.copy(handle.camera.position).sub(point);
+            pin.visible = point.dot(direction) > 0;
           }
           if (!handle.transitioning) controls.update();
+          handle.updateMarkerOverlay?.();
           renderer.render(scene, handle.camera);
         }
         rafId = requestAnimationFrame(tick);
@@ -468,26 +497,59 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       const pin = new handle.THREE.Mesh(geometry, material);
       pin.position.setFromSphericalCoords(1.86, Math.PI / 2 - event.latitude * Math.PI / 180, event.longitude * Math.PI / 180);
       pin.userData.eventId = event.id;
+      pin.userData.label = `${event.title}\n${event.date}`;
       handle.pins.add(pin);
     }
     const raycaster = new handle.THREE.Raycaster();
     const pointer = new handle.THREE.Vector2();
+    const projected = new handle.THREE.Vector3();
+    const tooltip = tooltipRef.current;
+    let hovered: import('three').Object3D | null = null;
     let down: { x: number; y: number } | null = null;
-    function pointerDown(event: PointerEvent) { down = { x: event.clientX, y: event.clientY }; }
-    function pointerUp(event: PointerEvent) {
-      if (!down || Math.hypot(event.clientX - down.x, event.clientY - down.y) > 6 || !handle!.pins.visible) { down = null; return; }
-      down = null;
+    function hideTooltip() { hovered = null; if (tooltip) tooltip.hidden = true; }
+    handle.updateMarkerOverlay = () => {
+      if (!tooltip || !hovered || !hovered.visible || !handle.pins.visible) { if (tooltip && !tooltip.hidden) tooltip.hidden = true; return; }
+      hovered.getWorldPosition(projected).project(handle.camera);
+      if (Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1 || Math.abs(projected.z) > 1) { tooltip.hidden = true; return; }
+      const rect = canvas.getBoundingClientRect();
+      tooltip.hidden = false;
+      if (tooltip.textContent !== hovered.userData.label) tooltip.textContent = hovered.userData.label;
+      const halfWidth = Math.min(tooltip.offsetWidth / 2, rect.width / 2);
+      tooltip.style.left = `${Math.max(halfWidth, Math.min(rect.width - halfWidth, (projected.x + 1) * rect.width / 2))}px`;
+      tooltip.style.top = `${Math.max(tooltip.offsetHeight + 8, (1 - projected.y) * rect.height / 2 - 12)}px`;
+    };
+    function hitAt(event: PointerEvent) {
+      if (!handle!.pins.visible) return undefined;
       const rect = canvas!.getBoundingClientRect();
       pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2);
       raycaster.setFromCamera(pointer, handle!.camera);
-      const hit = raycaster.intersectObjects(handle!.pins.children.filter((pin) => pin.visible), false)[0];
-      if (hit) onSelectEvent?.(hit.object.userData.eventId);
+      return raycaster.intersectObjects(handle!.pins.children.filter((pin) => pin.visible), false)[0]?.object;
     }
+    function pointerDown(event: PointerEvent) { down = { x: event.clientX, y: event.clientY }; hideTooltip(); }
+    function pointerMove(event: PointerEvent) {
+      if (down || (event.pointerType && event.pointerType !== 'mouse')) { hideTooltip(); return; }
+      hovered = hitAt(event) ?? null;
+      handle!.updateMarkerOverlay?.();
+    }
+    function pointerUp(event: PointerEvent) {
+      if (!down || Math.hypot(event.clientX - down.x, event.clientY - down.y) > 6) { down = null; return; }
+      down = null;
+      const hit = hitAt(event);
+      if (hit) onSelectEvent?.(hit.userData.eventId);
+    }
+    function pointerCancel() { down = null; hideTooltip(); }
     canvas.addEventListener('pointerdown', pointerDown);
     canvas.addEventListener('pointerup', pointerUp);
+    canvas.addEventListener('pointermove', pointerMove);
+    canvas.addEventListener('pointerleave', hideTooltip);
+    canvas.addEventListener('pointercancel', pointerCancel);
     return () => {
       canvas.removeEventListener('pointerdown', pointerDown);
       canvas.removeEventListener('pointerup', pointerUp);
+      canvas.removeEventListener('pointermove', pointerMove);
+      canvas.removeEventListener('pointerleave', hideTooltip);
+      canvas.removeEventListener('pointercancel', pointerCancel);
+      handle.updateMarkerOverlay = null; hideTooltip();
       handle.pins.clear(); geometry.dispose(); material.dispose();
     };
   }, [mapEvents, onSelectEvent, sceneReady]);
@@ -524,6 +586,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
   return (
     <div ref={containerRef} className={`relative w-full overflow-hidden bg-[#070706] ${fill ? 'h-full min-h-0' : 'aspect-video min-h-[360px] rounded-md border border-gold/28'}`}>
       <canvas ref={canvasRef} aria-label={t('historyGlobeLabel')} className="block h-full w-full" style={{ visibility: sceneReady && !sceneError ? 'visible' : 'hidden' }} />
+      <div ref={tooltipRef} hidden role="tooltip" className="pointer-events-none absolute z-10 max-w-[min(240px,90%)] -translate-x-1/2 -translate-y-full whitespace-pre-line rounded-md border border-gold/30 bg-canvas/95 px-3 py-2 text-xs leading-relaxed text-gold-light shadow-lg" />
       {!sceneReady || sceneError ? (
         <div role="status" className="absolute inset-0 grid place-items-center p-8 text-center text-muted-foreground text-sm font-bold">{t(sceneError ? 'historySceneError' : 'historyLoadingScene')}</div>
       ) : null}

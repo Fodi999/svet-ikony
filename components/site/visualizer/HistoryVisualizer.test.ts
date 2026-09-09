@@ -51,6 +51,23 @@ describe('history explorer', () => {
     await click(button('Колекції'));
     expect(container.textContent).toContain('ще немає опублікованих подій');
   });
+  it('collapses the navigation without removing accessible section buttons', async () => {
+    await mount(); await click(button('Згорнути меню'));
+    expect(container.querySelector('main')?.dataset.navCollapsed).toBe('true');
+    expect(button('Історія Церкви').getAttribute('aria-label')).toBe('Історія Церкви');
+    await click(button('Розгорнути меню'));
+    expect(container.querySelector('main')?.dataset.navCollapsed).toBe('false');
+  });
+  it('uses the compact empty timeline and expands when published events arrive', async () => {
+    await act(async () => root.render(React.createElement(HistoryVisualizer, { events: [], baseEarthModelUrl: null })));
+    expect(container.querySelector('main')?.dataset.emptyTimeline).toBe('true');
+    expect(container.textContent).toContain('Подій ще не додано');
+    expect(container.querySelector('main')?.dataset.eventSelected).toBe('false');
+    await mount();
+    expect(container.querySelector('main')?.dataset.emptyTimeline).toBe('false');
+    await click(button('313 н. е. — Подія a'));
+    expect(container.querySelector('main')?.dataset.eventSelected).toBe('true');
+  });
   it('uses CSS fullscreen when the API is unavailable and exits on Escape', async () => {
     await mount(); await click(button('На весь екран'));
     expect(container.querySelector('main')?.dataset.expanded).toBe('true');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Church, Globe2, History, MapPin, Layers, Sparkles, Menu, X, Plus, Minus, RotateCcw, Maximize, ArrowUpRight, Box, ChevronRight } from 'lucide-react';
+import { BookOpen, Church, Globe2, History, MapPin, Layers, Sparkles, Menu, X, Plus, Minus, RotateCcw, Maximize, ArrowUpRight, Box, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Dialog, DialogClose, DialogOverlay, DialogPopup, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { useI18n } from '@/components/site/LanguageProvider';
 import type { ChurchVisualizerEventDto, PublicChurchVisualizerEventPage } from '@/lib/types';
@@ -32,6 +32,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
   const [year, setYear] = useState('all');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [model, setModel] = useState<{ eventId: string; url: string | null } | null>(null);
+  const [navCollapsed, setNavCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [eventOpen, setEventOpen] = useState(false);
   const [articleOpen, setArticleOpen] = useState(false);
@@ -51,7 +52,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
     latitude: selectedEvent.latitude, longitude: selectedEvent.longitude, modelUrl
   } : null, [selectedEvent, modelUrl]);
   const mapEvents = useMemo(() => visibleEvents.filter((event) => event.latitude != null && event.longitude != null)
-    .map((event) => ({ id: event.id, latitude: event.latitude!, longitude: event.longitude! })), [visibleEvents]);
+    .map((event) => ({ id: event.id, latitude: event.latitude!, longitude: event.longitude!, title: event.title, date: dateText(event, locale) })), [visibleEvents, locale]);
 
   // Observe actual header size (translations, navigation rows, browser zoom).
   // The CSS fallback handles the first server-rendered frame before hydration.
@@ -119,8 +120,8 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
 
   const navigation = <nav aria-label={copy.navigation} className={styles.navigation}>
     <p className={styles.eyebrow}>{copy.navigation}</p>
-    {sections.map(([value, Icon]) => <button key={value} type="button" aria-label={copy[value]} aria-pressed={section === value} onClick={() => chooseSection(value)}>
-      <Icon size={18} aria-hidden="true" /><span>{copy[value]}</span><ChevronRight size={14} aria-hidden="true" />
+    {sections.map(([value, Icon]) => <button key={value} type="button" title={copy[value]} aria-label={copy[value]} aria-pressed={section === value} onClick={() => chooseSection(value)}>
+      <Icon size={18} aria-hidden="true" /><span className={styles.navText}>{copy[value]}</span><ChevronRight size={14} aria-hidden="true" />
     </button>)}
     <div className={styles.navNote}><span className={styles.statusDot} />{copy[section]}<b>{sectionList.length}</b></div>
     {section === 'collections' ? <p className={styles.muted}>{copy.featured}</p> : null}
@@ -138,9 +139,9 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
       {modelUrl ? <button type="button" aria-label={copy.scene} onClick={() => { setEventOpen(false); sceneRef.current?.focus(); }}><Box size={16} aria-hidden="true" />{copy.scene}</button> : null}
       <button type="button" aria-label={copy.chronology} onClick={focusTimeline}><History size={16} aria-hidden="true" />{copy.chronology}</button>
     </div>
-  </div> : <div className={styles.emptyEvent}><Globe2 size={48} strokeWidth={0.8} aria-hidden="true" /><h2>{copy.overview}</h2><p>{copy.choose}</p></div>;
+  </div> : <div className={styles.emptyEvent}><p>{copy.chooseCompact}</p></div>;
 
-  return <main ref={rootRef} data-history-app data-immersive={immersiveMode} data-expanded={expanded} className={styles.root} aria-label={t('historyPageTitle')}>
+  return <main ref={rootRef} data-history-app data-immersive={immersiveMode} data-expanded={expanded} data-nav-collapsed={navCollapsed} data-empty-timeline={visibleEvents.length === 0} data-event-selected={!!selectedEvent} className={styles.root} aria-label={t('historyPageTitle')}>
     <div className={styles.topbar}>
       <button className={`${styles.iconButton} ${styles.panelToggle}`} type="button" aria-label={copy.menu} aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}><Menu size={20} /></button>
       <div className={styles.heading}><span className={styles.eyebrow}>{t('historyPageEyebrow')}</span><h1>{t('historyPageTitle')}</h1><p>{t('historyPageDescription')}</p></div>
@@ -152,7 +153,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
 
     <span className={styles.srOnly} role="status">{expanded ? copy.fullscreenFallback : ''}</span>
     <div className={styles.workspace}>
-      <aside className={styles.leftPanel}>{navigation}</aside>
+      <aside className={styles.leftPanel}><div className={styles.collapseBar}><button type="button" aria-label={navCollapsed ? copy.expandNav : copy.collapseNav} title={navCollapsed ? copy.expandNav : copy.collapseNav} aria-expanded={!navCollapsed} onClick={() => setNavCollapsed((value) => !value)}>{navCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}</button></div>{navigation}</aside>
       <section ref={sceneRef} tabIndex={-1} className={styles.scene} aria-label={t('historyGlobeLabel')}>
         <Earth3DCanvas baseEarthModelUrl={baseEarthModelUrl} selectedEvent={earthTarget} fill showHint={false} cameraCommand={cameraCommand} mapEvents={mapEvents} onSelectEvent={chooseEvent} />
         <div className={styles.sceneControls} role="group" aria-label={copy.scene}>
@@ -162,7 +163,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
         </div>
         <p className={styles.sceneHint}>{copy.hint}</p>
       </section>
-      <aside className={styles.rightPanel} aria-label={copy.event}><div className={styles.panelHeading}>{copy.event}<BookOpen size={15} aria-hidden="true" /></div>{eventContent}</aside>
+      <aside className={styles.rightPanel} aria-label={copy.event}>{selectedEvent ? <div className={styles.panelHeading}>{copy.event}<BookOpen size={15} aria-hidden="true" /></div> : null}{eventContent}</aside>
     </div>
 
     <section ref={timelineRef} className={styles.timeline} aria-label={copy.timeline} tabIndex={-1}>
@@ -181,7 +182,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
           <span className={styles.timelineDot} aria-hidden="true" /><span className={styles.cardDate}>{dateText(event, locale)}</span>
           <span className={styles.cardBody}><span className={styles.cardIcon} aria-hidden="true">{event.eventType === 'saint' ? <Sparkles size={22} /> : event.eventType === 'biblical' ? <BookOpen size={22} /> : <Church size={22} />}</span><strong>{event.title}</strong></span>
           <span className={styles.srOnly}>{event.locationName}. {event.summary}</span>
-        </button>) : <p className={styles.noEvents} role="status">{copy.noEvents}</p>}
+        </button>) : <p className={styles.noEvents} role="status">{events.some((event) => event.status === 'published') ? copy.noEvents : copy.notAdded}</p>}
       </div>
     </section>
 

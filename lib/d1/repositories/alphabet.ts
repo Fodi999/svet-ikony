@@ -22,6 +22,7 @@ type Row = {
   main_image_url: string;
   seo_title: string;
   seo_description: string;
+  audio_url: string;
   language: string;
   translation_group_id: string;
   status: string;
@@ -45,6 +46,7 @@ export type ChurchAlphabetLetterDto = {
   mainImageUrl: string;
   seoTitle: string;
   seoDescription: string;
+  audioUrl: string;
   language: string;
   translationGroupId: string;
   status: string;
@@ -67,6 +69,7 @@ export type ChurchAlphabetLetterPayload = Partial<{
   mainImageUrl: string;
   seoTitle: string;
   seoDescription: string;
+  audioUrl: string;
   language: string;
   status: string;
   isGlobal: boolean;
@@ -89,6 +92,7 @@ function toDto(row: Row): ChurchAlphabetLetterDto {
     mainImageUrl: row.main_image_url,
     seoTitle: row.seo_title,
     seoDescription: row.seo_description,
+    audioUrl: row.audio_url,
     language: row.language,
     translationGroupId: row.translation_group_id,
     status: row.status,
@@ -99,7 +103,7 @@ function toDto(row: Row): ChurchAlphabetLetterDto {
 }
 
 const COLUMNS =
-  'id, slug, letter, sort_order, name, short_description, full_text, numeric_value, modern_equivalent, color, card_image_url, main_image_url, seo_title, seo_description, language, translation_group_id, status, created_at, updated_at';
+  'id, slug, letter, sort_order, name, short_description, full_text, numeric_value, modern_equivalent, color, card_image_url, main_image_url, seo_title, seo_description, audio_url, language, translation_group_id, status, created_at, updated_at';
 
 export async function listAlphabetLetters(params: { language?: string } = {}) {
   const rows = await d1All<Row>(
@@ -132,8 +136,8 @@ export async function createAlphabetLetter(payload: ChurchAlphabetLetterPayload)
   const row = await d1First<Row>(
     `INSERT INTO church_alphabet_letters
        (slug, letter, sort_order, name, short_description, full_text, numeric_value, modern_equivalent, color,
-        card_image_url, main_image_url, seo_title, seo_description, language, status, translation_group_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        card_image_url, main_image_url, seo_title, seo_description, audio_url, language, status, translation_group_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         COALESCE((SELECT translation_group_id FROM church_alphabet_letters WHERE slug = ? LIMIT 1), ?))
      RETURNING ${COLUMNS}`,
     slug,
@@ -149,6 +153,7 @@ export async function createAlphabetLetter(payload: ChurchAlphabetLetterPayload)
     payload.mainImageUrl ?? '',
     payload.seoTitle ?? '',
     payload.seoDescription ?? '',
+    payload.audioUrl ?? '',
     payload.language ?? 'uk',
     payload.status ?? 'draft',
     slug,
@@ -165,7 +170,7 @@ export async function updateAlphabetLetter(id: string, payload: ChurchAlphabetLe
     `UPDATE church_alphabet_letters SET
        slug = ?, letter = ?, sort_order = ?, name = ?, short_description = ?, full_text = ?, numeric_value = ?,
        modern_equivalent = ?, color = ?, card_image_url = ?, main_image_url = ?, seo_title = ?, seo_description = ?,
-       language = ?, status = ?,
+       audio_url = ?, language = ?, status = ?,
        translation_group_id = COALESCE(
          (SELECT other.translation_group_id FROM church_alphabet_letters other WHERE other.slug = ? AND other.id != ? LIMIT 1),
          (SELECT translation_group_id FROM church_alphabet_letters WHERE id = ?)
@@ -185,6 +190,7 @@ export async function updateAlphabetLetter(id: string, payload: ChurchAlphabetLe
     payload.mainImageUrl ?? current.mainImageUrl,
     payload.seoTitle ?? current.seoTitle,
     payload.seoDescription ?? current.seoDescription,
+    payload.audioUrl ?? current.audioUrl,
     payload.language ?? current.language,
     payload.status ?? current.status,
     slug,

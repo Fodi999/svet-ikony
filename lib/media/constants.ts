@@ -15,7 +15,7 @@ import type { MediaKind } from './types';
  * form — it only changes what generateMediaKey()/validateMediaKey() accept.
  */
 export const ALLOWED_MODULE_PURPOSES: Record<string, readonly string[]> = {
-  alphabet: ['card', 'main'],
+  alphabet: ['card', 'main', 'audio'],
   prayers: ['image', 'audio'],
   saints: ['main'],
   articles: ['cover'],

@@ -24,7 +24,7 @@ describe('generateMediaKey', () => {
   });
 
   it('rejects a purpose not allowed for the given module', () => {
-    expect(() => generateMediaKey({ module: 'alphabet', entityId: 'x', purpose: 'audio', mimeType: 'image/webp' })).toThrow();
+    expect(() => generateMediaKey({ module: 'alphabet', entityId: 'x', purpose: 'photo', mimeType: 'image/webp' })).toThrow();
   });
 
   it('rejects an entityId containing path traversal', () => {
@@ -57,12 +57,13 @@ describe('isAllowedModule / isAllowedPurpose / isSafeEntityId', () => {
     expect(isAllowedModule('alphabet')).toBe(true);
     expect(isAllowedPurpose('alphabet', 'card')).toBe(true);
     expect(isAllowedPurpose('alphabet', 'main')).toBe(true);
+    expect(isAllowedPurpose('alphabet', 'audio')).toBe(true);
     expect(isAllowedPurpose('prayers', 'image')).toBe(true);
     expect(isAllowedPurpose('prayers', 'audio')).toBe(true);
   });
 
   it('rejects a purpose from a different module', () => {
-    expect(isAllowedPurpose('alphabet', 'audio')).toBe(false);
+    expect(isAllowedPurpose('alphabet', 'photo')).toBe(false);
     expect(isAllowedPurpose('saints', 'card')).toBe(false);
   });
 
@@ -105,7 +106,7 @@ describe('validateMediaKey', () => {
   });
 
   it('rejects a key whose purpose does not match its module', () => {
-    expect(validateMediaKey('media/alphabet/x/audio/00000000-0000-4000-8000-000000000000.mp3')).toBe(false);
+    expect(validateMediaKey('media/alphabet/x/photo/00000000-0000-4000-8000-000000000000.jpg')).toBe(false);
   });
 
   it('rejects a key that does not use a UUID filename', () => {

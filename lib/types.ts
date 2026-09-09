@@ -542,6 +542,7 @@ export type ChurchAlphabetLetterDto = {
   mainImageUrl: string;
   seoTitle: string;
   seoDescription: string;
+  audioUrl: string;
   language: SiteLocale;
   translationGroupId: string;
   status: ChurchContentStatus;

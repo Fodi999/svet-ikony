@@ -5,6 +5,7 @@ import { DetailHero, Eyebrow, Hero, HeroCopy, HeroTitle, ImageFrame, imageFrameI
 import { StableImage } from '@/components/site/StableImage';
 import { publicApi } from '@/lib/api';
 import { localeNames, translate, withLocale } from '@/lib/i18n';
+import { resolveMediaUrl } from '@/lib/media/resolver';
 import { alternateLanguagesFromRefs, pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
 
@@ -32,7 +33,7 @@ export async function generateMetadata({ params, searchParams }: Props) {
     title: letter.seoTitle || `${letter.letter} — ${letter.name}`,
     description: (letter.seoDescription || letter.shortDescription).replace(/\s+/g, ' ').trim().slice(0, 180),
     path: `/staroslavyanskaya-azbuka/${letter.slug}`,
-    image: letter.mainImageUrl || letter.cardImageUrl || undefined,
+    image: resolveMediaUrl(letter.mainImageUrl) || resolveMediaUrl(letter.cardImageUrl) || undefined,
     locale,
     // Alphabet letters group by translation_group_id, not by shared slug
     // -- see app/saints/[slug]/page.tsx's identical comment.
@@ -77,6 +78,8 @@ export default async function AlphabetLetterPage({ params, searchParams }: Props
   }
 
   const letter = page.letter;
+  const resolvedMainImageUrl = resolveMediaUrl(letter.mainImageUrl);
+  const resolvedAudioUrl = resolveMediaUrl(letter.audioUrl);
 
   return (
     <Page>
@@ -86,9 +89,9 @@ export default async function AlphabetLetterPage({ params, searchParams }: Props
         current={letter.name}
       />
       <DetailHero>
-        {letter.mainImageUrl ? (
+        {resolvedMainImageUrl ? (
           <ImageFrame className="block aspect-auto">
-            <StableImage src={letter.mainImageUrl} alt={letter.name} loading="eager" className="aspect-auto h-auto w-full object-contain" />
+            <StableImage src={resolvedMainImageUrl} alt={letter.name} loading="eager" className="aspect-auto h-auto w-full object-contain" />
           </ImageFrame>
         ) : (
           <ImageFrame
@@ -120,6 +123,14 @@ export default async function AlphabetLetterPage({ params, searchParams }: Props
           {letter.fullText ? (
             <div className="border-l-[3px] border-l-gold py-3.5 pr-0 pl-4.5 bg-[linear-gradient(90deg,rgba(214,168,79,.12),transparent)] rounded-l-none rounded-r-xs max-w-[960px] text-muted-foreground font-serif text-[clamp(18px,1.45vw,24px)] leading-[1.6] [&>p]:mt-0 [&>p]:mx-0 [&>p]:mb-4 [&>p:last-child]:mb-0">
               <p>{letter.fullText}</p>
+            </div>
+          ) : null}
+          {resolvedAudioUrl ? (
+            <div className="mt-4 max-w-[560px]">
+              <p className="mb-1.5 font-sans text-xs font-bold text-muted-foreground uppercase">{translate(locale, 'alphabetAudioLabel')}</p>
+              <audio controls src={resolvedAudioUrl} className="w-full">
+                <track kind="captions" />
+              </audio>
             </div>
           ) : null}
         </HeroCopy>

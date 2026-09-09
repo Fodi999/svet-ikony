@@ -100,7 +100,7 @@ describe('POST /api/admin/media/upload', () => {
   });
 
   it('returns 400 for a purpose not allowed on the given module', async () => {
-    const response = await POST(uploadRequest({ file: smallJpeg(), module: 'alphabet', entityId: 'x', purpose: 'audio' }, token));
+    const response = await POST(uploadRequest({ file: smallJpeg(), module: 'alphabet', entityId: 'x', purpose: 'photo' }, token));
     expect(response.status).toBe(400);
   });
 

@@ -48,6 +48,7 @@ describe('next.config.ts headers()', () => {
     expect(byKey['Permissions-Policy']).not.toContain('clipboard-write=()');
 
     const csp = byKey['Content-Security-Policy']!;
+    expect(csp.split('; ').find((directive) => directive.startsWith('connect-src '))).toBe("connect-src 'self' blob:");
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("object-src 'none'");

@@ -71,7 +71,10 @@ function disposeObject3D(object: import('three').Object3D) {
 
 type SceneHandle = {
   THREE: typeof import('three');
-  camera: import('three').PerspectiveCamera;
+  camera: import('@/lib/visualizer/base-scene').SceneCamera;
+  overviewCamera: import('@/lib/visualizer/base-scene').SceneCamera;
+  baseMixer: import('three').AnimationMixer | null;
+  authoredScene: boolean;
   earthGroup: import('three').Group;
   eventGroup: import('three').Group;
   transitioning: boolean;
@@ -142,11 +145,12 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
 
     void (async () => {
       const reducedMotion = prefersReducedMotion();
-      const [THREE, { GLTFLoader }, { OrbitControls }, { createDefaultEarth }] = await Promise.all([
+      const [THREE, { GLTFLoader }, { OrbitControls }, { createDefaultEarth }, { prepareBaseScene, resizeSceneCamera }] = await Promise.all([
         import('three'),
         import('three/addons/loaders/GLTFLoader.js'),
         import('three/addons/controls/OrbitControls.js'),
-        import('@/lib/visualizer/default-earth')
+        import('@/lib/visualizer/default-earth'),
+        import('@/lib/visualizer/base-scene')
       ]);
       if (disposed) return;
       setSceneError(false);
@@ -155,15 +159,18 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
 
       const scene = new THREE.Scene();
       const rect = container.getBoundingClientRect();
-      const camera = new THREE.PerspectiveCamera(45, (rect.width || 1) / (rect.height || 1), 0.1, 100);
+      let camera: import('@/lib/visualizer/base-scene').SceneCamera = new THREE.PerspectiveCamera(45, (rect.width || 1) / (rect.height || 1), 0.1, 100);
       camera.position.set(0, 0, 6);
 
       const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setSize(rect.width || 1, rect.height || 1, false);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
       rendererDispose = () => renderer.dispose();
 
-      scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+      const ambient = new THREE.AmbientLight(0xffffff, 0.85);
+      scene.add(ambient);
       const directional = new THREE.DirectionalLight(0xffffff, 1.1);
       directional.position.set(5, 3, 5);
       scene.add(directional);
@@ -173,7 +180,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
       scene.add(earthGroup, eventGroup);
       sceneDispose = () => disposeObject3D(scene);
 
-      const controls = new OrbitControls(camera, renderer.domElement);
+      const controls = new OrbitControls<import('@/lib/visualizer/base-scene').SceneCamera>(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
       controls.minDistance = 3;
@@ -191,22 +198,43 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
             disposeObject3D(gltf.scene);
             return;
           }
-          // Uploaded models can use arbitrary units and origins.
-          const box = new THREE.Box3().setFromObject(gltf.scene);
-          const size = box.getSize(new THREE.Vector3());
-          const maxSize = Math.max(size.x, size.y, size.z);
-          if (!Number.isFinite(maxSize) || maxSize <= 0) {
-            disposeObject3D(gltf.scene);
-            setUsingDefaultEarth(true);
-            return;
-          }
-          const model = new THREE.Group();
-          gltf.scene.position.sub(box.getCenter(new THREE.Vector3()));
-          model.add(gltf.scene);
-          model.scale.setScalar(3.6 / maxSize);
+          const { model, camera: authoredCamera } = prepareBaseScene(gltf);
           earthGroup.remove(defaultEarth);
           disposeObject3D(defaultEarth);
+          earthGroup.rotation.set(0, 0, 0);
           earthGroup.add(model);
+          handle.authoredScene = !!authoredCamera;
+          if (authoredCamera) {
+            // An exported scene includes its intended composition; a sky dome
+            // must not become the object that the viewer frames from outside.
+            const box = container.getBoundingClientRect();
+            resizeSceneCamera(authoredCamera, (box.width || 1) / (box.height || 1));
+            handle.overviewCamera = authoredCamera.clone();
+            controls.maxDistance = Math.max(10, authoredCamera.position.length() * 2);
+            controls.minZoom = 0.5;
+            controls.maxZoom = 5;
+            if (!handle.focused) {
+              camera = authoredCamera;
+              handle.camera = camera;
+              controls.object = camera;
+              controls.target.set(0, 0, 0);
+              controls.update();
+            }
+            const lights: import('three').Light[] = [];
+            gltf.scene.traverse((node) => { if (node instanceof THREE.Light) lights.push(node); });
+            if (lights.length) {
+              // Blender's exported photometric energies can wash out a web
+              // preview. Preserve their ratios while fitting display lighting.
+              const peak = Math.max(...lights.map((light) => light.intensity));
+              if (peak > 3) lights.forEach((light) => { light.intensity *= 3 / peak; });
+              ambient.intensity = 0.12;
+              directional.visible = false;
+            }
+          }
+          if (gltf.animations?.length && !reducedMotion) {
+            handle.baseMixer = new THREE.AnimationMixer(gltf.scene);
+            handle.baseMixer.clipAction(gltf.animations[0]).play();
+          }
           setUsingDefaultEarth(false);
         }).catch((error: unknown) => {
           if (!disposed) {
@@ -218,13 +246,13 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
 
       resizeObserver = new ResizeObserver(() => {
         const box = container.getBoundingClientRect();
-        camera.aspect = (box.width || 1) / (box.height || 1);
-        camera.updateProjectionMatrix();
+        resizeSceneCamera(handle.camera, (box.width || 1) / (box.height || 1));
+        resizeSceneCamera(handle.overviewCamera, (box.width || 1) / (box.height || 1));
         renderer.setSize(box.width || 1, box.height || 1, false);
       });
       resizeObserver.observe(container);
 
-      const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, transitioning: false, focused: false, controls, mixer: null };
+      const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, transitioning: false, focused: false, controls, mixer: null, overviewCamera: camera.clone(), baseMixer: null, authoredScene: false };
       sceneRef.current = handle;
       renderer.render(scene, camera);
       setSceneReady(true);
@@ -236,11 +264,12 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
         const delta = Math.min((now - lastFrame) / 1000, 0.05);
         lastFrame = now;
         if (!hidden) {
-          if (!handle.transitioning && !handle.focused && !reducedMotion) earthGroup.rotation.y += delta * 0.055;
+          if (!handle.transitioning && !handle.focused && !handle.authoredScene && !reducedMotion) earthGroup.rotation.y += delta * 0.055;
+          if (!handle.focused) handle.baseMixer?.update(delta);
           handle.mixer?.update(delta);
           if (earthGroup.visible) eventGroup.rotation.copy(earthGroup.rotation);
           if (!handle.transitioning) controls.update();
-          renderer.render(scene, camera);
+          renderer.render(scene, handle.camera);
         }
         rafId = requestAnimationFrame(tick);
       }
@@ -259,12 +288,12 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
       resizeObserver?.disconnect();
       controlsDispose?.();
       sceneRef.current?.mixer?.stopAllAction();
+      sceneRef.current?.baseMixer?.stopAllAction();
       sceneDispose?.();
       rendererDispose?.();
       sceneRef.current = null;
       setSceneReady(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [webglSupported, baseEarthModelUrl]);
 
   // Camera-to-event transition + lazy-load the event's own GLB (if any).
@@ -291,11 +320,14 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
     }
 
     if (!selectedEvent) {
-      handle.camera.position.set(0, 0, 6);
+      handle.camera = handle.overviewCamera.clone();
+      handle.controls.object = handle.camera;
+      handle.earthGroup.rotation.set(0, 0, 0);
       handle.controls.target.set(0, 0, 0);
       handle.controls.update();
       return;
     }
+    handle.baseMixer?.setTime(0);
     const hasCoordinates = selectedEvent.latitude != null && selectedEvent.longitude != null;
 
     const { latitude, longitude, modelUrl } = selectedEvent;
@@ -313,6 +345,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
     handle.controls.enabled = false;
     const spherical = new handle.THREE.Spherical().setFromVector3(handle.camera.position);
     const radius = spherical.radius;
+    const startZoom = handle.camera.zoom;
     const cameraTheta = spherical.theta; // kept fixed -- only phi (latitude tilt) animates on the camera
     const startPolar = spherical.phi;
     // A world-space point at longitude `lngRad` (before any Earth rotation)
@@ -341,6 +374,10 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent }: Props) {
       const nextPosition = new handle!.THREE.Vector3().setFromSphericalCoords(radius + ((hasCoordinates ? 3.4 : 6) - radius) * eased, nextPolar, cameraTheta);
       handle!.camera.position.copy(nextPosition);
       handle!.camera.lookAt(0, 0, 0);
+      if (handle!.camera instanceof handle!.THREE.OrthographicCamera) {
+        handle!.camera.zoom = startZoom + ((hasCoordinates ? 2.2 : 1) - startZoom) * eased;
+        handle!.camera.updateProjectionMatrix();
+      }
 
       if (progress < 1) {
         transitionFrame = requestAnimationFrame(animate);

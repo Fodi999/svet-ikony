@@ -49,7 +49,8 @@ const SECURITY_HEADERS = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' https: data: blob:",
       "font-src 'self'",
-      "connect-src 'self'",
+      // Embedded GLB textures are fetched as local blob URLs by ImageBitmapLoader.
+      "connect-src 'self' blob:",
       "worker-src 'self'",
       "manifest-src 'self'",
       "object-src 'none'",

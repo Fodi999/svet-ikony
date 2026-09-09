@@ -21,6 +21,17 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     const query = typeof window === 'undefined' ? '' : window.location.search.replace(/^\?/, '');
     const nextPath = withLocale(pathname || '/', nextLocale);
     router.push(`${nextPath}${query ? `?${query}` : ''}`, { scroll: false });
+    // A locale switch is a genuinely different server response for the
+    // SAME route tree (getRequestLocale() reads the x-site-locale header
+    // middleware sets, not a distinct file-system segment) -- router.push()
+    // alone updates the URL/history immediately, but Next's client-side
+    // Router Cache can still serve the previously-rendered page instead of
+    // refetching, so the page content silently stays on the old language
+    // until some later navigation happens to force a refetch (reported as
+    // "have to click the language button twice"). router.refresh() is
+    // Next's own documented way to force this navigation to re-fetch and
+    // re-render fresh Server Component output for the current route.
+    router.refresh();
   };
 
   useEffect(() => {

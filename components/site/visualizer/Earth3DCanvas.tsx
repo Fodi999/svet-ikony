@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { countryMessages } from '@/lib/visualizer/country-messages';
 import { useI18n } from '@/components/site/LanguageProvider';
 import styles from './history.module.css';
+import { INITIAL_TERRAIN, terrainMessages } from '@/lib/visualizer/terrain-state';
+import { TERRAIN_PERFORMANCE } from '@/lib/visualizer/terrain-config';
 
 export type SelectedEventTarget = {
   latitude: number | null;
@@ -23,6 +25,7 @@ type Props = {
   cameraCommand?: CameraCommand;
   selectedCountryCode?: string | null;
   onSelectCountry?: (code: string) => void;
+  onBackToGlobe?: () => void;
   bordersVisible?: boolean;
   mapEvents?: MapEvent[];
   onSelectEvent?: (id: string) => void;
@@ -103,6 +106,7 @@ type SceneHandle = {
   focused: boolean;
   controls: import("three/addons/controls/OrbitControls.js").OrbitControls;
   mixer: import("three").AnimationMixer | null;
+  terrain?: ReturnType<typeof import('@/lib/visualizer/terrain-controller').createTerrainController>;
 };
 
 /**
@@ -118,7 +122,7 @@ type SceneHandle = {
  * render loop on `document.visibilitychange`, and disposing/reloading a
  * second (event-specific) GLB on selection change.
  */
-export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, showHint = true, cameraCommand, mapEvents = NO_MAP_EVENTS, onSelectEvent, bordersVisible = true, selectedCountryCode = null, onSelectCountry }: Props) {
+export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, showHint = true, cameraCommand, mapEvents = NO_MAP_EVENTS, onSelectEvent, bordersVisible = true, selectedCountryCode = null, onSelectCountry, onBackToGlobe }: Props) {
   const { t, locale } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -140,6 +144,12 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
   const countryTooltipRef = useRef<HTMLDivElement | null>(null);
   const countryDebugRef = useRef<HTMLOutputElement | null>(null);
   const countryPropsRef = useRef({selectedCountryCode,onSelectCountry,locale});
+  const [terrainState, setTerrainState] = useState(INITIAL_TERRAIN);
+  const [tileDebug, setTileDebug] = useState(false);
+  const [tileBorders, setTileBorders] = useState(false);
+  const terrainMetricsRef = useRef<HTMLOutputElement | null>(null);
+  const renderProbeUntil = useRef(0);
+  const terrainAuditRef = useRef<HTMLOutputElement | null>(null);
 
 
   useEffect(() => {
@@ -163,6 +173,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     let resizeObserver: ResizeObserver | null = null;
     let controlsDispose: (() => void) | null = null;
     let rendererDispose: (() => void) | null = null;
+    let metricsDispose: (() => void) | null = null;
     let sceneDispose: (() => void) | null = null;
     let hidden = document.hidden;
 
@@ -198,7 +209,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       camera.position.set(0, 0, 6);
 
       const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1,window.matchMedia('(max-width: 767px), (pointer: coarse)').matches?TERRAIN_PERFORMANCE.mobile.dpr:TERRAIN_PERFORMANCE.desktop.dpr));
       renderer.setSize(rect.width || 1, rect.height || 1, false);
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -255,7 +266,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
             surface: () => handle.earthSurface ?? defaultEarth.children[0] ?? null,
             locale: () => countryPropsRef.current.locale, hint: () => countryMessages[countryPropsRef.current.locale].open,
             selected: () => countryPropsRef.current.selectedCountryCode,
-            onSelect: (code) => countryPropsRef.current.onSelectCountry?.(code),
+            onSelect: (code) => { handle.terrain?.select(code, true); countryPropsRef.current.onSelectCountry?.(code); },
             transitioning: (value) => { handle.transitioning = value; }, available: () => earthGroup.visible,
             reducedMotion: prefersReducedMotion,
           });
@@ -346,22 +357,38 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
         resizeSceneCamera(handle.camera, (box.width || 1) / (box.height || 1));
         resizeSceneCamera(handle.overviewCamera, (box.width || 1) / (box.height || 1));
         handle.layoutOverview?.((box.width || 1) / (box.height || 1));
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1,window.matchMedia('(max-width: 767px), (pointer: coarse)').matches?TERRAIN_PERFORMANCE.mobile.dpr:TERRAIN_PERFORMANCE.desktop.dpr));
         renderer.setSize(box.width || 1, box.height || 1, false);
+        handle.terrain?.invalidate();
       });
       resizeObserver.observe(container);
 
       const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, pins, geography, countryInteraction: null, borders, debugPoints, latLngToVector3, earthSurface: null, surfaceRestInverse: null, layoutOverview: null, updateMarkerOverlay: null, transitioning: false, focused: false, controls, mixer: null, overviewCamera: camera.clone() };
       sceneRef.current = handle;
+      if (process.env.NODE_ENV === 'development' && window.location && ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
+        const { createTerrainController } = await import('@/lib/visualizer/terrain-controller');
+        if (disposed) return;
+        handle.terrain = createTerrainController({ prepare: (root) => renderer.compileAsync(root,handle.camera,scene), frame: geography, earth: earthGroup, borders, controls,
+          camera: () => handle.camera, ready: () => !!handle.earthSurface,
+          flying: () => handle.transitioning, cancelFly: () => handle.countryInteraction?.cancelFly(),
+          reducedMotion: prefersReducedMotion, notify: setTerrainState });
+        handle.terrain.select(countryPropsRef.current.selectedCountryCode);
+      }
       renderer.render(scene, camera);
       setSceneReady(true);
 
+      const metrics = process.env.NODE_ENV === 'development' && typeof renderer.getContext === 'function'
+        ? (await import('@/lib/visualizer/render-metrics')).createRenderMetrics(renderer) : null;
+      metricsDispose = () => metrics?.dispose();
       const pinPosition = new THREE.Vector3();
       const cameraToPin = new THREE.Vector3();
       let lastFrame = performance.now();
       let metricStart = lastFrame, metricFrames = 0;
+      let lastProbeText='';
       function tick() {
         if (disposed || hidden) return;
         const now = performance.now();
+        metrics?.begin(now);
         const delta = Math.min((now - lastFrame) / 1000, 0.05);
         lastFrame = now;
         if (!hidden) {
@@ -387,16 +414,25 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
             pin.visible = point.dot(direction) > 0;
           }
           if (!handle.transitioning) controls.update();
+          handle.terrain?.tick(delta);
           handle.updateMarkerOverlay?.();
-          renderer.render(scene, handle.camera);
+          if (now >= renderProbeUntil.current) renderer.render(scene, handle.camera);
+          metrics?.end();
+          const measurement = metrics?.sample(now);
+          if (measurement && terrainMetricsRef.current) {
+            const terrain=handle.terrain?.stats();
+            if(now < renderProbeUntil.current) lastProbeText=`Last no-draw probe: ${measurement.fps.toFixed(1)} FPS · CPU ${measurement.cpuMs.toFixed(2)} ms · GPU ${measurement.gpuMs?.toFixed(2)??'n/a'} ms`;
+            terrainMetricsRef.current.textContent = `${now < renderProbeUntil.current ? 'NO-DRAW PROBE · ' : ''}${measurement.fps.toFixed(1)} FPS · CPU ${measurement.cpuMs.toFixed(2)} ms · GPU ${measurement.gpuMs?.toFixed(2) ?? "n/a"} ms · frame max ${measurement.maxFrameMs.toFixed(1)} ms · ${measurement.draws} draw calls · ${measurement.triangles} triangles · ${measurement.textures} textures · ${measurement.geometries} geometries · DPR ${measurement.dpr}\nTerrain: ${terrain?.loaded??0} loaded · ${terrain?.visible??0} visible · ${terrain?.cached??0} GPU cached · ${((terrain?.bytes??0)/1e6).toFixed(2)} MB downloaded · ${((terrain?.networkBytes??0)/1e6).toFixed(2)} MB network cache · ${terrain?.networkRequests??0} requests · ${terrain?.cacheHits??0} cache hits\nCamera ${terrain?.distance.toFixed(3)??'—'} · selection evaluations ${terrain?.evaluations??0}\n${terrain?.states??''}\n${lastProbeText}`;
+          }
           if (process.env.NODE_ENV === 'development' && ++metricFrames && now - metricStart >= 1000) {
             if (diagnosticsRef.current) diagnosticsRef.current.textContent = `${Math.round(metricFrames * 1000 / (now - metricStart))} FPS · ${renderer.info.render.calls} draws · ${borders.geometry.getAttribute('position').count} border vertices · R ${Number(borders.userData.earthRadius).toFixed(5)} × 1.003`;
+
             metricStart = now; metricFrames = 0;
           }
         }
         rafId = requestAnimationFrame(tick);
       }
-      resumeRendering = () => { lastFrame = performance.now(); metricStart = lastFrame; metricFrames = 0; cancelAnimationFrame(rafId); rafId = requestAnimationFrame(tick); };
+      resumeRendering = () => { metrics?.reset(); lastFrame = performance.now(); metricStart = lastFrame; metricFrames = 0; cancelAnimationFrame(rafId); rafId = requestAnimationFrame(tick); };
       if (!hidden) resumeRendering();
     })().catch((error: unknown) => {
       if (disposed) return;
@@ -409,10 +445,12 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       document.removeEventListener('visibilitychange', onVisibilityChange);
       cancelAnimationFrame(rafId);
       resizeObserver?.disconnect();
+      sceneRef.current?.terrain?.dispose();
       sceneRef.current?.countryInteraction?.dispose();
       controlsDispose?.();
       sceneRef.current?.mixer?.stopAllAction();
       sceneDispose?.();
+      metricsDispose?.();
       rendererDispose?.();
       sceneRef.current = null;
       setSceneReady(false);
@@ -427,6 +465,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     if (!handle || !sceneReady) return;
     let cancelled = false;
 
+    if (selectedEvent) handle.terrain?.back(false);
     handle.countryInteraction?.cancelFly();
     handle.mixer?.stopAllAction();
     handle.mixer = null;
@@ -630,6 +669,8 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
   useEffect(() => {
     const handle = sceneRef.current;
     if (!handle || !cameraCommand || !sceneReady || handle.transitioning) return;
+    if (cameraCommand.action === 'in') handle.terrain?.userZoom();
+    if (cameraCommand.action === 'reset') handle.terrain?.back(false);
     if (handle.countryInteraction) {
       if (cameraCommand.action === 'reset') { handle.countryInteraction.reset(); return; }
       handle.countryInteraction.cancelFly();
@@ -664,6 +705,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
   useEffect(() => {
     countryPropsRef.current = {selectedCountryCode,onSelectCountry,locale};
     sceneRef.current?.countryInteraction?.setSelectedCountry(selectedCountryCode);
+    sceneRef.current?.terrain?.select(selectedCountryCode);
     sceneRef.current?.countryInteraction?.refreshTooltip();
   }, [selectedCountryCode,onSelectCountry,locale,sceneReady]);
 
@@ -686,6 +728,12 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       {process.env.NODE_ENV === 'development' ? <div className="absolute bottom-12 left-3 max-w-[80%] rounded bg-black/70 p-2 text-[10px] text-[#e6d5a8]">
         <label><input type="checkbox" checked={geographicDebug} onChange={(event) => setGeographicDebug(event.target.checked)} /> Geographic Calibration Debug</label>
         {geographicDebug ? <p>Equator / 0° · North Pole · Greenwich · Kyiv · Rome · Jerusalem</p> : null}<output className="block" ref={diagnosticsRef} /><output className="block" ref={countryDebugRef} />
+      </div> : null}
+      {selectedCountryCode === 'UA' && (terrainState.loading || terrainState.error) ? <div role="status" className="pointer-events-none absolute top-4 left-4 max-w-[65%] rounded bg-canvas/90 px-3 py-2 text-xs text-gold-light">{terrainMessages[locale ?? 'uk'][terrainState.error ? 'error' : 'loading']}</div> : null}
+      {terrainState.viewLevel === 'REGION_L1' ? <button className="absolute top-4 left-4 rounded border border-gold/30 bg-canvas/95 px-3 py-2 text-xs text-gold-light" onClick={() => { sceneRef.current?.terrain?.back(); onBackToGlobe?.(); }}>{terrainMessages[locale ?? 'uk'].back}</button> : null}
+      {process.env.NODE_ENV === 'development' ? <div data-terrain-debug className="absolute bottom-28 left-3 max-w-[85%] rounded bg-black/75 p-2 text-[10px] text-[#e6d5a8]">
+        <label><input type="checkbox" checked={tileDebug} onChange={e => setTileDebug(e.target.checked)} /> Tile Debug</label>
+        {tileDebug ? <div><p>{terrainState.viewLevel} · {terrainState.loaded}/{terrainState.total} tiles · {(terrainState.bytes / 1e6).toFixed(2)} MB</p><p>Failed: {terrainState.failed.join(', ') || '—'}</p><p>TerrainRoot: {terrainState.transform}</p><p>Anchor residual: {terrainState.anchors}</p><output ref={terrainMetricsRef} className="block whitespace-pre-line" /><div className="flex flex-wrap gap-2"><button onClick={() => { renderProbeUntil.current = performance.now() + 3000; }}>3s no-draw probe</button><button onClick={() => { if(terrainAuditRef.current) terrainAuditRef.current.textContent=JSON.stringify(sceneRef.current?.terrain?.audit()); }}>texture audit</button>{(['west','center','south','edge'] as const).map(area=><button key={area} onClick={() => sceneRef.current?.terrain?.inspectArea(area)}>{area}</button>)}</div><output ref={terrainAuditRef} className="block max-h-24 overflow-auto" /><label><input type="checkbox" checked={tileBorders} onChange={e => { setTileBorders(e.target.checked); sceneRef.current?.terrain?.setBorders(e.target.checked); }} /> Tile Borders</label></div> : null}
       </div> : null}
       {usingDefaultEarth && sceneReady && !sceneError ? <div role="status" className="pointer-events-none absolute top-4 left-4 max-w-[65%] rounded bg-canvas/90 px-3 py-2 text-xs text-muted-foreground">
         {t(baseModelFailed ? 'historyBaseModelFailed' : baseEarthModelUrl ? 'historyBaseModelLoading' : 'historyDefaultGlobe')}

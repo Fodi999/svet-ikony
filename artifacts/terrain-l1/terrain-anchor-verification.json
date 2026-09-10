@@ -1,0 +1,22 @@
+{
+  "anchors": [
+    {
+      "id": "Kyiv",
+      "meters": 0
+    },
+    {
+      "id": "Lviv",
+      "meters": 0
+    },
+    {
+      "id": "Odesa",
+      "meters": 0
+    },
+    {
+      "id": "Kharkiv",
+      "meters": 0
+    }
+  ],
+  "maxMeters": 0,
+  "projection": "Shared runtime AEQD arc-to-chord plus radial height; manifest anchor positions; no per-tile offsets"
+}

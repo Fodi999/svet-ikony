@@ -1,0 +1,421 @@
+{
+  "tiles": [
+    {
+      "tile": "l1_0_0",
+      "meshes": 1,
+      "primitives": 1,
+      "materials": [
+        {
+          "name": "Terrain_PBR_l1_0_0",
+          "alphaMode": "OPAQUE",
+          "doubleSided": true
+        }
+      ],
+      "images": [
+        {
+          "name": "normal",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "eee4783c436c40d8d4cdce2aa16199e83d4a814853bd2b30af829cf4c167f664"
+        },
+        {
+          "name": "color",
+          "mime": "image/jpeg",
+          "dimensions": null,
+          "sha256": "e58043d1d41897a3bef90e01eda8cdba97427a8dea69f53999ee79287c87b860"
+        },
+        {
+          "name": "orm",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "d059a3e5053c1082fd062dd90329f6f6a1db5052e9cd5e7162c7cb02482cfd08"
+        }
+      ],
+      "samplers": [
+        {
+          "magFilter": 9729,
+          "minFilter": 9987,
+          "wrapS": 33071,
+          "wrapT": 33071
+        }
+      ]
+    },
+    {
+      "tile": "l1_1_0",
+      "meshes": 1,
+      "primitives": 1,
+      "materials": [
+        {
+          "name": "Terrain_PBR_l1_1_0",
+          "alphaMode": "OPAQUE",
+          "doubleSided": true
+        }
+      ],
+      "images": [
+        {
+          "name": "normal",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "789d6edb60c572249a3f35325db8ced51f90f182a076e3d5d668ec0eefc35352"
+        },
+        {
+          "name": "color",
+          "mime": "image/jpeg",
+          "dimensions": null,
+          "sha256": "0a46fea17fe56883adce9b91ad74845faa839a864b07d08c39af0472c8e6c46e"
+        },
+        {
+          "name": "orm",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "4bbc8084f61405612e42e07cb4357f984d90d41a76650d450b5d1ba7b0dc538d"
+        }
+      ],
+      "samplers": [
+        {
+          "magFilter": 9729,
+          "minFilter": 9987,
+          "wrapS": 33071,
+          "wrapT": 33071
+        }
+      ]
+    },
+    {
+      "tile": "l1_2_0",
+      "meshes": 1,
+      "primitives": 1,
+      "materials": [
+        {
+          "name": "Terrain_PBR_l1_2_0",
+          "alphaMode": "OPAQUE",
+          "doubleSided": true
+        }
+      ],
+      "images": [
+        {
+          "name": "normal",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "bec1767d139fbda2b5cc1bd569d91a08fd76d64ffb45c589d277cb94f85e9652"
+        },
+        {
+          "name": "color",
+          "mime": "image/jpeg",
+          "dimensions": null,
+          "sha256": "662d89713a7617cf842d48695b3f63caa1610f3648b03cdeba056b50bca64dae"
+        },
+        {
+          "name": "orm",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "5c1fba1047a0b11e62d2aaa973419041baedb8928a5dacd915a88c5e0e71ebd2"
+        }
+      ],
+      "samplers": [
+        {
+          "magFilter": 9729,
+          "minFilter": 9987,
+          "wrapS": 33071,
+          "wrapT": 33071
+        }
+      ]
+    },
+    {
+      "tile": "l1_0_1",
+      "meshes": 1,
+      "primitives": 1,
+      "materials": [
+        {
+          "name": "Terrain_PBR_l1_0_1",
+          "alphaMode": "OPAQUE",
+          "doubleSided": true
+        }
+      ],
+      "images": [
+        {
+          "name": "normal",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "c5e8018281586fbfd80cad129b55fef9155a036fbf0e366e1d982170571775c7"
+        },
+        {
+          "name": "color",
+          "mime": "image/jpeg",
+          "dimensions": null,
+          "sha256": "40f0aeab6cde097fa3b410daa78a51e9ec572bdc36dece5de2411631094c3bd7"
+        },
+        {
+          "name": "orm",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "6c633fdcdf29a9a656cb027c873891448d24eb29887116f87294c0ef1c985c28"
+        }
+      ],
+      "samplers": [
+        {
+          "magFilter": 9729,
+          "minFilter": 9987,
+          "wrapS": 33071,
+          "wrapT": 33071
+        }
+      ]
+    },
+    {
+      "tile": "l1_1_1",
+      "meshes": 1,
+      "primitives": 1,
+      "materials": [
+        {
+          "name": "Terrain_PBR_l1_1_1",
+          "alphaMode": "OPAQUE",
+          "doubleSided": true
+        }
+      ],
+      "images": [
+        {
+          "name": "normal",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "e98c6563b6752d2fa41ad68ed95ac852432aa38f540ebd49674318922163e81a"
+        },
+        {
+          "name": "color",
+          "mime": "image/jpeg",
+          "dimensions": null,
+          "sha256": "e8cba744d980a5f52325964966b1ed5b635b0495cb83bbd848ccbd71feca598a"
+        },
+        {
+          "name": "orm",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "17b8b3e4edc68ae698cb8312c856ef1de72e2c4f88a24b4db9d48f131c32ef7e"
+        }
+      ],
+      "samplers": [
+        {
+          "magFilter": 9729,
+          "minFilter": 9987,
+          "wrapS": 33071,
+          "wrapT": 33071
+        }
+      ]
+    },
+    {
+      "tile": "l1_2_1",
+      "meshes": 1,
+      "primitives": 1,
+      "materials": [
+        {
+          "name": "Terrain_PBR_l1_2_1",
+          "alphaMode": "OPAQUE",
+          "doubleSided": true
+        }
+      ],
+      "images": [
+        {
+          "name": "normal",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "bea091206e614164fa1868c9781968ad434dabc6161eeec8614daa8d9b31adb6"
+        },
+        {
+          "name": "color",
+          "mime": "image/jpeg",
+          "dimensions": null,
+          "sha256": "47697e1b780d8724c45827942a38488681a4d830f5427b4a69e5468e93a4f591"
+        },
+        {
+          "name": "orm",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "ba469c42fbd4d24d1e04b2c22189027c0d8c5436c83da9955f15792c23a08821"
+        }
+      ],
+      "samplers": [
+        {
+          "magFilter": 9729,
+          "minFilter": 9987,
+          "wrapS": 33071,
+          "wrapT": 33071
+        }
+      ]
+    },
+    {
+      "tile": "l1_0_2",
+      "meshes": 1,
+      "primitives": 1,
+      "materials": [
+        {
+          "name": "Terrain_PBR_l1_0_2",
+          "alphaMode": "OPAQUE",
+          "doubleSided": true
+        }
+      ],
+      "images": [
+        {
+          "name": "normal",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "425eec7c138ad8e67d97d42be0fa332e960634ad1714dd56f43b617772e27dd7"
+        },
+        {
+          "name": "color",
+          "mime": "image/jpeg",
+          "dimensions": null,
+          "sha256": "5281029b8a054e54ac96453676ab741f3d291c0a2f86b029c9ec2c83df31658c"
+        },
+        {
+          "name": "orm",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "0c18351b03d5c63da0f6b39e7e1db96974f2e0dfb1ad4fe699602abf3d9a224f"
+        }
+      ],
+      "samplers": [
+        {
+          "magFilter": 9729,
+          "minFilter": 9987,
+          "wrapS": 33071,
+          "wrapT": 33071
+        }
+      ]
+    },
+    {
+      "tile": "l1_1_2",
+      "meshes": 1,
+      "primitives": 1,
+      "materials": [
+        {
+          "name": "Terrain_PBR_l1_1_2",
+          "alphaMode": "OPAQUE",
+          "doubleSided": true
+        }
+      ],
+      "images": [
+        {
+          "name": "normal",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "8e39bd34c5a09956572742052b47aa6b9bef0bb1b41802341d9d48fdced24188"
+        },
+        {
+          "name": "color",
+          "mime": "image/jpeg",
+          "dimensions": null,
+          "sha256": "47db26fad54fb1c71aa8a022702dc2418c10d75d5220fee56d7ac6ce01518795"
+        },
+        {
+          "name": "orm",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "8e1d9952aada49d80b57f82851b8f5c30a00cb3cafb0f4b4721d9df4a7c05d9d"
+        }
+      ],
+      "samplers": [
+        {
+          "magFilter": 9729,
+          "minFilter": 9987,
+          "wrapS": 33071,
+          "wrapT": 33071
+        }
+      ]
+    },
+    {
+      "tile": "l1_2_2",
+      "meshes": 1,
+      "primitives": 1,
+      "materials": [
+        {
+          "name": "Terrain_PBR_l1_2_2",
+          "alphaMode": "OPAQUE",
+          "doubleSided": true
+        }
+      ],
+      "images": [
+        {
+          "name": "normal",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "579dcf11265a40333f1532cd1b158477ba2d5d485a9f3d735d13ac24c7295837"
+        },
+        {
+          "name": "color",
+          "mime": "image/jpeg",
+          "dimensions": null,
+          "sha256": "ab74432fcbb4f1da26203172d32e7b2637675d29650a2d20a561435ac60512eb"
+        },
+        {
+          "name": "orm",
+          "mime": "image/png",
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "sha256": "2fa96e7aa1a72db4be31ff6718dcd2592e3e9ea9a2683e7a64abe9b4369ccf7a"
+        }
+      ],
+      "samplers": [
+        {
+          "magFilter": 9729,
+          "minFilter": 9987,
+          "wrapS": 33071,
+          "wrapT": 33071
+        }
+      ]
+    }
+  ],
+  "distinctEmbeddedImages": 27,
+  "duplicateImageHashes": {},
+  "glbHashesUnchanged": true
+}

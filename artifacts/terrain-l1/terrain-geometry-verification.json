@@ -1,0 +1,207 @@
+{
+  "files": [
+    {
+      "id": "l1_0_0",
+      "sha256": "ec096e0b3a23eb52e8ac933e0b54e080c8db872c2b2c5548d39bf472fbc7b926",
+      "bytes": 4369984,
+      "vertices": 16641
+    },
+    {
+      "id": "l1_1_0",
+      "sha256": "a9ceb39e0207e6f21bb4390cb7cd14b97f536e618c251bb86fb7a3b571aa431c",
+      "bytes": 4131156,
+      "vertices": 16641
+    },
+    {
+      "id": "l1_2_0",
+      "sha256": "f7ec1084876249e602e7351c38ed81facde67b1123ee1d78689d24fefd0de6ad",
+      "bytes": 4406120,
+      "vertices": 16641
+    },
+    {
+      "id": "l1_0_1",
+      "sha256": "a4dfee7c13abc67781676201d73702c64584e364c8644c4a04742601b58bd8ef",
+      "bytes": 5085004,
+      "vertices": 16641
+    },
+    {
+      "id": "l1_1_1",
+      "sha256": "307dcdac564a7417ff08bb21fa05d00755a9411be18d76e005e42f65f8415e3b",
+      "bytes": 4620980,
+      "vertices": 16641
+    },
+    {
+      "id": "l1_2_1",
+      "sha256": "33e69c920a57e89c222e3fb47c500845e92d089147ed3c76d2078d38c0f1930c",
+      "bytes": 4737000,
+      "vertices": 16641
+    },
+    {
+      "id": "l1_0_2",
+      "sha256": "14e0d62a0d1ada71728e4d56afb62c7577da946d27c93e046c3ca32c78d6ae1f",
+      "bytes": 5608780,
+      "vertices": 16641
+    },
+    {
+      "id": "l1_1_2",
+      "sha256": "6064528bf51c0016013979917b05862fd52e6b6e0145f2adc084a452f298f31a",
+      "bytes": 2260624,
+      "vertices": 16641
+    },
+    {
+      "id": "l1_2_2",
+      "sha256": "8adffb12af5ae4cec254ef48bad1112b106bdc997bfe4bb7e029d9346431a8d4",
+      "bytes": 3415848,
+      "vertices": 16641
+    }
+  ],
+  "sharedEdges": [
+    {
+      "tile": [
+        0,
+        0
+      ],
+      "neighbor": [
+        1,
+        0
+      ],
+      "identical_vertices": 129,
+      "position_delta": 0
+    },
+    {
+      "tile": [
+        0,
+        0
+      ],
+      "neighbor": [
+        0,
+        1
+      ],
+      "identical_vertices": 129,
+      "position_delta": 0
+    },
+    {
+      "tile": [
+        1,
+        0
+      ],
+      "neighbor": [
+        2,
+        0
+      ],
+      "identical_vertices": 129,
+      "position_delta": 0
+    },
+    {
+      "tile": [
+        1,
+        0
+      ],
+      "neighbor": [
+        1,
+        1
+      ],
+      "identical_vertices": 129,
+      "position_delta": 0
+    },
+    {
+      "tile": [
+        2,
+        0
+      ],
+      "neighbor": [
+        2,
+        1
+      ],
+      "identical_vertices": 129,
+      "position_delta": 0
+    },
+    {
+      "tile": [
+        0,
+        1
+      ],
+      "neighbor": [
+        1,
+        1
+      ],
+      "identical_vertices": 129,
+      "position_delta": 0
+    },
+    {
+      "tile": [
+        0,
+        1
+      ],
+      "neighbor": [
+        0,
+        2
+      ],
+      "identical_vertices": 129,
+      "position_delta": 0
+    },
+    {
+      "tile": [
+        1,
+        1
+      ],
+      "neighbor": [
+        2,
+        1
+      ],
+      "identical_vertices": 129,
+      "position_delta": 0
+    },
+    {
+      "tile": [
+        1,
+        1
+      ],
+      "neighbor": [
+        1,
+        2
+      ],
+      "identical_vertices": 129,
+      "position_delta": 0
+    },
+    {
+      "tile": [
+        2,
+        1
+      ],
+      "neighbor": [
+        2,
+        2
+      ],
+      "identical_vertices": 129,
+      "position_delta": 0
+    },
+    {
+      "tile": [
+        0,
+        2
+      ],
+      "neighbor": [
+        1,
+        2
+      ],
+      "identical_vertices": 129,
+      "position_delta": 0
+    },
+    {
+      "tile": [
+        1,
+        2
+      ],
+      "neighbor": [
+        2,
+        2
+      ],
+      "identical_vertices": 129,
+      "position_delta": 0
+    }
+  ],
+  "allPassed": true,
+  "sourceManifestSha256": "683ee1c59f376d27fa5537394ae4258339b33973bdb442794e3d94b408833028",
+  "note": "All adjacent GLBs share exact float32 vertex positions; one common root projection preserves equality."
+}

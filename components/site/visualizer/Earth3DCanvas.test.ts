@@ -52,6 +52,7 @@ beforeEach(() => {
   harness.effects = [];
   harness.refs = [];
   harness.setters = [];
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ type: 'FeatureCollection', features: [] }) }));
   vi.stubGlobal('window', { devicePixelRatio: 1, matchMedia: () => ({ matches: false }) });
   vi.stubGlobal('document', { hidden: false, addEventListener: vi.fn(), removeEventListener: vi.fn() });
   vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
@@ -173,6 +174,8 @@ describe('scene toolbar', () => {
     const pin = scene.children[4].children[0];
     expect(pin.getWorldPosition(new THREE.Vector3()).z).toBeCloseTo(-1.86, 2);
     expect(pin.visible).toBe(false);
+    const geography = scene.getObjectByName('EarthGeography')!;
+    expect(geography.matrix.elements).toEqual(scene.children[4].matrixWorld.elements);
     earth.rotation.y = 0;
     tick(performance.now());
     expect(pin.visible).toBe(true);
@@ -208,5 +211,26 @@ describe('scene toolbar', () => {
     expect(tooltip.hidden).toBe(true);
     expect(scene.children[4].children[0].visible).toBe(false);
     pinCleanup?.();
+  });
+});
+
+describe('country overlay lifecycle', () => {
+  it('toggles only visibility and disposes the existing geometry/material on unmount', async () => {
+    harness.ready = true;
+    mount(null, null, { bordersVisible: false });
+    await vi.waitFor(() => expect(harness.render).toHaveBeenCalled());
+    const scene = harness.render.mock.calls[0][0] as import('three').Scene;
+    const borders = scene.getObjectByName('CountryBorders') as import('three').LineSegments<import('three').BufferGeometry, import('three').LineBasicMaterial>;
+    const geometry = borders.geometry;
+    harness.effects[5]();
+    expect(borders.visible).toBe(false);
+    expect(borders.geometry).toBe(geometry);
+    expect(harness.render).toHaveBeenCalledOnce();
+    expect(harness.load).not.toHaveBeenCalled();
+    const geometryDispose = vi.spyOn(geometry, 'dispose');
+    const materialDispose = vi.spyOn(borders.material, 'dispose');
+    cleanup?.(); cleanup = undefined;
+    expect(geometryDispose).toHaveBeenCalledOnce();
+    expect(materialDispose).toHaveBeenCalledOnce();
   });
 });

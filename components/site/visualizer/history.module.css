@@ -148,3 +148,6 @@
   .root[data-nav-collapsed='true'] .leftPanel .navigation button > svg:last-child { display: none; }
   .root[data-nav-collapsed='true'] .collapseBar { padding: 10px 15px 0; }
 }
+
+.sceneControls .bordersToggle { width: auto; padding: 6px 9px; font-size: 11px; }
+.bordersToggle[aria-pressed="true"] { color: #e6d5a8; border-color: rgba(230,213,168,.5); }

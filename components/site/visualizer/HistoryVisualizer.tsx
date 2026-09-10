@@ -38,6 +38,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
   const [articleOpen, setArticleOpen] = useState(false);
   const [immersiveMode, setImmersiveMode] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const [bordersVisible, setBordersVisible] = useState(true);
   const [cameraCommand, setCameraCommand] = useState<CameraCommand | undefined>();
 
   const sectionList = useMemo(() => sectionEvents(events, section), [events, section]);
@@ -155,8 +156,9 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
     <div className={styles.workspace}>
       <aside className={styles.leftPanel}><div className={styles.collapseBar}><button type="button" aria-label={navCollapsed ? copy.expandNav : copy.collapseNav} title={navCollapsed ? copy.expandNav : copy.collapseNav} aria-expanded={!navCollapsed} onClick={() => setNavCollapsed((value) => !value)}>{navCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}</button></div>{navigation}</aside>
       <section ref={sceneRef} tabIndex={-1} className={styles.scene} aria-label={t('historyGlobeLabel')}>
-        <Earth3DCanvas baseEarthModelUrl={baseEarthModelUrl} selectedEvent={earthTarget} fill showHint={false} cameraCommand={cameraCommand} mapEvents={mapEvents} onSelectEvent={chooseEvent} />
+        <Earth3DCanvas baseEarthModelUrl={baseEarthModelUrl} selectedEvent={earthTarget} bordersVisible={bordersVisible} fill showHint={false} cameraCommand={cameraCommand} mapEvents={mapEvents} onSelectEvent={chooseEvent} />
         <div className={styles.sceneControls} role="group" aria-label={copy.scene}>
+          <button type="button" className={styles.bordersToggle} aria-pressed={bordersVisible} onClick={() => setBordersVisible((value) => !value)}>{copy.borders}</button>
           <button type="button" aria-label={copy.zoomIn} title={copy.zoomIn} onClick={() => zoom('in')}><Plus size={20} /></button>
           <button type="button" aria-label={copy.zoomOut} title={copy.zoomOut} onClick={() => zoom('out')}><Minus size={20} /></button>
           <button type="button" aria-label={copy.reset} title={copy.reset} onClick={resetCamera}><RotateCcw size={18} /></button>

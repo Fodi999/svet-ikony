@@ -1,11 +1,9 @@
 import * as THREE from 'three';
 import outlines from './land-outlines.json';
 
-// Greenwich faces +Z, east is +X, north is +Y, matching Earth3DCanvas.
+import { latLngToVector3 } from './geography';
 export function globePoint(latitude: number, longitude: number, radius = 1.8) {
-  return new THREE.Vector3().setFromSphericalCoords(
-    radius, Math.PI / 2 - THREE.MathUtils.degToRad(latitude), THREE.MathUtils.degToRad(longitude)
-  );
+  return latLngToVector3(latitude, longitude, radius);
 }
 
 /** Self-contained globe: no model upload, textures, or external requests needed. */

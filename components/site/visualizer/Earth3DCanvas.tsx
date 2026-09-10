@@ -19,6 +19,7 @@ type Props = {
   fill?: boolean;
   showHint?: boolean;
   cameraCommand?: CameraCommand;
+  bordersVisible?: boolean;
   mapEvents?: MapEvent[];
   onSelectEvent?: (id: string) => void;
 };
@@ -87,6 +88,10 @@ type SceneHandle = {
   earthGroup: import('three').Group;
   eventGroup: import('three').Group;
   pins: import('three').Group;
+  geography: import('three').Group;
+  borders: import('three').LineSegments;
+  debugPoints: import('three').Group;
+  latLngToVector3: typeof import('@/lib/visualizer/geography').latLngToVector3;
   earthSurface: import('three').Object3D | null;
   surfaceRestInverse: import('three').Matrix4 | null;
   layoutOverview: ((aspect: number) => void) | null;
@@ -110,7 +115,7 @@ type SceneHandle = {
  * render loop on `document.visibilitychange`, and disposing/reloading a
  * second (event-specific) GLB on selection change.
  */
-export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, showHint = true, cameraCommand, mapEvents = NO_MAP_EVENTS, onSelectEvent }: Props) {
+export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, showHint = true, cameraCommand, mapEvents = NO_MAP_EVENTS, onSelectEvent, bordersVisible = true }: Props) {
   const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -125,6 +130,10 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
   const eventLoading = !!selectedEvent?.modelUrl && loadedModelUrl !== selectedEvent.modelUrl && !eventError;
   const [sceneError, setSceneError] = useState(false);
   const [usingDefaultEarth, setUsingDefaultEarth] = useState(true);
+  const [geographicDebug, setGeographicDebug] = useState(false);
+  const diagnosticsRef = useRef<HTMLOutputElement | null>(null);
+  const bordersVisibleRef = useRef(bordersVisible);
+
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setWebglSupported(supportsWebGL2()));
@@ -160,12 +169,14 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
 
     void (async () => {
       const reducedMotion = prefersReducedMotion();
-      const [THREE, { GLTFLoader }, { OrbitControls }, { createDefaultEarth }, { prepareBaseScene, resizeSceneCamera, composeEarthOverview }] = await Promise.all([
+      const [THREE, { GLTFLoader }, { OrbitControls }, { createDefaultEarth }, { prepareBaseScene, resizeSceneCamera, composeEarthOverview }, { createCountryBorders, loadCountryBorders, fitCountryBorders, CALIBRATION_POINTS }, { latLngToVector3 }] = await Promise.all([
         import('three'),
         import('three/addons/loaders/GLTFLoader.js'),
         import('three/addons/controls/OrbitControls.js'),
         import('@/lib/visualizer/default-earth'),
-        import('@/lib/visualizer/base-scene')
+        import('@/lib/visualizer/base-scene'),
+        import('@/lib/visualizer/country-borders'),
+        import('@/lib/visualizer/geography')
       ]);
       if (disposed) return;
       setSceneError(false);
@@ -208,6 +219,37 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       // request never completes. Replace only after a custom model is ready.
       const defaultEarth = createDefaultEarth();
       earthGroup.add(defaultEarth);
+      // One shared rest-frame transform for geographical overlays. GLB geometry
+      // is untouched; the matrix below follows its actual animated Earth mesh.
+      const geography = new THREE.Group();
+      geography.name = 'EarthGeography';
+      geography.matrixAutoUpdate = false;
+      scene.add(geography);
+      const borders = createCountryBorders({ type: 'FeatureCollection', features: [] });
+      const debugPoints = new THREE.Group();
+      debugPoints.name = 'GeographicCalibrationDebug';
+      debugPoints.visible = false;
+      geography.add(borders, debugPoints);
+      fitCountryBorders(borders, defaultEarth.children[0]);
+      borders.visible = bordersVisibleRef.current;
+      void loadCountryBorders().then((data) => {
+        if (disposed) return;
+        const loaded = createCountryBorders(data);
+        borders.geometry.dispose();
+        borders.geometry = loaded.geometry;
+        loaded.material.dispose();
+      }).catch((error: unknown) => { if (!disposed) console.warn('Could not load country boundaries.', error); });
+      if (process.env.NODE_ENV === 'development') {
+        const geometry = new THREE.SphereGeometry(0.007, 10, 8);
+        for (const point of CALIBRATION_POINTS) {
+          const pin = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 0xffaa55 }));
+          pin.position.copy(latLngToVector3(point.latitude, point.longitude, 1.004));
+          pin.name = point.name;
+          debugPoints.add(pin);
+        }
+      }
+      debugPoints.position.copy(borders.position);
+      debugPoints.scale.setScalar(borders.userData.earthRadius);
       if (baseEarthModelUrl) {
         void new GLTFLoader().loadAsync(baseEarthModelUrl).then((gltf) => {
           if (disposed) {
@@ -222,6 +264,11 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
           handle.earthSurface = model.getObjectByName('Earth') ?? null;
           handle.earthSurface?.updateWorldMatrix(true, false);
           handle.surfaceRestInverse = handle.earthSurface?.matrixWorld.clone().invert() ?? null;
+          if (handle.earthSurface) {
+            fitCountryBorders(borders, handle.earthSurface);
+            debugPoints.position.copy(borders.position);
+            debugPoints.scale.setScalar(borders.userData.earthRadius);
+          }
           handle.authoredScene = !!authoredCamera;
           if (authoredCamera) {
             // An exported scene includes its intended composition; a sky dome
@@ -282,7 +329,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       });
       resizeObserver.observe(container);
 
-      const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, pins, earthSurface: null, surfaceRestInverse: null, layoutOverview: null, updateMarkerOverlay: null, transitioning: false, focused: false, controls, mixer: null, overviewCamera: camera.clone(), baseMixer: null, authoredScene: false };
+      const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, pins, geography, borders, debugPoints, latLngToVector3, earthSurface: null, surfaceRestInverse: null, layoutOverview: null, updateMarkerOverlay: null, transitioning: false, focused: false, controls, mixer: null, overviewCamera: camera.clone(), baseMixer: null, authoredScene: false };
       sceneRef.current = handle;
       renderer.render(scene, camera);
       setSceneReady(true);
@@ -290,6 +337,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       const pinPosition = new THREE.Vector3();
       const cameraToPin = new THREE.Vector3();
       let lastFrame = performance.now();
+      let metricStart = lastFrame, metricFrames = 0;
       function tick() {
         if (disposed || hidden) return;
         const now = performance.now();
@@ -308,6 +356,8 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
           pins.visible = earthGroup.visible;
           // Only the near hemisphere is clickable/visible (no pins through Earth).
           pins.updateMatrixWorld(true);
+          geography.matrix.copy(pins.matrixWorld);
+          geography.visible = earthGroup.visible;
           const orthographic = handle.camera instanceof THREE.OrthographicCamera;
           if (orthographic) handle.camera.getWorldDirection(cameraToPin).negate();
           for (const pin of pins.children) {
@@ -320,10 +370,14 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
           if (!handle.transitioning) controls.update();
           handle.updateMarkerOverlay?.();
           renderer.render(scene, handle.camera);
+          if (process.env.NODE_ENV === 'development' && ++metricFrames && now - metricStart >= 1000) {
+            if (diagnosticsRef.current) diagnosticsRef.current.textContent = `${Math.round(metricFrames * 1000 / (now - metricStart))} FPS · ${renderer.info.render.calls} draws · ${borders.geometry.getAttribute('position').count} border vertices · R ${Number(borders.userData.earthRadius).toFixed(5)} × 1.003`;
+            metricStart = now; metricFrames = 0;
+          }
         }
         rafId = requestAnimationFrame(tick);
       }
-      resumeRendering = () => { lastFrame = performance.now(); cancelAnimationFrame(rafId); rafId = requestAnimationFrame(tick); };
+      resumeRendering = () => { lastFrame = performance.now(); metricStart = lastFrame; metricFrames = 0; cancelAnimationFrame(rafId); rafId = requestAnimationFrame(tick); };
       if (!hidden) resumeRendering();
     })().catch((error: unknown) => {
       if (disposed) return;
@@ -387,7 +441,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       new handle.THREE.SphereGeometry(0.045, 16, 12),
       new handle.THREE.MeshBasicMaterial({ color: 0xffdd88 })
     );
-    marker.position.setFromSphericalCoords(1.85, Math.PI / 2 - latRad, lngRad);
+    marker.position.copy(handle.latLngToVector3(latitude ?? 0, longitude ?? 0, 1.85));
     if (hasCoordinates) handle.eventGroup.add(marker);
     else { marker.geometry.dispose(); marker.material.dispose(); }
 
@@ -495,7 +549,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     const material = new handle.THREE.MeshBasicMaterial({ color: 0xe9cb84 });
     for (const event of mapEvents) {
       const pin = new handle.THREE.Mesh(geometry, material);
-      pin.position.setFromSphericalCoords(1.86, Math.PI / 2 - event.latitude * Math.PI / 180, event.longitude * Math.PI / 180);
+      pin.position.copy(handle.latLngToVector3(event.latitude, event.longitude, 1.86));
       pin.userData.eventId = event.id;
       pin.userData.label = `${event.title}\n${event.date}`;
       handle.pins.add(pin);
@@ -575,6 +629,15 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     handle.controls.update();
   }, [cameraCommand, sceneReady]);
 
+  useEffect(() => {
+    bordersVisibleRef.current = bordersVisible;
+    if (sceneRef.current) sceneRef.current.borders.visible = bordersVisible;
+  }, [bordersVisible, sceneReady]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && sceneRef.current) sceneRef.current.debugPoints.visible = geographicDebug;
+  }, [geographicDebug, sceneReady]);
+
   if (!webglSupported) {
     return (
       <div className={`grid place-items-center bg-[#141511] p-8 text-center text-muted-foreground ${fill ? 'h-full min-h-0' : 'min-h-[360px] rounded-md border border-gold/28'}`}>
@@ -590,6 +653,10 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       {!sceneReady || sceneError ? (
         <div role="status" className="absolute inset-0 grid place-items-center p-8 text-center text-muted-foreground text-sm font-bold">{t(sceneError ? 'historySceneError' : 'historyLoadingScene')}</div>
       ) : null}
+      {process.env.NODE_ENV === 'development' ? <div className="absolute bottom-12 left-3 max-w-[80%] rounded bg-black/70 p-2 text-[10px] text-[#e6d5a8]">
+        <label><input type="checkbox" checked={geographicDebug} onChange={(event) => setGeographicDebug(event.target.checked)} /> Geographic Calibration Debug</label>
+        {geographicDebug ? <p>Equator / 0° · North Pole · Greenwich · Kyiv · Rome · Jerusalem</p> : null}<output className="block" ref={diagnosticsRef} />
+      </div> : null}
       {eventLoading || eventError ? <div role="status" className="absolute top-4 left-4 right-4 rounded-md bg-canvas/90 p-3 text-sm text-foreground">{t(eventError ? 'historyEventModelError' : 'historyEventModelLoading')}</div> : null}
       {showHint && sceneReady && !sceneError ? (
         <div className="pointer-events-none absolute bottom-4 left-4 right-4 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">

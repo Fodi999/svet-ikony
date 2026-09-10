@@ -72,3 +72,30 @@ describe('Earth-first overview composition', () => {
     expect(Array.from(sun.geometry.attributes.position.array)).toEqual(vertices);
   });
 });
+
+
+describe('standalone Earth geographic metadata', () => {
+  it.each([0, 0.4])('calibrates HQ without anchors, including initial yaw %s', (initialYaw) => {
+    const scene = new THREE.Group();
+    const earth = new THREE.Mesh(new THREE.SphereGeometry(1), new THREE.MeshStandardMaterial());
+    earth.name = 'Earth';
+    earth.userData.gltf_axes = 'north +Y; Greenwich +X; longitude +90 -Z';
+    earth.rotation.y = initialYaw;
+    scene.add(earth);
+    const gltf = { scene, cameras: [], animations: [] } as unknown as GLTF;
+    const { model, camera } = prepareBaseScene(gltf);
+    expect(camera).toBeNull();
+    expect(model.rotation.y).toBeCloseTo(-Math.PI / 2 - initialYaw);
+    const greenwich = earth.localToWorld(new THREE.Vector3(1, 0, 0)).normalize();
+    const east = earth.localToWorld(new THREE.Vector3(0, 0, -1)).normalize();
+    const north = earth.localToWorld(new THREE.Vector3(0, 1, 0)).normalize();
+    expect(greenwich.distanceTo(new THREE.Vector3(0, 0, 1))).toBeLessThan(1e-6);
+    expect(east.distanceTo(new THREE.Vector3(1, 0, 0))).toBeLessThan(1e-6);
+    expect(north.distanceTo(new THREE.Vector3(0, 1, 0))).toBeLessThan(1e-6);
+  });
+  it('does not guess a geographic offset for an uncalibrated generic upload', () => {
+    const gltf = asset();
+    gltf.scene.getObjectByName('Earth')!.clear();
+    expect(prepareBaseScene(gltf).model.rotation.y).toBe(0);
+  });
+});

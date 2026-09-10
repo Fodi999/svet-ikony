@@ -4,6 +4,6 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const source = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const round = (coordinates) => coordinates.map((value) => Array.isArray(value) ? round(value) : Math.round(value * 1000) / 1000);
 const data = { type: 'FeatureCollection', features: source.features.map(({ geometry, properties }) => ({
-  type: 'Feature', properties: { name: properties.ADMIN }, geometry: { type: geometry.type, coordinates: round(geometry.coordinates) },
+  type: 'Feature', properties: { name: properties.ADMIN, code: [properties.ISO_A2_EH, properties.ISO_A3_EH].find(code => code && code !== '-99') ?? null }, geometry: { type: geometry.type, coordinates: round(geometry.coordinates) },
 })) };
 writeFileSync(new URL('../public/data/country-borders-50m.geojson', import.meta.url), JSON.stringify(data));

@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Hreflang } from './Hreflang';
 
 /**
@@ -75,5 +75,17 @@ describe('Hreflang (PHASE MULTILINGUAL-1 / P0.5)', () => {
     const html = renderToStaticMarkup(createElement(Hreflang, { locale: 'ru', languages: { ru: '/saints/foo-ru' } }));
     expect(html).toContain('hreflang="ru"');
     expect(html).not.toContain('x-default');
+  });
+});
+
+
+describe('locale navigation development compatibility', () => {
+  it.each([['development','hrefLang'],['production','hreflang']] as const)('keeps all alternate URLs in %s using the appropriate React/HTML attribute', (mode,attribute) => {
+    vi.stubEnv('NODE_ENV', mode);
+    try {
+      const html = renderToStaticMarkup(createElement(Hreflang, {locale:'en',path:'/pravoslavna-istoriya'}));
+      for (const locale of ['uk','ru','en','x-default']) expect(html).toContain(`${attribute}="${locale}"`);
+      for (const locale of ['uk','ru','en']) expect(html).toContain(`href="https://svetikony.com/${locale}/pravoslavna-istoriya"`);
+    } finally { vi.unstubAllEnvs(); }
   });
 });

@@ -4,12 +4,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChurchVisualizerEventDto } from '@/lib/types';
-const harness = vi.hoisted(() => ({ target: null as unknown, mobile: false }));
+const harness = vi.hoisted(() => ({ target: null as unknown, country: null as string | null, selectCountry: (() => {}) as (code: string) => void, mobile: false, locale: 'uk' as 'uk'|'ru'|'en' }));
 vi.mock('@/components/site/LanguageProvider', async () => {
   const { translate } = await import('@/lib/i18n');
-  return { useI18n: () => ({ locale: 'uk', t: (key: import('@/lib/i18n').TranslationKey) => translate('uk', key) }) };
+  return { useI18n: () => ({ locale: harness.locale, t: (key: import('@/lib/i18n').TranslationKey) => translate(harness.locale, key) }) };
 });
-vi.mock('./Earth3DCanvas', () => ({ Earth3DCanvas: (props: { selectedEvent: unknown }) => { harness.target = props.selectedEvent; return React.createElement('canvas'); } }));
+vi.mock('./Earth3DCanvas', () => ({ Earth3DCanvas: (props: { selectedEvent: unknown; selectedCountryCode: string | null; onSelectCountry: (code: string) => void }) => { harness.target = props.selectedEvent; harness.country = props.selectedCountryCode; harness.selectCountry = props.onSelectCountry; return React.createElement('canvas'); } }));
 import { HistoryVisualizer } from './HistoryVisualizer';
 
 function event(id: string, overrides: Partial<ChurchVisualizerEventDto> = {}): ChurchVisualizerEventDto {
@@ -19,7 +19,7 @@ const events = [event('a'), event('b', { eventType: 'biblical', era: 'biblical_o
 let root: Root;
 let container: HTMLDivElement;
 beforeEach(() => {
-  harness.mobile = false;
+  harness.mobile = false; harness.locale = 'uk';
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} unobserve() {} });
   window.matchMedia = vi.fn(() => ({ matches: harness.mobile, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => true, media: '', onchange: null }));
@@ -32,6 +32,65 @@ function button(label: string) { const value = [...container.querySelectorAll('b
 async function click(element: Element) { await act(async () => { element.dispatchEvent(new MouseEvent('click', { bubbles: true })); }); }
 
 describe('history explorer', () => {
+  it.each([
+    ['UA','Україна','Украина','Ukraine'],['PL','Польща','Польша','Poland'],
+    ['IT','Італія','Италия','Italy'],['FR','Франція','Франция','France'],
+    ['NE','Нігер','Нигер','Niger'],['EG','Єгипет','Египет','Egypt'],
+    ['IL','Ізраїль','Израиль','Israel'],['SA','Саудівська Аравія','Саудовская Аравия','Saudi Arabia'],
+    ['IN','Індія','Индия','India']
+  ])('preserves %s selection while switching localized panel text', async (code,uk,ru,en) => {
+    await mount(); await act(async () => harness.selectCountry(code));
+    for (const [locale,name] of [['uk',uk],['ru',ru],['en',en]] as const) {
+      harness.locale = locale; await mount();
+      expect(harness.country).toBe(code); expect(harness.target).toBeNull();
+      expect(container.querySelector('[data-country-code] h2')?.textContent).toBe(name);
+      expect(container.querySelectorAll('[data-country-code] button:disabled')).toHaveLength(3);
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('localizes capital, continent and controls without clearing country selection', async () => {
+    await mount(); await act(async () => harness.selectCountry('UA'));
+    for (const [locale,capital,continent,reset,borders,fullscreen] of [
+      ['uk','Київ','Європа','Початковий вигляд','Кордони','На весь екран'],
+      ['ru','Киев','Европа','Начальный вид','Границы','На весь экран'],
+      ['en','Kyiv','Europe','Reset camera','Borders','Fullscreen']
+    ] as const) {
+      harness.locale = locale; await mount();
+      const panel = container.querySelector('[data-country-code="UA"]')!;
+      expect(panel.querySelector('dd')?.textContent).toBe(capital);
+      expect(panel.textContent).toContain(continent);
+      expect(button(reset)).toBeDefined(); expect(button(fullscreen)).toBeDefined();
+      expect([...container.querySelectorAll('button')].some(el=>el.textContent===borders)).toBe(true);
+    }
+  });
+  it('selects real countries, switches from events, and resets without content requests', async () => {
+    await mount();
+    await act(async () => harness.selectCountry('UA'));
+    expect(harness.country).toBe('UA');
+    expect(button('Закрити країну')).toBeDefined();
+    expect(container.querySelector('[data-country-code="UA"]')?.textContent).toContain('Київ');
+    expect(container.querySelector('[aria-label="Історія: Україна"]')?.hasAttribute('disabled')).toBe(true);
+    expect(fetch).not.toHaveBeenCalled();
+    await click(button('313 н. е. — Подія a'));
+    expect(harness.country).toBeNull();
+    await act(async () => harness.selectCountry('IT'));
+    expect(harness.target).toBeNull();
+    expect(container.querySelector('[data-country-code="IT"]')?.textContent).toContain('Рим');
+    await click(button('Початковий вигляд'));
+    expect(harness.country).toBeNull();
+    expect(container.textContent).toContain('Оберіть країну на глобусі');
+  });
+  it('opens the existing mobile sheet for a country and closes with Escape', async () => {
+    harness.mobile = true; await mount();
+    await act(async () => harness.selectCountry('UA'));
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Україна');
+    expect(dialog.textContent).toContain('Київ');
+    expect(dialog.querySelector('[aria-label="Закрити країну"]')).toBeNull();
+    await act(async () => { dialog.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); });
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(harness.country).toBe('UA');
+  });
   it('server-renders headings and real published event metadata without loading GLBs', () => {
     const html = renderToString(React.createElement(HistoryVisualizer, { events, baseEarthModelUrl: null }));
     expect(html).toContain('<h1>Православна історія</h1>');

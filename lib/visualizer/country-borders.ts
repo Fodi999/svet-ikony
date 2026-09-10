@@ -3,7 +3,7 @@ import { latLngToVector3 } from './geography';
 
 type Position = [number, number];
 type Polygon = Position[][];
-export type CountryData = { type: 'FeatureCollection'; features: { properties?: { name: string }; geometry: { type: 'Polygon'; coordinates: Polygon } | { type: 'MultiPolygon'; coordinates: Polygon[] } }[] };
+export type CountryData = { type: 'FeatureCollection'; features: { properties?: { name: string; code?: string | null }; geometry: { type: 'Polygon'; coordinates: Polygon } | { type: 'MultiPolygon'; coordinates: Polygon[] } }[] };
 export const BORDER_RADIUS_FACTOR = 1.003;
 let dataset: Promise<CountryData> | undefined;
 export function loadCountryBorders(): Promise<CountryData> {

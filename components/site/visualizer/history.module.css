@@ -81,7 +81,7 @@
 .backdrop { background: rgba(0,0,0,.6); backdrop-filter: blur(3px); }
 .drawer, .sheet, .article { color: #f6f0e4; background: #141811; border: 1px solid #655333; max-height: 90dvh; overflow-y: auto; box-shadow: 0 20px 80px #0008; }
 .drawer { top: 0; bottom: 0; left: 0; transform: none; width: min(300px,88vw); max-height: 100dvh; padding-top: env(safe-area-inset-top); }
-.sheet { top: auto; bottom: 0; left: 50%; transform: translateX(-50%); width: min(520px,100%); max-height: 66dvh; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+.sheet { top: auto; bottom: 0; left: 50%; translate: none; transform: translateX(-50%); width: min(520px,100%); max-height: 66dvh; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
 .article { width: min(720px,calc(100% - 24px)); border-radius: 10px; padding: 22px; }
 .dialogHeading { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 14px 18px; border-bottom: 1px solid #45412c; }
 .dialogHeading h2 { margin: 0; font: 21px Georgia,serif; }
@@ -94,6 +94,7 @@
   .panelToggle { display: inline-flex; }
   .heading { display: block; }
   .heading h1 { margin-top: 3px; }
+  .heading p { display: none; }
   .root { grid-template-rows: 62px minmax(0,1fr) var(--timeline-height,170px); }
 }
 @media (max-width: 1040px) { .root { --history-header-height: 135px; } }
@@ -151,3 +152,36 @@
 
 .sceneControls .bordersToggle { width: auto; padding: 6px 9px; font-size: 11px; }
 .bordersToggle[aria-pressed="true"] { color: #e6d5a8; border-color: rgba(230,213,168,.5); }
+
+.countryPanel { padding: 24px; color: #efe5d0; }
+.countryFlag { display:flex;align-items:center;justify-content:space-between;font-size:32px;margin-bottom:14px; }
+.countryFlag button { width:30px;min-height:30px;background:transparent; }
+.countryPanel h2 { font:30px/1.2 Georgia,serif;margin:0 0 8px;overflow-wrap:anywhere; }
+.countryRegion { font-size:13px;color:#b8aa8c;margin:0 0 22px; }
+.countryPanel dl { border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;margin:0 0 20px; }
+.countryPanel dt { color:#a99c80;font-size:11px;margin-bottom:6px; }
+.countryPanel dd { margin:0;font:19px/1.4 Georgia,serif; }
+.countryActions { display:grid;gap:9px; }
+.countryActions button { display:flex;justify-content:space-between;align-items:center;min-height:42px;padding:10px 13px;border:1px solid rgba(205,164,90,.2);border-radius:5px;background:rgba(205,164,90,.025);color:#c6b793;font-size:12px; }
+.countryActions button:disabled { color:#a99d84;cursor:default; }
+.countrySelector { display:grid;gap:8px;border-top:1px solid var(--line);margin-top:22px;padding-top:18px;font-size:10px;color:#b8aa8c; }
+.countrySelector select { width:100%;min-width:0;background:#171910;border:1px solid var(--line);border-radius:5px;padding:9px 7px;color:#d8cba9;font-size:12px; }
+.countryPrompt { font:18px/1.6 Georgia,serif;color:#c6bda7;margin:6px 0 22px; }
+@media (max-width:767px) { .countryPanel {padding:16px 20px;} .countryFlag {font-size:28px;margin-bottom:8px;} .countryPanel h2{font-size:26px;} .countryRegion{margin-bottom:14px;} .countryPanel dl{padding:12px 0;margin-bottom:14px;} .countryActions{grid-template-columns:repeat(3,1fr);gap:6px;} .countryActions button{font-size:11px;padding:8px;} .sheet:has(.countryPanel){max-height:54dvh;} }
+
+.countryEmpty { color:#b4aa95;font-size:12px;line-height:1.6;margin:16px 0 0; }
+.countryTooltip {
+  position:absolute;z-index:10;pointer-events:none;box-sizing:border-box;
+  width:max-content;max-width:min(240px,calc(100% - 16px));
+  padding:10px 13px;border:1px solid rgba(205,164,90,.46);border-radius:7px;
+  background:rgba(15,18,14,.96);color:#eee4ce;box-shadow:0 5px 20px #0004;
+  font-size:12px;line-height:1.45;overflow-wrap:anywhere;
+}
+.countryTooltip strong { display:block;font-weight:500;font-size:14px; }
+.countryTooltip span { display:block;margin-top:3px;font-size:11px;color:#bcb096; }
+.countryTooltip::after {
+  content:'';position:absolute;left:var(--country-tooltip-anchor,50%);
+  width:6px;height:6px;background:#0f120e;border-right:1px solid rgba(205,164,90,.46);
+  border-bottom:1px solid rgba(205,164,90,.46);transform:translateX(-50%) rotate(45deg);bottom:-4px;
+}
+.countryTooltip[data-placement='below']::after { bottom:auto;top:-4px;transform:translateX(-50%) rotate(225deg); }

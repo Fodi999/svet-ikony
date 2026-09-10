@@ -18,6 +18,14 @@ export function prepareBaseScene(gltf: GLTF) {
     const point = anchor.getWorldPosition(new THREE.Vector3()).sub(bounds.getCenter(new THREE.Vector3()));
     yaw = THREE.MathUtils.degToRad(anchor.userData.longitude) - Math.atan2(point.x, point.z);
   }
+  else if (typeof earth.userData.gltf_axes === 'string'
+    && earth.userData.gltf_axes.replace(/\s+/g, '').toLowerCase() === 'north+y;greenwich+x;longitude+90-z') {
+    // Standalone HQ/optimized exports omit the old marker nodes but explicitly
+    // declare their geographic frame in glTF extras. Rotate that entire frame
+    // into the viewer convention; do not guess from the filename or material.
+    const greenwich = new THREE.Vector3(1, 0, 0).transformDirection(earth.matrixWorld);
+    yaw = -Math.atan2(greenwich.x, greenwich.z);
+  }
   const model = new THREE.Group();
   const offset = new THREE.Group();
   offset.position.copy(bounds.getCenter(new THREE.Vector3())).negate();

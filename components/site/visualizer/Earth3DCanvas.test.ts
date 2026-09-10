@@ -103,6 +103,7 @@ describe('history scene startup', () => {
     await vi.waitFor(() => expect(console.warn).toHaveBeenCalled());
     expect(harness.render).toHaveBeenCalled();
     expect(harness.setters[5]).toHaveBeenLastCalledWith(true);
+    expect(harness.setters[7]).toHaveBeenLastCalledWith(true);
   });
 
   it('ends the loading state with an error message if GPU initialization fails', async () => {
@@ -232,5 +233,51 @@ describe('country overlay lifecycle', () => {
     cleanup?.(); cleanup = undefined;
     expect(geometryDispose).toHaveBeenCalledOnce();
     expect(materialDispose).toHaveBeenCalledOnce();
+  });
+});
+
+
+describe('manual Earth navigation', () => {
+  it.each([false, true])('does not rotate the globe or clouds while idle (GLB: %s)', async (withGlb) => {
+    const THREE = await import('three');
+    const asset = new THREE.Group();
+    const earth = new THREE.Mesh(new THREE.SphereGeometry(1), new THREE.MeshBasicMaterial());
+    earth.name = 'Earth';
+    const clouds = new THREE.Mesh(new THREE.SphereGeometry(1.005), new THREE.MeshBasicMaterial());
+    clouds.name = 'Cloud_Layer';
+    asset.add(earth, clouds);
+    const clip = new THREE.AnimationClip('Earth_Rotation_20s', 20, [
+      new THREE.NumberKeyframeTrack('Earth.rotation[y]', [0, 20], [0, Math.PI * 2]),
+      new THREE.NumberKeyframeTrack('Cloud_Layer.rotation[y]', [0, 20], [0, Math.PI * 2]),
+    ]);
+    harness.load.mockResolvedValue({ scene: asset, cameras: [], animations: [clip] });
+    mount(withGlb ? '/earth-hq.glb' : null);
+    await vi.waitFor(() => expect(harness.render).toHaveBeenCalled());
+    if (withGlb) await vi.waitFor(() => expect(harness.setters[5]).toHaveBeenLastCalledWith(false));
+    const scene = harness.render.mock.calls[0][0] as import('three').Scene;
+    const earthGroup = scene.children[2];
+    const before = [earthGroup.quaternion.clone(), earth.quaternion.clone(), clouds.quaternion.clone()];
+    const tick = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
+    const start = performance.now();
+    const now = vi.spyOn(performance, 'now');
+    for (let frame = 1; frame <= 120; frame++) {
+      now.mockReturnValue(start + frame * 16.67);
+      tick(start + frame * 16.67);
+    }
+    expect(earthGroup.quaternion.equals(before[0])).toBe(true);
+    expect(earth.quaternion.equals(before[1])).toBe(true);
+    expect(clouds.quaternion.equals(before[2])).toBe(true);
+  });
+});
+
+describe('debug visibility', () => {
+  it.each([['development',true],['production',false]] as const)('limits geographic diagnostics in %s', (mode,visible) => {
+    vi.stubEnv('NODE_ENV', mode);
+    try {
+      const tree = Earth3DCanvas({baseEarthModelUrl:null,selectedEvent:null});
+      const markup = JSON.stringify(tree);
+      expect(markup.includes('Geographic Calibration Debug')).toBe(visible);
+      expect((markup.match(/"type":"output"/g) ?? []).length).toBe(visible ? 2 : 0);
+    } finally { vi.unstubAllEnvs(); }
   });
 });

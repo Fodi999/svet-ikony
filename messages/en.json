@@ -119,6 +119,8 @@
   "historyEventModelLoading": "Loading the event model…",
   "historyEventModelError": "Could not load the event model. You can still read the description and explore the globe.",
   "historyExactDating": "Exact date",
+  "historyBaseModelLoading": "Loading the Earth model…",
+  "historyBaseModelFailed": "The Earth model could not load. Showing the fallback globe.",
   "historyLoadingScene": "Loading the 3D scene…",
   "historyWebglUnavailable": "Your browser does not support 3D graphics (WebGL2). You can browse the event list below instead.",
   "historyChooseEra": "Choose an era",

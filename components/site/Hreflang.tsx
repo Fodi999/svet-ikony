@@ -48,16 +48,20 @@ export function Hreflang({
   const alternates = resolveLocaleAlternates({ locale, path, languages });
   if (!alternates.length) return null;
   const defaultAlternate = alternates.find((alt) => alt.locale === defaultLocale);
+  // React's development client warns on the lowercase prop during locale
+  // navigation. Use its canonical prop there; retain the production SSR
+  // lowercase-attribute workaround documented above for existing SEO tooling.
+  const languageAttribute = (value: string) => process.env.NODE_ENV === 'development'
+    ? { hrefLang: value }
+    : { hreflang: value };
 
   return (
     <>
       {alternates.map((alt) => (
-        // eslint-disable-next-line react/no-unknown-property -- literal
-        // lowercase `hreflang` is deliberate, see doc comment above.
-        <link key={alt.locale} rel="alternate" href={alt.url} {...{ hreflang: alt.locale }} />
+        <link key={alt.locale} rel="alternate" href={alt.url} {...languageAttribute(alt.locale)} />
       ))}
       {includeXDefault && defaultAlternate ? (
-        <link rel="alternate" href={defaultAlternate.url} {...{ hreflang: 'x-default' }} />
+        <link rel="alternate" href={defaultAlternate.url} {...languageAttribute('x-default')} />
       ) : null}
     </>
   );

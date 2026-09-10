@@ -11,6 +11,9 @@ import { sectionEvents, timelineEra, TIMELINE_ERAS, type HistorySection } from '
 import { explorerMessages } from '@/lib/visualizer/explorer-messages';
 import { Earth3DCanvas, type SelectedEventTarget, type CameraCommand } from './Earth3DCanvas';
 import styles from './history.module.css';
+import { CountryPanel } from './CountryPanel';
+import { countryMetadata } from '@/lib/visualizer/countries';
+import { countryMessages } from '@/lib/visualizer/country-messages';
 
 const datingLabels = { exact: 'historyExactDating', approximate: 'historyApproximateDating', traditional: 'historyTraditionalDating', period: 'historyPeriodDating', unknown: 'historyUnknownDating' } as const;
 
@@ -22,6 +25,9 @@ const sections = [
 export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: ChurchVisualizerEventDto[]; baseEarthModelUrl: string | null }) {
   const { t, locale } = useI18n();
   const copy = explorerMessages[locale];
+  const countryCopy = countryMessages[locale];
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null);
+  const selectedCountry = selectedCountryCode ? countryMetadata[selectedCountryCode] ?? null : null;
   const rootRef = useRef<HTMLElement>(null);
   const sceneRef = useRef<HTMLElement>(null);
   const timelineRef = useRef<HTMLElement>(null);
@@ -107,15 +113,20 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
   }
 
   const chooseEvent = useCallback((id: string) => {
+    setSelectedCountryCode(null);
     setSelectedEventId(id);
     setModel(null);
     if (window.matchMedia('(max-width: 1199px)').matches) setEventOpen(true);
   }, []);
   function chooseSection(value: HistorySection) {
     setSection(value); setEra('all'); setCentury('all'); setYear('all');
-    setSelectedEventId(null); setDrawerOpen(false);
+    setSelectedEventId(null); setSelectedCountryCode(null); setDrawerOpen(false);
   }
-  function resetCamera() { setSelectedEventId(null); setModel(null); setCameraCommand((previous) => ({ action: 'reset', sequence: (previous?.sequence ?? 0) + 1 })); }
+  function resetCamera() { setSelectedCountryCode(null); setEventOpen(false); setSelectedEventId(null); setModel(null); setCameraCommand((previous) => ({ action: 'reset', sequence: (previous?.sequence ?? 0) + 1 })); }
+  const chooseCountry = useCallback((code: string) => {
+    setSelectedCountryCode(code); setSelectedEventId(null); setModel(null);
+    if (window.matchMedia('(max-width: 1199px)').matches) setEventOpen(true);
+  }, []);
   function zoom(action: 'in' | 'out') { setCameraCommand((previous) => ({ action, sequence: (previous?.sequence ?? 0) + 1 })); }
   function focusTimeline() { setEventOpen(false); timelineRef.current?.focus(); }
 
@@ -142,11 +153,11 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
     </div>
   </div> : <div className={styles.emptyEvent}><p>{copy.chooseCompact}</p></div>;
 
-  return <main ref={rootRef} data-history-app data-immersive={immersiveMode} data-expanded={expanded} data-nav-collapsed={navCollapsed} data-empty-timeline={visibleEvents.length === 0} data-event-selected={!!selectedEvent} className={styles.root} aria-label={t('historyPageTitle')}>
+  return <main ref={rootRef} data-history-app data-immersive={immersiveMode} data-expanded={expanded} data-nav-collapsed={navCollapsed} data-empty-timeline={visibleEvents.length === 0} data-event-selected={!!selectedEvent || !!selectedCountry} className={styles.root} aria-label={t('historyPageTitle')}>
     <div className={styles.topbar}>
       <button className={`${styles.iconButton} ${styles.panelToggle}`} type="button" aria-label={copy.menu} aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}><Menu size={20} /></button>
       <div className={styles.heading}><span className={styles.eyebrow}>{t('historyPageEyebrow')}</span><h1>{t('historyPageTitle')}</h1><p>{t('historyPageDescription')}</p></div>
-      <button className={`${styles.iconButton} ${styles.panelToggle}`} type="button" aria-label={copy.eventPanel} aria-expanded={eventOpen} onClick={() => setEventOpen(true)}><BookOpen size={19} /></button>
+      <button className={`${styles.iconButton} ${styles.panelToggle}`} type="button" aria-label={selectedEvent ? copy.eventPanel : countryCopy.country} aria-expanded={eventOpen} onClick={() => setEventOpen(true)}><BookOpen size={19} /></button>
       <button ref={fullscreenButtonRef} className={styles.fullscreenButton} type="button" aria-label={expanded ? copy.exit : copy.fullscreen} aria-pressed={expanded} onClick={() => void toggleFullscreen()}>
         {expanded ? <X size={19} /> : <Maximize size={19} />}<span>{expanded ? copy.exit : copy.fullscreen}</span>
       </button>
@@ -156,16 +167,16 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
     <div className={styles.workspace}>
       <aside className={styles.leftPanel}><div className={styles.collapseBar}><button type="button" aria-label={navCollapsed ? copy.expandNav : copy.collapseNav} title={navCollapsed ? copy.expandNav : copy.collapseNav} aria-expanded={!navCollapsed} onClick={() => setNavCollapsed((value) => !value)}>{navCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}</button></div>{navigation}</aside>
       <section ref={sceneRef} tabIndex={-1} className={styles.scene} aria-label={t('historyGlobeLabel')}>
-        <Earth3DCanvas baseEarthModelUrl={baseEarthModelUrl} selectedEvent={earthTarget} bordersVisible={bordersVisible} fill showHint={false} cameraCommand={cameraCommand} mapEvents={mapEvents} onSelectEvent={chooseEvent} />
+        <Earth3DCanvas baseEarthModelUrl={baseEarthModelUrl} selectedEvent={earthTarget} bordersVisible={bordersVisible} fill showHint={false} cameraCommand={cameraCommand} mapEvents={mapEvents} onSelectEvent={chooseEvent} selectedCountryCode={selectedCountryCode} onSelectCountry={chooseCountry} />
         <div className={styles.sceneControls} role="group" aria-label={copy.scene}>
           <button type="button" className={styles.bordersToggle} aria-pressed={bordersVisible} onClick={() => setBordersVisible((value) => !value)}>{copy.borders}</button>
           <button type="button" aria-label={copy.zoomIn} title={copy.zoomIn} onClick={() => zoom('in')}><Plus size={20} /></button>
           <button type="button" aria-label={copy.zoomOut} title={copy.zoomOut} onClick={() => zoom('out')}><Minus size={20} /></button>
           <button type="button" aria-label={copy.reset} title={copy.reset} onClick={resetCamera}><RotateCcw size={18} /></button>
         </div>
-        <p className={styles.sceneHint}>{copy.hint}</p>
+        <p className={styles.sceneHint}>{countryCopy.hint}</p>
       </section>
-      <aside className={styles.rightPanel} aria-label={copy.event}>{selectedEvent ? <div className={styles.panelHeading}>{copy.event}<BookOpen size={15} aria-hidden="true" /></div> : null}{eventContent}</aside>
+      <aside className={styles.rightPanel} aria-label={selectedEvent ? copy.event : countryCopy.country}>{selectedEvent ? <div className={styles.panelHeading}>{copy.event}<BookOpen size={15} aria-hidden="true" /></div> : null}{selectedEvent ? eventContent : <CountryPanel country={selectedCountry} onSelect={chooseCountry} onClose={resetCamera}/>}</aside>
     </div>
 
     <section ref={timelineRef} className={styles.timeline} aria-label={copy.timeline} tabIndex={-1}>
@@ -188,11 +199,11 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
       </div>
     </section>
 
-    <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}><DialogPortal container={rootRef}><DialogOverlay className={styles.backdrop} /><DialogPopup className={styles.drawer}>
+    <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}><DialogPortal container={rootRef}><DialogOverlay className={styles.backdrop} /><DialogPopup className={`${styles.drawer} translate-x-0 translate-y-0`}>
       <div className={styles.dialogHeading}><DialogTitle>{copy.navigation}</DialogTitle><DialogClose aria-label={copy.close} className={styles.iconButton}><X size={20} /></DialogClose></div>{navigation}
     </DialogPopup></DialogPortal></Dialog>
-    <Dialog open={eventOpen} onOpenChange={setEventOpen}><DialogPortal container={rootRef}><DialogOverlay className={styles.backdrop} /><DialogPopup className={styles.sheet}>
-      <div className={styles.dialogHeading}><DialogTitle>{copy.event}</DialogTitle><DialogClose aria-label={copy.close} className={styles.iconButton}><X size={20} /></DialogClose></div>{eventContent}
+    <Dialog open={eventOpen} onOpenChange={setEventOpen}><DialogPortal container={rootRef}><DialogOverlay className={styles.backdrop} /><DialogPopup className={`${styles.sheet} translate-x-0 translate-y-0`}>
+      <div className={styles.dialogHeading}><DialogTitle>{selectedEvent ? copy.event : countryCopy.country}</DialogTitle><DialogClose aria-label={copy.close} className={styles.iconButton}><X size={20} /></DialogClose></div>{selectedEvent ? eventContent : <CountryPanel country={selectedCountry} onSelect={chooseCountry} onClose={resetCamera} showClose={false}/>}
     </DialogPopup></DialogPortal></Dialog>
     <Dialog open={articleOpen} onOpenChange={setArticleOpen}><DialogPortal container={rootRef}><DialogOverlay className={styles.backdrop} /><DialogPopup className={styles.article}>
       <div className={styles.dialogHeading}><DialogTitle>{selectedEvent?.title ?? copy.read}</DialogTitle><DialogClose aria-label={copy.close} className={styles.iconButton}><X size={20} /></DialogClose></div>

@@ -119,6 +119,8 @@
   "historyEventModelLoading": "Завантаження моделі події…",
   "historyEventModelError": "Не вдалося завантажити модель події. Опис і глобус залишаються доступними.",
   "historyExactDating": "Точна дата",
+  "historyBaseModelLoading": "Завантаження моделі Землі…",
+  "historyBaseModelFailed": "Модель Землі не завантажилась. Показано резервний глобус.",
   "historyLoadingScene": "Завантаження 3D-сцени…",
   "historyWebglUnavailable": "Ваш браузер не підтримує 3D-графіку (WebGL2). Ви можете переглянути список подій нижче.",
   "historyChooseEra": "Оберіть епоху",

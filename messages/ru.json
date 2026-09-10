@@ -119,6 +119,8 @@
   "historyEventModelLoading": "Загрузка модели события…",
   "historyEventModelError": "Не удалось загрузить модель события. Описание и глобус остаются доступными.",
   "historyExactDating": "Точная дата",
+  "historyBaseModelLoading": "Загрузка модели Земли…",
+  "historyBaseModelFailed": "Модель Земли не загрузилась. Показан резервный глобус.",
   "historyLoadingScene": "Загрузка 3D-сцены…",
   "historyWebglUnavailable": "Ваш браузер не поддерживает 3D-графику (WebGL2). Вы можете посмотреть список событий ниже.",
   "historyChooseEra": "Выберите эпоху",

@@ -69,10 +69,11 @@ export function LanguageSwitch() {
       {locales.map((item) => (
         <button
           key={item}
-          className={`min-w-[38px] h-8 border-0 rounded-full px-2.5 bg-transparent text-[11px] font-black tracking-[.08em] cursor-pointer transition-colors duration-[180ms] ease-brand hover:text-foreground max-[640px]:min-w-[30px] max-[640px]:h-[30px] max-[640px]:px-1.5 max-[430px]:min-w-[28px] max-[430px]:h-7 max-[430px]:px-[5px] max-[430px]:text-[10px] ${
-            locale === item ? 'bg-gold-light text-canvas' : 'text-muted-foreground'
+          className={`min-w-[38px] h-8 border-0 rounded-full px-2.5 text-[11px] font-black tracking-[.08em] cursor-pointer transition-colors duration-[180ms] ease-brand max-[640px]:min-w-[30px] max-[640px]:h-[30px] max-[640px]:px-1.5 max-[430px]:min-w-[28px] max-[430px]:h-7 max-[430px]:px-[5px] max-[430px]:text-[10px] ${
+            locale === item ? 'bg-gold-light text-canvas hover:text-canvas' : 'bg-transparent text-muted-foreground hover:text-foreground'
           }`}
           type="button"
+          aria-pressed={locale === item}
           onClick={() => setLocale(item)}
         >
           {localeNames[item]}

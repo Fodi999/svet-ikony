@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { countryMessages } from '@/lib/visualizer/country-messages';
 import { useI18n } from '@/components/site/LanguageProvider';
+import styles from './history.module.css';
 
 export type SelectedEventTarget = {
   latitude: number | null;
@@ -19,6 +21,8 @@ type Props = {
   fill?: boolean;
   showHint?: boolean;
   cameraCommand?: CameraCommand;
+  selectedCountryCode?: string | null;
+  onSelectCountry?: (code: string) => void;
   bordersVisible?: boolean;
   mapEvents?: MapEvent[];
   onSelectEvent?: (id: string) => void;
@@ -83,12 +87,11 @@ type SceneHandle = {
   THREE: typeof import('three');
   camera: import('@/lib/visualizer/base-scene').SceneCamera;
   overviewCamera: import('@/lib/visualizer/base-scene').SceneCamera;
-  baseMixer: import('three').AnimationMixer | null;
-  authoredScene: boolean;
   earthGroup: import('three').Group;
   eventGroup: import('three').Group;
   pins: import('three').Group;
   geography: import('three').Group;
+  countryInteraction: ReturnType<typeof import('@/lib/visualizer/country-interaction').createCountryInteraction> | null;
   borders: import('three').LineSegments;
   debugPoints: import('three').Group;
   latLngToVector3: typeof import('@/lib/visualizer/geography').latLngToVector3;
@@ -115,8 +118,8 @@ type SceneHandle = {
  * render loop on `document.visibilitychange`, and disposing/reloading a
  * second (event-specific) GLB on selection change.
  */
-export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, showHint = true, cameraCommand, mapEvents = NO_MAP_EVENTS, onSelectEvent, bordersVisible = true }: Props) {
-  const { t } = useI18n();
+export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, showHint = true, cameraCommand, mapEvents = NO_MAP_EVENTS, onSelectEvent, bordersVisible = true, selectedCountryCode = null, onSelectCountry }: Props) {
+  const { t, locale } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<SceneHandle | null>(null);
@@ -131,8 +134,12 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
   const [sceneError, setSceneError] = useState(false);
   const [usingDefaultEarth, setUsingDefaultEarth] = useState(true);
   const [geographicDebug, setGeographicDebug] = useState(false);
+  const [baseModelFailed, setBaseModelFailed] = useState(false);
   const diagnosticsRef = useRef<HTMLOutputElement | null>(null);
   const bordersVisibleRef = useRef(bordersVisible);
+  const countryTooltipRef = useRef<HTMLDivElement | null>(null);
+  const countryDebugRef = useRef<HTMLOutputElement | null>(null);
+  const countryPropsRef = useRef({selectedCountryCode,onSelectCountry,locale});
 
 
   useEffect(() => {
@@ -168,20 +175,22 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     void (async () => {
-      const reducedMotion = prefersReducedMotion();
-      const [THREE, { GLTFLoader }, { OrbitControls }, { createDefaultEarth }, { prepareBaseScene, resizeSceneCamera, composeEarthOverview }, { createCountryBorders, loadCountryBorders, fitCountryBorders, CALIBRATION_POINTS }, { latLngToVector3 }] = await Promise.all([
+      const [THREE, { GLTFLoader }, { OrbitControls }, { createDefaultEarth }, { prepareBaseScene, resizeSceneCamera, composeEarthOverview }, { createCountryBorders, loadCountryBorders, fitCountryBorders, CALIBRATION_POINTS }, { latLngToVector3 }, { prepareCountryIndex }, { createCountryInteraction }] = await Promise.all([
         import('three'),
         import('three/addons/loaders/GLTFLoader.js'),
         import('three/addons/controls/OrbitControls.js'),
         import('@/lib/visualizer/default-earth'),
         import('@/lib/visualizer/base-scene'),
         import('@/lib/visualizer/country-borders'),
-        import('@/lib/visualizer/geography')
+        import('@/lib/visualizer/geography'),
+        import('@/lib/visualizer/countries'),
+        import('@/lib/visualizer/country-interaction')
       ]);
       if (disposed) return;
       setSceneError(false);
       setSceneReady(false);
       setUsingDefaultEarth(true);
+      setBaseModelFailed(false);
 
       const scene = new THREE.Scene();
       const rect = container.getBoundingClientRect();
@@ -238,6 +247,19 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
         borders.geometry.dispose();
         borders.geometry = loaded.geometry;
         loaded.material.dispose();
+        if (countryTooltipRef.current && countryPropsRef.current.onSelectCountry) {
+          handle.countryInteraction = createCountryInteraction({
+            canvas, tooltip: countryTooltipRef.current, debug: process.env.NODE_ENV === 'development' ? countryDebugRef.current : null,
+            index: prepareCountryIndex(data), frame: geography, borders, pins, controls,
+            camera: () => handle.camera, overview: () => handle.overviewCamera,
+            surface: () => handle.earthSurface ?? defaultEarth.children[0] ?? null,
+            locale: () => countryPropsRef.current.locale, hint: () => countryMessages[countryPropsRef.current.locale].open,
+            selected: () => countryPropsRef.current.selectedCountryCode,
+            onSelect: (code) => countryPropsRef.current.onSelectCountry?.(code),
+            transitioning: (value) => { handle.transitioning = value; }, available: () => earthGroup.visible,
+            reducedMotion: prefersReducedMotion,
+          });
+        }
       }).catch((error: unknown) => { if (!disposed) console.warn('Could not load country boundaries.', error); });
       if (process.env.NODE_ENV === 'development') {
         const geometry = new THREE.SphereGeometry(0.007, 10, 8);
@@ -269,7 +291,6 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
             debugPoints.position.copy(borders.position);
             debugPoints.scale.setScalar(borders.userData.earthRadius);
           }
-          handle.authoredScene = !!authoredCamera;
           if (authoredCamera) {
             // An exported scene includes its intended composition; a sky dome
             // must not become the object that the viewer frames from outside.
@@ -307,13 +328,13 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
               directional.visible = false;
             }
           }
-          if (gltf.animations?.length && !reducedMotion) {
-            handle.baseMixer = new THREE.AnimationMixer(gltf.scene);
-            handle.baseMixer.clipAction(gltf.animations[0]).play();
-          }
+          // Base Earth stays in its calibrated rest pose. OrbitControls is
+          // the only idle navigation; embedded Earth/cloud loops do not autoplay.
+          handle.countryInteraction?.refreshSurface();
           setUsingDefaultEarth(false);
         }).catch((error: unknown) => {
           if (!disposed) {
+            setBaseModelFailed(true);
             console.warn('Could not load the Earth model; using the built-in globe.', error);
             setUsingDefaultEarth(true);
           }
@@ -329,7 +350,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       });
       resizeObserver.observe(container);
 
-      const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, pins, geography, borders, debugPoints, latLngToVector3, earthSurface: null, surfaceRestInverse: null, layoutOverview: null, updateMarkerOverlay: null, transitioning: false, focused: false, controls, mixer: null, overviewCamera: camera.clone(), baseMixer: null, authoredScene: false };
+      const handle: SceneHandle = { THREE, camera, earthGroup, eventGroup, pins, geography, countryInteraction: null, borders, debugPoints, latLngToVector3, earthSurface: null, surfaceRestInverse: null, layoutOverview: null, updateMarkerOverlay: null, transitioning: false, focused: false, controls, mixer: null, overviewCamera: camera.clone() };
       sceneRef.current = handle;
       renderer.render(scene, camera);
       setSceneReady(true);
@@ -344,8 +365,6 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
         const delta = Math.min((now - lastFrame) / 1000, 0.05);
         lastFrame = now;
         if (!hidden) {
-          if (!handle.transitioning && !handle.focused && !handle.authoredScene && !reducedMotion) earthGroup.rotation.y += delta * 0.055;
-          if (!handle.focused) handle.baseMixer?.update(delta);
           handle.mixer?.update(delta);
           if (earthGroup.visible) eventGroup.rotation.copy(earthGroup.rotation);
           if (handle.earthSurface && handle.surfaceRestInverse) {
@@ -390,9 +409,9 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       document.removeEventListener('visibilitychange', onVisibilityChange);
       cancelAnimationFrame(rafId);
       resizeObserver?.disconnect();
+      sceneRef.current?.countryInteraction?.dispose();
       controlsDispose?.();
       sceneRef.current?.mixer?.stopAllAction();
-      sceneRef.current?.baseMixer?.stopAllAction();
       sceneDispose?.();
       rendererDispose?.();
       sceneRef.current = null;
@@ -408,6 +427,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     if (!handle || !sceneReady) return;
     let cancelled = false;
 
+    handle.countryInteraction?.cancelFly();
     handle.mixer?.stopAllAction();
     handle.mixer = null;
     handle.controls.enabled = true;
@@ -431,7 +451,6 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       handle.controls.update();
       return;
     }
-    handle.baseMixer?.setTime(0);
     const hasCoordinates = selectedEvent.latitude != null && selectedEvent.longitude != null;
 
     const { latitude, longitude, modelUrl } = selectedEvent;
@@ -611,6 +630,10 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
   useEffect(() => {
     const handle = sceneRef.current;
     if (!handle || !cameraCommand || !sceneReady || handle.transitioning) return;
+    if (handle.countryInteraction) {
+      if (cameraCommand.action === 'reset') { handle.countryInteraction.reset(); return; }
+      handle.countryInteraction.cancelFly();
+    }
     if (cameraCommand.action === 'reset') {
       handle.camera = handle.overviewCamera.clone();
       handle.controls.object = handle.camera;
@@ -638,6 +661,12 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     if (process.env.NODE_ENV === 'development' && sceneRef.current) sceneRef.current.debugPoints.visible = geographicDebug;
   }, [geographicDebug, sceneReady]);
 
+  useEffect(() => {
+    countryPropsRef.current = {selectedCountryCode,onSelectCountry,locale};
+    sceneRef.current?.countryInteraction?.setSelectedCountry(selectedCountryCode);
+    sceneRef.current?.countryInteraction?.refreshTooltip();
+  }, [selectedCountryCode,onSelectCountry,locale,sceneReady]);
+
   if (!webglSupported) {
     return (
       <div className={`grid place-items-center bg-[#141511] p-8 text-center text-muted-foreground ${fill ? 'h-full min-h-0' : 'min-h-[360px] rounded-md border border-gold/28'}`}>
@@ -650,12 +679,16 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     <div ref={containerRef} className={`relative w-full overflow-hidden bg-[#070706] ${fill ? 'h-full min-h-0' : 'aspect-video min-h-[360px] rounded-md border border-gold/28'}`}>
       <canvas ref={canvasRef} aria-label={t('historyGlobeLabel')} className="block h-full w-full" style={{ visibility: sceneReady && !sceneError ? 'visible' : 'hidden' }} />
       <div ref={tooltipRef} hidden role="tooltip" className="pointer-events-none absolute z-10 max-w-[min(240px,90%)] -translate-x-1/2 -translate-y-full whitespace-pre-line rounded-md border border-gold/30 bg-canvas/95 px-3 py-2 text-xs leading-relaxed text-gold-light shadow-lg" />
+      <div ref={countryTooltipRef} hidden role="tooltip" className={`country-hover-tooltip ${styles.countryTooltip}`} />
       {!sceneReady || sceneError ? (
         <div role="status" className="absolute inset-0 grid place-items-center p-8 text-center text-muted-foreground text-sm font-bold">{t(sceneError ? 'historySceneError' : 'historyLoadingScene')}</div>
       ) : null}
       {process.env.NODE_ENV === 'development' ? <div className="absolute bottom-12 left-3 max-w-[80%] rounded bg-black/70 p-2 text-[10px] text-[#e6d5a8]">
         <label><input type="checkbox" checked={geographicDebug} onChange={(event) => setGeographicDebug(event.target.checked)} /> Geographic Calibration Debug</label>
-        {geographicDebug ? <p>Equator / 0° · North Pole · Greenwich · Kyiv · Rome · Jerusalem</p> : null}<output className="block" ref={diagnosticsRef} />
+        {geographicDebug ? <p>Equator / 0° · North Pole · Greenwich · Kyiv · Rome · Jerusalem</p> : null}<output className="block" ref={diagnosticsRef} /><output className="block" ref={countryDebugRef} />
+      </div> : null}
+      {usingDefaultEarth && sceneReady && !sceneError ? <div role="status" className="pointer-events-none absolute top-4 left-4 max-w-[65%] rounded bg-canvas/90 px-3 py-2 text-xs text-muted-foreground">
+        {t(baseModelFailed ? 'historyBaseModelFailed' : baseEarthModelUrl ? 'historyBaseModelLoading' : 'historyDefaultGlobe')}
       </div> : null}
       {eventLoading || eventError ? <div role="status" className="absolute top-4 left-4 right-4 rounded-md bg-canvas/90 p-3 text-sm text-foreground">{t(eventError ? 'historyEventModelError' : 'historyEventModelLoading')}</div> : null}
       {showHint && sceneReady && !sceneError ? (

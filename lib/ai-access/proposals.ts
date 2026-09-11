@@ -15,7 +15,12 @@ type Proposal = {
   target_snapshot_json: string;
   proposed_changes_json: string;
   status: string;
-  created_by_ai_grant_id: string;
+  // Exactly one of these two is ever set (DB CHECK constraint, migration
+  // 0022) -- an AI-grant-authored proposal vs. a human-admin-authored one
+  // (see createHumanAuthoredProposal, used by "Заповнити відсутнє з AI" on
+  // a PUBLISHED calendar day).
+  created_by_ai_grant_id: string | null;
+  created_by_admin_user_id: string | null;
   [key: string]: unknown;
 };
 function entity(value: unknown): Entity {
@@ -213,41 +218,43 @@ export async function aiProposals(request: Request, id?: string) {
     const pid = crypto.randomUUID(),
       t = new Date().toISOString(),
       snapshot = JSON.stringify(before);
-    await d1Batch([
-      await proposalActivity(
-        access.grant.id,
-        access.grant.admin_user_id,
-        e,
-        targetId,
-        "proposal.create",
-        "success",
-        requestId,
-      ),
-      await d1Prepare(
-        "INSERT INTO ai_proposals(id,environment,target_type,target_id,target_version,target_snapshot_json,language,translation_group_id,proposed_changes_json,created_by_ai_grant_id,reason,sources_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        pid,
-        env,
-        e,
-        targetId,
-        await sha(snapshot),
-        snapshot,
-        before.language ?? null,
-        before.translation_group_id ?? null,
-        JSON.stringify(patch),
-        access.grant.id,
-        body.reason,
-        JSON.stringify(sources),
-        t,
-      ),
-      await d1Prepare(
-        "INSERT INTO ai_proposal_audit VALUES(?,?,?,?,?)",
-        crypto.randomUUID(),
-        pid,
-        access.grant.id,
-        "created",
-        t,
-      ),
-    ]);
+    await d1Batch(
+      [
+        await proposalActivity(
+          access.grant.id,
+          access.grant.admin_user_id,
+          e,
+          targetId,
+          "proposal.create",
+          "success",
+          requestId,
+        ),
+        await d1Prepare(
+          "INSERT INTO ai_proposals(id,environment,target_type,target_id,target_version,target_snapshot_json,language,translation_group_id,proposed_changes_json,created_by_ai_grant_id,reason,sources_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          pid,
+          env,
+          e,
+          targetId,
+          await sha(snapshot),
+          snapshot,
+          before.language ?? null,
+          before.translation_group_id ?? null,
+          JSON.stringify(patch),
+          access.grant.id,
+          body.reason,
+          JSON.stringify(sources),
+          t,
+        ),
+        await d1Prepare(
+          "INSERT INTO ai_proposal_audit VALUES(?,?,?,?,?)",
+          crypto.randomUUID(),
+          pid,
+          access.grant.id,
+          "created",
+          t,
+        ),
+      ].filter((statement): statement is D1PreparedStatement => statement !== null),
+    );
     return view(await get(pid, env));
   } catch (error) {
     await logProposalFailure(
@@ -260,6 +267,61 @@ export async function aiProposals(request: Request, id?: string) {
     );
     throw error;
   }
+}
+/**
+ * The human-admin-session counterpart of aiProposals()'s POST branch: used
+ * exclusively by "Заповнити відсутнє з AI" on a PUBLISHED calendar day (see
+ * lib/church/calendar-ai-actions.ts's proposeMissingCalendarContent), never
+ * reachable from an AI grant. No requireAiAccess/scope check here -- the
+ * caller has already authenticated as a super admin (requireSuperAdmin) and
+ * decided what to propose; this only validates the patch shape/values via
+ * the same patchFor() every proposal goes through, and records the human as
+ * the creator instead of a grant. Never creates a fake/placeholder AI grant
+ * to satisfy the old NOT NULL constraint -- see migration 0022.
+ */
+export async function createHumanAuthoredProposal(
+  request: Request,
+  adminUserId: string,
+  targetType: string,
+  targetId: string,
+  patch: unknown,
+  reason: string,
+) {
+  const env = environment(request);
+  const e = entity(targetType);
+  const before = await raw(e, targetId);
+  if (!before) throw ApiError.notFound("Target not found");
+  const validatedPatch = await patchFor(e, patch, before);
+  const pid = crypto.randomUUID(),
+    t = new Date().toISOString(),
+    snapshot = JSON.stringify(before);
+  await d1Batch([
+    await d1Prepare(
+      "INSERT INTO ai_proposals(id,environment,target_type,target_id,target_version,target_snapshot_json,language,translation_group_id,proposed_changes_json,created_by_admin_user_id,reason,sources_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      pid,
+      env,
+      e,
+      targetId,
+      await sha(snapshot),
+      snapshot,
+      before.language ?? null,
+      before.translation_group_id ?? null,
+      JSON.stringify(validatedPatch),
+      adminUserId,
+      reason,
+      JSON.stringify([]),
+      t,
+    ),
+    await d1Prepare(
+      "INSERT INTO ai_proposal_audit VALUES(?,?,?,?,?)",
+      crypto.randomUUID(),
+      pid,
+      adminUserId,
+      "created",
+      t,
+    ),
+  ]);
+  return view(await get(pid, env));
 }
 export async function humanProposals(request: Request, path: string[]) {
   const user = await browserAdmin(request),
@@ -303,26 +365,28 @@ export async function humanProposals(request: Request, path: string[]) {
     if (p.status !== "pending")
       throw ApiError.conflict("Proposal already reviewed");
     if (action === "reject") {
-      await d1Batch([
-        await d1Prepare(
-          "UPDATE ai_proposals SET status='rejected',reviewed_at=?,reviewed_by_admin_user_id=?,review_nonce=? WHERE id=? AND status='pending'",
-          t,
-          user.id,
-          nonce,
-          p.id,
-        ),
-        await auditStatement(p.id, user.id, t, nonce),
-        await proposalActivity(
-          p.created_by_ai_grant_id,
-          user.id,
-          p.target_type,
-          p.target_id,
-          "proposal.reject",
-          "success",
-          nonce,
-          p.id,
-        ),
-      ]);
+      await d1Batch(
+        [
+          await d1Prepare(
+            "UPDATE ai_proposals SET status='rejected',reviewed_at=?,reviewed_by_admin_user_id=?,review_nonce=? WHERE id=? AND status='pending'",
+            t,
+            user.id,
+            nonce,
+            p.id,
+          ),
+          await auditStatement(p.id, user.id, t, nonce),
+          await proposalActivity(
+            p.created_by_ai_grant_id,
+            user.id,
+            p.target_type,
+            p.target_id,
+            "proposal.reject",
+            "success",
+            nonce,
+            p.id,
+          ),
+        ].filter((statement): statement is D1PreparedStatement => statement !== null),
+      );
       const rejected = await get(p.id, env);
       if (rejected.review_nonce !== nonce)
         throw ApiError.conflict("Proposal already reviewed");
@@ -343,46 +407,48 @@ export async function humanProposals(request: Request, path: string[]) {
     // An edit with an unchanged timestamp is also detected. No status or publication transition.
     const match = `SELECT 1 FROM ${table} WHERE ${entries.map(([k]) => `"${k}" IS ?`).join(" AND ")}`;
     const values = entries.map(([, v]) => v);
-    await d1Batch([
-      await d1Prepare(
-        `UPDATE ai_proposals SET status='stale',reviewed_at=?,reviewed_by_admin_user_id=?,review_nonce=? WHERE id=? AND status='pending' AND NOT EXISTS(${match})`,
-        t,
-        user.id,
-        nonce,
-        p.id,
-        ...values,
-      ),
-      await d1Prepare(
-        `UPDATE ${table} SET ${Object.keys(patch)
-          .map((k) => col(k) + "=?")
-          .join(
-            ",",
-          )},updated_at=? WHERE id=? AND EXISTS(SELECT 1 FROM ai_proposals WHERE id=? AND status='pending')`,
-        ...Object.values(patch).map(value),
-        t,
-        p.target_id,
-        p.id,
-      ),
-      await d1Prepare(
-        "UPDATE ai_proposals SET status='applied',reviewed_at=?,reviewed_by_admin_user_id=?,applied_at=?,review_nonce=? WHERE id=? AND status='pending'",
-        t,
-        user.id,
-        t,
-        nonce,
-        p.id,
-      ),
-      await auditStatement(p.id, user.id, t, nonce),
-      await proposalActivity(
-        p.created_by_ai_grant_id,
-        user.id,
-        p.target_type,
-        p.target_id,
-        "proposal.apply",
-        "success",
-        nonce,
-        p.id,
-      ),
-    ]);
+    await d1Batch(
+      [
+        await d1Prepare(
+          `UPDATE ai_proposals SET status='stale',reviewed_at=?,reviewed_by_admin_user_id=?,review_nonce=? WHERE id=? AND status='pending' AND NOT EXISTS(${match})`,
+          t,
+          user.id,
+          nonce,
+          p.id,
+          ...values,
+        ),
+        await d1Prepare(
+          `UPDATE ${table} SET ${Object.keys(patch)
+            .map((k) => col(k) + "=?")
+            .join(
+              ",",
+            )},updated_at=? WHERE id=? AND EXISTS(SELECT 1 FROM ai_proposals WHERE id=? AND status='pending')`,
+          ...Object.values(patch).map(value),
+          t,
+          p.target_id,
+          p.id,
+        ),
+        await d1Prepare(
+          "UPDATE ai_proposals SET status='applied',reviewed_at=?,reviewed_by_admin_user_id=?,applied_at=?,review_nonce=? WHERE id=? AND status='pending'",
+          t,
+          user.id,
+          t,
+          nonce,
+          p.id,
+        ),
+        await auditStatement(p.id, user.id, t, nonce),
+        await proposalActivity(
+          p.created_by_ai_grant_id,
+          user.id,
+          p.target_type,
+          p.target_id,
+          "proposal.apply",
+          "success",
+          nonce,
+          p.id,
+        ),
+      ].filter((statement): statement is D1PreparedStatement => statement !== null),
+    );
     const done = await get(p.id, env);
     if (done.status === "stale")
       throw ApiError.conflict(
@@ -421,8 +487,14 @@ async function auditStatement(
 
 // The existing aggregate feed, not a second log system. Only trusted identifiers
 // and fixed operation/result values: never request payloads, headers or errors.
+// ai_activity_log.grant_id is NOT NULL REFERENCES ai_access_grants(id) -- an
+// AI-only table by construction. A human-authored proposal (createHumanAuthoredProposal,
+// created_by_ai_grant_id NULL) has no grant to attribute here, so this returns
+// null instead of a statement; callers must filter nulls out of their batch.
+// The human-authored path is still fully audited via ai_proposal_audit, which
+// has no such FK.
 async function proposalActivity(
-  grantId: string,
+  grantId: string | null,
   actorId: string,
   targetType: string,
   targetId: string | null,
@@ -431,6 +503,7 @@ async function proposalActivity(
   requestId: string,
   reviewId: string | null = null,
 ) {
+  if (!grantId) return null;
   return d1Prepare(
     `INSERT INTO ai_activity_log
  (id,grant_id,admin_user_id,tool_name,module,operation,target_type,target_id,request_id,status,created_at)
@@ -457,7 +530,7 @@ async function proposalActivity(
   );
 }
 async function logProposalFailure(
-  grantId: string,
+  grantId: string | null,
   actorId: string,
   targetType: string,
   targetId: string | null,
@@ -467,17 +540,16 @@ async function logProposalFailure(
   // Preserve the original failure if storage itself is unavailable. A committed
   // success/stale activity for this request is never duplicated or overwritten.
   try {
-    await d1Batch([
-      await proposalActivity(
-        grantId,
-        actorId,
-        targetType,
-        targetId,
-        operation,
-        "failed",
-        requestId,
-      ),
-    ]);
+    const statement = await proposalActivity(
+      grantId,
+      actorId,
+      targetType,
+      targetId,
+      operation,
+      "failed",
+      requestId,
+    );
+    if (statement) await d1Batch([statement]);
   } catch {
     /* No credential-bearing error logging. */
   }

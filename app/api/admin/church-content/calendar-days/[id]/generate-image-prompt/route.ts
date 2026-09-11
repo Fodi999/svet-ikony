@@ -5,5 +5,5 @@ import { handleCalendarAiActionWithBody } from '@/lib/church/calendar-ai-route-h
  * prompt, bypassing the saint-reference resolver. See
  * generateCalendarImageFromPrompt()'s own doc comment. */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  return handleCalendarAiActionWithBody<{ prompt: string }>(request, params, (id, body) => generateCalendarImageFromPrompt(id, body.prompt));
+  return handleCalendarAiActionWithBody<{ prompt: string }>(request, params, (id, body, context) => generateCalendarImageFromPrompt(id, body.prompt, context));
 }

@@ -5,6 +5,7 @@ import type { GenerateTelegramImageInput, GeneratedImage } from '@/lib/ai/openai
 import type { ChurchCalendarDayDto } from '@/lib/d1/repositories/calendarDays';
 import type { ChurchSaintDto } from '@/lib/d1/repositories/saints';
 import type { SaintLookupResult } from '@/lib/church/saint-reference';
+import type { FillMissingCalendarResult } from '@/lib/church/calendar-ai-actions';
 
 const mockGetCalendarDay = vi.fn();
 const mockUpdateCalendarDay = vi.fn();
@@ -41,6 +42,20 @@ vi.mock('@/lib/d1/env', () => ({ getMediaBucket: async () => ({ put: mockBucketP
 
 const mockGetOpenAiConfig = vi.fn(async () => ({ apiKey: 'fake-openai-key', model: undefined, imageModel: undefined }));
 vi.mock('@/lib/telegram/env', () => ({ getOpenAiConfig: mockGetOpenAiConfig }));
+
+/** proposeMissingCalendarContent() (PUBLISHED-day fill-missing) dynamically
+ * imports this module -- see that function's own doc comment for why it's
+ * dynamic rather than a static top-level import. Mocked wholesale here so
+ * these tests stay unit-scoped to calendar-ai-actions.ts: does it detect
+ * the right missing fields and hand them to createHumanAuthoredProposal
+ * with the right patch, never touching updateCalendarDay? Its own
+ * validation/attribution/DB behavior is covered by proposals.test.ts. */
+const mockCreateHumanAuthoredProposal = vi.fn(async (_request: Request, _adminUserId: string, _targetType: string, _targetId: string, patch: unknown) => ({
+  id: 'proposal-1',
+  status: 'pending',
+  patch,
+}));
+vi.mock('@/lib/ai-access/proposals', () => ({ createHumanAuthoredProposal: mockCreateHumanAuthoredProposal }));
 
 const {
   assignCalendarImage,
@@ -115,6 +130,12 @@ function saint(overrides: Partial<ChurchSaintDto> = {}): ChurchSaintDto {
   };
 }
 
+/** Every draft-day test in this file (calendarDay()'s own default
+ * status) always takes the direct-write branch of writeOrPropose(), so
+ * this context is never actually read for attribution -- it only needs
+ * to satisfy each action's required second parameter. */
+const draftContext = { request: new Request('http://localhost/'), adminUserId: 'admin-1' };
+
 async function expectRejectionDetails(promise: Promise<unknown>, pattern: RegExp) {
   await expect(promise).rejects.toMatchObject({ details: expect.stringMatching(pattern) });
 }
@@ -136,7 +157,7 @@ describe('calendar-ai-actions', () => {
   describe('generateCalendarDescription / regenerateCalendarDescription', () => {
     it('refuses to overwrite an existing description', async () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ description: 'Вже є опис' }));
-      await expectRejectionDetails(generateCalendarDescription('day-1'), /already has a description/);
+      await expectRejectionDetails(generateCalendarDescription('day-1', draftContext), /already has a description/);
       expect(mockGenerateChurchContent).not.toHaveBeenCalled();
     });
 
@@ -145,11 +166,11 @@ describe('calendar-ai-actions', () => {
       mockListSaints.mockResolvedValue([]);
       mockGenerateChurchContent.mockResolvedValue('Згенерований опис.');
 
-      const result = await generateCalendarDescription('day-1');
+      const result = await generateCalendarDescription('day-1', draftContext);
 
       expect(mockGenerateChurchContent).toHaveBeenCalledWith(expect.objectContaining({ kind: 'description', verified: false }));
       expect(mockUpdateCalendarDay).toHaveBeenCalledWith('day-1', { description: 'Згенерований опис.' });
-      expect(result.description).toBe('Згенерований опис.');
+      expect(result.day.description).toBe('Згенерований опис.');
     });
 
     it('regenerate always overwrites, even when a description already exists', async () => {
@@ -157,7 +178,7 @@ describe('calendar-ai-actions', () => {
       mockListSaints.mockResolvedValue([]);
       mockGenerateChurchContent.mockResolvedValue('Новий опис.');
 
-      await regenerateCalendarDescription('day-1');
+      await regenerateCalendarDescription('day-1', draftContext);
 
       expect(mockUpdateCalendarDay).toHaveBeenCalledWith('day-1', { description: 'Новий опис.' });
     });
@@ -166,7 +187,7 @@ describe('calendar-ai-actions', () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ dateOldStyle: null }));
       mockListSaints.mockResolvedValue([saint()]);
 
-      await expectRejectionDetails(generateCalendarDescription('day-1'), /REVIEW_REQUIRED/);
+      await expectRejectionDetails(generateCalendarDescription('day-1', draftContext), /REVIEW_REQUIRED/);
       expect(mockGenerateChurchContent).not.toHaveBeenCalled();
     });
 
@@ -176,7 +197,7 @@ describe('calendar-ai-actions', () => {
       );
       mockListSaints.mockResolvedValue([saint({ name: 'Невідомий святий' })]);
 
-      await expectRejectionDetails(generateCalendarDescription('day-1'), /REVIEW_REQUIRED/);
+      await expectRejectionDetails(generateCalendarDescription('day-1', draftContext), /REVIEW_REQUIRED/);
       expect(mockGenerateChurchContent).not.toHaveBeenCalled();
     });
 
@@ -187,7 +208,7 @@ describe('calendar-ai-actions', () => {
       mockListSaints.mockResolvedValue([saint({ name: 'Флор і Лавр' })]);
       mockGenerateChurchContent.mockResolvedValue('Опис про Флора і Лавра.');
 
-      await generateCalendarDescription('day-1');
+      await generateCalendarDescription('day-1', draftContext);
 
       expect(mockGenerateChurchContent).toHaveBeenCalledWith(
         expect.objectContaining({ verified: true, facts: expect.stringContaining('Флор і Лавр') }),
@@ -198,7 +219,7 @@ describe('calendar-ai-actions', () => {
   describe('generateCalendarHistory / regenerateCalendarHistory', () => {
     it('refuses to overwrite existing history text', async () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ history: 'Вже є текст' }));
-      await expectRejectionDetails(generateCalendarHistory('day-1'), /already has history text/);
+      await expectRejectionDetails(generateCalendarHistory('day-1', draftContext), /already has history text/);
     });
 
     it('fills missing history for a day with no linked saint (no verification required)', async () => {
@@ -206,7 +227,7 @@ describe('calendar-ai-actions', () => {
       mockListSaints.mockResolvedValue([]);
       mockGenerateChurchContent.mockResolvedValue('Історичний текст.');
 
-      await generateCalendarHistory('day-1');
+      await generateCalendarHistory('day-1', draftContext);
 
       expect(mockUpdateCalendarDay).toHaveBeenCalledWith('day-1', { history: 'Історичний текст.' });
     });
@@ -216,7 +237,7 @@ describe('calendar-ai-actions', () => {
       mockListSaints.mockResolvedValue([]);
       mockGenerateChurchContent.mockResolvedValue('Новий текст.');
 
-      await regenerateCalendarHistory('day-1');
+      await regenerateCalendarHistory('day-1', draftContext);
       expect(mockUpdateCalendarDay).toHaveBeenCalledWith('day-1', { history: 'Новий текст.' });
     });
   });
@@ -224,7 +245,7 @@ describe('calendar-ai-actions', () => {
   describe('generateCalendarSeo / regenerateCalendarSeo', () => {
     it('refuses only when BOTH seoTitle and seoDescription already exist', async () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ seoTitle: 'T', seoDescription: 'D' }));
-      await expectRejectionDetails(generateCalendarSeo('day-1'), /already has SEO title and description/);
+      await expectRejectionDetails(generateCalendarSeo('day-1', draftContext), /already has SEO title and description/);
     });
 
     it('fills only the missing SEO field, preserving the existing one', async () => {
@@ -232,7 +253,7 @@ describe('calendar-ai-actions', () => {
       mockListSaints.mockResolvedValue([]);
       mockGenerateChurchContent.mockResolvedValue('Згенерований опис для пошукових систем.');
 
-      await generateCalendarSeo('day-1');
+      await generateCalendarSeo('day-1', draftContext);
 
       expect(mockGenerateChurchContent).toHaveBeenCalledTimes(1);
       expect(mockGenerateChurchContent).toHaveBeenCalledWith(expect.objectContaining({ kind: 'seo_description' }));
@@ -247,7 +268,7 @@ describe('calendar-ai-actions', () => {
       mockListSaints.mockResolvedValue([]);
       mockGenerateChurchContent.mockResolvedValueOnce('Новий заголовок').mockResolvedValueOnce('Новий опис для пошукових систем');
 
-      await regenerateCalendarSeo('day-1');
+      await regenerateCalendarSeo('day-1', draftContext);
 
       expect(mockGenerateChurchContent).toHaveBeenCalledTimes(2);
       expect(mockUpdateCalendarDay).toHaveBeenCalledWith('day-1', {
@@ -260,7 +281,7 @@ describe('calendar-ai-actions', () => {
   describe('generateCalendarImage / regenerateCalendarImage / assignCalendarImage', () => {
     it('refuses to overwrite an existing image', async () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: 'media/calendar/day-1/main/existing.png' }));
-      await expectRejectionDetails(generateCalendarImage('day-1'), /already has an image/);
+      await expectRejectionDetails(generateCalendarImage('day-1', draftContext), /already has an image/);
       expect(mockGenerateTelegramImage).not.toHaveBeenCalled();
       expect(mockLookupVerifiedSaintReference).not.toHaveBeenCalled();
     });
@@ -269,11 +290,11 @@ describe('calendar-ai-actions', () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: '' }));
       mockListSaints.mockResolvedValue([saint({ imageUrl: 'media/saints/saint-1/main/icon.png' })]);
 
-      const result = await generateCalendarImage('day-1');
+      const result = await generateCalendarImage('day-1', draftContext);
 
       expect(mockLookupVerifiedSaintReference).not.toHaveBeenCalled();
       expect(mockGenerateTelegramImage).not.toHaveBeenCalled();
-      expect(result.imageUrl).toBe('media/saints/saint-1/main/icon.png');
+      expect(result.day.imageUrl).toBe('media/saints/saint-1/main/icon.png');
       // A locally-verified image is neither AI-generated nor a stale AI
       // reference -- must never carry old provenance metadata forward.
       expect(mockUpdateCalendarDay).toHaveBeenCalledWith('day-1', { imageUrl: 'media/saints/saint-1/main/icon.png', imageMetadata: null });
@@ -283,7 +304,7 @@ describe('calendar-ai-actions', () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: '' }));
       mockListSaints.mockResolvedValue([]);
 
-      await generateCalendarImage('day-1');
+      await generateCalendarImage('day-1', draftContext);
 
       expect(mockLookupVerifiedSaintReference).not.toHaveBeenCalled();
       expect(mockGenerateTelegramImage).toHaveBeenCalledWith(
@@ -301,7 +322,7 @@ describe('calendar-ai-actions', () => {
       mockListSaints.mockResolvedValue([saint({ imageUrl: '', name: 'Невідомий святий' })]);
       mockLookupVerifiedSaintReference.mockResolvedValue({ status: 'not_found' });
 
-      await generateCalendarImage('day-1');
+      await generateCalendarImage('day-1', draftContext);
 
       expect(mockLookupVerifiedSaintReference).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Невідомий святий' }),
@@ -324,7 +345,7 @@ describe('calendar-ai-actions', () => {
       mockListSaints.mockResolvedValue([saint({ imageUrl: '', name: 'Апостол Тадей з числа 70-ти' })]);
       mockLookupVerifiedSaintReference.mockResolvedValue({ status: 'ambiguous' });
 
-      await generateCalendarImage('day-1');
+      await generateCalendarImage('day-1', draftContext);
 
       expect(mockGenerateTelegramImage).toHaveBeenCalledWith(
         expect.objectContaining({ prompt: expect.stringContaining('без жодної впізнаваної людської постаті') }),
@@ -336,7 +357,7 @@ describe('calendar-ai-actions', () => {
       mockListSaints.mockResolvedValue([saint({ imageUrl: '' })]);
       mockLookupVerifiedSaintReference.mockResolvedValue({ status: 'network_error' });
 
-      await generateCalendarImage('day-1');
+      await generateCalendarImage('day-1', draftContext);
 
       expect(mockGenerateTelegramImage).toHaveBeenCalledWith(
         expect.objectContaining({ prompt: expect.stringContaining('без жодної впізнаваної людської постаті') }),
@@ -357,7 +378,7 @@ describe('calendar-ai-actions', () => {
       });
       mockDescribeSaintIconography.mockResolvedValue('давньоруське вбрання, короткі бороди, хрести в руках');
 
-      const result = await generateCalendarImage('day-1');
+      const result = await generateCalendarImage('day-1', draftContext);
 
       expect(mockDescribeSaintIconography).toHaveBeenCalledWith(
         expect.objectContaining({ imageUrl: 'https://upload.wikimedia.org/flor-lavr.jpg', saintName: 'Флор і Лавр' }),
@@ -367,7 +388,7 @@ describe('calendar-ai-actions', () => {
       expect(imagePromptArgs.prompt).toContain('Флор і Лавр');
       // The generic no-human-figure fallback prompt must NEVER be used once verified.
       expect(imagePromptArgs.prompt).not.toContain('без жодної впізнаваної людської постаті');
-      expect(result.imageMetadata).toEqual({
+      expect(result.day.imageMetadata).toEqual({
         origin: 'ai_generated',
         referenceProvider: 'wikipedia',
         referencePageUrl: 'https://uk.wikipedia.org/wiki/Флор_і_Лавр',
@@ -392,14 +413,14 @@ describe('calendar-ai-actions', () => {
         },
       });
 
-      await generateCalendarImage('day-1');
+      await generateCalendarImage('day-1', draftContext);
       const referencePrompt = mockGenerateTelegramImage.mock.calls.at(-1)![0].prompt as string;
       expect(referencePrompt).toMatch(/водяний знак/);
       expect(referencePrompt.toLowerCase()).not.toMatch(/\blogo\b/);
 
       mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: '' }));
       mockListSaints.mockResolvedValue([]);
-      await generateCalendarImage('day-1');
+      await generateCalendarImage('day-1', draftContext);
       const genericPrompt = mockGenerateTelegramImage.mock.calls.at(-1)![0].prompt as string;
       expect(genericPrompt).toMatch(/напису|тексту|логотипів|водяних знаків/);
     });
@@ -421,7 +442,7 @@ describe('calendar-ai-actions', () => {
       // Jude Thaddeus (Twelve Apostles) candidate as a different person.
       mockLookupVerifiedSaintReference.mockResolvedValue({ status: 'ambiguous' });
 
-      await generateCalendarImage('day-1');
+      await generateCalendarImage('day-1', draftContext);
 
       expect(mockDescribeSaintIconography).not.toHaveBeenCalled();
       expect(mockGenerateTelegramImage).toHaveBeenCalledWith(
@@ -443,7 +464,7 @@ describe('calendar-ai-actions', () => {
       );
       mockListSaints.mockResolvedValue([saint({ imageUrl: '', name: 'Флор і Лавр' })]);
 
-      await regenerateCalendarImage('day-1');
+      await regenerateCalendarImage('day-1', draftContext);
 
       expect(mockLookupVerifiedSaintReference).not.toHaveBeenCalled();
       expect(mockDescribeSaintIconography).toHaveBeenCalledWith(
@@ -459,21 +480,21 @@ describe('calendar-ai-actions', () => {
       mockListSaints.mockResolvedValue([]);
       mockGenerateTelegramImage.mockRejectedValue(new Error('OpenAI quota exceeded'));
 
-      const result = await regenerateCalendarImage('day-1');
+      const result = await regenerateCalendarImage('day-1', draftContext);
 
       expect(mockUpdateCalendarDay).toHaveBeenLastCalledWith('day-1', {
         imageUrl: 'media/calendar/day-1/main/old.png',
         imageMetadata: existingMetadata,
       });
-      expect(result.imageUrl).toBe('media/calendar/day-1/main/old.png');
-      expect(result.imageMetadata).toEqual(existingMetadata);
+      expect(result.day.imageUrl).toBe('media/calendar/day-1/main/old.png');
+      expect(result.day.imageMetadata).toEqual(existingMetadata);
     });
 
     it('regenerate only replaces the image after a successful generation, never before', async () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: 'media/calendar/day-1/main/old.png' }));
       mockListSaints.mockResolvedValue([]);
 
-      await regenerateCalendarImage('day-1');
+      await regenerateCalendarImage('day-1', draftContext);
 
       // updateCalendarDay is only ever called once here -- with the NEW
       // image, only after generateTelegramImage/storeGeneratedImage both
@@ -501,7 +522,7 @@ describe('calendar-ai-actions', () => {
     it('generates directly from the given prompt, bypassing the saint-reference resolver entirely', async () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: '' }));
 
-      const result = await generateCalendarImageFromPrompt('day-1', 'Byzantine icon of a bearded martyr saint, golden halo');
+      const result = await generateCalendarImageFromPrompt('day-1', 'Byzantine icon of a bearded martyr saint, golden halo', draftContext);
 
       expect(mockLookupVerifiedSaintReference).not.toHaveBeenCalled();
       expect(mockGenerateTelegramImage).toHaveBeenCalledWith(
@@ -511,7 +532,7 @@ describe('calendar-ai-actions', () => {
         imageUrl: expect.stringMatching(/^media\/calendar\/day-1\/main\//),
         imageMetadata: { origin: 'ai_generated', identityVerified: false, customPrompt: 'Byzantine icon of a bearded martyr saint, golden halo' },
       });
-      expect(result.imageMetadata).toEqual({
+      expect(result.day.imageMetadata).toEqual({
         origin: 'ai_generated',
         identityVerified: false,
         customPrompt: 'Byzantine icon of a bearded martyr saint, golden halo',
@@ -520,19 +541,19 @@ describe('calendar-ai-actions', () => {
 
     it('sends the prompt to OpenAI verbatim, with no house-style prefix or rewriting', async () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: '' }));
-      await generateCalendarImageFromPrompt('day-1', '  A simple test prompt.  ');
+      await generateCalendarImageFromPrompt('day-1', '  A simple test prompt.  ', draftContext);
       expect(mockGenerateTelegramImage).toHaveBeenCalledWith(expect.objectContaining({ prompt: 'A simple test prompt.' }));
     });
 
     it('rejects an empty or whitespace-only prompt without calling OpenAI', async () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: '' }));
-      await expectRejectionDetails(generateCalendarImageFromPrompt('day-1', '   '), /prompt is required/);
+      await expectRejectionDetails(generateCalendarImageFromPrompt('day-1', '   ', draftContext), /prompt is required/);
       expect(mockGenerateTelegramImage).not.toHaveBeenCalled();
     });
 
     it('always overwrites an existing image -- no "already has an image" guard, unlike generateCalendarImage', async () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: 'media/calendar/day-1/main/existing.png' }));
-      await generateCalendarImageFromPrompt('day-1', 'New custom prompt');
+      await generateCalendarImageFromPrompt('day-1', 'New custom prompt', draftContext);
       expect(mockGenerateTelegramImage).toHaveBeenCalled();
     });
 
@@ -543,20 +564,231 @@ describe('calendar-ai-actions', () => {
       );
       mockGenerateTelegramImage.mockRejectedValue(new Error('OpenAI quota exceeded'));
 
-      const result = await generateCalendarImageFromPrompt('day-1', 'A prompt that will fail');
+      const result = await generateCalendarImageFromPrompt('day-1', 'A prompt that will fail', draftContext);
 
-      expect(result.imageUrl).toBe('media/calendar/day-1/main/old.png');
-      expect(result.imageMetadata).toEqual(existingMetadata);
+      expect(result.day.imageUrl).toBe('media/calendar/day-1/main/old.png');
+      expect(result.day.imageMetadata).toEqual(existingMetadata);
     });
 
     it('does not require a linked saint at all -- works for a plain feast/event day', async () => {
       mockGetCalendarDay.mockResolvedValue(calendarDay({ imageUrl: '' }));
       mockListSaints.mockResolvedValue([]);
-      await expect(generateCalendarImageFromPrompt('day-1', 'A generic feast scene')).resolves.toBeDefined();
+      await expect(generateCalendarImageFromPrompt('day-1', 'A generic feast scene', draftContext)).resolves.toBeDefined();
+    });
+  });
+
+  /**
+   * The safety gap this describe block closes: every regenerate* action
+   * (plus generateCalendarImageFromPrompt, which behaves like regenerate*)
+   * used to write straight to updateCalendarDay() regardless of status --
+   * including PUBLISHED records, with no review step at all. Now they all
+   * share the same rule fillMissingCalendarContent already followed:
+   * draft -> direct write and verify; published -> human-authored proposal,
+   * record byte-for-byte unchanged; anything else (archived) -> refused.
+   */
+  describe('regenerate*/generate* actions on PUBLISHED and ARCHIVED records', () => {
+    const publishedContext = { request: new Request('http://localhost/'), adminUserId: 'admin-1' };
+
+    function expectProposalMode(result: { mode: string }): void {
+      expect(result.mode).toBe('proposal');
+    }
+
+    it('regenerateCalendarDescription on PUBLISHED creates a proposal and leaves the record byte-for-byte unchanged', async () => {
+      const published = calendarDay({ status: 'published', description: 'Наявний опис' });
+      mockGetCalendarDay.mockResolvedValue(published);
+      mockListSaints.mockResolvedValue([]);
+      mockGenerateChurchContent.mockResolvedValue('Новий опис.');
+
+      const result = await regenerateCalendarDescription('day-1', publishedContext);
+      expectProposalMode(result);
+
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+      expect(result.day).toEqual(published);
+      expect(mockCreateHumanAuthoredProposal).toHaveBeenCalledWith(
+        publishedContext.request,
+        'admin-1',
+        'calendar',
+        'day-1',
+        { description: 'Новий опис.' },
+        expect.any(String),
+      );
+    });
+
+    it('regenerateCalendarDescription on ARCHIVED is refused outright, no generation attempted', async () => {
+      mockGetCalendarDay.mockResolvedValue(calendarDay({ status: 'archived' }));
+      await expectRejectionDetails(regenerateCalendarDescription('day-1', publishedContext), /requires human review/);
+      expect(mockGenerateChurchContent).not.toHaveBeenCalled();
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+      expect(mockCreateHumanAuthoredProposal).not.toHaveBeenCalled();
+    });
+
+    it('regenerateCalendarHistory on PUBLISHED creates a proposal and leaves the record unchanged', async () => {
+      const published = calendarDay({ status: 'published', history: 'Наявний текст' });
+      mockGetCalendarDay.mockResolvedValue(published);
+      mockListSaints.mockResolvedValue([]);
+      mockGenerateChurchContent.mockResolvedValue('Новий текст.');
+
+      const result = await regenerateCalendarHistory('day-1', publishedContext);
+      expectProposalMode(result);
+
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+      expect(result.day).toEqual(published);
+      expect(mockCreateHumanAuthoredProposal).toHaveBeenCalledWith(
+        publishedContext.request,
+        'admin-1',
+        'calendar',
+        'day-1',
+        { history: 'Новий текст.' },
+        expect.any(String),
+      );
+    });
+
+    it('regenerateCalendarHistory on ARCHIVED is refused outright', async () => {
+      mockGetCalendarDay.mockResolvedValue(calendarDay({ status: 'archived' }));
+      await expectRejectionDetails(regenerateCalendarHistory('day-1', publishedContext), /requires human review/);
+      expect(mockGenerateChurchContent).not.toHaveBeenCalled();
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+    });
+
+    it('regenerateCalendarSeo on PUBLISHED creates one proposal for both fields and leaves the record unchanged', async () => {
+      const published = calendarDay({ status: 'published', seoTitle: 'Old', seoDescription: 'Old' });
+      mockGetCalendarDay.mockResolvedValue(published);
+      mockListSaints.mockResolvedValue([]);
+      mockGenerateChurchContent.mockResolvedValueOnce('Новий заголовок').mockResolvedValueOnce('Новий опис для пошукових систем');
+
+      const result = await regenerateCalendarSeo('day-1', publishedContext);
+      expectProposalMode(result);
+
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+      expect(result.day).toEqual(published);
+      expect(mockCreateHumanAuthoredProposal).toHaveBeenCalledWith(
+        publishedContext.request,
+        'admin-1',
+        'calendar',
+        'day-1',
+        { seoTitle: 'Новий заголовок', seoDescription: 'Новий опис для пошукових систем' },
+        expect.any(String),
+      );
+    });
+
+    it('regenerateCalendarSeo on ARCHIVED is refused outright', async () => {
+      mockGetCalendarDay.mockResolvedValue(calendarDay({ status: 'archived' }));
+      await expectRejectionDetails(regenerateCalendarSeo('day-1', publishedContext), /requires human review/);
+      expect(mockGenerateChurchContent).not.toHaveBeenCalled();
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+    });
+
+    it('generateCalendarSeo on PUBLISHED (fills only the missing half) creates a proposal and leaves the record unchanged', async () => {
+      const published = calendarDay({ status: 'published', seoTitle: 'Наявний title', seoDescription: null });
+      mockGetCalendarDay.mockResolvedValue(published);
+      mockListSaints.mockResolvedValue([]);
+      mockGenerateChurchContent.mockResolvedValue('Згенерований опис для пошукових систем.');
+
+      const result = await generateCalendarSeo('day-1', publishedContext);
+      expectProposalMode(result);
+
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+      expect(mockCreateHumanAuthoredProposal).toHaveBeenCalledWith(
+        publishedContext.request,
+        'admin-1',
+        'calendar',
+        'day-1',
+        { seoTitle: 'Наявний title', seoDescription: 'Згенерований опис для пошукових систем.' },
+        expect.any(String),
+      );
+    });
+
+    it('regenerateCalendarImage on PUBLISHED uploads new bytes to R2 but leaves imageUrl on the record unchanged', async () => {
+      const published = calendarDay({ status: 'published', imageUrl: 'media/calendar/day-1/main/old.png' });
+      mockGetCalendarDay.mockResolvedValue(published);
+      mockListSaints.mockResolvedValue([]);
+
+      const result = await regenerateCalendarImage('day-1', publishedContext);
+      expectProposalMode(result);
+
+      // The new image bytes ARE uploaded to R2 either way (task: "новое
+      // изображение можно загрузить в R2, но published calendar imageUrl
+      // НЕ менять до Apply") -- only the calendar_days row write is gated.
+      expect(mockBucketPut).toHaveBeenCalled();
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+      expect(result.day).toEqual(published);
+      expect(mockCreateHumanAuthoredProposal).toHaveBeenCalledWith(
+        publishedContext.request,
+        'admin-1',
+        'calendar',
+        'day-1',
+        expect.objectContaining({ imageUrl: expect.stringMatching(/^media\/calendar\/day-1\/main\//) }),
+        expect.any(String),
+      );
+    });
+
+    it('regenerateCalendarImage on ARCHIVED is refused outright, no upload attempted', async () => {
+      mockGetCalendarDay.mockResolvedValue(calendarDay({ status: 'archived' }));
+      await expectRejectionDetails(regenerateCalendarImage('day-1', publishedContext), /requires human review/);
+      expect(mockBucketPut).not.toHaveBeenCalled();
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+    });
+
+    it('regenerateCalendarImage on PUBLISHED does not restore/write anything if generation fails -- nothing was written to begin with', async () => {
+      const published = calendarDay({ status: 'published', imageUrl: 'media/calendar/day-1/main/old.png' });
+      mockGetCalendarDay.mockResolvedValue(published);
+      mockListSaints.mockResolvedValue([]);
+      mockGenerateTelegramImage.mockRejectedValue(new Error('OpenAI quota exceeded'));
+
+      await expect(regenerateCalendarImage('day-1', publishedContext)).rejects.toThrow();
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+      expect(mockCreateHumanAuthoredProposal).not.toHaveBeenCalled();
+    });
+
+    it('generateCalendarImageFromPrompt on PUBLISHED uploads to R2 but proposes the imageUrl instead of writing it', async () => {
+      const published = calendarDay({ status: 'published', imageUrl: 'media/calendar/day-1/main/old.png' });
+      mockGetCalendarDay.mockResolvedValue(published);
+
+      const result = await generateCalendarImageFromPrompt('day-1', 'A specific illustration prompt', publishedContext);
+      expectProposalMode(result);
+
+      expect(mockBucketPut).toHaveBeenCalled();
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+      expect(result.day).toEqual(published);
+      expect(mockCreateHumanAuthoredProposal).toHaveBeenCalledWith(
+        publishedContext.request,
+        'admin-1',
+        'calendar',
+        'day-1',
+        expect.objectContaining({
+          imageMetadata: expect.objectContaining({ customPrompt: 'A specific illustration prompt' }),
+        }),
+        expect.any(String),
+      );
+    });
+
+    it('generateCalendarImageFromPrompt on ARCHIVED is refused outright, no upload attempted', async () => {
+      mockGetCalendarDay.mockResolvedValue(calendarDay({ status: 'archived' }));
+      await expectRejectionDetails(generateCalendarImageFromPrompt('day-1', 'A prompt', publishedContext), /requires human review/);
+      expect(mockGenerateTelegramImage).not.toHaveBeenCalled();
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+    });
+
+    it('assignCalendarImage (manual media-library pick) is NOT gated by this rule -- it writes directly regardless of status, by design', async () => {
+      mockGetCalendarDay.mockResolvedValue(calendarDay({ status: 'published' }));
+      await assignCalendarImage('day-1', 'media/calendar/day-1/main/picked.png');
+      expect(mockUpdateCalendarDay).toHaveBeenCalledWith('day-1', {
+        imageUrl: 'media/calendar/day-1/main/picked.png',
+        imageMetadata: null,
+      });
     });
   });
 
   describe('fillMissingCalendarContent', () => {
+    // Every fixture in this describe block is a DRAFT day (calendarDay()'s
+    // own default), so these always take the direct-write path and never
+    // actually read `request`/`adminUserId` on the shared module-level
+    // draftContext -- the PUBLISHED-day proposal path has its own describe
+    // block below.
+    function expectDirect(result: FillMissingCalendarResult): asserts result is Extract<FillMissingCalendarResult, { mode: 'direct' }> {
+      if (result.mode !== 'direct') throw new Error('expected a direct write, got a proposal');
+    }
+
     /** fillMissingCalendarContent re-reads its own `day` variable after
      * each sub-action (e.g. `day = await regenerateCalendarDescription(...)`),
      * so the mocked updateCalendarDay must behave like the real one -- merge
@@ -579,7 +811,8 @@ describe('calendar-ai-actions', () => {
       mockGenerateChurchContent.mockImplementation(async (input: { kind: string }) => `generated-${input.kind}`);
       mockGenerateTelegramImage.mockResolvedValue({ bytes: new ArrayBuffer(4), mimeType: 'image/png' });
 
-      const result = await fillMissingCalendarContent('day-1');
+      const result = await fillMissingCalendarContent('day-1', draftContext);
+      expectDirect(result);
 
       expect(result.filled.sort()).toEqual(['description', 'image', 'seo']);
       expect(result.skipped).toEqual([]);
@@ -594,7 +827,8 @@ describe('calendar-ai-actions', () => {
       );
       mockListSaints.mockResolvedValue([]);
 
-      const result = await fillMissingCalendarContent('day-1');
+      const result = await fillMissingCalendarContent('day-1', draftContext);
+      expectDirect(result);
 
       expect(result.filled).toEqual([]);
       expect(mockGenerateChurchContent).not.toHaveBeenCalled();
@@ -617,7 +851,8 @@ describe('calendar-ai-actions', () => {
       mockListSaints.mockResolvedValue([saint({ name: 'Невідомий святий' })]);
       mockGenerateTelegramImage.mockResolvedValue({ bytes: new ArrayBuffer(4), mimeType: 'image/png' });
 
-      const result = await fillMissingCalendarContent('day-1');
+      const result = await fillMissingCalendarContent('day-1', draftContext);
+      expectDirect(result);
 
       expect(result.skipped).toEqual(
         expect.arrayContaining([
@@ -637,11 +872,90 @@ describe('calendar-ai-actions', () => {
       mockGenerateChurchContent.mockResolvedValue('text');
       mockGenerateTelegramImage.mockResolvedValue({ bytes: new ArrayBuffer(4), mimeType: 'image/png' });
 
-      await fillMissingCalendarContent('day-1');
+      await fillMissingCalendarContent('day-1', draftContext);
 
       for (const call of mockUpdateCalendarDay.mock.calls) {
         expect(call[1]).not.toHaveProperty('status');
       }
+    });
+  });
+
+  describe('fillMissingCalendarContent on a PUBLISHED day', () => {
+    const publishedContext = { request: new Request('http://localhost/'), adminUserId: 'admin-1' };
+    function expectProposal(result: FillMissingCalendarResult): asserts result is Extract<FillMissingCalendarResult, { mode: 'proposal' }> {
+      if (result.mode !== 'proposal') throw new Error('expected a proposal, got a direct write');
+    }
+
+    it('never writes to the record -- computes the same candidate content and stages it as a human-authored proposal instead', async () => {
+      mockGetCalendarDay.mockResolvedValue(
+        calendarDay({ status: 'published', description: '', history: 'Вже написано вручну', seoTitle: null, seoDescription: null, imageUrl: '' }),
+      );
+      mockListSaints.mockResolvedValue([]);
+      mockGenerateChurchContent.mockImplementation(async (input: { kind: string }) => `generated-${input.kind}`);
+      mockGenerateTelegramImage.mockResolvedValue({ bytes: new ArrayBuffer(4), mimeType: 'image/png' });
+
+      const result = await fillMissingCalendarContent('day-1', publishedContext);
+      expectProposal(result);
+
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+      expect(result.proposedFields.sort()).toEqual(['description', 'image', 'seo']);
+      expect(result.proposalId).toBe('proposal-1');
+      expect(mockCreateHumanAuthoredProposal).toHaveBeenCalledTimes(1);
+      const [request, adminUserId, targetType, targetId, patch] = mockCreateHumanAuthoredProposal.mock.calls[0];
+      expect(request).toBe(publishedContext.request);
+      expect(adminUserId).toBe('admin-1');
+      expect(targetType).toBe('calendar');
+      expect(targetId).toBe('day-1');
+      expect(patch).toMatchObject({ description: 'generated-description', seoTitle: 'generated-seo_title', seoDescription: 'generated-seo_description' });
+      // history already had content -- never regenerated, never included in the proposal.
+      expect(patch).not.toHaveProperty('history');
+    });
+
+    it('creates no proposal at all when nothing is missing', async () => {
+      mockGetCalendarDay.mockResolvedValue(
+        calendarDay({ status: 'published', description: 'x', history: 'x', seoTitle: 'x', seoDescription: 'x', imageUrl: 'media/calendar/day-1/main/x.png' }),
+      );
+      mockListSaints.mockResolvedValue([]);
+
+      const result = await fillMissingCalendarContent('day-1', publishedContext);
+      expectProposal(result);
+
+      expect(result.proposalId).toBeNull();
+      expect(result.proposedFields).toEqual([]);
+      expect(mockCreateHumanAuthoredProposal).not.toHaveBeenCalled();
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
+    });
+
+    it('skips factual fields the same way a draft day would when saint verification fails, still never writing to the record', async () => {
+      mockGetCalendarDay.mockResolvedValue(
+        calendarDay({
+          status: 'published',
+          dateOldStyle: UNVERIFIED_OLD_STYLE,
+          dateNewStyle: UNVERIFIED_NEW_STYLE,
+          description: '',
+          history: '',
+          seoTitle: null,
+          seoDescription: null,
+          imageUrl: '',
+        }),
+      );
+      mockListSaints.mockResolvedValue([saint({ name: 'Невідомий святий' })]);
+      mockGenerateTelegramImage.mockResolvedValue({ bytes: new ArrayBuffer(4), mimeType: 'image/png' });
+
+      const result = await fillMissingCalendarContent('day-1', publishedContext);
+      expectProposal(result);
+
+      expect(result.skipped).toEqual(
+        expect.arrayContaining([
+          { field: 'description', reason: 'review_required' },
+          { field: 'history', reason: 'review_required' },
+          { field: 'seo', reason: 'review_required' },
+        ]),
+      );
+      expect(mockGenerateChurchContent).not.toHaveBeenCalled();
+      // Image safety doesn't depend on the saint-identity verification gate.
+      expect(result.proposedFields).toContain('image');
+      expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
     });
   });
 

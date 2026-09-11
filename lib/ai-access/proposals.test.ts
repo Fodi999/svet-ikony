@@ -42,7 +42,7 @@ vi.mock("@/lib/d1/env", () => ({
 }));
 import { issueGrant, exchange, activityList } from "./service";
 import { content } from "./content";
-import { aiProposals, humanProposals } from "./proposals";
+import { aiProposals, humanProposals, createHumanAuthoredProposal } from "./proposals";
 import { createSession } from "@/lib/d1/repositories/admin-sessions";
 import { sha } from "./service";
 
@@ -460,4 +460,109 @@ it("general activity failure rolls back successful review and retains specialize
       (await activityList("owner", "local")) as Array<Record<string, unknown>>
     ).some((r) => r.operation === "proposal.apply" && r.status === "failed"),
   ).toBe(true);
+});
+
+describe("createHumanAuthoredProposal (migration 0022: human-admin creator, no AI grant)", () => {
+  const localRequest = () => new Request("http://localhost/api/admin/church-content/calendar-days");
+
+  it("stores created_by_admin_user_id and leaves created_by_ai_grant_id null", async () => {
+    const p = await createHumanAuthoredProposal(
+      localRequest(),
+      "owner",
+      "calendar",
+      id,
+      { history: "Написано адміністратором через AI Fill" },
+      "AI Fill on a published day",
+    );
+    expect(p.status).toBe("pending");
+    const row = state.db
+      .prepare(
+        "SELECT created_by_admin_user_id,created_by_ai_grant_id FROM ai_proposals WHERE id=?",
+      )
+      .get(p.id) as { created_by_admin_user_id: string; created_by_ai_grant_id: string | null };
+    expect(row.created_by_admin_user_id).toBe("owner");
+    expect(row.created_by_ai_grant_id).toBeNull();
+    // Never changes the target directly.
+    expect(
+      state.db.prepare("SELECT history FROM church_calendar_days WHERE id=?").get(id).history,
+    ).toBe("");
+  });
+
+  it("the DB rejects a row with neither creator, or both -- the XOR CHECK constraint from migration 0022", () => {
+    const insert = (grantId: string | null, adminUserId: string | null) =>
+      state.db
+        .prepare(
+          `INSERT INTO ai_proposals(id,environment,target_type,target_id,target_version,target_snapshot_json,proposed_changes_json,created_by_ai_grant_id,created_by_admin_user_id,reason,sources_json,created_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+        )
+        .run(
+          crypto.randomUUID(),
+          "local",
+          "calendar",
+          id,
+          "v1",
+          "{}",
+          "{}",
+          grantId,
+          adminUserId,
+          "fixture",
+          "[]",
+          new Date().toISOString(),
+        );
+    expect(() => insert(null, null)).toThrow();
+    expect(() => insert("some-grant-id", "owner")).toThrow();
+    expect(() => insert(null, "owner")).not.toThrow();
+  });
+
+  it("a human-authored proposal is invisible to an AI grant's own proposal list/get (never treated as its own)", async () => {
+    const p = await createHumanAuthoredProposal(localRequest(), "owner", "calendar", id, { history: "x" }, "reason");
+    const list = (await aiProposals(ai("GET"))) as unknown[];
+    expect(list.some((row) => (row as { id: string }).id === p.id)).toBe(false);
+    await expect(aiProposals(ai("GET"), p.id)).rejects.toThrow();
+  });
+
+  it("apply/reject work end-to-end for a human-authored proposal without an AI grant, and the specialized audit trail still records both entries", async () => {
+    const p = await createHumanAuthoredProposal(
+      localRequest(),
+      "owner",
+      "calendar",
+      id,
+      { history: "Написано адміністратором через AI Fill" },
+      "AI Fill on a published day",
+    );
+    const applied = (await humanProposals(
+      human("POST", { confirmation: `APPLY ${p.id}` }),
+      [p.id, "apply"],
+    )) as { status: string };
+    expect(applied.status).toBe("applied");
+    expect(
+      state.db.prepare("SELECT history FROM church_calendar_days WHERE id=?").get(id).history,
+    ).toBe("Написано адміністратором через AI Fill");
+    expect(
+      state.db
+        .prepare("SELECT action FROM ai_proposal_audit WHERE proposal_id=? ORDER BY created_at")
+        .all(p.id),
+    ).toEqual([{ action: "created" }, { action: "applied" }]);
+    // No proposal.* activity entry exists at all -- ai_activity_log.grant_id
+    // is NOT NULL, and a human-authored proposal has no grant to attribute
+    // (see proposalActivity()'s own doc comment). The fixture's own initial
+    // calendar-day creation (in beforeEach) still logs its own unrelated
+    // calendar.create entry, which is why this checks "proposal.%" rather
+    // than the whole table. The specialized ai_proposal_audit trail above is
+    // what actually records this review.
+    expect(
+      state.db
+        .prepare("SELECT COUNT(*) AS n FROM ai_activity_log WHERE operation LIKE 'proposal.%'")
+        .get().n,
+    ).toBe(0);
+  });
+
+  it("reject works end-to-end for a human-authored proposal and leaves the target unchanged", async () => {
+    const p = await createHumanAuthoredProposal(localRequest(), "owner", "calendar", id, { history: "x" }, "reason");
+    const rejected = (await humanProposals(human("POST"), [p.id, "reject"])) as { status: string };
+    expect(rejected.status).toBe("rejected");
+    expect(
+      state.db.prepare("SELECT history FROM church_calendar_days WHERE id=?").get(id).history,
+    ).toBe("");
+  });
 });

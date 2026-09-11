@@ -145,19 +145,71 @@ function assertUkrainianOrThrow(text: string): void {
 }
 
 // ---------------------------------------------------------------------------
+// Single write-routing rule for EVERY AI action in this module (generate/
+// regenerate description/history/SEO/image, and fillMissingCalendarContent
+// below): a NEW/DRAFT day is written directly; a PUBLISHED day is never
+// mutated -- the exact same generated candidate value instead becomes a
+// human-authored ai_proposals row (see createHumanAuthoredProposal) for a
+// human to Apply/Reject; any other status (e.g. archived) is refused
+// outright, never silently attempted. This mirrors the Codex plugin's own
+// prepare_change status policy (operator.mjs) so "a published record is
+// never auto-mutated" is one rule, not one per action.
+// ---------------------------------------------------------------------------
+
+export type CalendarAiActionContext = { request: Request; adminUserId: string };
+export type CalendarAiActionResult =
+  | { mode: 'direct'; day: ChurchCalendarDayDto }
+  | { mode: 'proposal'; day: ChurchCalendarDayDto; proposalId: string };
+
+function assertAutomaticEditAllowed(day: ChurchCalendarDayDto): void {
+  if (day.status !== 'draft' && day.status !== 'published')
+    throw ApiError.authorization(`Automatic edits are refused for status "${day.status}"; this record requires human review`);
+}
+
+/**
+ * `day` here is the record as read BEFORE this action's own generation
+ * work (never re-fetched after, so a PUBLISHED day's `day` field in the
+ * returned proposal result is exactly the still-unchanged current record).
+ * `patch` is the field(s) this action computed. Draft -> writes and
+ * returns the freshly-read row. Published -> creates a proposal via the
+ * same human-attribution path "Заповнити відсутнє з AI" already uses on a
+ * published day (migration 0022: created_by_admin_user_id, no AI grant),
+ * and returns the untouched `day` plus the new proposal's id.
+ */
+async function writeOrPropose(
+  day: ChurchCalendarDayDto,
+  patch: Record<string, unknown>,
+  context: CalendarAiActionContext,
+  reason: string
+): Promise<CalendarAiActionResult> {
+  if (day.status === 'draft') return { mode: 'direct', day: await updateCalendarDay(day.id, patch) };
+  if (day.status === 'published') {
+    // Deferred import -- see fillMissingCalendarContent's own note on why
+    // lib/ai-access/proposals.ts (and everything it pulls in through
+    // lib/ai-access/content.ts) stays out of this module's static import
+    // graph: only a PUBLISHED day's actions ever need it.
+    const { createHumanAuthoredProposal } = await import('@/lib/ai-access/proposals');
+    const proposal = await createHumanAuthoredProposal(context.request, context.adminUserId, 'calendar', day.id, patch, reason);
+    return { mode: 'proposal', day, proposalId: proposal.id };
+  }
+  throw ApiError.authorization(`Automatic edits are refused for status "${day.status}"; this record requires human review`);
+}
+
+// ---------------------------------------------------------------------------
 // Description
 // ---------------------------------------------------------------------------
 
-export async function generateCalendarDescription(dayId: string): Promise<ChurchCalendarDayDto> {
-  const day = await getCalendarDay(dayId);
-  if (day.description.trim()) throw ApiError.conflict('this day already has a description -- use regenerate to replace it');
-  return regenerateCalendarDescription(dayId);
-}
-
-export async function regenerateCalendarDescription(dayId: string): Promise<ChurchCalendarDayDto> {
-  const day = await getCalendarDay(dayId);
-  const { saint, verified } = await requireSourceOk(day);
-  const openAi = await requireOpenAi();
+/** Computes the candidate description without persisting it -- shared by
+ * the direct-write path (regenerateCalendarDescription) and the
+ * published-record proposal path (proposeMissingCalendarContent), so a
+ * PUBLISHED day's "fill missing" never writes to the record while still
+ * generating the exact same content a draft day would get. */
+async function computeDescription(
+  day: ChurchCalendarDayDto,
+  saint: ChurchSaintDto | null,
+  verified: boolean,
+  openAi: { apiKey: string; model?: string }
+): Promise<string> {
   const description = await generateChurchContent({
     apiKey: openAi.apiKey,
     model: openAi.model,
@@ -169,23 +221,40 @@ export async function regenerateCalendarDescription(dayId: string): Promise<Chur
     verified,
   });
   assertUkrainianOrThrow(description);
-  return updateCalendarDay(dayId, { description });
+  return description;
+}
+
+export async function generateCalendarDescription(dayId: string, context: CalendarAiActionContext): Promise<CalendarAiActionResult> {
+  const day = await getCalendarDay(dayId);
+  if (day.description.trim()) throw ApiError.conflict('this day already has a description -- use regenerate to replace it');
+  return regenerateCalendarDescription(dayId, context);
+}
+
+export async function regenerateCalendarDescription(dayId: string, context: CalendarAiActionContext): Promise<CalendarAiActionResult> {
+  const day = await getCalendarDay(dayId);
+  assertAutomaticEditAllowed(day);
+  const { saint, verified } = await requireSourceOk(day);
+  const openAi = await requireOpenAi();
+  const description = await computeDescription(day, saint, verified, openAi);
+  return writeOrPropose(day, { description }, context, 'Regenerate: короткий опис (потребує розгляду адміністратора)');
 }
 
 // ---------------------------------------------------------------------------
 // History / full text
 // ---------------------------------------------------------------------------
 
-export async function generateCalendarHistory(dayId: string): Promise<ChurchCalendarDayDto> {
+export async function generateCalendarHistory(dayId: string, context: CalendarAiActionContext): Promise<CalendarAiActionResult> {
   const day = await getCalendarDay(dayId);
   if (day.history.trim()) throw ApiError.conflict('this day already has history text -- use regenerate to replace it');
-  return regenerateCalendarHistory(dayId);
+  return regenerateCalendarHistory(dayId, context);
 }
 
-export async function regenerateCalendarHistory(dayId: string): Promise<ChurchCalendarDayDto> {
-  const day = await getCalendarDay(dayId);
-  const { saint, verified } = await requireSourceOk(day);
-  const openAi = await requireOpenAi();
+async function computeHistory(
+  day: ChurchCalendarDayDto,
+  saint: ChurchSaintDto | null,
+  verified: boolean,
+  openAi: { apiKey: string; model?: string }
+): Promise<string> {
   const history = await generateChurchContent({
     apiKey: openAi.apiKey,
     model: openAi.model,
@@ -197,7 +266,16 @@ export async function regenerateCalendarHistory(dayId: string): Promise<ChurchCa
     verified,
   });
   assertUkrainianOrThrow(history);
-  return updateCalendarDay(dayId, { history });
+  return history;
+}
+
+export async function regenerateCalendarHistory(dayId: string, context: CalendarAiActionContext): Promise<CalendarAiActionResult> {
+  const day = await getCalendarDay(dayId);
+  assertAutomaticEditAllowed(day);
+  const { saint, verified } = await requireSourceOk(day);
+  const openAi = await requireOpenAi();
+  const history = await computeHistory(day, saint, verified, openAi);
+  return writeOrPropose(day, { history }, context, 'Regenerate: історична довідка (потребує розгляду адміністратора)');
 }
 
 // ---------------------------------------------------------------------------
@@ -206,13 +284,14 @@ export async function regenerateCalendarHistory(dayId: string): Promise<ChurchCa
 
 /** Fills only whichever of seoTitle/seoDescription is currently empty --
  * refuses outright only if BOTH already have content (use regenerate). */
-export async function generateCalendarSeo(dayId: string): Promise<ChurchCalendarDayDto> {
-  const day = await getCalendarDay(dayId);
-  if (day.seoTitle?.trim() && day.seoDescription?.trim()) {
-    throw ApiError.conflict('this day already has SEO title and description -- use regenerate to replace them');
-  }
-  const { saint, verified } = await requireSourceOk(day);
-  const openAi = await requireOpenAi();
+/** Fills only whichever of seoTitle/seoDescription is missing on `day`;
+ * never regenerates one that already has content. */
+async function computeMissingSeo(
+  day: ChurchCalendarDayDto,
+  saint: ChurchSaintDto | null,
+  verified: boolean,
+  openAi: { apiKey: string; model?: string }
+): Promise<{ seoTitle: string; seoDescription: string }> {
   const base = { apiKey: openAi.apiKey, model: openAi.model, civilDateIso: day.dateNewStyle, julianDateIso: day.dateOldStyle, title: day.title, facts: buildFacts(day, saint), verified };
 
   let seoTitle = day.seoTitle?.trim() ? day.seoTitle : null;
@@ -225,23 +304,46 @@ export async function generateCalendarSeo(dayId: string): Promise<ChurchCalendar
     seoDescription = await generateChurchContent({ ...base, kind: 'seo_description' });
     assertUkrainianOrThrow(seoDescription);
   }
-  return updateCalendarDay(dayId, { seoTitle, seoDescription });
+  return { seoTitle, seoDescription };
 }
 
-/** Always overwrites both fields. */
-export async function regenerateCalendarSeo(dayId: string): Promise<ChurchCalendarDayDto> {
+export async function generateCalendarSeo(dayId: string, context: CalendarAiActionContext): Promise<CalendarAiActionResult> {
   const day = await getCalendarDay(dayId);
+  if (day.seoTitle?.trim() && day.seoDescription?.trim()) {
+    throw ApiError.conflict('this day already has SEO title and description -- use regenerate to replace them');
+  }
+  assertAutomaticEditAllowed(day);
   const { saint, verified } = await requireSourceOk(day);
   const openAi = await requireOpenAi();
-  const base = { apiKey: openAi.apiKey, model: openAi.model, civilDateIso: day.dateNewStyle, julianDateIso: day.dateOldStyle, title: day.title, facts: buildFacts(day, saint), verified };
+  const { seoTitle, seoDescription } = await computeMissingSeo(day, saint, verified, openAi);
+  return writeOrPropose(day, { seoTitle, seoDescription }, context, 'Generate: SEO (потребує розгляду адміністратора)');
+}
 
+/** Always overwrites both fields -- unlike computeMissingSeo(), which only
+ * fills whichever is empty. */
+async function computeSeo(
+  day: ChurchCalendarDayDto,
+  saint: ChurchSaintDto | null,
+  verified: boolean,
+  openAi: { apiKey: string; model?: string }
+): Promise<{ seoTitle: string; seoDescription: string }> {
+  const base = { apiKey: openAi.apiKey, model: openAi.model, civilDateIso: day.dateNewStyle, julianDateIso: day.dateOldStyle, title: day.title, facts: buildFacts(day, saint), verified };
   const [seoTitle, seoDescription] = await Promise.all([
     generateChurchContent({ ...base, kind: 'seo_title' }),
     generateChurchContent({ ...base, kind: 'seo_description' }),
   ]);
   assertUkrainianOrThrow(seoTitle);
   assertUkrainianOrThrow(seoDescription);
-  return updateCalendarDay(dayId, { seoTitle, seoDescription });
+  return { seoTitle, seoDescription };
+}
+
+export async function regenerateCalendarSeo(dayId: string, context: CalendarAiActionContext): Promise<CalendarAiActionResult> {
+  const day = await getCalendarDay(dayId);
+  assertAutomaticEditAllowed(day);
+  const { saint, verified } = await requireSourceOk(day);
+  const openAi = await requireOpenAi();
+  const { seoTitle, seoDescription } = await computeSeo(day, saint, verified, openAi);
+  return writeOrPropose(day, { seoTitle, seoDescription }, context, 'Regenerate: SEO (потребує розгляду адміністратора)');
 }
 
 // ---------------------------------------------------------------------------
@@ -354,38 +456,56 @@ async function resolveSaintIllustration(
  * 2-4) resolveSaintIllustration()'s own chain. A manually-picked Media
  * Library image is handled by the separate assignCalendarImage() action,
  * not this one. */
-export async function generateCalendarImage(dayId: string): Promise<ChurchCalendarDayDto> {
-  const day = await getCalendarDay(dayId);
-  if (day.imageUrl.trim()) throw ApiError.conflict('this day already has an image -- use regenerate to replace it');
-
-  const saint = await loadLinkedSaint(dayId);
-  if (saint?.imageUrl?.trim()) {
-    return updateCalendarDay(dayId, { imageUrl: saint.imageUrl, imageMetadata: null });
-  }
-  const openAi = await requireOpenAi();
-  const { imageUrl, imageMetadata } = await resolveSaintIllustration(dayId, saint, openAi);
-  return updateCalendarDay(dayId, { imageUrl, imageMetadata });
+/** Resolves the candidate image for `dayId` without persisting it -- the
+ * linked saint's own verified image still short-circuits the AI chain
+ * exactly as generateCalendarImage() does; only the final write differs. */
+async function computeImage(dayId: string, saint: ChurchSaintDto | null, openAi: { apiKey: string; imageModel?: string; model?: string }): Promise<ResolvedImage> {
+  if (saint?.imageUrl?.trim()) return { imageUrl: saint.imageUrl, imageMetadata: null };
+  return resolveSaintIllustration(dayId, saint, openAi);
 }
 
-/** Always attempts a fresh image; restores the previous one (and its
- * provenance metadata) if generation fails, mirroring
- * content-plan-actions.ts's regenerateSlotImage(). Reuses an already-
- * verified Wikipedia reference instead of re-querying it, per task
- * section 12. */
-export async function regenerateCalendarImage(dayId: string): Promise<ChurchCalendarDayDto> {
+export async function generateCalendarImage(dayId: string, context: CalendarAiActionContext): Promise<CalendarAiActionResult> {
   const day = await getCalendarDay(dayId);
+  if (day.imageUrl.trim()) throw ApiError.conflict('this day already has an image -- use regenerate to replace it');
+  assertAutomaticEditAllowed(day);
+
+  const saint = await loadLinkedSaint(dayId);
+  const openAi = await requireOpenAi();
+  const { imageUrl, imageMetadata } = await computeImage(dayId, saint, openAi);
+  return writeOrPropose(day, { imageUrl, imageMetadata }, context, 'Generate: зображення (потребує розгляду адміністратора)');
+}
+
+/**
+ * Always attempts a fresh image. New bytes are uploaded to R2 either way
+ * (task: "новое изображение можно загрузить в R2, но published calendar
+ * imageUrl НЕ менять до Apply") -- only the calendar_days row write is
+ * gated by status. A DRAFT day restores the previous image (and its
+ * provenance metadata) if generation fails, mirroring
+ * content-plan-actions.ts's regenerateSlotImage(); a PUBLISHED day has
+ * nothing to restore in the first place (nothing was written), so a
+ * failure there simply propagates. Reuses an already-verified Wikipedia
+ * reference instead of re-querying it, per task section 12.
+ */
+export async function regenerateCalendarImage(dayId: string, context: CalendarAiActionContext): Promise<CalendarAiActionResult> {
+  const day = await getCalendarDay(dayId);
+  assertAutomaticEditAllowed(day);
   const previousImageUrl = day.imageUrl;
   const previousImageMetadata = day.imageMetadata;
   try {
     const saint = await loadLinkedSaint(dayId);
+    let imageUrl: string, imageMetadata: CalendarImageMetadata | null;
     if (saint?.imageUrl?.trim()) {
-      return await updateCalendarDay(dayId, { imageUrl: saint.imageUrl, imageMetadata: null });
+      imageUrl = saint.imageUrl;
+      imageMetadata = null;
+    } else {
+      const openAi = await requireOpenAi();
+      ({ imageUrl, imageMetadata } = await resolveSaintIllustration(dayId, saint, openAi, previousImageMetadata ?? undefined));
     }
-    const openAi = await requireOpenAi();
-    const { imageUrl, imageMetadata } = await resolveSaintIllustration(dayId, saint, openAi, previousImageMetadata ?? undefined);
-    return await updateCalendarDay(dayId, { imageUrl, imageMetadata });
+    return await writeOrPropose(day, { imageUrl, imageMetadata }, context, 'Regenerate: зображення (потребує розгляду адміністратора)');
   } catch (error) {
-    if (previousImageUrl) return updateCalendarDay(dayId, { imageUrl: previousImageUrl, imageMetadata: previousImageMetadata });
+    if (day.status === 'draft' && previousImageUrl)
+      return { mode: 'direct', day: await updateCalendarDay(dayId, { imageUrl: previousImageUrl, imageMetadata: previousImageMetadata }) };
+    if (error instanceof ApiError) throw error;
     throw new ApiError(500, 'IMAGE_GENERATION_ERROR', 'Image generation failed', errorMessage(error));
   }
 }
@@ -403,13 +523,17 @@ export async function regenerateCalendarImage(dayId: string): Promise<ChurchCale
  * Always overwrites any existing image (like regenerate*, not generate*):
  * typing a new prompt and clicking this action is itself the explicit
  * intent to replace whatever is there, so there is no separate
- * "already has an image" guard to bypass.
+ * "already has an image" guard to bypass. Follows the same draft-direct/
+ * published-proposal policy as every regenerate* action above -- this is
+ * regenerate-shaped (always overwrites), even though its name doesn't say
+ * so.
  */
-export async function generateCalendarImageFromPrompt(dayId: string, prompt: string): Promise<ChurchCalendarDayDto> {
+export async function generateCalendarImageFromPrompt(dayId: string, prompt: string, context: CalendarAiActionContext): Promise<CalendarAiActionResult> {
   const trimmed = prompt.trim();
   if (!trimmed) throw ApiError.validation('prompt is required');
 
   const day = await getCalendarDay(dayId);
+  assertAutomaticEditAllowed(day);
   const previousImageUrl = day.imageUrl;
   const previousImageMetadata = day.imageMetadata;
   const openAi = await requireOpenAi();
@@ -417,20 +541,33 @@ export async function generateCalendarImageFromPrompt(dayId: string, prompt: str
     const image = await generateTelegramImage({ apiKey: openAi.apiKey, model: openAi.imageModel, prompt: trimmed });
     const key = await storeGeneratedImage(dayId, image);
     console.log(`[calendar-image] day=${dayId} source=custom_prompt`);
-    return await updateCalendarDay(dayId, {
-      imageUrl: key,
-      imageMetadata: { origin: 'ai_generated', identityVerified: false, customPrompt: trimmed },
-    });
+    return await writeOrPropose(
+      day,
+      { imageUrl: key, imageMetadata: { origin: 'ai_generated', identityVerified: false, customPrompt: trimmed } },
+      context,
+      'Regenerate: зображення за власним промтом (потребує розгляду адміністратора)'
+    );
   } catch (error) {
-    if (previousImageUrl) return updateCalendarDay(dayId, { imageUrl: previousImageUrl, imageMetadata: previousImageMetadata });
+    if (day.status === 'draft' && previousImageUrl)
+      return { mode: 'direct', day: await updateCalendarDay(dayId, { imageUrl: previousImageUrl, imageMetadata: previousImageMetadata }) };
+    if (error instanceof ApiError) throw error;
     throw new ApiError(500, 'IMAGE_GENERATION_ERROR', 'Image generation failed', errorMessage(error));
   }
 }
 
-/** "Обрати з медіатеки" -- persists an already-uploaded R2 key/URL
+/**
+ * "Обрати з медіатеки" -- persists an already-uploaded R2 key/URL
  * directly, no AI call. Clears any previous AI provenance metadata: this
  * image is now a manual pick, and must never be displayed as AI-generated
- * (task: "AI result marked AI-generated" -- the inverse must hold too). */
+ * (task: "AI result marked AI-generated" -- the inverse must hold too).
+ *
+ * Deliberately NOT gated by the draft/published/archived rule the AI
+ * generate/regenerate actions above follow: there is no AI content here to
+ * review -- the admin has already looked at the picked media-library asset
+ * themselves, so this is a manual edit (the same trust level as editing
+ * title/date by hand on the calendar form's own Save), not an AI action
+ * that needs a human review step of its own.
+ */
 export async function assignCalendarImage(dayId: string, imageUrl: string): Promise<ChurchCalendarDayDto> {
   return updateCalendarDay(dayId, { imageUrl, imageMetadata: null });
 }
@@ -441,26 +578,29 @@ export async function assignCalendarImage(dayId: string, imageUrl: string): Prom
 // ---------------------------------------------------------------------------
 
 export type FillMissingCalendarField = 'description' | 'history' | 'seo' | 'image';
-export type FillMissingCalendarResult = {
-  day: ChurchCalendarDayDto;
-  filled: FillMissingCalendarField[];
-  skipped: { field: FillMissingCalendarField; reason: 'missing_source' | 'review_required' | 'failed' }[];
-};
-
+type FillMissingCalendarSkip = { field: FillMissingCalendarField; reason: 'missing_source' | 'review_required' | 'failed' };
 /**
- * "Заповнити відсутнє з AI" -- fills only whichever of description/
- * history/SEO/image is currently empty; never overwrites existing content
- * (manual or AI-generated); never changes `status`; never publishes; never
- * touches Telegram. A verification failure or missing source for this
- * day's saint claim skips ALL factual fields (description/history/SEO all
- * depend on the same facts) but still attempts the image step's saint-
- * image priority check (image safety doesn't depend on the same gate --
- * see generateCalendarImage's own priority order).
+ * `mode: 'direct'` -- the day was a NEW/DRAFT record, so missing fields
+ * were written straight to it (unchanged behavior from before this type
+ * became a union). `mode: 'proposal'` -- the day was PUBLISHED, so nothing
+ * was written; `proposalId` is null when there was nothing to propose
+ * (everything already filled, or every candidate field failed/was
+ * skipped), otherwise it names the pending ai_proposals row a human must
+ * review in the proposal panel.
  */
-export async function fillMissingCalendarContent(dayId: string): Promise<FillMissingCalendarResult> {
+export type FillMissingCalendarResult =
+  | { mode: 'direct'; day: ChurchCalendarDayDto; filled: FillMissingCalendarField[]; skipped: FillMissingCalendarSkip[] }
+  | { mode: 'proposal'; day: ChurchCalendarDayDto; proposalId: string | null; proposedFields: FillMissingCalendarField[]; skipped: FillMissingCalendarSkip[] };
+
+/** @deprecated alias -- fillMissingCalendarContent's context is identical
+ * to every other action in this module now; kept so existing imports of
+ * this name don't need to change. */
+export type FillMissingCalendarContext = CalendarAiActionContext;
+
+async function fillMissingCalendarContentDraft(dayId: string, context: CalendarAiActionContext): Promise<Extract<FillMissingCalendarResult, { mode: 'direct' }>> {
   let day = await getCalendarDay(dayId);
   const filled: FillMissingCalendarField[] = [];
-  const skipped: FillMissingCalendarResult['skipped'] = [];
+  const skipped: FillMissingCalendarSkip[] = [];
 
   const saint = await loadLinkedSaint(dayId);
   const sourceCheck = await checkCalendarSource(day, saint);
@@ -472,7 +612,7 @@ export async function fillMissingCalendarContent(dayId: string): Promise<FillMis
   } else {
     if (!day.description.trim()) {
       try {
-        day = await regenerateCalendarDescription(dayId);
+        day = (await regenerateCalendarDescription(dayId, context)).day;
         filled.push('description');
       } catch {
         skipped.push({ field: 'description', reason: 'failed' });
@@ -480,7 +620,7 @@ export async function fillMissingCalendarContent(dayId: string): Promise<FillMis
     }
     if (!day.history.trim()) {
       try {
-        day = await regenerateCalendarHistory(dayId);
+        day = (await regenerateCalendarHistory(dayId, context)).day;
         filled.push('history');
       } catch {
         skipped.push({ field: 'history', reason: 'failed' });
@@ -488,7 +628,7 @@ export async function fillMissingCalendarContent(dayId: string): Promise<FillMis
     }
     if (!(day.seoTitle?.trim() && day.seoDescription?.trim())) {
       try {
-        day = await generateCalendarSeo(dayId);
+        day = (await generateCalendarSeo(dayId, context)).day;
         filled.push('seo');
       } catch {
         skipped.push({ field: 'seo', reason: 'failed' });
@@ -498,12 +638,121 @@ export async function fillMissingCalendarContent(dayId: string): Promise<FillMis
 
   if (!day.imageUrl.trim()) {
     try {
-      day = await generateCalendarImage(dayId);
+      day = (await generateCalendarImage(dayId, context)).day;
       filled.push('image');
     } catch {
       skipped.push({ field: 'image', reason: 'failed' });
     }
   }
 
-  return { day, filled, skipped };
+  return { mode: 'direct', day, filled, skipped };
+}
+
+/**
+ * PUBLISHED-day counterpart of fillMissingCalendarContentDraft(): computes
+ * exactly the same candidate values (same source gate, same per-field
+ * missing-only check, same generation helpers) but never calls
+ * updateCalendarDay -- the record is read-only here. Non-empty results
+ * become a single ai_proposals row attributed to the human admin who
+ * clicked the button (see createHumanAuthoredProposal), not an AI grant;
+ * a human reviewer applies or rejects it like any other proposal.
+ */
+async function proposeMissingCalendarContent(
+  day: ChurchCalendarDayDto,
+  context: FillMissingCalendarContext
+): Promise<Extract<FillMissingCalendarResult, { mode: 'proposal' }>> {
+  const patch: Record<string, unknown> = {};
+  const proposedFields: FillMissingCalendarField[] = [];
+  const skipped: FillMissingCalendarSkip[] = [];
+
+  const saint = await loadLinkedSaint(day.id);
+  const sourceCheck = await checkCalendarSource(day, saint);
+
+  if (!sourceCheck.ok) {
+    if (!day.description.trim()) skipped.push({ field: 'description', reason: sourceCheck.issue });
+    if (!day.history.trim()) skipped.push({ field: 'history', reason: sourceCheck.issue });
+    if (!(day.seoTitle?.trim() && day.seoDescription?.trim())) skipped.push({ field: 'seo', reason: sourceCheck.issue });
+  } else {
+    if (!day.description.trim()) {
+      try {
+        patch.description = await computeDescription(day, saint, sourceCheck.verified, await requireOpenAi());
+        proposedFields.push('description');
+      } catch {
+        skipped.push({ field: 'description', reason: 'failed' });
+      }
+    }
+    if (!day.history.trim()) {
+      try {
+        patch.history = await computeHistory(day, saint, sourceCheck.verified, await requireOpenAi());
+        proposedFields.push('history');
+      } catch {
+        skipped.push({ field: 'history', reason: 'failed' });
+      }
+    }
+    if (!(day.seoTitle?.trim() && day.seoDescription?.trim())) {
+      try {
+        const seo = await computeMissingSeo(day, saint, sourceCheck.verified, await requireOpenAi());
+        patch.seoTitle = seo.seoTitle;
+        patch.seoDescription = seo.seoDescription;
+        proposedFields.push('seo');
+      } catch {
+        skipped.push({ field: 'seo', reason: 'failed' });
+      }
+    }
+  }
+
+  if (!day.imageUrl.trim()) {
+    try {
+      const { imageUrl, imageMetadata } = await computeImage(day.id, saint, await requireOpenAi());
+      patch.imageUrl = imageUrl;
+      patch.imageMetadata = imageMetadata;
+      proposedFields.push('image');
+    } catch {
+      skipped.push({ field: 'image', reason: 'failed' });
+    }
+  }
+
+  if (proposedFields.length === 0) return { mode: 'proposal', day, proposalId: null, proposedFields, skipped };
+
+  // Deferred import: lib/ai-access/proposals.ts pulls in every content
+  // adapter (saints/icons/prayers/articles/gospel/alphabet/calendarDays)
+  // through lib/ai-access/content.ts. A draft day's fill-missing (the
+  // common case, and the only path most tests exercise) has no business
+  // needing any of that, so keep it out of this module's static import
+  // graph entirely -- only a PUBLISHED day's fill-missing ever loads it.
+  const { createHumanAuthoredProposal } = await import('@/lib/ai-access/proposals');
+  const proposal = await createHumanAuthoredProposal(
+    context.request,
+    context.adminUserId,
+    'calendar',
+    day.id,
+    patch,
+    '«Заповнити відсутнє з AI» на опублікованому дні -- потребує розгляду адміністратора'
+  );
+  return { mode: 'proposal', day, proposalId: proposal.id, proposedFields, skipped };
+}
+
+/**
+ * "Заповнити відсутнє з AI" -- fills only whichever of description/
+ * history/SEO/image is currently empty; never overwrites existing content
+ * (manual or AI-generated); never changes `status`; never publishes; never
+ * touches Telegram. A verification failure or missing source for this
+ * day's saint claim skips ALL factual fields (description/history/SEO all
+ * depend on the same facts) but still attempts the image step's saint-
+ * image priority check (image safety doesn't depend on the same gate --
+ * see generateCalendarImage's own priority order).
+ *
+ * PUBLISHED records never take the direct-write path above: this function
+ * dispatches to proposeMissingCalendarContent() instead, which computes the
+ * exact same candidate content but stages it as a human-reviewable proposal
+ * rather than writing it -- see that function's own doc comment. ARCHIVED
+ * records (or any other status) are refused outright -- previously this
+ * fell through to the direct-write path unconditionally, which would have
+ * silently written to an archived record.
+ */
+export async function fillMissingCalendarContent(dayId: string, context: FillMissingCalendarContext): Promise<FillMissingCalendarResult> {
+  const day = await getCalendarDay(dayId);
+  if (day.status === 'published') return proposeMissingCalendarContent(day, context);
+  assertAutomaticEditAllowed(day);
+  return fillMissingCalendarContentDraft(dayId, context);
 }

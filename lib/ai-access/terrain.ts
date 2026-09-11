@@ -22,19 +22,31 @@ export function terrainHandler(
     const p = await params,
       lod = /^L[123]$/.test(p.lod) ? Number(p.lod.slice(1)) : 0;
     terrainPrefix(p.region, lod);
-    const result = await fn(
-      new TerrainStorage(await getMediaBucket()),
-      p.region,
-      lod,
-    );
-    await activity(
-      a,
-      "terrain",
-      write ? "upload" : "read",
-      p.region + "/" + p.lod,
-      result.ok ? "success" : "failed",
-      crypto.randomUUID(),
-    );
-    return result;
+    try {
+      const result = await fn(
+        new TerrainStorage(await getMediaBucket()),
+        p.region,
+        lod,
+      );
+      await activity(
+        a,
+        "terrain",
+        write ? "upload" : "read",
+        p.region + "/" + p.lod,
+        result.ok ? "success" : "failed",
+        crypto.randomUUID(),
+      );
+      return result;
+    } catch (error) {
+      await activity(
+        a,
+        "terrain",
+        write ? "upload" : "read",
+        p.region + "/" + p.lod,
+        "failed",
+        crypto.randomUUID(),
+      );
+      throw error;
+    }
   });
 }

@@ -2,11 +2,13 @@ import {
   listVisualizerEvents,
   getVisualizerEvent,
   createVisualizerEvent,
+  type ChurchVisualizerEventPayload,
 } from "@/lib/d1/repositories/visualizerEvents";
 import {
   listVisualizerModels,
   getVisualizerModel,
   createVisualizerModel,
+  type ChurchVisualizerModelPayload,
   getBaseEarthModel,
 } from "@/lib/d1/repositories/visualizerModels";
 import { d1First, d1Run } from "@/lib/d1/db";
@@ -56,7 +58,7 @@ export async function visualizer(request: Request, kind: string, id?: string) {
         JSON.stringify(raw).length > 500000
       )
         throw ApiError.validation("Invalid payload");
-      const p = raw as Record<string, any>;
+      const p = raw as Record<string, unknown>;
       if (kind === "events") {
         const allowed = [
           "slug",
@@ -98,8 +100,16 @@ export async function visualizer(request: Request, kind: string, id?: string) {
           );
         if (p.calendarDayId || current?.calendarDayId)
           throw ApiError.authorization("AI Visualizer calendar links deferred");
-        validateEvent({ ...current, ...p });
-        if (!id) result = await createVisualizerEvent(p);
+        validateEvent({ ...current, ...p } as ChurchVisualizerEventPayload);
+        if (
+          typeof p.isFeatured !== "undefined" &&
+          typeof p.isFeatured !== "boolean"
+        )
+          throw ApiError.validation("Invalid featured flag");
+        if (!id)
+          result = await createVisualizerEvent(
+            p as ChurchVisualizerEventPayload,
+          );
         else {
           const entries = Object.entries(p).filter(([k]) => k !== "status");
           if (entries.length) {
@@ -128,6 +138,15 @@ export async function visualizer(request: Request, kind: string, id?: string) {
         ];
         if (Object.keys(p).some((k) => !allowed.includes(k)) || p.isBaseEarth)
           throw ApiError.authorization("Base Earth changes unavailable");
+        if (
+          (p.title !== undefined && typeof p.title !== "string") ||
+          (p.filename !== undefined && typeof p.filename !== "string") ||
+          (p.eventGroupId !== undefined &&
+            p.eventGroupId !== null &&
+            typeof p.eventGroupId !== "string") ||
+          (p.sortOrder !== undefined && !Number.isSafeInteger(p.sortOrder))
+        )
+          throw ApiError.validation("Invalid model metadata");
         requireScope(a.scopes, "visualizer.model.upload");
         const current = id ? await getVisualizerModel(id) : null;
         if (current?.isBaseEarth)
@@ -164,7 +183,7 @@ export async function visualizer(request: Request, kind: string, id?: string) {
             fileSize: object.size,
             mimeType: "model/gltf-binary",
             isBaseEarth: false,
-          });
+          } as ChurchVisualizerModelPayload);
         else {
           if (
             Object.keys(p).some(
@@ -191,19 +210,24 @@ export async function visualizer(request: Request, kind: string, id?: string) {
       a,
       "visualizer",
       write ? (id ? "update" : "create") : "read",
-      id ?? null,
+      id ??
+        (result && typeof result === "object" && "id" in result
+          ? String(result.id)
+          : null),
       "success",
       requestId,
+      kind,
     );
     return result;
   } catch (e) {
     await activity(
       a,
       "visualizer",
-      write ? "update" : "read",
+      write ? (id ? "update" : "create") : "read",
       id ?? null,
       "failed",
       requestId,
+      kind,
     );
     throw e;
   }

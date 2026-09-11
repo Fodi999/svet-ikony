@@ -185,7 +185,11 @@ export async function rateLimit(ip: string) {
 export async function exchange(request: Request) {
   const env = environment(request);
   await rateLimit(request.headers.get("cf-connecting-ip") || "unknown");
-  const p = (await request.json()) as { pairingCode?: unknown };
+  const body: unknown = await request.json();
+  const p =
+    body && typeof body === "object" && !Array.isArray(body)
+      ? (body as { pairingCode?: unknown })
+      : {};
   const code =
     typeof p.pairingCode === "string"
       ? p.pairingCode.toUpperCase().replaceAll("-", "")
@@ -261,7 +265,17 @@ export async function requireAiAccess(
   if (row.environment !== environment(request))
     throw new ApiError(403, "AI_ENVIRONMENT_DENIED", "Environment mismatch");
   const scopes = JSON.parse(row.scopes_json) as string[];
-  if (scope) requireScope(scopes, scope);
+  if (scope && !scopes.includes(scope)) {
+    await activity(
+      { grant: row, scopes, tokenId: row.token_id },
+      scope.split(".")[0],
+      "denied",
+      null,
+      "failed",
+      crypto.randomUUID(),
+    );
+    requireScope(scopes, scope);
+  }
   const cutoff = new Date(Date.now() - 30000).toISOString();
   await d1Run(
     "UPDATE ai_access_grants SET last_used_at=? WHERE id=? AND (last_used_at IS NULL OR last_used_at<?)",
@@ -284,6 +298,7 @@ export async function activity(
   targetId: string | null,
   status: string,
   requestId: string,
+  targetType = module,
 ) {
   await d1Run(
     "INSERT INTO ai_activity_log (id,grant_id,admin_user_id,tool_name,module,operation,target_type,target_id,request_id,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
@@ -293,7 +308,7 @@ export async function activity(
     module + "." + operation,
     module,
     operation,
-    module,
+    targetType,
     targetId,
     requestId,
     status,

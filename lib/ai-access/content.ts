@@ -70,7 +70,7 @@ const adapters = {
     list: listGospel,
     get: getGospel,
     create: createGospel,
-    table: "church_gospel",
+    table: "church_gospel_readings",
   },
   alphabet: {
     list: listAlphabetLetters,
@@ -115,6 +115,7 @@ export async function content(request: Request, entity: string, id?: string) {
         spec = CATALOG[e] as {
           strings: readonly string[];
           numbers?: readonly string[];
+          arrays?: readonly string[];
           booleans?: readonly string[];
           refs: Record<string, string>;
           required: readonly string[];
@@ -122,6 +123,8 @@ export async function content(request: Request, entity: string, id?: string) {
       const allowed = new Set([
         ...spec.strings,
         ...(spec.numbers ?? []),
+        ...(spec.arrays ?? []),
+        ...(e === "calendar" ? ["imageMetadata"] : []),
         ...(spec.booleans ?? []),
         ...Object.keys(spec.refs),
         "status",
@@ -133,8 +136,37 @@ export async function content(request: Request, entity: string, id?: string) {
             throw ApiError.authorization("Publication disabled");
           continue;
         }
-        if (spec.numbers?.includes(k)) {
-          if (typeof v !== "number" || !Number.isFinite(v))
+        if (e === "calendar" && k === "imageMetadata") {
+          if (
+            v !== null &&
+            (typeof v !== "object" ||
+              Array.isArray(v) ||
+              (v as Record<string, unknown>).origin !== "ai_generated" ||
+              (v as Record<string, unknown>).identityVerified !== false ||
+              Object.keys(v).some(
+                (key) => !["origin", "identityVerified"].includes(key),
+              ))
+          )
+            throw ApiError.validation("Invalid AI image metadata");
+        } else if (spec.arrays?.includes(k)) {
+          if (
+            !Array.isArray(v) ||
+            v.length > 50 ||
+            v.some(
+              (url) =>
+                typeof url !== "string" ||
+                !/^(https:\/\/|\/?media\/)/.test(url),
+            )
+          )
+            throw ApiError.validation("Invalid gallery URLs");
+        } else if (
+          e === "calendar" &&
+          ["seoTitle", "seoDescription"].includes(k) &&
+          v === null
+        ) {
+          continue;
+        } else if (spec.numbers?.includes(k)) {
+          if (v !== null && (typeof v !== "number" || !Number.isFinite(v)))
             throw ApiError.validation("Invalid number");
         } else if (spec.booleans?.includes(k)) {
           if (typeof v !== "boolean")
@@ -157,12 +189,18 @@ export async function content(request: Request, entity: string, id?: string) {
         throw ApiError.validation(
           "Draft language and slug cannot be changed by AI",
         );
+      const merged = { ...previous, ...p } as Record<string, unknown>;
+      for (const field of spec.required)
+        if (typeof merged[field] !== "string" || !String(merged[field]).trim())
+          throw ApiError.validation("Required content field missing");
       for (const [field, target] of Object.entries(spec.refs)) {
         if (p[field]) {
           if (!Object.hasOwn(adapters, target))
             throw ApiError.validation("Unsupported relationship");
           requireScope(a.scopes, target + ".read");
-          await adapters[target as Entity].get(String(p[field]));
+          const linked = await adapters[target as Entity].get(String(p[field]));
+          if (linked.language !== merged.language)
+            throw ApiError.validation("Relationship language mismatch");
         }
       }
       if (
@@ -188,7 +226,11 @@ export async function content(request: Request, entity: string, id?: string) {
           const column = (k: string) =>
             k.replace(/[A-Z]/g, (c) => "_" + c.toLowerCase());
           const values = entries.map(([, v]) =>
-            typeof v === "boolean" ? Number(v) : v,
+            typeof v === "boolean"
+              ? Number(v)
+              : v !== null && typeof v === "object"
+                ? JSON.stringify(v)
+                : v,
           );
           const r = await d1Run(
             `UPDATE ${adapter.table} SET ${entries.map(([k]) => column(k) + "=?").join(",")},updated_at=? WHERE id=? AND status='draft'`,

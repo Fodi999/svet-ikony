@@ -317,7 +317,8 @@ export async function activity(
 }
 export async function activityList(userId: string, env: string) {
   return d1All(
-    "SELECT a.* FROM ai_activity_log a JOIN ai_access_grants g ON g.id=a.grant_id WHERE g.admin_user_id=? AND g.environment=? ORDER BY a.created_at DESC LIMIT 100",
+    "SELECT a.* FROM ai_activity_log a JOIN ai_access_grants g ON g.id=a.grant_id WHERE (g.admin_user_id=? OR a.admin_user_id=?) AND g.environment=? ORDER BY a.created_at DESC LIMIT 100",
+    userId,
     userId,
     env,
   );

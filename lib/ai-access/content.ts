@@ -35,7 +35,7 @@ import { CATALOG } from "./catalog";
 import { requireScope } from "./policy";
 import { requireAiAccess, activity } from "./service";
 import { getAutopostSettings } from "@/lib/d1/repositories/telegram-autopost";
-const adapters = {
+export const adapters = {
   calendar: {
     list: listCalendarDays,
     get: getCalendarDay,

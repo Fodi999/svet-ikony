@@ -4,12 +4,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChurchVisualizerEventDto } from '@/lib/types';
-const harness = vi.hoisted(() => ({ target: null as unknown, country: null as string | null, selectCountry: (() => {}) as (code: string) => void, mobile: false, locale: 'uk' as 'uk'|'ru'|'en', mapEvents: [] as { id: string; latitude: number; longitude: number }[] }));
+const harness = vi.hoisted(() => ({ territory: null as {id:string}|null, selectEvent: (()=>{}) as (id:string)=>void, target: null as unknown, country: null as string | null, selectCountry: (() => {}) as (code: string) => void, mobile: false, locale: 'uk' as 'uk'|'ru'|'en', mapEvents: [] as { id: string; latitude: number; longitude: number }[] }));
 vi.mock('@/components/site/LanguageProvider', async () => {
   const { translate } = await import('@/lib/i18n');
   return { useI18n: () => ({ locale: harness.locale, t: (key: import('@/lib/i18n').TranslationKey) => translate(harness.locale, key) }) };
 });
-vi.mock('./Earth3DCanvas', () => ({ Earth3DCanvas: (props: { selectedEvent: unknown; selectedCountryCode: string | null; onSelectCountry: (code: string) => void; mapEvents: { id: string; latitude: number; longitude: number }[] }) => { harness.target = props.selectedEvent; harness.country = props.selectedCountryCode; harness.selectCountry = props.onSelectCountry; harness.mapEvents = props.mapEvents; return React.createElement('canvas'); } }));
+vi.mock('./Earth3DCanvas', () => ({ Earth3DCanvas: (props: { historicalTerritory: {id:string}|null; onSelectEvent: (id:string)=>void; selectedEvent: unknown; selectedCountryCode: string | null; onSelectCountry: (code: string) => void; mapEvents: { id: string; latitude: number; longitude: number }[] }) => { harness.territory = props.historicalTerritory; harness.selectEvent = props.onSelectEvent; harness.target = props.selectedEvent; harness.country = props.selectedCountryCode; harness.selectCountry = props.onSelectCountry; harness.mapEvents = props.mapEvents; return React.createElement('canvas'); } }));
 import { HistoryVisualizer } from './HistoryVisualizer';
 import { haversineDistanceKm, MARKER_CLUSTER_RADIUS_KM } from '@/lib/visualizer/marker-clustering';
 import { scrubberIndexAtClientX } from '@/lib/visualizer/timeline-position';
@@ -190,5 +190,25 @@ describe('history explorer', () => {
     expect(dialog.querySelector('[aria-label="Закрити"]')).not.toBeNull();
     await click(dialog.querySelector('[aria-label="Закрити"]')!);
     expect(button('Відкрити інформацію про подію').getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+
+describe('historical atlas selection integration', () => {
+  const atlasEvents = [event('kyiv',{yearStart:988,sortYear:988,latitude:50.4501,longitude:30.5234}),event('constantinople',{yearStart:1453,sortYear:1453,latitude:41.0082,longitude:28.9784}),event('nicaea',{yearStart:325,sortYear:325,latitude:40.4297,longitude:29.7231})];
+  it('timeline and marker use the same territory, while country selection remains independent', async () => {
+    await act(async () => root.render(React.createElement(HistoryVisualizer,{events:atlasEvents,baseEarthModelUrl:null})));
+    await click(button('988 н. е. — Подія kyiv')); expect(harness.territory?.id).toBe('kyivan-rus-988');
+    await act(async () => harness.selectCountry('UA')); expect(harness.territory?.id).toBe('kyivan-rus-988');
+    await act(async () => harness.selectEvent('constantinople')); expect(harness.territory?.id).toBe('byzantine-1453');
+    expect(container.textContent).toContain('Візантійська імперія');
+    await act(async () => harness.selectEvent('nicaea')); expect(harness.territory).toBeNull();
+  });
+  it('map events/territories switch toggles only the historical layer', async () => {
+    await act(async () => root.render(React.createElement(HistoryVisualizer,{events:atlasEvents,baseEarthModelUrl:null})));
+    await click(button('Мапа подій')); await act(async () => harness.selectEvent('kyiv'));
+    const layerButton = (label:string) => [...container.querySelectorAll('button')].find(b=>b.textContent===label)!;
+    await click(layerButton('Події')); expect(harness.territory).toBeNull(); expect(harness.target).toMatchObject({id:'kyiv'});
+    await click(layerButton('Території')); expect(harness.territory?.id).toBe('kyivan-rus-988');
   });
 });

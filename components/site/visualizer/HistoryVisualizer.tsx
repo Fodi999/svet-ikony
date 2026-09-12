@@ -9,12 +9,13 @@ import { centuryKey, yearKey, centuryText, dateText } from '@/lib/visualizer/chr
 import { eraLabel } from '@/lib/visualizer/era-labels';
 import { sectionEvents, timelineEra, TIMELINE_ERAS, type HistorySection } from '@/lib/visualizer/explorer';
 import { explorerMessages } from '@/lib/visualizer/explorer-messages';
-import { spreadCollidingMarkers } from '@/lib/visualizer/marker-clustering';
+import { haversineDistanceKm, spreadCollidingMarkers } from '@/lib/visualizer/marker-clustering';
 import { Earth3DCanvas, type SelectedEventTarget, type CameraCommand } from './Earth3DCanvas';
 import styles from './history.module.css';
 import { CountryPanel } from './CountryPanel';
 import { TimelineScrubber } from './TimelineScrubber';
 import { countryMetadata } from '@/lib/visualizer/countries';
+import { atlasMessages, territoryForEvent, eventImage, type AtlasMapLayer } from '@/lib/visualizer/historical-territories';
 import { countryMessages } from '@/lib/visualizer/country-messages';
 
 const datingLabels = { exact: 'historyExactDating', approximate: 'historyApproximateDating', traditional: 'historyTraditionalDating', period: 'historyPeriodDating', unknown: 'historyUnknownDating' } as const;
@@ -28,6 +29,9 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
   const { t, locale } = useI18n();
   const copy = explorerMessages[locale];
   const countryCopy = countryMessages[locale];
+  const atlas = atlasMessages[locale];
+  const [mapLayer, setMapLayer] = useState<AtlasMapLayer>('territories');
+  const [nearbyOnly, setNearbyOnly] = useState(false);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null);
   const selectedCountry = selectedCountryCode ? countryMetadata[selectedCountryCode] ?? null : null;
   const rootRef = useRef<HTMLElement>(null);
@@ -56,12 +60,16 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
   const years = useMemo(() => [...new Map(centuryList.map((event) => [yearKey(event), event])).entries()], [centuryList]);
   const visibleEvents = useMemo(() => centuryList.filter((event) => year === 'all' || yearKey(event) === year), [centuryList, year]);
   const selectedEvent = events.find((event) => event.id === selectedEventId && event.status === 'published') ?? null;
+  const historicalTerritory = territoryForEvent(selectedEvent);
+  const activeTerritory = section === 'map' && mapLayer === 'events' ? null : historicalTerritory;
+  const nearbyEvents = useMemo(() => visibleEvents.filter(event => !nearbyOnly || !selectedEvent || (event.latitude != null && event.longitude != null && selectedEvent.latitude != null && selectedEvent.longitude != null && haversineDistanceKm({ latitude: event.latitude, longitude: event.longitude }, { latitude: selectedEvent.latitude, longitude: selectedEvent.longitude }) <= 500)), [visibleEvents, nearbyOnly, selectedEvent]);
+  const selectedImage = selectedEvent ? eventImage(selectedEvent) : null;
   const modelUrl = model?.eventId === selectedEventId ? model.url : null;
   const earthTarget = useMemo<SelectedEventTarget>(() => selectedEvent ? {
     id: selectedEvent.id, latitude: selectedEvent.latitude, longitude: selectedEvent.longitude, modelUrl
   } : null, [selectedEvent, modelUrl]);
-  const mapEvents = useMemo(() => spreadCollidingMarkers(visibleEvents.filter((event) => event.latitude != null && event.longitude != null)
-    .map((event) => ({ id: event.id, latitude: event.latitude!, longitude: event.longitude!, title: event.title, date: dateText(event, locale) }))), [visibleEvents, locale]);
+  const mapEvents = useMemo(() => spreadCollidingMarkers(nearbyEvents.filter((event) => event.latitude != null && event.longitude != null)
+    .map((event) => ({ id: event.id, latitude: event.latitude!, longitude: event.longitude!, title: event.title, date: dateText(event, locale) }))), [nearbyEvents, locale]);
 
   // Observe actual header size (translations, navigation rows, browser zoom).
   // The CSS fallback handles the first server-rendered frame before hydration.
@@ -121,7 +129,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
     if (window.matchMedia('(max-width: 1199px)').matches) setEventOpen(true);
   }, []);
   function chooseSection(value: HistorySection) {
-    setSection(value); setEra('all'); setCentury('all'); setYear('all');
+    setNearbyOnly(false); setSection(value); setEra('all'); setCentury('all'); setYear('all');
     setSelectedEventId(null); setSelectedCountryCode(null); setDrawerOpen(false);
   }
   function resetCamera() { setSelectedCountryCode(null); setEventOpen(false); setSelectedEventId(null); setModel(null); setCameraCommand((previous) => ({ action: 'reset', sequence: (previous?.sequence ?? 0) + 1 })); }
@@ -130,7 +138,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
     if (window.matchMedia('(max-width: 1199px)').matches) setEventOpen(true);
   }, []);
   function zoom(action: 'in' | 'out') { setCameraCommand((previous) => ({ action, sequence: (previous?.sequence ?? 0) + 1 })); }
-  function focusTimeline() { setEventOpen(false); timelineRef.current?.focus(); }
+  function focusTimeline() { setSection('chronology'); setNearbyOnly(false); setEventOpen(false); timelineRef.current?.focus(); }
 
   const navigation = <nav aria-label={copy.navigation} className={styles.navigation}>
     <p className={styles.eyebrow}>{copy.navigation}</p>
@@ -141,7 +149,8 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
     {section === 'collections' ? <p className={styles.muted}>{copy.featured}</p> : null}
   </nav>;
 
-  const eventContent = selectedEvent ? <div className={styles.eventContent}>
+  const eventContent = selectedEvent ? <div key={selectedEvent.id} className={styles.eventContent}>
+    {selectedImage ? <img className={styles.eventImage} src={selectedImage} alt={`${atlas.image}: ${selectedEvent.title}`} referrerPolicy="no-referrer" onError={e => { e.currentTarget.hidden = true; }} /> : <div className={styles.eventMonogram} aria-hidden="true"><History size={24} /></div>}
     <p className={styles.eventEyebrow}>{eraLabel(selectedEvent.era, locale)}</p>
     <p className={styles.eventDate}>{dateText(selectedEvent, locale)}</p>
     <h2>{selectedEvent.title}</h2>
@@ -151,11 +160,12 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
     {selectedEvent.description ? <button type="button" aria-label={`${copy.more}: ${selectedEvent.title}`} className={styles.primaryButton} onClick={() => { setEventOpen(false); setArticleOpen(true); }}>{copy.more}<ArrowUpRight size={17} aria-hidden="true" /></button> : null}
     <div className={styles.related}>
       {modelUrl ? <button type="button" aria-label={copy.scene} onClick={() => { setEventOpen(false); sceneRef.current?.focus(); }}><Box size={16} aria-hidden="true" />{copy.scene}</button> : null}
+      <button type="button" onClick={() => { setSection('map'); setNearbyOnly(true); setEventOpen(false); }}><MapPin size={16} aria-hidden="true" />{atlas.nearby}</button>
       <button type="button" aria-label={copy.chronology} onClick={focusTimeline}><History size={16} aria-hidden="true" />{copy.chronology}</button>
     </div>
   </div> : <div className={styles.emptyEvent}><p>{copy.chooseCompact}</p></div>;
 
-  return <main ref={rootRef} data-history-app data-immersive={immersiveMode} data-expanded={expanded} data-nav-collapsed={navCollapsed} data-empty-timeline={visibleEvents.length === 0} data-event-selected={!!selectedEvent || !!selectedCountry} className={styles.root} aria-label={t('historyPageTitle')}>
+  return <main ref={rootRef} data-history-app data-mode={section} data-immersive={immersiveMode} data-expanded={expanded} data-nav-collapsed={navCollapsed} data-empty-timeline={visibleEvents.length === 0} data-event-selected={!!selectedEvent || !!selectedCountry} className={styles.root} aria-label={t('historyPageTitle')}>
     <div className={styles.topbar}>
       <button className={`${styles.iconButton} ${styles.panelToggle}`} type="button" aria-label={copy.menu} aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}><Menu size={20} /></button>
       <div className={styles.heading}><span className={styles.eyebrow}>{t('historyPageEyebrow')}</span><h1>{t('historyPageTitle')}</h1><p>{t('historyPageDescription')}</p></div>
@@ -167,9 +177,22 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
 
     <span className={styles.srOnly} role="status">{expanded ? copy.fullscreenFallback : ''}</span>
     <div className={styles.workspace}>
-      <aside className={styles.leftPanel}><div className={styles.collapseBar}><button type="button" aria-label={navCollapsed ? copy.expandNav : copy.collapseNav} title={navCollapsed ? copy.expandNav : copy.collapseNav} aria-expanded={!navCollapsed} onClick={() => setNavCollapsed((value) => !value)}>{navCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}</button></div>{navigation}</aside>
+      <aside className={styles.leftPanel}><div className={styles.atlasIdentity}><span className={styles.eyebrow}>{t('historyPageEyebrow')}</span><h2>{t('historyPageTitle')}</h2><p>{t('historyPageDescription')}</p></div><div className={styles.collapseBar}><button type="button" aria-label={navCollapsed ? copy.expandNav : copy.collapseNav} title={navCollapsed ? copy.expandNav : copy.collapseNav} aria-expanded={!navCollapsed} onClick={() => setNavCollapsed((value) => !value)}>{navCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}</button></div>{navigation}</aside>
       <section ref={sceneRef} tabIndex={-1} className={styles.scene} aria-label={t('historyGlobeLabel')}>
-        <Earth3DCanvas baseEarthModelUrl={baseEarthModelUrl} selectedEvent={earthTarget} bordersVisible={bordersVisible} fill showHint={false} cameraCommand={cameraCommand} mapEvents={mapEvents} onSelectEvent={chooseEvent} selectedCountryCode={selectedCountryCode} onSelectCountry={chooseCountry} onBackToGlobe={() => setSelectedCountryCode(null)} />
+        <Earth3DCanvas baseEarthModelUrl={baseEarthModelUrl} selectedEvent={earthTarget} historicalTerritory={activeTerritory} bordersVisible={bordersVisible} fill showHint={false} cameraCommand={cameraCommand} mapEvents={mapEvents} onSelectEvent={chooseEvent} selectedCountryCode={selectedCountryCode} onSelectCountry={chooseCountry} onBackToGlobe={() => setSelectedCountryCode(null)} />
+        {section === 'map' ? <div className={styles.mapModes} role="group" aria-label={atlas.map}>
+          {(['events','territories'] as const).map(mode => <button key={mode} type="button" aria-pressed={mapLayer === mode} onClick={() => setMapLayer(mode)}>{atlas[mode]}</button>)}
+          {nearbyOnly ? <button type="button" onClick={() => setNearbyOnly(false)}>{copy.all} ×</button> : null}
+          {nearbyOnly && nearbyEvents.filter(e => e.id !== selectedEventId).length === 0 ? <span role="status">{atlas.noNearby}</span> : null}
+        </div> : null}
+        <details className={styles.atlasLegend}>
+          <summary><Layers size={14} />{activeTerritory ? activeTerritory.name[locale] : atlas.legend}</summary>
+          <div><p><i className={styles.legendFill}/>{atlas.territory}</p><p><i className={styles.legendBorder}/>{atlas.modern}</p><p><i className={styles.legendDot}/>{atlas.events}</p>
+            {activeTerritory ? <><strong>{activeTerritory.name[locale]}</strong><small>{atlas.prototype} · {atlas.sourceYear}: {activeTerritory.source.year}</small><a href={activeTerritory.source.url} target="_blank" rel="noopener noreferrer">{atlas.source} ↗</a></> : <small>{atlas.noTerritory}</small>}
+            <small>{atlas.reconstruction}</small>
+          </div>
+        </details>
+        {activeTerritory ? <p className={styles.reconstructionNote}>{atlas.prototype} · {activeTerritory.source.year}</p> : null}
         <div className={styles.sceneControls} role="group" aria-label={copy.scene}>
           <button type="button" className={styles.bordersToggle} aria-pressed={bordersVisible} onClick={() => setBordersVisible((value) => !value)}>{copy.borders}</button>
           <button type="button" aria-label={copy.zoomIn} title={copy.zoomIn} onClick={() => zoom('in')}><Plus size={20} /></button>
@@ -191,9 +214,11 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
           <select aria-label={copy.century} value={century} onChange={(event) => { setCentury(event.target.value); setYear('all'); }}><option value="all">{copy.century}: {copy.allDates}</option>{centuries.map(([key, event]) => <option key={key} value={key}>{centuryText(event, locale)}</option>)}</select>
           <select aria-label={copy.year} value={year} onChange={(event) => setYear(event.target.value)}><option value="all">{copy.year}: {copy.allDates}</option>{years.map(([key, event]) => <option key={key} value={key}>{dateText(event, locale, false)}</option>)}</select>
         </div> : null}
+        <div className={styles.viewModes}><button type="button" aria-pressed={section === 'map'} onClick={() => { setSection('map'); setNearbyOnly(false); }}><Globe2 size={14}/>{atlas.map}</button><button type="button" aria-pressed={section === 'chronology'} onClick={focusTimeline}><History size={14}/>{copy.chronology}</button></div>
       </div>
       {!visibleEvents.length ? <p className={styles.noEvents} role="status">{events.some((event) => event.status === 'published') ? copy.noEvents : copy.notAdded}</p> : null}
       <TimelineScrubber events={visibleEvents} selectedEventId={selectedEventId} onSelect={chooseEvent} />
+      <div className={styles.eraBands} aria-label={copy.era}>{TIMELINE_ERAS.map(value => <button key={value} type="button" data-era={value} aria-pressed={!!selectedEvent && timelineEra(selectedEvent.era) === value} onClick={() => { setEra(value); setCentury('all'); setYear('all'); }}>{copy[value]}</button>)}</div>
     </section>
 
     <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}><DialogPortal container={rootRef}><DialogOverlay className={styles.backdrop} /><DialogPopup className={`${styles.drawer} translate-x-0 translate-y-0`}>

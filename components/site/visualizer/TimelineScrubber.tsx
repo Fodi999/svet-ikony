@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '@/components/site/LanguageProvider';
 import type { ChurchVisualizerEventDto } from '@/lib/types';
+import { eventImage } from '@/lib/visualizer/historical-territories';
 import { dateText } from '@/lib/visualizer/chronology';
 import { explorerMessages } from '@/lib/visualizer/explorer-messages';
 import { scrubberIndexAtClientX, scrubberPercent } from '@/lib/visualizer/timeline-position';
@@ -93,6 +94,7 @@ export function TimelineScrubber({ events, selectedEventId, onSelect }: Props) {
       <div className={styles.scrubberTicks}>
         {events.map((event, index) => (
           <button type="button" key={event.id} aria-label={`${dateText(event, locale)} — ${event.title}`} aria-pressed={event.id === selectedEventId} onClick={(e) => { if (e.detail === 0 || events.length === 1) selectIndex(index); }} className={styles.scrubberTick} style={{ '--scrubber-position': `${scrubberPercent(index, events.length)}%` } as React.CSSProperties}>
+            {event.id === selectedEventId && eventImage(event) ? <img className={styles.timelineThumbnail} src={eventImage(event)!} alt="" referrerPolicy="no-referrer" onError={e => { e.currentTarget.hidden = true; }} /> : null}
             <span className={styles.scrubberTickTitle}>{event.title}</span><span className={styles.srOnly}>{event.locationName}</span>
             <span className={styles.scrubberTickMark} />
             <span className={styles.scrubberTickLabel}>{dateText(event, locale)}</span>

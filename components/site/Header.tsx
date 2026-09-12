@@ -35,13 +35,18 @@ export function Header() {
     const active = nav?.querySelector<HTMLElement>('[aria-current="page"]');
     if (!nav || !active) return;
     const reveal = () => {
-      if (nav.scrollWidth > nav.clientWidth) nav.scrollLeft = Math.max(0, active.offsetLeft - nav.offsetLeft - nav.clientWidth + active.offsetWidth + 16);
+      if (nav.scrollWidth <= nav.clientWidth) return;
+      const container = nav.getBoundingClientRect();
+      const item = active.getBoundingClientRect();
+      if (item.right > container.right - 8) nav.scrollLeft += item.right - container.right + 8;
+      else if (item.left < container.left + 8) nav.scrollLeft += item.left - container.left - 8;
     };
     reveal();
     const observer = new ResizeObserver(reveal);
     observer.observe(nav);
+    observer.observe(active);
     return () => observer.disconnect();
-  }, [currentPath]);
+  }, [currentPath, pathname]);
 
   return (
     <header data-site-header className="sticky top-2.5 z-[1000] w-[calc(100%-clamp(24px,4vw,72px))] max-w-[1840px] min-h-0 mt-2.5 mx-auto grid grid-cols-[minmax(270px,360px)_minmax(0,1fr)_auto] items-center gap-[clamp(14px,2.4vw,34px)] py-[5px] px-[clamp(16px,4vw,48px)] border border-[rgba(232,211,169,.13)] rounded-[8px] bg-[rgba(11,12,10,.94)] text-foreground shadow-[0_6px_18px_rgba(0,0,0,.18)] [backdrop-filter:blur(18px)_saturate(1.08)] overflow-clip isolate max-[1040px]:grid-cols-[minmax(170px,1fr)_auto] max-[1040px]:gap-x-3.5 max-[1040px]:gap-y-2.5 max-[900px]:grid-cols-[minmax(0,1fr)_auto] max-[900px]:pt-1.5 max-[900px]:px-3 max-[900px]:pb-2 max-[640px]:w-[calc(100%-12px)] max-[640px]:mt-1.5 max-[640px]:min-h-auto max-[640px]:py-1 max-[640px]:px-2.5 max-[640px]:gap-2.5 max-[430px]:grid-cols-[minmax(0,1fr)_auto] max-[430px]:gap-x-2.5 max-[430px]:gap-y-2 max-[430px]:py-2 max-[430px]:px-2.5 [@media(display-mode:standalone)]:w-[calc(100%-max(12px,env(safe-area-inset-left))-max(12px,env(safe-area-inset-right)))] [@media(display-mode:standalone)]:mt-[max(6px,env(safe-area-inset-top))]">

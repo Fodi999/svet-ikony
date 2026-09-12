@@ -63,7 +63,7 @@
 .timelineToolbar { display: flex; align-items: center; gap: 16px; min-width: 0; min-height: 46px; }
 .timelineLabel { display: flex; align-items: center; gap: 8px; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: #c5b68e; white-space: nowrap; }
 .eraTabs { display: flex; align-items: center; gap: 6px; overflow-x: auto; min-width: 0; scrollbar-width: thin; scrollbar-color: #5c5037 transparent; }
-.eraTabs button { white-space: nowrap; background: transparent; color: #ada792; cursor: pointer; border: 1px solid transparent; border-radius: 4px; min-height: 34px; padding: 6px 10px; font-size: 11px; }
+.eraTabs button { flex: 0 0 auto; white-space: nowrap; background: transparent; color: #ada792; cursor: pointer; border: 1px solid transparent; border-radius: 4px; min-height: 34px; padding: 6px 10px; font-size: 11px; }
 .eraTabs button[aria-pressed='true'] { color: #f4d999; border-color: #6f5e35; background: #28291b; }
 .eventTrack { display: flex; gap: 12px; min-width: 0; min-height: 0; overflow-x: auto; overflow-y: hidden; padding: 12px 0 5px; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: #827047 #131610; }
 .eventCard { position: relative; flex: 0 0 210px; min-width: 0; padding: 10px 12px; border: 1px solid #3b3b2a; border-radius: 5px; background: #1c2017; color: #eee4ce; text-align: left; cursor: pointer; scroll-snap-align: start; }
@@ -274,7 +274,7 @@
 .eraTabs { gap: 3px; }
 .eraTabs button { font-size: 10px; padding: 4px 7px; }
 .eraBands { display: flex; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.eraBands button { min-width: 90px; flex: 1; font-size: 9px; color: #bcb4a3; border: 1px solid #ad925b33; background: #20262a; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.eraBands button { min-width: 90px; flex: 1 0 max-content; padding: 6px 12px; font-size: 9px; color: #bcb4a3; border: 1px solid #ad925b33; background: #20262a; border-radius: 4px; cursor: pointer; white-space: nowrap; }
 .eraBands button[data-era='early'] { background: #30271a; }
 .eraBands button[data-era='medieval'] { background: #2d2b1a; }
 .eraBands button[data-era='modern'] { background: #162c23; }
@@ -325,6 +325,9 @@
   .timelineToolbar { flex-wrap: nowrap; }
   .eraTabs { flex-basis: auto; }
   .eraBands { min-height: 44px; }
+  .root .eraBands button { flex: 0 0 auto; min-width: max-content; }
+  .eraTabs, .eraBands, .scrubberScroll { scrollbar-width: none; }
+  .eraTabs::-webkit-scrollbar, .eraBands::-webkit-scrollbar, .scrubberScroll::-webkit-scrollbar { display: none; }
   .scrubberHandle { width: 44px; height: 44px; }
   .sheet, .sheet:has(.countryPanel) { max-height: min(72dvh,calc(100dvh - env(safe-area-inset-top) - 16px)); padding-bottom: calc(24px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
   .article { --tw-translate-x: 0px; --tw-translate-y: 0px; top: auto; bottom: 0; left: env(safe-area-inset-left); right: env(safe-area-inset-right); width: auto; max-width: none; transform: none; translate: none; max-height: calc(100dvh - env(safe-area-inset-top) - 16px); padding: 0 16px calc(24px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }

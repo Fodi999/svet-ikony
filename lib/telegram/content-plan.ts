@@ -141,11 +141,13 @@ async function preloadData(): Promise<PreloadedData> {
 
   const calendarDaysByOldStyle = new Map<string, { id: string; title: string }>();
   for (const day of calendarDays) {
+    if (day.status !== 'published' || day.language !== 'uk') continue;
     if (day.dateOldStyle) calendarDaysByOldStyle.set(day.dateOldStyle, { id: day.id, title: day.title });
   }
 
   const saintsByCalendarDay = new Map<string, { name: string; imageUrl: string }>();
   for (const saint of saints) {
+    if (saint.status !== 'published' || saint.language !== 'uk') continue;
     if (saint.calendarDayId && !saintsByCalendarDay.has(saint.calendarDayId)) {
       saintsByCalendarDay.set(saint.calendarDayId, { name: saint.name, imageUrl: saint.imageUrl });
     }
@@ -153,6 +155,7 @@ async function preloadData(): Promise<PreloadedData> {
 
   const gospelByCalendarDay = new Map<string, { text: string; imageUrl: string }>();
   for (const reading of gospel) {
+    if (reading.status !== 'published' || reading.language !== 'uk') continue;
     if (reading.calendarDayId && !gospelByCalendarDay.has(reading.calendarDayId)) {
       gospelByCalendarDay.set(reading.calendarDayId, { text: reading.text, imageUrl: '' });
     }
@@ -160,6 +163,7 @@ async function preloadData(): Promise<PreloadedData> {
 
   const articlesByCalendarDay = new Map<string, { content: string }>();
   for (const article of articles) {
+    if (article.status !== 'published' || article.language !== 'uk') continue;
     if (article.calendarDayId && !articlesByCalendarDay.has(article.calendarDayId)) {
       articlesByCalendarDay.set(article.calendarDayId, { content: article.content });
     }
@@ -167,6 +171,7 @@ async function preloadData(): Promise<PreloadedData> {
 
   const prayersByCalendarDayAndType = new Map<string, { text: string; imageUrl: string }>();
   for (const prayer of prayers) {
+    if (prayer.status !== 'published' || prayer.language !== 'uk') continue;
     if (!prayer.calendarDayId) continue;
     const key = `${prayer.calendarDayId}|${prayer.prayerType}`;
     if (!prayersByCalendarDayAndType.has(key)) prayersByCalendarDayAndType.set(key, { text: prayer.text, imageUrl: prayer.imageUrl });

@@ -6,7 +6,7 @@ export async function GET(request: Request) {
     await requireAiAccess(request);
     const s = await getAutopostSettings();
     return Response.json(
-      { globalEnabled: s.globalEnabled },
+      { globalEnabled: s.globalEnabled, draftSourcesExcluded: true },
       { headers: { "cache-control": "no-store" } },
     );
   });

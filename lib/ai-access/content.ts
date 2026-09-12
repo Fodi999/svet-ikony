@@ -34,7 +34,6 @@ import { ApiError } from "@/lib/d1/errors";
 import { CATALOG } from "./catalog";
 import { requireScope } from "./policy";
 import { requireAiAccess, activity } from "./service";
-import { getAutopostSettings } from "@/lib/d1/repositories/telegram-autopost";
 export const adapters = {
   calendar: {
     list: listCalendarDays,
@@ -203,17 +202,8 @@ export async function content(request: Request, entity: string, id?: string) {
             throw ApiError.validation("Relationship language mismatch");
         }
       }
-      if (
-        e === "calendar" ||
-        p.calendarDayId ||
-        (previous && "calendarDayId" in previous && previous.calendarDayId)
-      ) {
-        const settings = await getAutopostSettings();
-        if (settings.globalEnabled)
-          throw ApiError.authorization(
-            "Calendar writes disabled while Telegram autopost is enabled",
-          );
-      }
+      // Public bot commands, content-plan and autopost facts accept published sources only.
+      // Draft creation no longer requires switching off the user's Telegram schedule.
       p.status = "draft";
       if (!id) {
         for (const field of spec.required)

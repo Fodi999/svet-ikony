@@ -92,7 +92,7 @@ describe('loadAutopostFacts', () => {
   it('returns real saint facts in Ukrainian for saint_of_day', async () => {
     mockListCalendarDays.mockResolvedValue([calendarDay()]);
     mockListSaints.mockResolvedValue([
-      { id: 'saint-1', name: 'Святитель Олександр', shortDescription: 'Короткий опис', biography: 'Біографія' },
+      { status: 'published', id: 'saint-1', name: 'Святитель Олександр', shortDescription: 'Короткий опис', biography: 'Біографія' },
     ]);
 
     const result = await loadAutopostFacts('saint_of_day', JULIAN_DATE_ISO);
@@ -110,7 +110,7 @@ describe('loadAutopostFacts', () => {
 
   it('requests the Ukrainian gospel reading for the matched calendar day', async () => {
     mockListCalendarDays.mockResolvedValue([calendarDay()]);
-    mockListGospel.mockResolvedValue([{ id: 'gospel-1', title: 'Заголовок', reference: 'Мт. 5:1-12', text: 'Текст', explanation: '' }]);
+    mockListGospel.mockResolvedValue([{ status: 'published', id: 'gospel-1', title: 'Заголовок', reference: 'Мт. 5:1-12', text: 'Текст', explanation: '' }]);
 
     const result = await loadAutopostFacts('gospel', JULIAN_DATE_ISO);
 
@@ -121,8 +121,8 @@ describe('loadAutopostFacts', () => {
   it('requests Ukrainian prayers filtered by morning/evening prayer type', async () => {
     mockListCalendarDays.mockResolvedValue([calendarDay()]);
     mockListPrayers.mockResolvedValue([
-      { id: 'prayer-morning', prayerType: 'morning', title: 'Ранкова', text: 'Текст ранкової' },
-      { id: 'prayer-evening', prayerType: 'evening', title: 'Вечірня', text: 'Текст вечірньої' },
+      { status: 'published', id: 'prayer-morning', prayerType: 'morning', title: 'Ранкова', text: 'Текст ранкової' },
+      { status: 'published', id: 'prayer-evening', prayerType: 'evening', title: 'Вечірня', text: 'Текст вечірньої' },
     ]);
 
     const morning = await loadAutopostFacts('morning_prayer', JULIAN_DATE_ISO);
@@ -137,7 +137,7 @@ describe('loadAutopostFacts', () => {
 
   it('requests the Ukrainian article for faith_story', async () => {
     mockListCalendarDays.mockResolvedValue([calendarDay()]);
-    mockListArticles.mockResolvedValue([{ id: 'article-1', title: 'Стаття', content: 'Зміст' }]);
+    mockListArticles.mockResolvedValue([{ status: 'published', id: 'article-1', title: 'Стаття', content: 'Зміст' }]);
 
     const result = await loadAutopostFacts('faith_story', JULIAN_DATE_ISO);
 
@@ -153,11 +153,11 @@ describe('loadAutopostFacts', () => {
   // calendarLine is shared code, not per-type.
   describe('facts always carry both civil and Julian dates, never Julian-only', () => {
     it.each([
-      ['morning_prayer', () => mockListPrayers.mockResolvedValue([{ id: 'p1', prayerType: 'morning', title: 'Т', text: 'Т' }])],
-      ['evening_prayer', () => mockListPrayers.mockResolvedValue([{ id: 'p2', prayerType: 'evening', title: 'Т', text: 'Т' }])],
-      ['saint_of_day', () => mockListSaints.mockResolvedValue([{ id: 's1', name: 'Святий', shortDescription: 'Опис' }])],
-      ['gospel', () => mockListGospel.mockResolvedValue([{ id: 'g1', title: 'Т', reference: 'Мт. 1:1', text: 'Т' }])],
-      ['faith_story', () => mockListArticles.mockResolvedValue([{ id: 'a1', title: 'Т', content: 'Т' }])],
+      ['morning_prayer', () => mockListPrayers.mockResolvedValue([{ status: 'published', id: 'p1', prayerType: 'morning', title: 'Т', text: 'Т' }])],
+      ['evening_prayer', () => mockListPrayers.mockResolvedValue([{ status: 'published', id: 'p2', prayerType: 'evening', title: 'Т', text: 'Т' }])],
+      ['saint_of_day', () => mockListSaints.mockResolvedValue([{ status: 'published', id: 's1', name: 'Святий', shortDescription: 'Опис' }])],
+      ['gospel', () => mockListGospel.mockResolvedValue([{ status: 'published', id: 'g1', title: 'Т', reference: 'Мт. 1:1', text: 'Т' }])],
+      ['faith_story', () => mockListArticles.mockResolvedValue([{ status: 'published', id: 'a1', title: 'Т', content: 'Т' }])],
     ] as const)('%s facts contain both the civil date prose and the Julian date prose', async (contentType, seedContentRepo) => {
       mockListCalendarDays.mockResolvedValue([calendarDay()]);
       seedContentRepo();
@@ -173,5 +173,19 @@ describe('loadAutopostFacts', () => {
       // The old bug: only "старий стиль" ever appeared, no civil date at all.
       expect(result.facts.facts.indexOf('30 серпня')).toBeLessThan(result.facts.facts.indexOf('старий стиль'));
     });
+  });
+});
+
+
+describe('draft isolation', () => {
+  it('ignores unpublished calendar days and other language versions', async () => {
+    mockListCalendarDays.mockResolvedValue([calendarDay({status:'draft'}),calendarDay({language:'ru'})]);
+    expect(await loadAutopostFacts('saint_of_day', JULIAN_DATE_ISO)).toEqual({status:'missing_source'});
+  });
+  it.each(['morning_prayer','evening_prayer','saint_of_day','gospel','faith_story'] as const)('never uses a draft as %s source', async type => {
+    mockListCalendarDays.mockResolvedValue([calendarDay()]);
+    const draft = {id:'draft',status:'draft',prayerType:type === 'evening_prayer' ? 'evening':'morning'};
+    for(const mock of [mockListPrayers,mockListSaints,mockListGospel,mockListArticles])mock.mockResolvedValue([draft]);
+    expect(await loadAutopostFacts(type,JULIAN_DATE_ISO)).toEqual({status:'insufficient_data'});
   });
 });

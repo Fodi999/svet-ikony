@@ -71,7 +71,7 @@ describe('buildContentPlan', () => {
 
   it('includes calendarDayId (church_calendar_days.id) when a calendar day exists, for the admin Day Drawer\'s "Відкрити в Церковному календарі" link', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'cal-day-42', dateOldStyle: '2026-08-19', title: 'Тест' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'cal-day-42', dateOldStyle: '2026-08-19', title: 'Тест' }]);
 
     const report = await buildContentPlan('2026-09-01', '2026-09-01');
 
@@ -90,14 +90,14 @@ describe('buildContentPlan', () => {
   it('maps a day with real D1 content to available/SOURCE_READY for every non-verification-required slot', async () => {
     resetDefaults();
     mockListCalendarDays.mockResolvedValue([
-      { id: 'day-1', dateOldStyle: '2026-08-17', title: 'Мученики Флор і Лавр' }, // civil 2026-08-30's Julian date, arbitrary content-free test date
+      { status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Мученики Флор і Лавр' }, // civil 2026-08-30's Julian date, arbitrary content-free test date
     ]);
-    mockListGospel.mockResolvedValue([{ calendarDayId: 'day-1', text: 'Євангельський текст' }]);
+    mockListGospel.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', text: 'Євангельський текст' }]);
     mockListPrayers.mockResolvedValue([
-      { calendarDayId: 'day-1', prayerType: 'morning', text: 'Ранкова молитва', imageUrl: '' },
-      { calendarDayId: 'day-1', prayerType: 'evening', text: 'Вечірня молитва', imageUrl: '' },
+      { status: 'published', language: 'uk', calendarDayId: 'day-1', prayerType: 'morning', text: 'Ранкова молитва', imageUrl: '' },
+      { status: 'published', language: 'uk', calendarDayId: 'day-1', prayerType: 'evening', text: 'Вечірня молитва', imageUrl: '' },
     ]);
-    mockListArticles.mockResolvedValue([{ calendarDayId: 'day-1', content: 'Історія' }]);
+    mockListArticles.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', content: 'Історія' }]);
 
     const report = await buildContentPlan('2026-08-30', '2026-08-30');
     const slots = report.days[0].slots;
@@ -114,8 +114,8 @@ describe('buildContentPlan', () => {
     resetDefaults();
     // Civil 2026-08-31 -> Julian 2026-08-18, which orthodox-calendar-sources.ts
     // genuinely verifies as "Флор і Лавр" (see that file + autopost.test.ts).
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-flor', dateOldStyle: '2026-08-18', title: 'Мученики Флор і Лавр' }]);
-    mockListSaints.mockResolvedValue([{ calendarDayId: 'day-flor', name: 'Мученики Флор і Лавр', imageUrl: '' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-flor', dateOldStyle: '2026-08-18', title: 'Мученики Флор і Лавр' }]);
+    mockListSaints.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-flor', name: 'Мученики Флор і Лавр', imageUrl: '' }]);
 
     const report = await buildContentPlan('2026-08-31', '2026-08-31');
     const slot = report.days[0].slots.saint_of_day;
@@ -127,8 +127,8 @@ describe('buildContentPlan', () => {
   it('marks saint_of_day REVIEW_REQUIRED when D1 has a candidate but no two-source consensus exists for that date', async () => {
     resetDefaults();
     // 2026-01-01 civil has no entry at all in orthodox-calendar-sources.ts.
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-x', dateOldStyle: '2025-12-19', title: 'Невідомий святий' }]);
-    mockListSaints.mockResolvedValue([{ calendarDayId: 'day-x', name: 'Невідомий святий', imageUrl: '' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-x', dateOldStyle: '2025-12-19', title: 'Невідомий святий' }]);
+    mockListSaints.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-x', name: 'Невідомий святий', imageUrl: '' }]);
 
     const report = await buildContentPlan('2026-01-01', '2026-01-01');
     const slot = report.days[0].slots.saint_of_day;
@@ -139,8 +139,8 @@ describe('buildContentPlan', () => {
 
   it('maps a sent telegram_posts row to SENT with telegramMessageId/sentAt populated', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
-    mockListGospel.mockResolvedValue([{ calendarDayId: 'day-1', text: 'Текст' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListGospel.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', text: 'Текст' }]);
     mockListTelegramPosts.mockResolvedValue([
       {
         publishDate: '2026-08-30',
@@ -166,7 +166,7 @@ describe('buildContentPlan', () => {
 
   it('maps a failed telegram_posts row with a failed verification to REVIEW_REQUIRED, and a plain failure to FAILED', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
     mockListTelegramPosts.mockResolvedValue([
       {
         publishDate: '2026-08-30',
@@ -201,8 +201,8 @@ describe('buildContentPlan', () => {
 
   it('never includes text previews or image URLs in the bulk list (kept light for a full-year payload)', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
-    mockListGospel.mockResolvedValue([{ calendarDayId: 'day-1', text: 'A'.repeat(500) }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListGospel.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', text: 'A'.repeat(500) }]);
 
     const report = await buildContentPlan('2026-08-30', '2026-08-30');
 
@@ -212,8 +212,8 @@ describe('buildContentPlan', () => {
 
   it('computes summary counts from the actual per-slot statuses, never hardcoded', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
-    mockListGospel.mockResolvedValue([{ calendarDayId: 'day-1', text: 'Текст' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListGospel.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', text: 'Текст' }]);
 
     const report = await buildContentPlan('2026-08-30', '2026-08-30');
 
@@ -259,8 +259,8 @@ describe('buildContentPlan', () => {
 describe('buildContentPlanDayDetail', () => {
   it('includes text preview and image thumbnail for the single requested day', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
-    mockListSaints.mockResolvedValue([{ calendarDayId: 'day-1', name: 'Тестовий святий', imageUrl: 'https://x/icon.png' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListSaints.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', name: 'Тестовий святий', imageUrl: 'https://x/icon.png' }]);
 
     const day = await buildContentPlanDayDetail('2026-08-30');
 
@@ -270,8 +270,8 @@ describe('buildContentPlanDayDetail', () => {
 
   it('truncates a long text to the first ~200 characters', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
-    mockListArticles.mockResolvedValue([{ calendarDayId: 'day-1', content: 'A'.repeat(500) }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListArticles.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', content: 'A'.repeat(500) }]);
 
     const day = await buildContentPlanDayDetail('2026-08-30');
 
@@ -280,8 +280,8 @@ describe('buildContentPlanDayDetail', () => {
 
   it('returns the full untruncated text separately from the 200-char preview, for editing', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
-    mockListArticles.mockResolvedValue([{ calendarDayId: 'day-1', content: 'A'.repeat(500) }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListArticles.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', content: 'A'.repeat(500) }]);
 
     const day = await buildContentPlanDayDetail('2026-08-30');
 
@@ -291,8 +291,8 @@ describe('buildContentPlanDayDetail', () => {
 
   it('computes the Telegram delivery preview via the real planDelivery(): short text + image -> photo_with_caption', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
-    mockListSaints.mockResolvedValue([{ calendarDayId: 'day-1', name: 'Коротке ім’я', imageUrl: 'https://x/icon.png' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListSaints.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', name: 'Коротке ім’я', imageUrl: 'https://x/icon.png' }]);
 
     const day = await buildContentPlanDayDetail('2026-08-30');
 
@@ -301,8 +301,8 @@ describe('buildContentPlanDayDetail', () => {
 
   it('computes the Telegram delivery preview for long text + image -> photo_then_text, with the real fixed linked caption', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
-    mockListGospel.mockResolvedValue([{ calendarDayId: 'day-1', text: 'А'.repeat(1500) }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListGospel.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', text: 'А'.repeat(1500) }]);
     mockListSaints.mockResolvedValue([]); // no image source for gospel in this fixture
     // Give the gospel slot an image via a persisted post row instead.
     mockListTelegramPosts.mockResolvedValue([
@@ -330,8 +330,8 @@ describe('buildContentPlanDayDetail', () => {
 
   it('computes the delivery preview as text_only when there is no image', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
-    mockListArticles.mockResolvedValue([{ calendarDayId: 'day-1', content: 'Текст без зображення' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListArticles.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', content: 'Текст без зображення' }]);
 
     const day = await buildContentPlanDayDetail('2026-08-30');
 
@@ -340,8 +340,8 @@ describe('buildContentPlanDayDetail', () => {
 
   it('reflects a manually-assigned audio URL: audioAvailable/audioUrl set, delivery preview becomes audio_then_text', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
-    mockListArticles.mockResolvedValue([{ calendarDayId: 'day-1', content: 'Текст історії' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListArticles.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', content: 'Текст історії' }]);
     mockListTelegramPosts.mockResolvedValue([
       {
         publishDate: '2026-08-30',
@@ -370,8 +370,8 @@ describe('buildContentPlanDayDetail', () => {
 
   it('reflects both a photo and audio assigned to the same slot: delivery preview becomes photo_and_audio_then_text with both captions', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
-    mockListArticles.mockResolvedValue([{ calendarDayId: 'day-1', content: 'Текст історії' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListArticles.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', content: 'Текст історії' }]);
     mockListTelegramPosts.mockResolvedValue([
       {
         publishDate: '2026-08-30',
@@ -398,8 +398,8 @@ describe('buildContentPlanDayDetail', () => {
 
   it('audioAvailable is never a "source" fallback -- false when no post row has an audioUrl, unlike imageAvailable', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
-    mockListSaints.mockResolvedValue([{ calendarDayId: 'day-1', name: 'Тестовий святий', imageUrl: 'https://x/icon.png' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListSaints.mockResolvedValue([{ status: 'published', language: 'uk', calendarDayId: 'day-1', name: 'Тестовий святий', imageUrl: 'https://x/icon.png' }]);
 
     const day = await buildContentPlanDayDetail('2026-08-30');
 
@@ -409,7 +409,7 @@ describe('buildContentPlanDayDetail', () => {
 
   it('maps a "ready" telegram_posts row to the READY publication status', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
     mockListTelegramPosts.mockResolvedValue([
       {
         publishDate: '2026-08-30',
@@ -431,7 +431,7 @@ describe('buildContentPlanDayDetail', () => {
 
   it('maps a "sending" telegram_posts row (mid-flight autopost claim) to its own SENDING status, not READY/DRAFT', async () => {
     resetDefaults();
-    mockListCalendarDays.mockResolvedValue([{ id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
+    mockListCalendarDays.mockResolvedValue([{ status: 'published', language: 'uk', id: 'day-1', dateOldStyle: '2026-08-17', title: 'Тест' }]);
     mockListTelegramPosts.mockResolvedValue([
       {
         publishDate: '2026-08-30',
@@ -450,4 +450,14 @@ describe('buildContentPlanDayDetail', () => {
 
     expect(report.days[0].slots.morning_prayer.publicationStatus).toBe('SENDING');
   });
+});
+
+it('draft calendar and related source records are absent from the publication plan', async () => {
+ resetDefaults();
+ mockListCalendarDays.mockResolvedValue([{id:'day',status:'draft',language:'uk',dateOldStyle:'2026-08-19',title:'Draft'}]);
+ expect((await buildContentPlan('2026-09-01','2026-09-01')).days[0].calendarDayId).toBeNull();
+ mockListCalendarDays.mockResolvedValue([{id:'day',status:'published',language:'uk',dateOldStyle:'2026-08-19',title:'Published'}]);
+ mockListGospel.mockResolvedValue([{calendarDayId:'day',status:'draft',language:'uk',text:'Draft'}]);
+ const day=(await buildContentPlan('2026-09-01','2026-09-01')).days[0];
+ expect(day.slots.gospel.sourceStatus).not.toBe('available');
 });

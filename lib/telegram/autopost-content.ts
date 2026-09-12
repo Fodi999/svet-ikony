@@ -49,7 +49,7 @@ export type AutopostFactsResult =
  */
 async function findCalendarDayByOldStyle(julianDateIso: string): Promise<ChurchCalendarDayDto | null> {
   const days = await listCalendarDays({});
-  return days.find((day) => day.dateOldStyle === julianDateIso) ?? null;
+  return days.find((day) => day.status === 'published' && day.language === LANGUAGE && day.dateOldStyle === julianDateIso) ?? null;
 }
 
 /**
@@ -77,7 +77,7 @@ export async function loadAutopostFacts(contentType: AutopostContentType, julian
   if (contentType === 'morning_prayer' || contentType === 'evening_prayer') {
     const prayerType = contentType === 'morning_prayer' ? 'morning' : 'evening';
     const prayers = await listPrayers({ calendarDayId: calendarDay.id, language: LANGUAGE });
-    const prayer = prayers.find((p) => p.prayerType === prayerType);
+    const prayer = prayers.find((p) => p.status === 'published' && p.prayerType === prayerType);
     if (!prayer) return { status: 'insufficient_data' };
     return {
       status: 'ok',
@@ -87,7 +87,7 @@ export async function loadAutopostFacts(contentType: AutopostContentType, julian
 
   if (contentType === 'saint_of_day') {
     const saints = await listSaints({ calendarDayId: calendarDay.id, language: LANGUAGE });
-    const saint = saints[0];
+    const saint = saints.find(s => s.status === 'published');
     if (!saint) return { status: 'insufficient_data' };
     return {
       status: 'ok',
@@ -103,7 +103,7 @@ export async function loadAutopostFacts(contentType: AutopostContentType, julian
 
   if (contentType === 'gospel') {
     const readings = await listGospel({ calendarDayId: calendarDay.id, language: LANGUAGE });
-    const reading = readings[0];
+    const reading = readings.find(r => r.status === 'published');
     if (!reading) return { status: 'insufficient_data' };
     return {
       status: 'ok',
@@ -119,7 +119,7 @@ export async function loadAutopostFacts(contentType: AutopostContentType, julian
 
   // contentType === 'faith_story'
   const articles = await listArticles({ calendarDayId: calendarDay.id, language: LANGUAGE });
-  const article = articles[0];
+  const article = articles.find(a => a.status === 'published');
   if (!article) return { status: 'insufficient_data' };
   return {
     status: 'ok',

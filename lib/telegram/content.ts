@@ -31,7 +31,7 @@ function todayIso(): string {
 async function findTodayCalendarDay(): Promise<ChurchCalendarDayDto | null> {
   const days = await listCalendarDays({});
   const today = todayIso();
-  return days.find((day) => day.dateNewStyle === today || day.dateOldStyle === today) ?? null;
+  return days.find((day) => day.status === 'published' && day.language === LANGUAGE && (day.dateNewStyle === today || day.dateOldStyle === today)) ?? null;
 }
 
 export async function fetchTodayText(): Promise<string> {
@@ -39,27 +39,27 @@ export async function fetchTodayText(): Promise<string> {
   if (!day) return NO_CONTENT_TODAY_TEXT;
 
   const [page] = await composeCalendarPages([day], LANGUAGE);
-  const saints = await listSaints({ calendarDayId: day.id, language: LANGUAGE });
+  const saints = (await listSaints({ calendarDayId: day.id, language: LANGUAGE })).filter(row => row.status === 'published');
   return formatToday(page, saints);
 }
 
 export async function fetchPrayerText(): Promise<string> {
   const day = await findTodayCalendarDay();
-  let prayers = day ? await listPrayers({ calendarDayId: day.id, language: LANGUAGE }) : [];
-  if (prayers.length === 0) prayers = await listPrayers({ language: LANGUAGE });
+  let prayers = day ? (await listPrayers({ calendarDayId: day.id, language: LANGUAGE })).filter(row => row.status === 'published') : [];
+  if (prayers.length === 0) prayers = (await listPrayers({ language: LANGUAGE })).filter(row => row.status === 'published');
   return prayers[0] ? formatPrayer(prayers[0]) : NO_PRAYER_TEXT;
 }
 
 export async function fetchSaintText(): Promise<string> {
   const day = await findTodayCalendarDay();
-  let saints = day ? await listSaints({ calendarDayId: day.id, language: LANGUAGE }) : [];
-  if (saints.length === 0) saints = await listSaints({ language: LANGUAGE });
+  let saints = day ? (await listSaints({ calendarDayId: day.id, language: LANGUAGE })).filter(row => row.status === 'published') : [];
+  if (saints.length === 0) saints = (await listSaints({ language: LANGUAGE })).filter(row => row.status === 'published');
   return saints[0] ? formatSaint(saints[0]) : NO_SAINT_TEXT;
 }
 
 export async function fetchGospelText(): Promise<string> {
   const day = await findTodayCalendarDay();
-  let readings = day ? await listGospel({ calendarDayId: day.id, language: LANGUAGE }) : [];
-  if (readings.length === 0) readings = await listGospel({ language: LANGUAGE });
+  let readings = day ? (await listGospel({ calendarDayId: day.id, language: LANGUAGE })).filter(row => row.status === 'published') : [];
+  if (readings.length === 0) readings = (await listGospel({ language: LANGUAGE })).filter(row => row.status === 'published');
   return readings[0] ? formatGospel(readings[0]) : NO_GOSPEL_TEXT;
 }

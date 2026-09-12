@@ -294,3 +294,12 @@ describe("delegated server enforcement with real schemas and repositories", () =
     ).rejects.toMatchObject({ status: 403 });
   });
 });
+
+it('calendar draft writes remain private with active Telegram scheduling',async()=>{
+ state.db.exec('UPDATE telegram_autopost_global_settings SET enabled=1 WHERE id=1');
+ const day=await content(request('POST',fixtures.calendar),'calendar') as {id:string;status:string};
+ expect(day.status).toBe('draft');
+ const prayer=await content(request('POST',{...fixtures.prayers,calendarDayId:day.id}),'prayers') as {status:string};
+ expect(prayer.status).toBe('draft');
+ expect(state.db.prepare('SELECT enabled FROM telegram_autopost_global_settings WHERE id=1').get().enabled).toBe(1);
+});

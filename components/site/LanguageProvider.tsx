@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo } from 'react';
+import { createContext, useContext, useEffect, useSyncExternalStore } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { defaultLocale, localeFromPathname, localeNames, locales, translate, type Locale, type TranslationKey, withLocale } from '@/lib/i18n';
 
@@ -12,10 +12,16 @@ type LanguageContextValue = {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
+const subscribeToHydration = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
+
+export function LanguageProvider({ children, initialLocale = defaultLocale }: { children?: React.ReactNode; initialLocale?: Locale }) {
   const pathname = usePathname();
   const router = useRouter();
-  const locale = localeFromPathname(pathname || `/${defaultLocale}`);
+  const mounted = useSyncExternalStore(subscribeToHydration, clientSnapshot, serverSnapshot);
+  // Rewrites can expose different pathnames during SSR and hydration.
+  const locale = mounted ? localeFromPathname(pathname || `/${initialLocale}`) : initialLocale;
 
   const setLocale = (nextLocale: Locale) => {
     const query = typeof window === 'undefined' ? '' : window.location.search.replace(/^\?/, '');
@@ -38,11 +44,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  const value = useMemo<LanguageContextValue>(() => ({
+  const value: LanguageContextValue = {
     locale,
     setLocale,
     t: (key) => translate(locale, key)
-  }), [locale, pathname, router]);
+  };
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }

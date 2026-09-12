@@ -1,3 +1,4 @@
+import { selectCalendarDay } from '@/lib/church-public/select-calendar-day';
 import { NextRequest } from 'next/server';
 import { withErrors } from '@/lib/d1/errors';
 import { listCalendarDays } from '@/lib/d1/repositories/calendarDays';
@@ -20,10 +21,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const preview = await isValidPreview(searchParams.get('preview_token'));
 
     const allDays = await listCalendarDays({});
-    const day = allDays.find((item) => item.dateNewStyle === date || item.dateOldStyle === date);
+    const day = selectCalendarDay(allDays, date, language, preview);
     if (!day || (day.status !== 'published' && !preview)) return Response.json(null);
 
-    const [page] = await composeCalendarPages([day], language, { preview });
+    const [page] = await composeCalendarPages([day], day.language, { preview });
     return Response.json(page ?? null);
   });
 }

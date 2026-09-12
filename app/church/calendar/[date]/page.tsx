@@ -1,3 +1,5 @@
+import { selectCalendarDay } from '@/lib/church-public/select-calendar-day';
+import { UntranslatedBadge } from '@/components/site/UntranslatedBadge';
 import { notFound } from 'next/navigation';
 import { AssetButton } from '@/components/site/AssetButton';
 import { Hreflang } from '@/components/site/Hreflang';
@@ -67,10 +69,10 @@ function Paragraphs({ text }: { text?: string }) {
 async function loadCalendarDayContent(date: string, previewToken: string | undefined, language: string): Promise<PublicChurchContentPage | null> {
   const preview = await isValidPreview(previewToken);
   const allDays = await listCalendarDays({});
-  const day = allDays.find((item) => item.dateNewStyle === date || item.dateOldStyle === date);
+  const day = selectCalendarDay(allDays, date, language, preview);
   if (!day || (day.status !== 'published' && !preview)) return null;
 
-  const [page] = await composeCalendarPages([day], language, { preview });
+  const [page] = await composeCalendarPages([day], day.language, { preview });
   return page ?? null;
 }
 
@@ -109,7 +111,7 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
     image: heroImageUrl ? [heroImageUrl] : undefined,
     datePublished: calendarDay.createdAt,
     dateModified: calendarDay.updatedAt,
-    inLanguage: locale,
+    inLanguage: calendarDay.language,
     mainEntityOfPage: canonicalUrl,
     temporalCoverage: calendarDay.dateNewStyle || calendarDay.dateOldStyle || date,
     about: calendarDay.title
@@ -117,6 +119,7 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
 
   const heroCopy = (
     <HeroCopy>
+      {calendarDay.language !== locale ? <UntranslatedBadge /> : null}
       <Eyebrow>
         {translate(locale, 'calendarDateEyebrow')} <time dateTime={calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}>{calendarDay.dateNewStyle || calendarDay.dateOldStyle || date}</time>
       </Eyebrow>

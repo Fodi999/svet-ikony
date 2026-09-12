@@ -67,7 +67,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="relative m-0 min-h-dvh overflow-x-hidden bg-canvas text-foreground font-sans antialiased [text-rendering:optimizeLegibility] [@media(display-mode:standalone)]:pb-[env(safe-area-inset-bottom)]">
-        <LanguageProvider>
+        <LanguageProvider initialLocale={locale}>
           <Header />
           {children}
           <Footer />

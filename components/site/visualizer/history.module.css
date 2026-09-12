@@ -123,13 +123,8 @@
   .cardBody strong { font-size: 13px; }
   .cardIcon { flex-basis: 28px; height: 28px; }
   .eventPreview { height: 100px; }
-  :global(body:has([data-history-app]) [data-site-header]) { width: 100%; margin: 0; top: 0; border-radius: 0; padding: 3px 10px; gap: 3px 10px; }
-  :global(body:has([data-history-app]) [data-site-header] > a > span:first-child) { width: 32px; height: 32px; flex-basis: 32px; }
-  :global(body:has([data-history-app]) [data-site-header] nav) { padding: 2px; }
-  :global(body:has([data-history-app]) [data-site-header] nav a) { min-height: 30px; }
 }
 @media (max-height: 550px) { .root { grid-template-rows: 46px minmax(0,1fr) var(--timeline-height,128px); } .heading .eyebrow { display: none; } .timelineToolbar { min-height: 32px; } .eventCard { padding: 5px 10px; } .cardIcon { display: none; } .eventTrack { padding-top: 8px; } .scrubberTickLabel { display: none; } }
-:global(body:has([data-history-app]) [data-site-header] nav) { width: 100%; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
 
 .dating { font-size: 10px; color: #d4bc86; border: 1px solid #4f462f; border-radius: 12px; display: inline-block; padding: 4px 8px; margin: 0; }
 
@@ -315,3 +310,33 @@
 .legendFill { border-color: var(--territory-border,#b0b9f1); background: color-mix(in srgb,var(--territory-fill,#666dc4) 40%,transparent); box-shadow: 0 0 7px color-mix(in srgb,var(--territory-fill,#666dc4) 20%,transparent); transition: background-color 400ms ease,border-color 400ms ease,box-shadow 400ms ease; flex-shrink: 0; }
 .legendBorder { background: #bcb59e; opacity: .7; }
 @media (prefers-reduced-motion: reduce) { .legendFill { transition: none; } }
+
+/* iOS app shell: header measurement already includes the system top inset. */
+@media (max-width: 767px), (max-height: 500px) and (max-width: 1024px) {
+  .root { --timeline-height: calc(196px + env(safe-area-inset-bottom)); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+  .root[data-empty-timeline='true'] { --timeline-height: calc(152px + env(safe-area-inset-bottom)); }
+  .root :is(button,select) { min-height: 44px; min-width: 44px; }
+  .topbar { min-height: 56px; }
+  .root { grid-template-rows: 56px minmax(0,1fr) var(--timeline-height); }
+  .heading { min-width: 0; }
+  .heading h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px; }
+  .sceneControls button { width: 44px; height: 44px; }
+  .timeline { grid-template-rows: 44px minmax(0,1fr) 44px; padding-bottom: max(8px,env(safe-area-inset-bottom)); }
+  .timelineToolbar { flex-wrap: nowrap; }
+  .eraTabs { flex-basis: auto; }
+  .eraBands { min-height: 44px; }
+  .scrubberHandle { width: 44px; height: 44px; }
+  .sheet, .sheet:has(.countryPanel) { max-height: min(72dvh,calc(100dvh - env(safe-area-inset-top) - 16px)); padding-bottom: calc(24px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+  .article { --tw-translate-x: 0px; --tw-translate-y: 0px; top: auto; bottom: 0; left: env(safe-area-inset-left); right: env(safe-area-inset-right); width: auto; max-width: none; transform: none; translate: none; max-height: calc(100dvh - env(safe-area-inset-top) - 16px); padding: 0 16px calc(24px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+  .dialogHeading { position: sticky; top: 0; z-index: 2; background: #141811; padding: 12px 16px; }
+  .dialogHeading h2 { min-width: 0; font-size: 20px; }
+  .dialogHeading button { flex-shrink: 0; width: 44px; height: 44px; }
+  .articleText, .eventContent .muted { font-size: 16px; line-height: 1.6; word-break: normal; }
+  .countryActions { grid-template-columns: 1fr; }
+  .drawer { padding-top: env(safe-area-inset-top); padding-left: env(safe-area-inset-left); padding-bottom: env(safe-area-inset-bottom); }
+}
+@media (max-height: 500px) and (max-width: 1024px) {
+  .root { --timeline-height: calc(168px + env(safe-area-inset-bottom)); }
+  .scrubberTrack { height: 68px; }
+  .sceneControls { display: flex; top: 8px; }
+}

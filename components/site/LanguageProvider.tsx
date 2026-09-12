@@ -63,6 +63,7 @@ export function LanguageSwitch() {
 
   return (
     <div
+      data-language-switch
       className="inline-flex min-h-10 items-center border border-[rgba(232,211,169,.13)] rounded-full p-[3px] bg-[rgba(5,5,5,.24)] max-[640px]:min-h-9 max-[430px]:min-h-[34px]"
       aria-label={t('langLabel')}
     >

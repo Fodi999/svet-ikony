@@ -31,14 +31,16 @@ export function Header() {
   const currentPath = stripLocaleFromPathname(pathname || '/');
   const navRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (!currentPath.startsWith('/pravoslavna-istoriya')) return;
     const nav = navRef.current;
     const active = nav?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (nav && active && nav.scrollWidth > nav.clientWidth) {
-      const previous = nav.scrollLeft;
-      nav.scrollLeft = Math.max(0, active.offsetLeft - nav.offsetLeft - nav.clientWidth + active.offsetWidth + 16);
-      return () => { nav.scrollLeft = previous; };
-    }
+    if (!nav || !active) return;
+    const reveal = () => {
+      if (nav.scrollWidth > nav.clientWidth) nav.scrollLeft = Math.max(0, active.offsetLeft - nav.offsetLeft - nav.clientWidth + active.offsetWidth + 16);
+    };
+    reveal();
+    const observer = new ResizeObserver(reveal);
+    observer.observe(nav);
+    return () => observer.disconnect();
   }, [currentPath]);
 
   return (

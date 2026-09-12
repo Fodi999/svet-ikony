@@ -66,7 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
         />
       </head>
-      <body className="relative m-0 min-h-dvh overflow-x-hidden bg-canvas text-foreground font-sans antialiased [text-rendering:optimizeLegibility] [@media(display-mode:standalone)]:overscroll-y-none [@media(display-mode:standalone)]:pb-[env(safe-area-inset-bottom)]">
+      <body className="relative m-0 min-h-dvh overflow-x-hidden bg-canvas text-foreground font-sans antialiased [text-rendering:optimizeLegibility] [@media(display-mode:standalone)]:pb-[env(safe-area-inset-bottom)]">
         <LanguageProvider>
           <Header />
           {children}

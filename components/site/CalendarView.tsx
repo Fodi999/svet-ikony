@@ -558,11 +558,11 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
     : '';
 
   return (
-    <section className="w-full min-h-screen m-0 p-[clamp(18px,2.4vw,42px)] bg-canvas text-foreground max-[900px]:pt-[18px] max-[900px]:px-[14px] max-[900px]:pb-[38px] max-[520px]:pt-[14px] max-[520px]:px-[10px] max-[520px]:pb-[32px] max-[430px]:pt-[12px] max-[430px]:px-[8px] max-[430px]:pb-[28px] [@media(display-mode:standalone)]:pr-[max(clamp(10px,5vw,72px),env(safe-area-inset-right))] [@media(display-mode:standalone)]:pb-[max(clamp(28px,5vw,92px),env(safe-area-inset-bottom))] [@media(display-mode:standalone)]:pl-[max(clamp(10px,5vw,72px),env(safe-area-inset-left))]">
+    <section data-page-shell className="w-full min-h-dvh m-0 p-[clamp(18px,2.4vw,42px)] bg-canvas text-foreground max-[900px]:pt-[18px] max-[900px]:px-[14px] max-[900px]:pb-[38px] max-[520px]:pt-[14px] max-[520px]:px-[10px] max-[520px]:pb-[32px] max-[430px]:pt-[12px] max-[430px]:px-[8px] max-[430px]:pb-[28px] [@media(display-mode:standalone)]:pr-[max(clamp(10px,5vw,72px),env(safe-area-inset-right))] [@media(display-mode:standalone)]:pb-[max(clamp(28px,5vw,92px),env(safe-area-inset-bottom))] [@media(display-mode:standalone)]:pl-[max(clamp(10px,5vw,72px),env(safe-area-inset-left))]">
       <section className="grid grid-cols-[minmax(0,1fr)_minmax(260px,.72fr)_minmax(300px,.92fr)_minmax(260px,.72fr)] items-start gap-[clamp(20px,2vw,32px)] border-b border-gold/28 pb-[clamp(34px,4vw,64px)] max-[1280px]:grid-cols-2 max-[1280px]:gap-[18px] max-[900px]:grid-cols-1 max-[900px]:gap-4 max-[900px]:pb-[26px]">
         <div className="min-w-0 max-[1280px]:col-span-full">
           <span className="block mb-1.5 text-muted-foreground text-[clamp(14px,1.05vw,20px)] font-medium max-[520px]:text-[14px]">{hero?.year ?? String(year)}</span>
-          <h1 className="m-0 max-w-[780px] font-serif font-bold leading-none text-foreground text-[clamp(56px,7.6vw,132px)] max-[900px]:max-w-full max-[900px]:text-[clamp(48px,12vw,84px)] max-[900px]:leading-none max-[900px]:[overflow-wrap:anywhere] max-[520px]:text-[clamp(42px,16vw,64px)] max-[520px]:leading-[.98] max-[520px]:text-balance">
+          <h1 data-hero-title className="m-0 max-w-[780px] font-serif font-bold leading-none text-foreground text-[clamp(56px,7.6vw,132px)] max-[900px]:max-w-full max-[900px]:text-[clamp(48px,12vw,84px)] max-[900px]:leading-none max-[900px]:[overflow-wrap:anywhere] max-[520px]:text-[clamp(42px,16vw,64px)] max-[520px]:leading-[.98] max-[520px]:text-balance">
             {localizedHeroTitle(hero?.title, t)}
           </h1>
         </div>

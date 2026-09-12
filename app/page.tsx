@@ -80,7 +80,7 @@ export default async function HomePage({ searchParams }: { searchParams?: Promis
     services: []
   };
   return (
-    <main className="min-h-screen bg-canvas p-0">
+    <main className="min-h-dvh bg-canvas p-0">
       <Hreflang locale={locale} path="/" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('Organization', { name: 'svetikony.com', url: 'https://svetikony.com' })) }} />
       <CalendarView icons={[]} prayers={prayers} pages={[]} calendar={calendar} />

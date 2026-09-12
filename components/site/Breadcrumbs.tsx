@@ -16,7 +16,7 @@ export function Breadcrumbs({ items, current, wide }: { items: BreadcrumbItem[];
     // prayer-mode.css's `.sacred-read-page .breadcrumbs` used to cap width
     // on read-pages via a descendant selector; `wide` replicates that
     // directly since ReadPage no longer carries the literal class.
-    <nav className={cn(wide && 'max-w-[1660px] mx-auto')} aria-label={current}>
+    <nav data-breadcrumbs className={cn(wide && 'max-w-[1660px] mx-auto')} aria-label={current}>
       <ol className="flex flex-wrap items-center gap-1.5 mt-0 mx-0 mb-4.5 p-0 list-none text-[12px] font-bold tracking-[.08em] uppercase text-[#8f9b86]">
         {items.map((item) => (
           <li key={item.href} className="inline-flex items-center gap-1.5 min-w-0">

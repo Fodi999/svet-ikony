@@ -38,7 +38,7 @@ export default async function IconsPage() {
         items={[{ href: '/', label: translate(locale, 'home') }]}
         current={translate(locale, 'navIcons')}
       />
-      <section className="grid grid-cols-[minmax(0,1fr)_minmax(260px,420px)] gap-[clamp(24px,5vw,80px)] items-end pt-0 px-0 pb-[clamp(30px,4vw,64px)] border-b border-gold/28 max-[900px]:items-start">
+      <section className="grid grid-cols-[minmax(0,1fr)_minmax(260px,420px)] gap-[clamp(24px,5vw,80px)] items-end pt-0 px-0 pb-[clamp(30px,4vw,64px)] border-b border-gold/28 max-[900px]:grid-cols-1 max-[900px]:items-start">
         <div>
           <Eyebrow><T k="catalog" /></Eyebrow>
           <HeroTitle className="max-w-[980px]">

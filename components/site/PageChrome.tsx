@@ -18,10 +18,10 @@ import { cn } from '@/lib/utils';
 // (dead) ≤520px override; there is no separate ≤520px tier in the real
 // cascade, confirmed against the compiled stylesheet's rule order.
 const pageClass =
-  "w-full m-0 min-h-[calc(100vh-78px)] max-[900px]:min-h-[calc(100vh-112px)] pt-[clamp(42px,5vw,92px)] max-[900px]:pt-7 pr-[clamp(18px,5vw,72px)] max-[900px]:pr-4 pb-[clamp(42px,5vw,92px)] max-[900px]:pb-[46px] pl-[clamp(18px,5vw,72px)] max-[900px]:pl-4 bg-canvas text-foreground [@media(display-mode:standalone)]:pr-[max(clamp(10px,5vw,72px),env(safe-area-inset-right))] [@media(display-mode:standalone)]:pb-[max(clamp(28px,5vw,92px),env(safe-area-inset-bottom))] [@media(display-mode:standalone)]:pl-[max(clamp(10px,5vw,72px),env(safe-area-inset-left))]";
+  "w-full m-0 min-h-[calc(100dvh-78px)] max-[900px]:min-h-[calc(100dvh-112px)] pt-[clamp(42px,5vw,92px)] max-[900px]:pt-7 pr-[clamp(18px,5vw,72px)] max-[900px]:pr-4 pb-[clamp(42px,5vw,92px)] max-[900px]:pb-[46px] pl-[clamp(18px,5vw,72px)] max-[900px]:pl-4 bg-canvas text-foreground [@media(display-mode:standalone)]:pr-[max(clamp(10px,5vw,72px),env(safe-area-inset-right))] [@media(display-mode:standalone)]:pb-[max(clamp(28px,5vw,92px),env(safe-area-inset-bottom))] [@media(display-mode:standalone)]:pl-[max(clamp(10px,5vw,72px),env(safe-area-inset-left))]";
 
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
-  return <main className={cn(pageClass, className)}>{children}</main>;
+  return <main data-page-shell className={cn(pageClass, className)}>{children}</main>;
 }
 
 export function Hero({ children, className }: { children: ReactNode; className?: string }) {
@@ -34,7 +34,7 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 
 export function HeroTitle({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <h1
+    <h1 data-hero-title
       className={cn(
         'm-0 max-w-[min(100%,1180px)] font-serif font-bold text-[clamp(38px,5.8vw,96px)] leading-[1.02] text-foreground text-balance [overflow-wrap:anywhere] max-[520px]:text-[clamp(32px,10vw,52px)] max-[520px]:leading-[1.06]',
         className

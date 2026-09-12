@@ -9,6 +9,9 @@ export type HistoricalTerritory = {
   source: { kind: string; year: number; url: string; notes: string; license: string };
   geometry: CountryData['features'][number]['geometry'];
 };
+export const historicalPalette = (territory: HistoricalTerritory | null) => territory?.style === 'burgundy'
+  ? { fill: '#99455f', border: '#d58da5' }
+  : { fill: '#666dc4', border: '#b0b9f1' };
 export const historicalTerritories = dataset as HistoricalTerritory[];
 /** Editorial context, independent of modern country resolution. No title matching. */
 export function territoryForEvent(event: ChurchVisualizerEventDto | null): HistoricalTerritory | null {

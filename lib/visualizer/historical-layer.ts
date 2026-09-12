@@ -2,7 +2,7 @@ import { Group } from 'three';
 import type { LineSegments } from 'three';
 import { createCountryHighlight, disposeCountryHighlight } from './country-highlight';
 import type { Country } from './countries';
-import type { HistoricalTerritory } from './historical-territories';
+import { historicalPalette, type HistoricalTerritory } from './historical-territories';
 
 /** Reuse the existing spherical triangulator (holes + disjoint polygons), not a new renderer. */
 export function createHistoricalLayer(territory: HistoricalTerritory) {
@@ -15,8 +15,9 @@ export function createHistoricalLayer(territory: HistoricalTerritory) {
   const layer = createCountryHighlight(country);
   layer.group.name = `HistoricalTerritory:${territory.id}`;
   layer.anchor.visible = false;
-  layer.fill.material.color.setHex(0xd5a23d);
-  layer.outline.material.color.setHex(0xf0bf62);
+  const palette = historicalPalette(territory);
+  layer.fill.material.color.set(palette.fill);
+  layer.outline.material.color.set(palette.border);
   // Keep both layers above modern borders without hiding their satellite texture.
   layer.fill.geometry.scale(1.0015,1.0015,1.0015);
   layer.outline.geometry.scale(1.002,1.002,1.002);
@@ -53,8 +54,8 @@ export function createHistoricalController(frame: Group, borders: LineSegments) 
       const t = Math.max(0, Math.min(1, (now - entry.start) / 400));
       entry.opacity = entry.from + (entry.to - entry.from) * t * t * (3 - 2*t);
       entry.layer.group.visible = entry.opacity > 0;
-      entry.layer.fill.material.opacity = entry.opacity * .20;
-      entry.layer.outline.material.opacity = entry.opacity * .9;
+      entry.layer.fill.material.opacity = entry.opacity * .30;
+      entry.layer.outline.material.opacity = entry.opacity * .96;
       if (cache.size > 3 && entry.opacity === 0 && id !== activeId) {
         root.remove(entry.layer.group); disposeCountryHighlight(entry.layer); cache.delete(id);
       }

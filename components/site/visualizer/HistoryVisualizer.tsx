@@ -15,7 +15,7 @@ import styles from './history.module.css';
 import { CountryPanel } from './CountryPanel';
 import { TimelineScrubber } from './TimelineScrubber';
 import { countryMetadata } from '@/lib/visualizer/countries';
-import { atlasMessages, territoryForEvent, eventImage, type AtlasMapLayer } from '@/lib/visualizer/historical-territories';
+import { atlasMessages, historicalPalette, territoryForEvent, eventImage, type AtlasMapLayer } from '@/lib/visualizer/historical-territories';
 import { countryMessages } from '@/lib/visualizer/country-messages';
 
 const datingLabels = { exact: 'historyExactDating', approximate: 'historyApproximateDating', traditional: 'historyTraditionalDating', period: 'historyPeriodDating', unknown: 'historyUnknownDating' } as const;
@@ -185,8 +185,8 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
           {nearbyOnly ? <button type="button" onClick={() => setNearbyOnly(false)}>{copy.all} ×</button> : null}
           {nearbyOnly && nearbyEvents.filter(e => e.id !== selectedEventId).length === 0 ? <span role="status">{atlas.noNearby}</span> : null}
         </div> : null}
-        <details className={styles.atlasLegend}>
-          <summary><Layers size={14} />{activeTerritory ? activeTerritory.name[locale] : atlas.legend}</summary>
+        <details className={styles.atlasLegend} style={{ '--territory-fill': historicalPalette(activeTerritory).fill, '--territory-border': historicalPalette(activeTerritory).border } as React.CSSProperties}>
+          <summary><i className={styles.legendFill}/><Layers size={14} />{activeTerritory ? activeTerritory.name[locale] : atlas.legend}</summary>
           <div><p><i className={styles.legendFill}/>{atlas.territory}</p><p><i className={styles.legendBorder}/>{atlas.modern}</p><p><i className={styles.legendDot}/>{atlas.events}</p>
             {activeTerritory ? <><strong>{activeTerritory.name[locale]}</strong><small>{atlas.prototype} · {atlas.sourceYear}: {activeTerritory.source.year}</small><a href={activeTerritory.source.url} target="_blank" rel="noopener noreferrer">{atlas.source} ↗</a></> : <small>{atlas.noTerritory}</small>}
             <small>{atlas.reconstruction}</small>

@@ -310,3 +310,8 @@
 @media (max-width: 767px) { .root { --timeline-height: 164px; } .timeline { grid-template-rows: 37px minmax(0,1fr) 20px; } .atlasLegend { bottom: 26px; left: 8px; max-width: min(250px,calc(100% - 70px)); } .atlasLegend summary { padding: 9px; font-size: 10px; } .atlasLegend[open] { max-height: 45dvh; overflow-y: auto; } .sceneHint { display: none; } .sheet { max-height: 58dvh; } .eventContent h2 { font-size: 24px; } }
 @media (max-height: 600px) { .root { --timeline-height: 138px; } .atlasIdentity { padding-top: 10px; } .navigation button { min-height: 34px; padding-block: 6px; } .navNote { margin-top: 12px; } }
 @media (prefers-reduced-motion: reduce) { .eventContent { animation: none; } }
+
+/* Historical color is independent of the warm, neutral modern map. */
+.legendFill { border-color: var(--territory-border,#b0b9f1); background: color-mix(in srgb,var(--territory-fill,#666dc4) 40%,transparent); box-shadow: 0 0 7px color-mix(in srgb,var(--territory-fill,#666dc4) 20%,transparent); transition: background-color 400ms ease,border-color 400ms ease,box-shadow 400ms ease; flex-shrink: 0; }
+.legendBorder { background: #bcb59e; opacity: .7; }
+@media (prefers-reduced-motion: reduce) { .legendFill { transition: none; } }

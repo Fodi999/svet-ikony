@@ -48,8 +48,8 @@ export function createCountryInteraction(ctx:Context){
     for(const country of [hovered,selected,eventCountry]) if(country) obtain(country);
     for(const [code,layer] of cache){
       const manual=code===selected?.info.code, hover=code===hovered?.info.code, event=code===eventCountry?.info.code;
-      layer.outline.material.color.setHex(event && !manual && !hover ? 0xc7c9b7 : 0xf1d397);
-      const target=manual?1:hover?.9:event?.95:0;
+      layer.outline.material.color.setHex(event && !manual && !hover ? 0xbcb59e : 0xf1d397);
+      const target=manual?1:hover?.9:event?.65:0;
       layer.fill.material.opacity=manual?.23:hover?.16:0;
       layer.anchor.visible=manual||hover;
       if(layer.group.userData.target!==target){

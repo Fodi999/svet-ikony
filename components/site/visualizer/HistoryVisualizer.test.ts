@@ -4,13 +4,16 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChurchVisualizerEventDto } from '@/lib/types';
-const harness = vi.hoisted(() => ({ target: null as unknown, country: null as string | null, selectCountry: (() => {}) as (code: string) => void, mobile: false, locale: 'uk' as 'uk'|'ru'|'en' }));
+const harness = vi.hoisted(() => ({ target: null as unknown, country: null as string | null, selectCountry: (() => {}) as (code: string) => void, mobile: false, locale: 'uk' as 'uk'|'ru'|'en', mapEvents: [] as { id: string; latitude: number; longitude: number }[] }));
 vi.mock('@/components/site/LanguageProvider', async () => {
   const { translate } = await import('@/lib/i18n');
   return { useI18n: () => ({ locale: harness.locale, t: (key: import('@/lib/i18n').TranslationKey) => translate(harness.locale, key) }) };
 });
-vi.mock('./Earth3DCanvas', () => ({ Earth3DCanvas: (props: { selectedEvent: unknown; selectedCountryCode: string | null; onSelectCountry: (code: string) => void }) => { harness.target = props.selectedEvent; harness.country = props.selectedCountryCode; harness.selectCountry = props.onSelectCountry; return React.createElement('canvas'); } }));
+vi.mock('./Earth3DCanvas', () => ({ Earth3DCanvas: (props: { selectedEvent: unknown; selectedCountryCode: string | null; onSelectCountry: (code: string) => void; mapEvents: { id: string; latitude: number; longitude: number }[] }) => { harness.target = props.selectedEvent; harness.country = props.selectedCountryCode; harness.selectCountry = props.onSelectCountry; harness.mapEvents = props.mapEvents; return React.createElement('canvas'); } }));
 import { HistoryVisualizer } from './HistoryVisualizer';
+import { haversineDistanceKm, MARKER_CLUSTER_RADIUS_KM } from '@/lib/visualizer/marker-clustering';
+import { scrubberIndexAtClientX } from '@/lib/visualizer/timeline-position';
+import styles from './history.module.css';
 
 function event(id: string, overrides: Partial<ChurchVisualizerEventDto> = {}): ChurchVisualizerEventDto {
   return { id, siteId: 'site', slug: id, language: 'uk', translationGroupId: id, title: `Подія ${id}`, summary: 'Короткий опис', description: 'Повний текст події', eventType: 'church_history', chronologyType: 'exact', era: 'early_church', calendarEra: 'AD', yearStart: 313, yearEnd: null, century: 4, displayDate: '', sortYear: 313, locationName: 'Місце', latitude: 40, longitude: 20, calendarDayId: null, status: 'published', isFeatured: false, isGlobal: true, createdAt: '', updatedAt: '', publishedAt: '', ...overrides };
@@ -142,6 +145,42 @@ describe('history explorer', () => {
     expect(main.requestFullscreen).toHaveBeenCalledOnce();
     await act(async () => { document.dispatchEvent(new Event('fullscreenchange')); });
     expect(main.dataset.expanded).toBe('false');
+  });
+  it('separates map markers for events with near-duplicate real-world coordinates', async () => {
+    const bethlehem = event('bethlehem', { title: 'Різдво Христове', latitude: 31.7054, longitude: 35.2024 });
+    const jerusalem = event('jerusalem', { title: 'Розп’яття', latitude: 31.7683, longitude: 35.2137 });
+    await act(async () => root.render(React.createElement(HistoryVisualizer, { events: [bethlehem, jerusalem], baseEarthModelUrl: null })));
+    expect(harness.mapEvents).toHaveLength(2);
+    const [a, b] = harness.mapEvents;
+    expect(haversineDistanceKm(a, b)).toBeGreaterThanOrEqual(MARKER_CLUSTER_RADIUS_KM * 0.9);
+  });
+  it('moves the timeline scrubber handle when a card is selected, sharing selectedEventId', async () => {
+    await mount();
+    expect(container.getElementsByClassName(styles.scrubberHandle)).toHaveLength(0);
+    await click(button('313 н. е. — Подія a'));
+    const handle = container.getElementsByClassName(styles.scrubberHandle)[0] as HTMLButtonElement;
+    expect(handle.style.getPropertyValue('--scrubber-position')).toBe('100%');
+  });
+  it('dragging/clicking the scrubber calls through to the real chooseEvent, not a parallel path', async () => {
+    await mount();
+    const track = container.getElementsByClassName(styles.scrubberTrack)[0] as HTMLDivElement;
+    vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ left: 0, width: 300, top: 0, height: 34, right: 300, bottom: 34, x: 0, y: 0, toJSON() {} } as DOMRect);
+    const targetIndex = scrubberIndexAtClientX(300, { left: 0, width: 300 }, 2);
+    await act(async () => { track.dispatchEvent(new PointerEvent('pointerdown', { clientX: 300, pointerId: 1, bubbles: true })); });
+    await act(async () => { track.dispatchEvent(new PointerEvent('pointerup', { clientX: 300, pointerId: 1, bubbles: true })); });
+    expect(targetIndex).toBe(1);
+    expect(harness.target).toMatchObject({ modelUrl: '/media/event.glb' });
+    expect(button('313 н. е. — Подія a').getAttribute('aria-pressed')).toBe('true');
+  });
+  it('keeps the scrubber tick count in sync with the active era/century/year filters', async () => {
+    await mount();
+    expect(container.getElementsByClassName(styles.scrubberTick)).toHaveLength(2);
+    await click(button('Біблійна історія'));
+    expect(container.getElementsByClassName(styles.scrubberTick)).toHaveLength(1);
+  });
+  it('renders no scrubber markup when there are zero visible events', async () => {
+    await act(async () => root.render(React.createElement(HistoryVisualizer, { events: [], baseEarthModelUrl: null })));
+    expect(container.getElementsByClassName(styles.scrubberTrack)).toHaveLength(0);
   });
   it('opens an accessible bottom sheet on mobile event selection', async () => {
     harness.mobile = true; await mount(); await click(button('313 н. е. — Подія a'));

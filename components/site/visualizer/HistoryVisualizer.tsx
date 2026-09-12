@@ -9,9 +9,11 @@ import { centuryKey, yearKey, centuryText, dateText } from '@/lib/visualizer/chr
 import { eraLabel } from '@/lib/visualizer/era-labels';
 import { sectionEvents, timelineEra, TIMELINE_ERAS, type HistorySection } from '@/lib/visualizer/explorer';
 import { explorerMessages } from '@/lib/visualizer/explorer-messages';
+import { spreadCollidingMarkers } from '@/lib/visualizer/marker-clustering';
 import { Earth3DCanvas, type SelectedEventTarget, type CameraCommand } from './Earth3DCanvas';
 import styles from './history.module.css';
 import { CountryPanel } from './CountryPanel';
+import { TimelineScrubber } from './TimelineScrubber';
 import { countryMetadata } from '@/lib/visualizer/countries';
 import { countryMessages } from '@/lib/visualizer/country-messages';
 
@@ -58,8 +60,8 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
   const earthTarget = useMemo<SelectedEventTarget>(() => selectedEvent ? {
     latitude: selectedEvent.latitude, longitude: selectedEvent.longitude, modelUrl
   } : null, [selectedEvent, modelUrl]);
-  const mapEvents = useMemo(() => visibleEvents.filter((event) => event.latitude != null && event.longitude != null)
-    .map((event) => ({ id: event.id, latitude: event.latitude!, longitude: event.longitude!, title: event.title, date: dateText(event, locale) })), [visibleEvents, locale]);
+  const mapEvents = useMemo(() => spreadCollidingMarkers(visibleEvents.filter((event) => event.latitude != null && event.longitude != null)
+    .map((event) => ({ id: event.id, latitude: event.latitude!, longitude: event.longitude!, title: event.title, date: dateText(event, locale) }))), [visibleEvents, locale]);
 
   // Observe actual header size (translations, navigation rows, browser zoom).
   // The CSS fallback handles the first server-rendered frame before hydration.
@@ -197,6 +199,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
           <span className={styles.srOnly}>{event.locationName}. {event.summary}</span>
         </button>) : <p className={styles.noEvents} role="status">{events.some((event) => event.status === 'published') ? copy.noEvents : copy.notAdded}</p>}
       </div>
+      <TimelineScrubber events={visibleEvents} selectedEventId={selectedEventId} onSelect={chooseEvent} />
     </section>
 
     <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}><DialogPortal container={rootRef}><DialogOverlay className={styles.backdrop} /><DialogPopup className={`${styles.drawer} translate-x-0 translate-y-0`}>

@@ -616,9 +616,19 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     const pointer = new handle.THREE.Vector2();
     const projected = new handle.THREE.Vector3();
     const tooltip = tooltipRef.current;
-    let hovered: import('three').Object3D | null = null;
+    // A hovered pin gets its own material/scale so it reads as distinct from
+    // the rest -- pins otherwise all share one base material instance, so
+    // mutating it in place would recolor every pin at once.
+    const hoverMaterial = new handle.THREE.MeshBasicMaterial({ color: 0xffdd88 });
+    let hovered: import('three').Mesh | null = null;
     let down: { x: number; y: number } | null = null;
-    function hideTooltip() { hovered = null; if (tooltip) tooltip.hidden = true; }
+    function setHovered(next: import('three').Mesh | null) {
+      if (hovered === next) return;
+      if (hovered) { hovered.material = material; hovered.scale.setScalar(1); }
+      hovered = next;
+      if (hovered) { hovered.material = hoverMaterial; hovered.scale.setScalar(1.35); }
+    }
+    function hideTooltip() { setHovered(null); if (tooltip) tooltip.hidden = true; }
     handle.updateMarkerOverlay = () => {
       if (!tooltip || !hovered || !hovered.visible || !handle.pins.visible) { if (tooltip && !tooltip.hidden) tooltip.hidden = true; return; }
       hovered.getWorldPosition(projected).project(handle.camera);
@@ -640,7 +650,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     function pointerDown(event: PointerEvent) { down = { x: event.clientX, y: event.clientY }; hideTooltip(); }
     function pointerMove(event: PointerEvent) {
       if (down || (event.pointerType && event.pointerType !== 'mouse')) { hideTooltip(); return; }
-      hovered = hitAt(event) ?? null;
+      setHovered((hitAt(event) as import('three').Mesh | undefined) ?? null);
       handle!.updateMarkerOverlay?.();
     }
     function pointerUp(event: PointerEvent) {
@@ -662,7 +672,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       canvas.removeEventListener('pointerleave', hideTooltip);
       canvas.removeEventListener('pointercancel', pointerCancel);
       handle.updateMarkerOverlay = null; hideTooltip();
-      handle.pins.clear(); geometry.dispose(); material.dispose();
+      handle.pins.clear(); geometry.dispose(); material.dispose(); hoverMaterial.dispose();
     };
   }, [mapEvents, onSelectEvent, sceneReady]);
 

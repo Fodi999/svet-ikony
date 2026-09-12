@@ -213,6 +213,61 @@ describe('scene toolbar', () => {
     expect(scene.children[4].children[0].visible).toBe(false);
     pinCleanup?.();
   });
+  it('gives the hovered pin its own material and scale without touching the others', async () => {
+    harness.ready = true;
+    mount(null, null, { mapEvents: [
+      { id: 'first', latitude: 0, longitude: 0, title: 'First', date: '1' },
+      { id: 'second', latitude: 0, longitude: 45, title: 'Second', date: '2' },
+    ] });
+    const listeners: Record<string, (event: { clientX: number; clientY: number }) => void> = {};
+    harness.refs[1].current = { addEventListener: (name: string, callback: typeof listeners[string]) => { listeners[name] = callback; }, removeEventListener() {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 960, height: 540 }) };
+    await vi.waitFor(() => expect(harness.render).toHaveBeenCalled());
+    (harness.render.mock.calls[0][1] as import('three').Camera).updateMatrixWorld(true);
+    harness.refs[3].current = { hidden: true, textContent: '', offsetWidth: 100, offsetHeight: 32, style: { left: '', top: '' } };
+    const pinCleanup = harness.effects[3]();
+    const tick = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
+    tick(performance.now());
+    const scene = harness.render.mock.calls[0][0] as import('three').Scene;
+    const [firstPin, secondPin] = scene.children[4].children as import('three').Mesh[];
+    const baseMaterial = firstPin.material;
+    listeners.pointermove({ clientX: 480, clientY: 270 });
+    expect(firstPin.material).not.toBe(baseMaterial);
+    expect(firstPin.scale.x).toBeCloseTo(1.35);
+    expect(secondPin.material).toBe(baseMaterial);
+    expect(secondPin.scale.x).toBeCloseTo(1);
+    listeners.pointermove({ clientX: 1, clientY: 1 });
+    expect(firstPin.material).toBe(baseMaterial);
+    expect(firstPin.scale.x).toBeCloseTo(1);
+    pinCleanup?.();
+  });
+  it('moves the hover state from one pin directly to another', async () => {
+    harness.ready = true;
+    // 45deg of longitude east of the first pin stays inside the visible
+    // hemisphere but projects well to the right of dead-center.
+    mount(null, null, { mapEvents: [
+      { id: 'first', latitude: 0, longitude: 0, title: 'First', date: '1' },
+      { id: 'second', latitude: 0, longitude: 45, title: 'Second', date: '2' },
+    ] });
+    const listeners: Record<string, (event: { clientX: number; clientY: number }) => void> = {};
+    harness.refs[1].current = { addEventListener: (name: string, callback: typeof listeners[string]) => { listeners[name] = callback; }, removeEventListener() {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 960, height: 540 }) };
+    await vi.waitFor(() => expect(harness.render).toHaveBeenCalled());
+    (harness.render.mock.calls[0][1] as import('three').Camera).updateMatrixWorld(true);
+    harness.refs[3].current = { hidden: true, textContent: '', offsetWidth: 100, offsetHeight: 32, style: { left: '', top: '' } };
+    const pinCleanup = harness.effects[3]();
+    const tick = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
+    tick(performance.now());
+    const scene = harness.render.mock.calls[0][0] as import('three').Scene;
+    const [firstPin, secondPin] = scene.children[4].children as import('three').Mesh[];
+    const baseMaterial = firstPin.material;
+    listeners.pointermove({ clientX: 480, clientY: 270 });
+    expect(firstPin.material).not.toBe(baseMaterial);
+    listeners.pointermove({ clientX: 663, clientY: 270 });
+    expect(firstPin.material).toBe(baseMaterial);
+    expect(firstPin.scale.x).toBeCloseTo(1);
+    expect(secondPin.material).not.toBe(baseMaterial);
+    expect(secondPin.scale.x).toBeCloseTo(1.35);
+    pinCleanup?.();
+  });
 });
 
 describe('country overlay lifecycle', () => {

@@ -38,7 +38,7 @@ function setup() {
     Object.defineProperties(event,{pointerId:{value:id},pointerType:{value:pointerType}});
     canvas.dispatchEvent(event);
   }
-  return {canvas,tooltip,frame,borders,controls,select,interaction,pointer,camera,setLocale:(next:typeof locale)=>{locale=next;interaction.refreshTooltip();}};
+  return {canvas,tooltip,frame,borders,pins,controls,select,interaction,pointer,camera,setLocale:(next:typeof locale)=>{locale=next;interaction.refreshTooltip();}};
 }
 describe('country pointer lifecycle', () => {
   it('updates a stationary tooltip in three languages without changing selection, camera or GPU layer', () => {
@@ -52,6 +52,17 @@ describe('country pointer lifecycle', () => {
       expect(s.frame.children[0]).toBe(layer); expect(layer.visible).toBe(true);
       expect(s.camera.position.equals(position)).toBe(true); expect(frames.size).toBe(0);
     }
+  });
+  it('ignores the country beneath a visible pin, but detects it once the pin is hidden', () => {
+    const s = setup();
+    const pin = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), new THREE.MeshBasicMaterial());
+    pin.position.copy(latLngToVector3(49, 32, 1.02));
+    s.pins.add(pin);
+    s.pointer('pointerdown'); s.pointer('pointerup');
+    expect(s.select).not.toHaveBeenCalled();
+    pin.visible = false;
+    s.pointer('pointerdown'); s.pointer('pointerup');
+    expect(s.select).toHaveBeenCalledWith('UA');
   });
   it('keeps the grabbing cursor during small pressed moves and ignores secondary clicks', () => {
     const s = setup(); s.pointer('pointerdown'); s.pointer('pointermove',52); flush(30);

@@ -77,7 +77,7 @@ describe('history explorer', () => {
     await click(button('313 н. е. — Подія a'));
     expect(harness.country).toBeNull();
     await act(async () => harness.selectCountry('IT'));
-    expect(harness.target).toBeNull();
+    expect(harness.target).toMatchObject({id:'a'});
     expect(container.querySelector('[data-country-code="IT"]')?.textContent).toContain('Рим');
     await click(button('Початковий вигляд'));
     expect(harness.country).toBeNull();

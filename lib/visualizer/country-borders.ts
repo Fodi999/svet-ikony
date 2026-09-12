@@ -50,7 +50,7 @@ export function createCountryBorders(data: CountryData) {
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new Float32BufferAttribute(countryBorderPositions(data), 3));
   geometry.computeBoundingSphere();
-  const lines = new LineSegments(geometry, new LineBasicMaterial({ color: 0xe6d5a8, transparent: true, opacity: 0.58, depthTest: true, depthWrite: false, toneMapped: false }));
+  const lines = new LineSegments(geometry, new LineBasicMaterial({ color: 0xe6d5a8, transparent: true, opacity: 0.26, depthTest: true, depthWrite: false, toneMapped: false }));
   lines.name = 'CountryBorders';
   return lines;
 }

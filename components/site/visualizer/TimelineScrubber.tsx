@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '@/components/site/LanguageProvider';
 import type { ChurchVisualizerEventDto } from '@/lib/types';
 import { dateText } from '@/lib/visualizer/chronology';
@@ -17,6 +17,16 @@ type Props = {
 export function TimelineScrubber({ events, selectedEventId, onSelect }: Props) {
   const { locale } = useI18n();
   const copy = explorerMessages[locale];
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const reveal = () => handleRef.current?.scrollIntoView?.({block: 'nearest', inline: 'center'});
+    reveal();
+    if (!scrollRef.current || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(reveal); observer.observe(scrollRef.current);
+    return () => observer.disconnect();
+  }, [selectedEventId]);
+  const [dragPercent, setDragPercent] = useState<number | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   if (events.length === 0) return null;
@@ -25,7 +35,12 @@ export function TimelineScrubber({ events, selectedEventId, onSelect }: Props) {
   const rawSelectedIndex = selectedEventId == null ? -1 : events.findIndex((event) => event.id === selectedEventId);
   const selectedIndex = rawSelectedIndex === -1 ? null : rawSelectedIndex;
   const activeIndex = dragIndex ?? selectedIndex;
-  const percent = scrubberPercent(activeIndex ?? 0, events.length);
+  const percent = dragPercent ?? scrubberPercent(activeIndex ?? 0, events.length);
+  function updateDrag(event: React.PointerEvent<HTMLDivElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setDragPercent(Math.max(0, Math.min(100, (event.clientX - rect.left) / Math.max(1, rect.width) * 100)));
+    setDragIndex(scrubberIndexAtClientX(event.clientX, rect, events.length));
+  }
 
   function selectIndex(index: number) {
     const id = events[index]?.id;
@@ -35,19 +50,20 @@ export function TimelineScrubber({ events, selectedEventId, onSelect }: Props) {
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (lastIndex <= 0) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    setDragIndex(scrubberIndexAtClientX(event.clientX, event.currentTarget.getBoundingClientRect(), events.length));
+    updateDrag(event);
   }
   function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
     if (dragIndex === null) return;
-    setDragIndex(scrubberIndexAtClientX(event.clientX, event.currentTarget.getBoundingClientRect(), events.length));
+    updateDrag(event);
   }
   function handlePointerUp(event: React.PointerEvent<HTMLDivElement>) {
     if (dragIndex === null) return;
     const index = scrubberIndexAtClientX(event.clientX, event.currentTarget.getBoundingClientRect(), events.length);
+    setDragPercent(null);
     setDragIndex(null);
     selectIndex(index);
   }
-  function handlePointerCancel() { setDragIndex(null); }
+  function handlePointerCancel() { setDragPercent(null); setDragIndex(null); }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
     const current = activeIndex ?? 0;
@@ -64,25 +80,29 @@ export function TimelineScrubber({ events, selectedEventId, onSelect }: Props) {
   const activeEvent = events[activeIndex ?? 0];
 
   return (
-    <div
+    <div ref={scrollRef} className={styles.scrubberScroll}><div
       className={styles.scrubberTrack}
+      style={{ minWidth: `${Math.max(320, events.length * 144)}px` }}
       data-dragging={dragIndex !== null}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
     >
-      <div className={styles.scrubberTicks} aria-hidden="true">
+      <div className={styles.scrubberProgress} style={{ width: `${percent}%` }} aria-hidden="true" />
+      <div className={styles.scrubberTicks}>
         {events.map((event, index) => (
-          <span key={event.id} className={styles.scrubberTick} style={{ '--scrubber-position': `${scrubberPercent(index, events.length)}%` } as React.CSSProperties}>
+          <button type="button" key={event.id} aria-label={`${dateText(event, locale)} — ${event.title}`} aria-pressed={event.id === selectedEventId} onClick={(e) => { if (e.detail === 0 || events.length === 1) selectIndex(index); }} className={styles.scrubberTick} style={{ '--scrubber-position': `${scrubberPercent(index, events.length)}%` } as React.CSSProperties}>
+            <span className={styles.scrubberTickTitle}>{event.title}</span><span className={styles.srOnly}>{event.locationName}</span>
             <span className={styles.scrubberTickMark} />
-            <span className={styles.scrubberTickLabel}>{dateText(event, locale, false)}</span>
-          </span>
+            <span className={styles.scrubberTickLabel}>{dateText(event, locale)}</span>
+          </button>
         ))}
       </div>
       {selectedIndex !== null || dragIndex !== null ? (
         <button
           type="button"
+          ref={handleRef}
           role="slider"
           className={styles.scrubberHandle}
           style={{ '--scrubber-position': `${percent}%` } as React.CSSProperties}
@@ -93,9 +113,9 @@ export function TimelineScrubber({ events, selectedEventId, onSelect }: Props) {
           aria-valuetext={activeEvent ? `${dateText(activeEvent, locale)} — ${activeEvent.title}` : undefined}
           onKeyDown={handleKeyDown}
         >
-          ▲
+          <span aria-hidden="true" />
         </button>
       ) : null}
-    </div>
+    </div></div>
   );
 }

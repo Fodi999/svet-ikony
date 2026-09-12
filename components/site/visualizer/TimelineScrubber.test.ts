@@ -108,3 +108,24 @@ describe('TimelineScrubber', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 });
+
+describe('atlas track interaction', () => {
+  it('moves continuously between nodes without committing until release', async () => {
+    const select=vi.fn();await mount('nicaea',select);
+    await pointer('pointerdown',0);await pointer('pointermove',75);
+    expect(select).not.toHaveBeenCalled();
+    expect(handle()!.style.getPropertyValue('--scrubber-position')).toBe('25%');
+    await pointer('pointerup',75);expect(select).toHaveBeenCalledExactlyOnceWith('kyiv');
+  });
+  it('clamps drag beyond either end and retains the endpoint selection', async () => {
+    const select=vi.fn();await mount('kyiv',select);
+    await pointer('pointerdown',-50);expect(handle()!.style.getPropertyValue('--scrubber-position')).toBe('0%');
+    await pointer('pointermove',500);expect(handle()!.style.getPropertyValue('--scrubber-position')).toBe('100%');
+    await pointer('pointerup',500);expect(select).toHaveBeenCalledExactlyOnceWith('tomos');
+  });
+  it('keeps single-event nodes keyboard selectable', async () => {
+    const select=vi.fn();await mount(null,select,[events[0]]);
+    await act(async()=>{container.querySelector('button')!.click();});
+    expect(select).toHaveBeenCalledExactlyOnceWith('nicaea');
+  });
+});

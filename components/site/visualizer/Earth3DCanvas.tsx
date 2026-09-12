@@ -8,6 +8,7 @@ import { INITIAL_TERRAIN, terrainMessages } from '@/lib/visualizer/terrain-state
 import { TERRAIN_PERFORMANCE } from '@/lib/visualizer/terrain-config';
 
 export type SelectedEventTarget = {
+  id?: string;
   latitude: number | null;
   longitude: number | null;
   modelUrl?: string | null;
@@ -150,6 +151,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
   const terrainMetricsRef = useRef<HTMLOutputElement | null>(null);
   const renderProbeUntil = useRef(0);
   const terrainAuditRef = useRef<HTMLOutputElement | null>(null);
+  const eventTargetRef = useRef(selectedEvent);
 
 
   useEffect(() => {
@@ -270,6 +272,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
             transitioning: (value) => { handle.transitioning = value; }, available: () => earthGroup.visible,
             reducedMotion: prefersReducedMotion,
           });
+          handle.countryInteraction.setEventLocation(eventTargetRef.current);
         }
       }).catch((error: unknown) => { if (!disposed) console.warn('Could not load country boundaries.', error); });
       if (process.env.NODE_ENV === 'development') {
@@ -425,7 +428,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
             terrainMetricsRef.current.textContent = `${now < renderProbeUntil.current ? 'NO-DRAW PROBE · ' : ''}${measurement.fps.toFixed(1)} FPS · CPU ${measurement.cpuMs.toFixed(2)} ms · GPU ${measurement.gpuMs?.toFixed(2) ?? "n/a"} ms · frame max ${measurement.maxFrameMs.toFixed(1)} ms · ${measurement.draws} draw calls · ${measurement.triangles} triangles · ${measurement.textures} textures · ${measurement.geometries} geometries · DPR ${measurement.dpr}\nTerrain: ${terrain?.loaded??0} loaded · ${terrain?.visible??0} visible · ${terrain?.cached??0} GPU cached · ${((terrain?.bytes??0)/1e6).toFixed(2)} MB downloaded · ${((terrain?.networkBytes??0)/1e6).toFixed(2)} MB network cache · ${terrain?.networkRequests??0} requests · ${terrain?.cacheHits??0} cache hits\nCamera ${terrain?.distance.toFixed(3)??'—'} · selection evaluations ${terrain?.evaluations??0}\n${terrain?.states??''}\n${lastProbeText}`;
           }
           if (process.env.NODE_ENV === 'development' && ++metricFrames && now - metricStart >= 1000) {
-            if (diagnosticsRef.current) diagnosticsRef.current.textContent = `${Math.round(metricFrames * 1000 / (now - metricStart))} FPS · ${renderer.info.render.calls} draws · ${borders.geometry.getAttribute('position').count} border vertices · R ${Number(borders.userData.earthRadius).toFixed(5)} × 1.003`;
+            if (diagnosticsRef.current) diagnosticsRef.current.textContent = `${Math.round(metricFrames * 1000 / (now - metricStart))} FPS · ${renderer.info.render.calls} draws · ${renderer.info.memory?.geometries ?? 0} geometries / ${renderer.info.memory?.textures ?? 0} textures · ${borders.geometry.getAttribute('position').count} border vertices · R ${Number(borders.userData.earthRadius).toFixed(5)} × 1.003`;
 
             metricStart = now; metricFrames = 0;
           }
@@ -465,6 +468,8 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     if (!handle || !sceneReady) return;
     let cancelled = false;
 
+    eventTargetRef.current = selectedEvent;
+    handle.countryInteraction?.setEventLocation(selectedEvent);
     if (selectedEvent) handle.terrain?.back(false);
     handle.countryInteraction?.cancelFly();
     handle.mixer?.stopAllAction();
@@ -495,13 +500,6 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     const { latitude, longitude, modelUrl } = selectedEvent;
     const latRad = ((latitude ?? 0) * Math.PI) / 180;
     const lngRad = ((longitude ?? 0) * Math.PI) / 180;
-    const marker = new handle.THREE.Mesh(
-      new handle.THREE.SphereGeometry(0.045, 16, 12),
-      new handle.THREE.MeshBasicMaterial({ color: 0xffdd88 })
-    );
-    marker.position.copy(handle.latLngToVector3(latitude ?? 0, longitude ?? 0, 1.85));
-    if (hasCoordinates) handle.eventGroup.add(marker);
-    else { marker.geometry.dispose(); marker.material.dispose(); }
 
     handle.transitioning = true;
     handle.controls.enabled = false;
@@ -603,13 +601,19 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     const handle = sceneRef.current;
     const canvas = canvasRef.current;
     if (!handle || !sceneReady || !canvas) return;
-    const geometry = new handle.THREE.SphereGeometry(0.045, 10, 8);
-    const material = new handle.THREE.MeshBasicMaterial({ color: 0xe9cb84 });
+    const geometry = new handle.THREE.SphereGeometry(1, 10, 8);
+    const material = new handle.THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+    const coreMaterial = new handle.THREE.MeshBasicMaterial({ color: 0xd7b66d, toneMapped: false });
+    const ringMaterial = new handle.THREE.MeshBasicMaterial({ color: 0xe9cb84, transparent: true, opacity: .65, side: handle.THREE.DoubleSide, depthWrite: false, toneMapped: false });
+    const ringGeometry = new handle.THREE.RingGeometry(.23,.26,24);
     for (const event of mapEvents) {
       const pin = new handle.THREE.Mesh(geometry, material);
       pin.position.copy(handle.latLngToVector3(event.latitude, event.longitude, 1.86));
       pin.userData.eventId = event.id;
       pin.userData.label = `${event.title}\n${event.date}`;
+      const core = new handle.THREE.Mesh(geometry,coreMaterial);core.scale.setScalar(.15);
+      const ring = new handle.THREE.Mesh(ringGeometry,ringMaterial);
+      pin.add(core,ring);
       handle.pins.add(pin);
     }
     const raycaster = new handle.THREE.Raycaster();
@@ -624,12 +628,33 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
     let down: { x: number; y: number } | null = null;
     function setHovered(next: import('three').Mesh | null) {
       if (hovered === next) return;
-      if (hovered) { hovered.material = material; hovered.scale.setScalar(1); }
+      if (hovered) { (hovered.children[0] as import('three').Mesh).material = coreMaterial; }
       hovered = next;
-      if (hovered) { hovered.material = hoverMaterial; hovered.scale.setScalar(1.35); }
+      if (hovered) { (hovered.children[0] as import('three').Mesh).material = hoverMaterial; }
     }
     function hideTooltip() { setHovered(null); if (tooltip) tooltip.hidden = true; }
+    const world = new handle.THREE.Vector3(), worldScale = new handle.THREE.Vector3();
+    const inverseRotation = new handle.THREE.Quaternion(), cameraRotation = new handle.THREE.Quaternion();
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let lastSelectedId: string | undefined, pulseStart = 0;
     handle.updateMarkerOverlay = () => {
+      const selectedId = eventTargetRef.current?.id;
+      if (selectedId !== lastSelectedId) { lastSelectedId = selectedId; pulseStart = performance.now(); }
+      const pulse = motion.matches ? 0 : Math.max(0, 1 - (performance.now() - pulseStart) / 450);
+      const camera = handle.camera, height = Math.max(1,canvas.clientHeight || canvas.getBoundingClientRect().height);
+      handle.pins.getWorldScale(worldScale);
+      handle.pins.getWorldQuaternion(inverseRotation).invert();camera.getWorldQuaternion(cameraRotation);
+      for(const pin of handle.pins.children){
+        pin.getWorldPosition(world);
+        const span = camera instanceof handle.THREE.OrthographicCamera ? (camera.top-camera.bottom)/camera.zoom : 2*world.distanceTo(camera.position)*Math.tan((camera as import('three').PerspectiveCamera).fov*Math.PI/360)/camera.zoom;
+        pin.scale.setScalar(span/height*20/Math.max(.0001,worldScale.x));
+        const selected=pin.userData.eventId===eventTargetRef.current?.id;
+        const emphasis=selected?1.5:pin===hovered?1.3:1;
+        pin.children[0].scale.setScalar(.15*emphasis);
+        pin.children[1].scale.setScalar(selected?1.6 + .5*pulse:emphasis);
+        pin.children[1].quaternion.copy(inverseRotation).multiply(cameraRotation);
+        (pin.children[0] as import('three').Mesh).material=selected||pin===hovered?hoverMaterial:coreMaterial;
+      }
       if (!tooltip || !hovered || !hovered.visible || !handle.pins.visible) { if (tooltip && !tooltip.hidden) tooltip.hidden = true; return; }
       hovered.getWorldPosition(projected).project(handle.camera);
       if (Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1 || Math.abs(projected.z) > 1) { tooltip.hidden = true; return; }
@@ -645,7 +670,16 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       const rect = canvas!.getBoundingClientRect();
       pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2);
       raycaster.setFromCamera(pointer, handle!.camera);
-      return raycaster.intersectObjects(handle!.pins.children.filter((pin) => pin.visible), false)[0]?.object;
+      const hits = raycaster.intersectObjects(handle!.pins.children.filter((pin) => pin.visible), false);
+      // Overlapping touch targets choose the nearest visible center, not the
+      // sphere closest to the camera (important for Bethlehem/Jerusalem).
+      let nearest: import('three').Object3D | undefined, nearestDistance = Infinity;
+      for (const hit of hits) {
+        hit.object.getWorldPosition(projected).project(handle!.camera);
+        const distance = Math.hypot((projected.x-pointer.x)*rect.width, (projected.y-pointer.y)*rect.height);
+        if (distance < nearestDistance) { nearestDistance = distance; nearest = hit.object; }
+      }
+      return nearest;
     }
     function pointerDown(event: PointerEvent) { down = { x: event.clientX, y: event.clientY }; hideTooltip(); }
     function pointerMove(event: PointerEvent) {
@@ -672,7 +706,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       canvas.removeEventListener('pointerleave', hideTooltip);
       canvas.removeEventListener('pointercancel', pointerCancel);
       handle.updateMarkerOverlay = null; hideTooltip();
-      handle.pins.clear(); geometry.dispose(); material.dispose(); hoverMaterial.dispose();
+      handle.pins.clear(); geometry.dispose(); ringGeometry.dispose(); coreMaterial.dispose(); ringMaterial.dispose(); material.dispose(); hoverMaterial.dispose();
     };
   }, [mapEvents, onSelectEvent, sceneReady]);
 
@@ -735,16 +769,16 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, fill = false, 
       {!sceneReady || sceneError ? (
         <div role="status" className="absolute inset-0 grid place-items-center p-8 text-center text-muted-foreground text-sm font-bold">{t(sceneError ? 'historySceneError' : 'historyLoadingScene')}</div>
       ) : null}
-      {process.env.NODE_ENV === 'development' ? <div className="absolute bottom-12 left-3 max-w-[80%] rounded bg-black/70 p-2 text-[10px] text-[#e6d5a8]">
-        <label><input type="checkbox" checked={geographicDebug} onChange={(event) => setGeographicDebug(event.target.checked)} /> Geographic Calibration Debug</label>
+      {process.env.NODE_ENV === 'development' ? <details className="absolute bottom-12 left-3 max-w-[80%] rounded bg-black/70 p-2 text-[10px] text-[#e6d5a8]">
+        <summary>Debug</summary><label><input type="checkbox" checked={geographicDebug} onChange={(event) => setGeographicDebug(event.target.checked)} /> Geographic Calibration Debug</label>
         {geographicDebug ? <p>Equator / 0° · North Pole · Greenwich · Kyiv · Rome · Jerusalem</p> : null}<output className="block" ref={diagnosticsRef} /><output className="block" ref={countryDebugRef} />
-      </div> : null}
+      </details> : null}
       {selectedCountryCode === 'UA' && (terrainState.loading || terrainState.error) ? <div role="status" className="pointer-events-none absolute top-4 left-4 max-w-[65%] rounded bg-canvas/90 px-3 py-2 text-xs text-gold-light">{terrainMessages[locale ?? 'uk'][terrainState.error ? 'error' : 'loading']}</div> : null}
       {terrainState.viewLevel === 'REGION_L1' ? <button className="absolute top-4 left-4 rounded border border-gold/30 bg-canvas/95 px-3 py-2 text-xs text-gold-light" onClick={() => { sceneRef.current?.terrain?.back(); onBackToGlobe?.(); }}>{terrainMessages[locale ?? 'uk'].back}</button> : null}
-      {process.env.NODE_ENV === 'development' ? <div data-terrain-debug className="absolute bottom-28 left-3 max-w-[85%] rounded bg-black/75 p-2 text-[10px] text-[#e6d5a8]">
-        <label><input type="checkbox" checked={tileDebug} onChange={e => setTileDebug(e.target.checked)} /> Tile Debug</label>
+      {process.env.NODE_ENV === 'development' ? <details data-terrain-debug className="absolute bottom-28 left-3 max-w-[85%] rounded bg-black/75 p-2 text-[10px] text-[#e6d5a8]">
+        <summary>Terrain debug</summary><label><input type="checkbox" checked={tileDebug} onChange={e => setTileDebug(e.target.checked)} /> Tile Debug</label>
         {tileDebug ? <div><p>{terrainState.viewLevel} · {terrainState.loaded}/{terrainState.total} tiles · {(terrainState.bytes / 1e6).toFixed(2)} MB</p><p>Failed: {terrainState.failed.join(', ') || '—'}</p><p>TerrainRoot: {terrainState.transform}</p><p>Anchor residual: {terrainState.anchors}</p><output ref={terrainMetricsRef} className="block whitespace-pre-line" /><div className="flex flex-wrap gap-2"><button onClick={() => { renderProbeUntil.current = performance.now() + 3000; }}>3s no-draw probe</button><button onClick={() => { if(terrainAuditRef.current) terrainAuditRef.current.textContent=JSON.stringify(sceneRef.current?.terrain?.audit()); }}>texture audit</button>{(['west','center','south','edge'] as const).map(area=><button key={area} onClick={() => sceneRef.current?.terrain?.inspectArea(area)}>{area}</button>)}</div><output ref={terrainAuditRef} className="block max-h-24 overflow-auto" /><label><input type="checkbox" checked={tileBorders} onChange={e => { setTileBorders(e.target.checked); sceneRef.current?.terrain?.setBorders(e.target.checked); }} /> Tile Borders</label></div> : null}
-      </div> : null}
+      </details> : null}
       {usingDefaultEarth && sceneReady && !sceneError ? <div role="status" className="pointer-events-none absolute top-4 left-4 max-w-[65%] rounded bg-canvas/90 px-3 py-2 text-xs text-muted-foreground">
         {t(baseModelFailed ? 'historyBaseModelFailed' : baseEarthModelUrl ? 'historyBaseModelLoading' : 'historyDefaultGlobe')}
       </div> : null}

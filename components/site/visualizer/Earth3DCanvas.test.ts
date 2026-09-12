@@ -199,6 +199,9 @@ describe('scene toolbar', () => {
     listeners.pointermove({ clientX: 480, clientY: 270 });
     expect(tooltip.textContent).toBe('Real event\n313 AD');
     expect(tooltip.hidden).toBe(false);
+    // A 10px offset is outside the 6px core but inside its 40px touch target.
+    listeners.pointermove({ clientX: 490, clientY: 270 });
+    expect(tooltip.hidden).toBe(false);
     listeners.pointerdown({ clientX: 480, clientY: 270 });
     listeners.pointerup({ clientX: 500, clientY: 270 });
     expect(select).not.toHaveBeenCalled();
@@ -229,15 +232,16 @@ describe('scene toolbar', () => {
     tick(performance.now());
     const scene = harness.render.mock.calls[0][0] as import('three').Scene;
     const [firstPin, secondPin] = scene.children[4].children as import('three').Mesh[];
-    const baseMaterial = firstPin.material;
+    const firstCore = firstPin.children[0] as import('three').Mesh, secondCore = secondPin.children[0] as import('three').Mesh;
+    const baseMaterial = firstCore.material;
     listeners.pointermove({ clientX: 480, clientY: 270 });
-    expect(firstPin.material).not.toBe(baseMaterial);
-    expect(firstPin.scale.x).toBeCloseTo(1.35);
-    expect(secondPin.material).toBe(baseMaterial);
-    expect(secondPin.scale.x).toBeCloseTo(1);
+    expect(firstCore.material).not.toBe(baseMaterial);
+    expect(firstCore.scale.x).toBeCloseTo(.15*1.3);
+    expect(secondCore.material).toBe(baseMaterial);
+    expect(secondCore.scale.x).toBeCloseTo(.15);
     listeners.pointermove({ clientX: 1, clientY: 1 });
-    expect(firstPin.material).toBe(baseMaterial);
-    expect(firstPin.scale.x).toBeCloseTo(1);
+    expect(firstCore.material).toBe(baseMaterial);
+    expect(firstCore.scale.x).toBeCloseTo(.15);
     pinCleanup?.();
   });
   it('moves the hover state from one pin directly to another', async () => {
@@ -258,14 +262,15 @@ describe('scene toolbar', () => {
     tick(performance.now());
     const scene = harness.render.mock.calls[0][0] as import('three').Scene;
     const [firstPin, secondPin] = scene.children[4].children as import('three').Mesh[];
-    const baseMaterial = firstPin.material;
+    const firstCore = firstPin.children[0] as import('three').Mesh, secondCore = secondPin.children[0] as import('three').Mesh;
+    const baseMaterial = firstCore.material;
     listeners.pointermove({ clientX: 480, clientY: 270 });
-    expect(firstPin.material).not.toBe(baseMaterial);
+    expect(firstCore.material).not.toBe(baseMaterial);
     listeners.pointermove({ clientX: 663, clientY: 270 });
-    expect(firstPin.material).toBe(baseMaterial);
-    expect(firstPin.scale.x).toBeCloseTo(1);
-    expect(secondPin.material).not.toBe(baseMaterial);
-    expect(secondPin.scale.x).toBeCloseTo(1.35);
+    expect(firstCore.material).toBe(baseMaterial);
+    expect(firstCore.scale.x).toBeCloseTo(.15);
+    expect(secondCore.material).not.toBe(baseMaterial);
+    expect(secondCore.scale.x).toBeCloseTo(.15*1.3);
     pinCleanup?.();
   });
 });

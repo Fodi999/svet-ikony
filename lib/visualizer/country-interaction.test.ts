@@ -116,3 +116,40 @@ describe('tooltip edge placement', () => {
     expect(countryTooltipPosition({x:100,y:200},{width:300,height:300},{width:150,height:65}).placement).toBe('above');
   });
 });
+
+describe('event country highlight', () => {
+  it('resolves Nicaea → Kyiv → Constantinople and fades previous outlines', () => {
+    const s=setup();
+    s.interaction.setEventLocation({latitude:40.429,longitude:29.721}); flush(400);
+    const turkey=s.frame.getObjectByName('CountryHighlight:TR')!;
+    expect(turkey.visible).toBe(true);
+    s.interaction.setEventLocation({latitude:50.45,longitude:30.523}); flush(600);
+    const ukraine=s.frame.getObjectByName('CountryHighlight:UA')!;
+    expect(turkey.visible).toBe(true); expect(ukraine.visible).toBe(true);
+    flush(800);expect(turkey.visible).toBe(false);
+    s.interaction.setEventLocation({latitude:41.008,longitude:28.978});flush(1200);
+    expect(turkey.visible).toBe(true);expect(ukraine.visible).toBe(false);
+  });
+  it('reuses the same-country geometry without restarting a transition', () => {
+    const s=setup();s.interaction.setEventLocation({latitude:50.45,longitude:30.523});flush(400);
+    const layer=s.frame.children[0];s.interaction.setEventLocation({latitude:49.84,longitude:24.03});
+    expect(s.frame.children[0]).toBe(layer);expect(layer.visible).toBe(true);expect(frames.size).toBe(0);
+  });
+  it('clears an ocean or missing coordinate without flying the camera', () => {
+    const s=setup();const before=s.camera.position.clone();
+    s.interaction.setEventLocation({latitude:50.45,longitude:30.523});flush(400);
+    s.interaction.setEventLocation({latitude:0,longitude:-140});flush(800);
+    expect(s.frame.children.every(layer=>!layer.visible)).toBe(true);
+    s.interaction.setEventLocation({latitude:null,longitude:null});
+    expect(s.camera.position.equals(before)).toBe(true);
+  });
+  it('preserves manual selection and merges the same country into one geometry', () => {
+    const s=setup();s.interaction.setEventLocation({latitude:50.45,longitude:30.523});flush(400);
+    s.interaction.setSelectedCountry('UA');flush(1400);
+    expect(s.frame.children.filter(layer=>layer.name==='CountryHighlight:UA')).toHaveLength(1);
+    s.interaction.setEventLocation({latitude:40.4297,longitude:29.7231});flush(1800);
+    expect(s.frame.getObjectByName('CountryHighlight:UA')!.visible).toBe(true);
+    expect(s.frame.getObjectByName('CountryHighlight:TR')!.visible).toBe(true);
+    cleanup?.();cleanup=undefined;expect(frames.size).toBe(0);expect(s.frame.children).toHaveLength(0);
+  });
+});

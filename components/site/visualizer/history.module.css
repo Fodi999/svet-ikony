@@ -200,3 +200,35 @@
   box-shadow: 0 0 14px #cda45a33; cursor: grab; transition: left .3s ease;
 }
 .scrubberTrack[data-dragging='true'] .scrubberHandle { transition: none; cursor: grabbing; }
+
+/* Compact atlas timeline: margin keeps the entire handle and labels in bounds. */
+.root { --timeline-height: 142px; }
+.timeline { grid-template-rows: 40px minmax(0,1fr); border-top-color: #b89a5733; background: linear-gradient(#11150f,#0c100c); }
+.timelineToolbar { min-height: 36px; gap: 12px; }
+.eraTabs button { min-height: 30px; padding: 4px 9px; font-size: 10px; }
+.scrubberScroll { overflow-x: auto; overflow-y: hidden; padding: 0 72px; scrollbar-width: thin; scrollbar-color: #665737 transparent; }
+.scrubberTrack { height: 88px; margin: 0; }
+.scrubberTrack::before { top: 42px; background: #b89a5740; }
+.scrubberProgress { position: absolute; top: 42px; height: 1px; background: #d4b77988; pointer-events: none; }
+.scrubberTicks { position: static; }
+.scrubberTick { top: 0; width: 136px; height: 86px; padding: 0; border: 0; background: transparent; color: #9e9c8b; cursor: pointer; display: block; }
+.scrubberTickTitle { position: absolute; bottom: 51px; left: 4px; right: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; line-height: 17px; }
+.scrubberTickMark { position: absolute; left: calc(50% - 3px); top: 39px; width: 6px; height: 6px; border-radius: 50%; background: #ab935f; }
+.scrubberTickLabel { position: absolute; top: 57px; left: 0; right: 0; font-size: 10px; }
+.scrubberTick[aria-pressed='true'], .scrubberTick:hover { color: #f1ddb1; }
+.scrubberTick[aria-pressed='true'] .scrubberTickMark { box-shadow: 0 0 0 3px #12160f,0 0 0 4px #c9aa68; }
+.scrubberHandle { top: 42px; width: 40px; height: 40px; border: 0; background: transparent; box-shadow: none; transition: left 220ms ease; }
+.scrubberHandle span { width: 18px; height: 18px; border: 1px solid #e4c37d; border-radius: 50%; background: radial-gradient(circle,#f0dba3 0 2px,#14180f 3px 6px,transparent 7px); box-shadow: 0 0 12px #d5ae5430; }
+.scrubberHandle::after { content: '▲'; position: absolute; top: 30px; color: #d8b970; font-size: 8px; }
+.scrubberHandle:focus-visible, .scrubberTick:focus-visible { outline: 1px solid #d8b970; outline-offset: 2px; }
+.eventEyebrow { color: #b49a64; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 8px; }
+.eventDate { margin-top: 8px; font-weight: 400; }
+.panelHeading { border-bottom: 0; padding-bottom: 0; }
+.eventContent { animation: atlasPanel 220ms ease-out; }
+.sceneControls button { background: #11160dd9; border-color: #b99d5a40; border-radius: 4px; min-width: 36px; min-height: 36px; padding: 7px; transition: border-color 150ms ease; }
+@keyframes atlasPanel { from { opacity: .4; } to { opacity: 1; } }
+@media (max-width: 1199px) { .root { --timeline-height: 138px; } }
+@media (max-width: 699px) { .root { --timeline-height: 150px; } .timeline { grid-template-rows: auto minmax(0,1fr); } .scrubberScroll { padding-inline: 72px; } }
+@media (prefers-reduced-motion: reduce) { .scrubberHandle, .sceneControls button { transition: none; } .eventContent { animation: none; } }
+
+.scrubberTickLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { resolveEventCountry } from './event-country';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { SceneCamera } from './base-scene';
 import { getCountryAtLatLng, type Country, type CountryIndex } from './countries';
@@ -24,6 +25,7 @@ type Context = {
   transitioning:(value:boolean)=>void; available:()=>boolean; reducedMotion:()=>boolean;
 };
 export function createCountryInteraction(ctx:Context){
+  let eventCountry:Country|null=null, highlightFrame=0;
   let hovered:Country|null=null,selected:Country|null=null,cancelFlight:(()=>void)|null=null;
   const cache=new Map<string,CountryHighlight>();
   const raycaster=new THREE.Raycaster();
@@ -37,17 +39,42 @@ export function createCountryInteraction(ctx:Context){
   function cancelFly(){if(!cancelFlight)return;cancelFlight();cancelFlight=null;ctx.transitioning(false);}
   function obtain(country:Country){
     let layer=cache.get(country.info.code);
-    if(!layer){layer=createCountryHighlight(country);cache.set(country.info.code,layer);ctx.frame.add(layer.group);}
+    if(!layer){layer=createCountryHighlight(country);layer.group.visible=false;layer.outline.material.opacity=0;cache.set(country.info.code,layer);ctx.frame.add(layer.group);}
     layer.group.position.copy(ctx.borders.position);layer.group.scale.setScalar(radius());
     return layer;
   }
+  const fades = new Map<string,{from:number;to:number;start:number}>();
   function showHighlights(){
-    for(const layer of cache.values())layer.group.visible=false;
-    for(const country of [hovered,selected])if(country){const layer=obtain(country);layer.group.visible=true;layer.fill.material.opacity=country===selected?0.23:0.16;layer.outline.material.opacity=country===selected?1:0.9;}
-    // Keep hover changes bounded in GPU memory. No meshes are built per frame.
-    for(const [code,layer] of cache)if(cache.size>4 && code!==hovered?.info.code && code!==selected?.info.code){ctx.frame.remove(layer.group);disposeCountryHighlight(layer);cache.delete(code);}
+    for(const country of [hovered,selected,eventCountry]) if(country) obtain(country);
+    for(const [code,layer] of cache){
+      const manual=code===selected?.info.code, hover=code===hovered?.info.code, event=code===eventCountry?.info.code;
+      const target=manual?1:hover?.9:event?.95:0;
+      layer.fill.material.opacity=manual?.23:hover?.16:0;
+      layer.anchor.visible=manual||hover;
+      if(layer.group.userData.target!==target){
+        layer.group.userData.target=target;
+        if(ctx.reducedMotion() || (!event && !layer.group.userData.event)){layer.outline.material.opacity=target;fades.delete(code);}
+        else fades.set(code,{from:layer.group.visible?layer.outline.material.opacity:0,to:target,start:performance.now()});
+      }
+      layer.group.userData.event=event;
+      layer.group.visible=target>0||fades.has(code);
+    }
+    if(fades.size&&!highlightFrame) highlightFrame=requestAnimationFrame(fadeHighlights);
+    for(const [code,layer] of cache)if(cache.size>6&&!layer.group.visible&&!fades.has(code)){ctx.frame.remove(layer.group);disposeCountryHighlight(layer);cache.delete(code);}
   }
-  function debug(){if(ctx.debug)ctx.debug.textContent=`Hovered: ${hovered?.info.code??'—'} · Latitude: ${lastLatLng?.latitude.toFixed(4)??'—'} · Longitude: ${lastLatLng?.longitude.toFixed(4)??'—'} · Selected: ${selected?.info.code??'—'} · PIP: ${lastPipMs.toFixed(3)} ms`;}
+  function fadeHighlights(now:number){
+    highlightFrame=0;
+    for(const [code,fade] of fades){const layer=cache.get(code)!;const t=Math.min(1,(now-fade.start)/400);layer.outline.material.opacity=fade.from+(fade.to-fade.from)*t*t*(3-2*t);if(t===1){fades.delete(code);layer.group.visible=fade.to>0;}}
+    if(fades.size)highlightFrame=requestAnimationFrame(fadeHighlights);
+    else showHighlights();
+  }
+  function setEventLocation(point:{latitude:number|null;longitude:number|null}|null){
+    const next=point?.latitude!=null&&point.longitude!=null&&Number.isFinite(point.latitude)&&Number.isFinite(point.longitude)
+      ?resolveEventCountry(ctx.index,point.latitude,point.longitude):null;
+    if(next===eventCountry)return;
+    eventCountry=next;showHighlights();debug();
+  }
+  function debug(){if(ctx.debug)ctx.debug.textContent=`Hovered: ${hovered?.info.code??'—'} · Latitude: ${lastLatLng?.latitude.toFixed(4)??'—'} · Longitude: ${lastLatLng?.longitude.toFixed(4)??'—'} · Selected: ${selected?.info.code??'—'} · Event: ${eventCountry?.info.code??'—'} · PIP: ${lastPipMs.toFixed(3)} ms`;}
   function refreshTooltip(){
     if(!hovered||!tooltipPointer||ctx.tooltip.hidden)return;
     const name=hovered.info.name[ctx.locale()],hint=ctx.hint();
@@ -72,7 +99,7 @@ export function createCountryInteraction(ctx:Context){
     lastLatLng=point;
     // Published event pins keep priority over the country beneath them.
     if(raycaster.intersectObjects(ctx.pins.children,false).some(hit=>hit.object.visible))return null;
-    const start=performance.now();const country=point?getCountryAtLatLng(ctx.index,point.latitude,point.longitude):null;lastPipMs=performance.now()-start;return country;
+    const start=performance.now();const country=point?resolveEventCountry(ctx.index,point.latitude,point.longitude):null;lastPipMs=performance.now()-start;return country;
   }
   function flushHover(){
     hoverFrame=0;if(!lastMove || dragged || multi)return;
@@ -122,9 +149,9 @@ export function createCountryInteraction(ctx:Context){
   ctx.canvas.addEventListener('pointerleave',onLeave);
   ctx.canvas.addEventListener('wheel',onWheel,{passive:true});
   if(ctx.selected())setSelectedCountry(ctx.selected());
-  return {setHoveredCountry,setSelectedCountry,flyToCountry,cancelFly,refreshTooltip,
+  return {setEventLocation,setHoveredCountry,setSelectedCountry,flyToCountry,cancelFly,refreshTooltip,
     refreshSurface(){showHighlights();if(selected)flyToCountry(selected);},
-    reset(){cancelFly();selected=null;setHoveredCountry(null);showHighlights();ctx.transitioning(true);const camera=ctx.overview();cancelFlight=animateCountryCamera(ctx.camera(),ctx.controls,{position:camera.position.clone(),center:new THREE.Vector3(),zoom:camera.zoom},ctx.reducedMotion()?0:1000,()=>{cancelFlight=null;ctx.transitioning(false);});},
-    dispose(){cancelFly();cancelAnimationFrame(hoverFrame);for(const layer of cache.values()){ctx.frame.remove(layer.group);disposeCountryHighlight(layer);}cache.clear();ctx.tooltip.hidden=true;ctx.canvas.style.cursor='';ctx.canvas.removeEventListener('pointermove',onMove);ctx.canvas.removeEventListener('pointerdown',onDown,true);ctx.canvas.removeEventListener('pointerup',onUp);ctx.canvas.removeEventListener('pointercancel',onCancel);ctx.canvas.removeEventListener('pointerleave',onLeave);ctx.canvas.removeEventListener('wheel',onWheel);}
+    reset(){cancelFly();selected=null;eventCountry=null;setHoveredCountry(null);showHighlights();ctx.transitioning(true);const camera=ctx.overview();cancelFlight=animateCountryCamera(ctx.camera(),ctx.controls,{position:camera.position.clone(),center:new THREE.Vector3(),zoom:camera.zoom},ctx.reducedMotion()?0:1000,()=>{cancelFlight=null;ctx.transitioning(false);});},
+    dispose(){cancelAnimationFrame(highlightFrame);fades.clear();cancelFly();cancelAnimationFrame(hoverFrame);for(const layer of cache.values()){ctx.frame.remove(layer.group);disposeCountryHighlight(layer);}cache.clear();ctx.tooltip.hidden=true;ctx.canvas.style.cursor='';ctx.canvas.removeEventListener('pointermove',onMove);ctx.canvas.removeEventListener('pointerdown',onDown,true);ctx.canvas.removeEventListener('pointerup',onUp);ctx.canvas.removeEventListener('pointercancel',onCancel);ctx.canvas.removeEventListener('pointerleave',onLeave);ctx.canvas.removeEventListener('wheel',onWheel);}
   };
 }

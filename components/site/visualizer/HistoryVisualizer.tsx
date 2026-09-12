@@ -58,7 +58,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
   const selectedEvent = events.find((event) => event.id === selectedEventId && event.status === 'published') ?? null;
   const modelUrl = model?.eventId === selectedEventId ? model.url : null;
   const earthTarget = useMemo<SelectedEventTarget>(() => selectedEvent ? {
-    latitude: selectedEvent.latitude, longitude: selectedEvent.longitude, modelUrl
+    id: selectedEvent.id, latitude: selectedEvent.latitude, longitude: selectedEvent.longitude, modelUrl
   } : null, [selectedEvent, modelUrl]);
   const mapEvents = useMemo(() => spreadCollidingMarkers(visibleEvents.filter((event) => event.latitude != null && event.longitude != null)
     .map((event) => ({ id: event.id, latitude: event.latitude!, longitude: event.longitude!, title: event.title, date: dateText(event, locale) }))), [visibleEvents, locale]);
@@ -126,7 +126,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
   }
   function resetCamera() { setSelectedCountryCode(null); setEventOpen(false); setSelectedEventId(null); setModel(null); setCameraCommand((previous) => ({ action: 'reset', sequence: (previous?.sequence ?? 0) + 1 })); }
   const chooseCountry = useCallback((code: string) => {
-    setSelectedCountryCode(code); setSelectedEventId(null); setModel(null);
+    setSelectedCountryCode(code);
     if (window.matchMedia('(max-width: 1199px)').matches) setEventOpen(true);
   }, []);
   function zoom(action: 'in' | 'out') { setCameraCommand((previous) => ({ action, sequence: (previous?.sequence ?? 0) + 1 })); }
@@ -142,7 +142,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
   </nav>;
 
   const eventContent = selectedEvent ? <div className={styles.eventContent}>
-    <div className={styles.eventPreview} aria-hidden="true"><Globe2 size={70} strokeWidth={0.7} /><span>{eraLabel(selectedEvent.era, locale)}</span></div>
+    <p className={styles.eventEyebrow}>{eraLabel(selectedEvent.era, locale)}</p>
     <p className={styles.eventDate}>{dateText(selectedEvent, locale)}</p>
     <h2>{selectedEvent.title}</h2>
     {selectedEvent.chronologyType in datingLabels ? <p className={styles.dating}>{t(datingLabels[selectedEvent.chronologyType as keyof typeof datingLabels])}</p> : null}
@@ -178,7 +178,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
         </div>
         <p className={styles.sceneHint}>{countryCopy.hint}</p>
       </section>
-      <aside className={styles.rightPanel} aria-label={selectedEvent ? copy.event : countryCopy.country}>{selectedEvent ? <div className={styles.panelHeading}>{copy.event}<BookOpen size={15} aria-hidden="true" /></div> : null}{selectedEvent ? eventContent : <CountryPanel country={selectedCountry} onSelect={chooseCountry} onClose={resetCamera}/>}</aside>
+      <aside className={styles.rightPanel} aria-label={selectedEvent ? copy.event : countryCopy.country}>{selectedEvent && !selectedCountry ? <div className={styles.panelHeading}>{copy.event}<BookOpen size={15} aria-hidden="true" /></div> : null}{selectedEvent && !selectedCountry ? eventContent : <CountryPanel country={selectedCountry} onSelect={chooseCountry} onClose={resetCamera}/>}</aside>
     </div>
 
     <section ref={timelineRef} className={styles.timeline} aria-label={copy.timeline} tabIndex={-1}>
@@ -192,13 +192,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
           <select aria-label={copy.year} value={year} onChange={(event) => setYear(event.target.value)}><option value="all">{copy.year}: {copy.allDates}</option>{years.map(([key, event]) => <option key={key} value={key}>{dateText(event, locale, false)}</option>)}</select>
         </div> : null}
       </div>
-      <div className={styles.eventTrack}>
-        {visibleEvents.length ? visibleEvents.map((event) => <button className={styles.eventCard} type="button" key={event.id} aria-label={`${dateText(event, locale)} — ${event.title}`} aria-pressed={event.id === selectedEventId} onClick={() => chooseEvent(event.id)}>
-          <span className={styles.timelineDot} aria-hidden="true" /><span className={styles.cardDate}>{dateText(event, locale)}</span>
-          <span className={styles.cardBody}><span className={styles.cardIcon} aria-hidden="true">{event.eventType === 'saint' ? <Sparkles size={22} /> : event.eventType === 'biblical' ? <BookOpen size={22} /> : <Church size={22} />}</span><strong>{event.title}</strong></span>
-          <span className={styles.srOnly}>{event.locationName}. {event.summary}</span>
-        </button>) : <p className={styles.noEvents} role="status">{events.some((event) => event.status === 'published') ? copy.noEvents : copy.notAdded}</p>}
-      </div>
+      {!visibleEvents.length ? <p className={styles.noEvents} role="status">{events.some((event) => event.status === 'published') ? copy.noEvents : copy.notAdded}</p> : null}
       <TimelineScrubber events={visibleEvents} selectedEventId={selectedEventId} onSelect={chooseEvent} />
     </section>
 
@@ -206,7 +200,7 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
       <div className={styles.dialogHeading}><DialogTitle>{copy.navigation}</DialogTitle><DialogClose aria-label={copy.close} className={styles.iconButton}><X size={20} /></DialogClose></div>{navigation}
     </DialogPopup></DialogPortal></Dialog>
     <Dialog open={eventOpen} onOpenChange={setEventOpen}><DialogPortal container={rootRef}><DialogOverlay className={styles.backdrop} /><DialogPopup className={`${styles.sheet} translate-x-0 translate-y-0`}>
-      <div className={styles.dialogHeading}><DialogTitle>{selectedEvent ? copy.event : countryCopy.country}</DialogTitle><DialogClose aria-label={copy.close} className={styles.iconButton}><X size={20} /></DialogClose></div>{selectedEvent ? eventContent : <CountryPanel country={selectedCountry} onSelect={chooseCountry} onClose={resetCamera} showClose={false}/>}
+      <div className={styles.dialogHeading}><DialogTitle>{selectedEvent ? copy.event : countryCopy.country}</DialogTitle><DialogClose aria-label={copy.close} className={styles.iconButton}><X size={20} /></DialogClose></div>{selectedEvent && !selectedCountry ? eventContent : <CountryPanel country={selectedCountry} onSelect={chooseCountry} onClose={resetCamera} showClose={false}/>}
     </DialogPopup></DialogPortal></Dialog>
     <Dialog open={articleOpen} onOpenChange={setArticleOpen}><DialogPortal container={rootRef}><DialogOverlay className={styles.backdrop} /><DialogPopup className={styles.article}>
       <div className={styles.dialogHeading}><DialogTitle>{selectedEvent?.title ?? copy.read}</DialogTitle><DialogClose aria-label={copy.close} className={styles.iconButton}><X size={20} /></DialogClose></div>

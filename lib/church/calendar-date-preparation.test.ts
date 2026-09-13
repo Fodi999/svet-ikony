@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseDateInput, parseCalendarSource, prepareCalendarDate } from './calendar-date-preparation';
+vi.mock('./data/orthodox-fixed-calendar.json', () => ({ default: { days: {} } }));
 vi.mock('@/lib/telegram/env', () => ({ getOpenAiConfig: vi.fn(async () => ({ apiKey: 'PRIVATE_TEST_KEY', model: 'gpt-4o-mini' })) }));
 const fetchMock = vi.fn();
 beforeEach(() => { vi.stubGlobal('fetch', fetchMock); fetchMock.mockReset(); });
@@ -33,7 +34,7 @@ describe('date-only calendar preparation', () => {
   });
   it('stops when source unavailable, without invoking AI', async () => {
     fetchMock.mockResolvedValue(new Response('unavailable', { status: 503 }));
-    await expect(prepareCalendarDate({ date: '2026-10-01' })).rejects.toMatchObject({ details: expect.stringContaining('Календарне джерело недоступне') });
+    await expect(prepareCalendarDate({ date: '2026-10-01' })).rejects.toMatchObject({ status: 502, message: expect.stringContaining('Календарне джерело недоступне') });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
   it('does not treat year-specific movable entries as fixed commemorations', async () => {

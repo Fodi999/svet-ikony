@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { resolveMediaUrl } from '@/lib/media/resolver';
 import { useState } from 'react';
 import { useI18n, useLocaleHref } from '@/components/site/LanguageProvider';
 import type { ChurchAlphabetLetterDto } from '@/lib/types';
@@ -107,11 +108,13 @@ export function SlavonicAlphabetPage({ letters }: { letters: ChurchAlphabetLette
       </section>
 
       <section
-        className="relative mt-[clamp(28px,4vw,46px)] p-[clamp(14px,2vw,22px)] after:absolute after:inset-3 after:rounded-md after:border after:border-gold/18 after:content-['']"
+        className="relative mt-[clamp(28px,4vw,46px)] p-[clamp(14px,2vw,22px)] after:pointer-events-none after:absolute after:inset-3 after:rounded-md after:border after:border-gold/18 after:content-['']"
         aria-label={copy.gridAria}
       >
         <div className="columns-2 gap-[clamp(10px,1.4vw,18px)] min-[521px]:columns-3 min-[821px]:columns-4 min-[1181px]:columns-6">
-          {letters.map((item) => (
+          {letters.map((item) => {
+            const image = resolveMediaUrl(item.cardImageUrl) || resolveMediaUrl(item.mainImageUrl);
+            return (
             <Link
               key={item.id}
               href={localeHref(`/staroslavyanskaya-azbuka/${item.slug}`)}
@@ -122,12 +125,12 @@ export function SlavonicAlphabetPage({ letters }: { letters: ChurchAlphabetLette
               </span>
               <div
                 className={`relative z-0 block overflow-hidden bg-gradient-to-br from-[#f8f2e3] to-[#efe5cd] ${
-                  item.cardImageUrl ? '' : 'grid aspect-[4/5] place-items-center'
+                  image ? '' : 'grid aspect-[4/5] place-items-center'
                 }`}
               >
-                {item.cardImageUrl ? (
+                {image ? (
                   <img
-                    src={item.cardImageUrl}
+                    src={image}
                     alt={item.name}
                     loading="lazy"
                     className="block h-auto w-full transition-transform duration-300 ease-brand group-hover:scale-105"
@@ -145,7 +148,7 @@ export function SlavonicAlphabetPage({ letters }: { letters: ChurchAlphabetLette
                 ) : null}
               </div>
             </Link>
-          ))}
+          ); })}
         </div>
       </section>
 

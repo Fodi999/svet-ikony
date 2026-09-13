@@ -2,6 +2,7 @@ import { CalendarView } from '@/components/site/CalendarView';
 import { Hreflang } from '@/components/site/Hreflang';
 import { buildCalendarHero, calendarDayFromChurchPage, dedupeCalendarDaysByDay, prayerFromChurchDto } from '@/lib/api';
 import { composeCalendarPages } from '@/lib/church-public/calendar-page';
+import { selectCalendarDaysForLocale } from '@/lib/church-public/select-calendar-day';
 import { listCalendarDays } from '@/lib/d1/repositories/calendarDays';
 import { listPrayers } from '@/lib/d1/repositories/prayers';
 import { jsonLd, pageMetadata } from '@/lib/seo';
@@ -61,8 +62,12 @@ export default async function HomePage({ searchParams }: { searchParams?: Promis
   // attached to a day) must never appear here; composeCalendarPages()
   // itself already filters related entities, but the day list it's given
   // has to be pre-filtered by the caller (see that function's own doc
-  // comment for why the split is at this boundary).
-  const calendarDays = allCalendarDays.filter((day) => day.status === 'published');
+  // comment for why the split is at this boundary). A date can have more
+  // than one published translation (uk/ru/en); selectCalendarDaysForLocale
+  // picks the one matching this page's own locale (falling back to uk,
+  // then whatever exists) instead of picking by content completeness
+  // regardless of language, like dedupeCalendarDaysByDay does below.
+  const calendarDays = selectCalendarDaysForLocale(allCalendarDays, locale);
   const calendarPages = await composeCalendarPages(calendarDays, locale);
   const publicCalendarPages = calendarPages as unknown as PublicChurchContentPage[];
   const mapPrayer = (prayer: (typeof allPrayers)[number], icon?: (typeof calendarPages)[number]['icons'][number]) =>

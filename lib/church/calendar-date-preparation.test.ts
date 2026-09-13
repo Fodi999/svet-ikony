@@ -28,6 +28,8 @@ describe('date-only calendar preparation', () => {
     const result = await prepareCalendarDate({ date: '2026-10-01' });
     expect(result).toMatchObject({ ...fields, status: 'draft', date: '2026-10-01', dateOldStyle: '2026-09-18' });
     const body = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(body.model).toBe('gpt-6-astra');
+    expect(body.reasoning_effort).toBe('low');
     expect(body.messages[0].content).toContain('Do not invent');
     expect(body.messages[1].content).toContain('Saint Eumenius');
     expect(JSON.stringify(result)).not.toContain('PRIVATE_TEST_KEY');
@@ -46,11 +48,26 @@ describe('date-only calendar preparation', () => {
   it('sanitizes model errors instead of logging response credentials', async () => {
     sources(); fetchMock.mockResolvedValueOnce(new Response('PRIVATE_TEST_KEY', { status: 401 }));
     const log = vi.spyOn(console, 'error');
-    await expect(prepareCalendarDate({ date: '2026-10-01' })).rejects.toMatchObject({ details: expect.stringContaining('AI не завершив') });
+    await expect(prepareCalendarDate({ date: '2026-10-01' })).rejects.toMatchObject({ details: expect.stringContaining('API-ключ не прийнято') });
     expect(log).not.toHaveBeenCalled(); log.mockRestore();
   });
   it('rejects mixed-language output', async () => {
     sources(); fetchMock.mockResolvedValueOnce(Response.json({ choices: [{ message: { content: JSON.stringify(fields) } }] }));
-    await expect(prepareCalendarDate({ date: '2026-10-01', language: 'en' })).rejects.toMatchObject({ details: expect.stringContaining('некоректний текст') });
+    await expect(prepareCalendarDate({ date: '2026-10-01', language: 'en' })).rejects.toMatchObject({ details: expect.stringContaining('перевірку мови en') });
   });
+  it.each([
+    [429, 'insufficient_quota', 'вичерпано квоту'],
+    [429, 'rate_limit_exceeded', 'ліміт запитів'],
+    [404, 'model_not_found', 'немає доступу до gpt-6-astra'],
+  ])('distinguishes provider error %s/%s without exposing its message', async (status, code, message) => {
+    sources();
+    fetchMock.mockResolvedValueOnce(Response.json({ error: { code, message: 'PRIVATE_TEST_KEY' } }, { status: Number(status) }));
+    await expect(prepareCalendarDate({ date: '2026-10-01' })).rejects.toMatchObject({ details: expect.stringContaining(message) });
+  });
+  it('identifies the invalid field and its length', async () => {
+    sources();
+    fetchMock.mockResolvedValueOnce(Response.json({ choices: [{ message: { content: JSON.stringify({ ...fields, seoTitle: 'А'.repeat(71) }) } }] }));
+    await expect(prepareCalendarDate({ date: '2026-10-01' })).rejects.toMatchObject({ details: expect.stringContaining('seoTitle містить 71 символів, максимум 70') });
+  });
+
 });

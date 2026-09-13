@@ -70,4 +70,11 @@ describe('date-only calendar preparation', () => {
     await expect(prepareCalendarDate({ date: '2026-10-01' })).rejects.toMatchObject({ details: expect.stringContaining('seoTitle містить 71 символів, максимум 70') });
   });
 
+  it('rejects workflow instructions in otherwise valid English content', async () => {
+    sources();
+    const content = {title: 'Saint Eumenius', shortDescription: 'Unpublished Orthodox calendar draft. Human review is required.', history: 'Commemoration of Saint Eumenius.', seoTitle: 'Saint Eumenius', seoDescription: 'Commemoration of Saint Eumenius.'};
+    fetchMock.mockResolvedValueOnce(Response.json({choices: [{message: {content: JSON.stringify(content)}}]}));
+    await expect(prepareCalendarDate({date: '2026-10-01', language: 'en'})).rejects.toMatchObject({details: expect.stringContaining('службовий текст')});
+  });
+
 });

@@ -137,6 +137,7 @@ interface ChatCompletionResponse {
 export async function generateTelegramPost(input: GenerateTelegramPostInput): Promise<string> {
   const response = await fetch(OPENAI_API_URL, {
     method: 'POST',
+    signal: AbortSignal.timeout(40000),
     headers: {
       Authorization: `Bearer ${input.apiKey}`,
       'Content-Type': 'application/json',

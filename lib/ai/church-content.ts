@@ -39,6 +39,18 @@ const SYSTEM_PROMPT = `Ти — редактор православного са
 Поверни лише готовий текст, без пояснень, без лапок навколо нього, без
 заголовків на кшталт "Опис:".`;
 
+export function calendarSystemPrompt(language: 'uk' | 'ru' | 'en'): string {
+  if (language === 'uk') return SYSTEM_PROMPT;
+  // Replace the complete Ukrainian-only instruction, rather than appending
+  // a contradictory language instruction to the same prompt.
+  const start = SYSTEM_PROMPT.indexOf('- пиши ВИКЛЮЧНО');
+  const end = SYSTEM_PROMPT.indexOf('\n\nСТИЛЬ:', start);
+  const instruction = language === 'ru'
+    ? '- Пиши исключительно по-русски. Переводи факты на русский; не смешивай языки. Сохраняй предоставленные имена и даты.'
+    : '- Write exclusively in English. Translate the supplied facts into English; do not mix languages. Preserve the supplied proper names and dates.';
+  return SYSTEM_PROMPT.slice(0, start) + instruction + SYSTEM_PROMPT.slice(end);
+}
+
 export type ChurchContentKind = 'description' | 'history' | 'seo_title' | 'seo_description';
 
 const KIND_INSTRUCTIONS: Record<ChurchContentKind, string> = {
@@ -55,6 +67,7 @@ const KIND_INSTRUCTIONS: Record<ChurchContentKind, string> = {
 export interface GenerateChurchContentInput {
   apiKey: string;
   model?: string;
+  language?: "uk" | "ru" | "en";
   kind: ChurchContentKind;
   /** Civil (new-style) date, 'YYYY-MM-DD' -- metadata only, never something
    * the model may alter. */
@@ -83,6 +96,7 @@ interface ChatCompletionResponse {
 export async function generateChurchContent(input: GenerateChurchContentInput): Promise<string> {
   const response = await fetch(OPENAI_API_URL, {
     method: 'POST',
+    signal: AbortSignal.timeout(40000),
     headers: {
       Authorization: `Bearer ${input.apiKey}`,
       'Content-Type': 'application/json',
@@ -91,7 +105,7 @@ export async function generateChurchContent(input: GenerateChurchContentInput): 
       model: input.model ?? DEFAULT_MODEL,
       temperature: 0.6,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: calendarSystemPrompt(input.language ?? 'uk') },
         {
           role: 'user',
           content: `Завдання: ${KIND_INSTRUCTIONS[input.kind]}\n\nНазва дня (використай точно так, як подано): "${input.title}"\nЦивільна дата: ${input.civilDateIso ?? 'н/д'}\nЦерковна (старостильна) дата: ${input.julianDateIso ?? 'н/д'}\n\n${
@@ -177,6 +191,7 @@ export async function describeSaintIconography(input: DescribeSaintIconographyIn
   try {
     response = await fetch(OPENAI_API_URL, {
       method: 'POST',
+      signal: AbortSignal.timeout(40000),
       headers: {
         Authorization: `Bearer ${input.apiKey}`,
         'Content-Type': 'application/json',

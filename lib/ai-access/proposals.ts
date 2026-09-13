@@ -557,6 +557,15 @@ async function logProposalFailure(
   }
 }
 
+/** Internal read only; callers must already have authorized the operation. */
+export async function readWorkingChanges(request: Request, e: Entity, id: string): Promise<Row> {
+  const proposals = await d1All<Proposal>(
+    "SELECT * FROM ai_proposals WHERE environment=? AND target_type=? AND target_id=? AND status IN ('pending','stale') ORDER BY created_at,id",
+    environment(request), e, id,
+  );
+  return Object.assign({}, ...proposals.map(p => JSON.parse(p.proposed_changes_json))) as Row;
+}
+
 /** A human-only editor projection. AI patches remain unpublished in existing storage. */
 async function humanEditor(request: Request, userId: string, env: string, e: Entity, id: string) {
   const current = await raw(e, id);

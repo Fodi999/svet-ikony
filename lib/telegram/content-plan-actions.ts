@@ -524,9 +524,10 @@ async function prepareSlot(civilDateIso: string, contentType: AutopostContentTyp
  * (also keeping this from firing five concurrent OpenAI/image calls at
  * once) and every outcome is collected before returning.
  */
-export async function prepareContentPlanDay(civilDateIso: string): Promise<PrepareDayReport> {
+export async function prepareContentPlanDay(civilDateIso: string, onlyContentType?: string): Promise<PrepareDayReport> {
   const results: PrepareDaySlotResult[] = [];
-  for (const contentType of AUTOPOST_CONTENT_TYPES) {
+  const contentTypes = onlyContentType === undefined ? AUTOPOST_CONTENT_TYPES : [requireContentType(onlyContentType)];
+  for (const contentType of contentTypes) {
     results.push(await prepareSlot(civilDateIso, contentType));
   }
 

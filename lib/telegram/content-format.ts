@@ -119,9 +119,13 @@ export const CONTENT_TYPE_FORMAT_HINTS: Record<AutopostContentType, string> = {
  * editor's AI image action) can build its own safe fallback prompt from the
  * exact same house style, rather than a second, potentially-drifting copy
  * of this safety-critical wording. */
-export const IMAGE_HOUSE_STYLE =
-  'Єдиний фірмовий стиль проєкту "Світло Ікони". Православна атмосфера, реалістичний кінематографічний стиль, м’яке золоте світло, спокійні темні тони. ' +
+export const IMAGE_VISUAL_STYLE =
+  'Єдиний фірмовий стиль проєкту "Світло Ікони". Православна атмосфера, реалістичний кінематографічний стиль, м’яке золоте світло, глибокі природні кольори, добре освітлений головний об’єкт без провалених чорних тіней. Чітка композиція, один головний акцент, деталі добре читаються на мобільному екрані. ' +
   'Без будь-якого тексту, напису, літер, цифр, логотипів чи водяних знаків на зображенні. ' +
+  'Залишай відступи навколо головного об’єкта для обрізання картки. Без колажів, зайвих предметів і декоративних рамок.';
+
+// Scene restrictions belong to atmospheric illustrations, not saint portraits.
+export const IMAGE_HOUSE_STYLE = IMAGE_VISUAL_STYLE +
   'Без обличчя чи впізнаваної постаті конкретної людини, без портрета конкретного святого -- лише узагальнена атмосферна сцена.';
 
 /**

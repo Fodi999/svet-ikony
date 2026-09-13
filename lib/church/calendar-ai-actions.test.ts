@@ -55,7 +55,8 @@ const mockCreateHumanAuthoredProposal = vi.fn(async (_request: Request, _adminUs
   status: 'pending',
   patch,
 }));
-vi.mock('@/lib/ai-access/proposals', () => ({ createHumanAuthoredProposal: mockCreateHumanAuthoredProposal }));
+const mockReadWorkingChanges = vi.fn(async () => ({} as Record<string, unknown>));
+vi.mock('@/lib/ai-access/proposals', () => ({ createHumanAuthoredProposal: mockCreateHumanAuthoredProposal, readWorkingChanges: mockReadWorkingChanges }));
 
 const {
   assignCalendarImage,
@@ -143,6 +144,7 @@ async function expectRejectionDetails(promise: Promise<unknown>, pattern: RegExp
 describe('calendar-ai-actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockReadWorkingChanges.mockResolvedValue({});
     mockGetOpenAiConfig.mockResolvedValue({ apiKey: 'fake-openai-key', model: undefined, imageModel: undefined });
     mockUpdateCalendarDay.mockImplementation(async (id: string, patch: Partial<ChurchCalendarDayDto>) => calendarDay({ id, ...patch }));
     // Explicit reset every test (not just vi.clearAllMocks(), which does not
@@ -152,6 +154,35 @@ describe('calendar-ai-actions', () => {
     mockLookupVerifiedSaintReference.mockResolvedValue({ status: 'not_found' });
     mockDescribeSaintIconography.mockResolvedValue(null);
     mockGenerateTelegramImage.mockResolvedValue({ bytes: new ArrayBuffer(4), mimeType: 'image/png' });
+  });
+
+  it('does not regenerate values already present in the published working copy', async () => {
+    mockGetCalendarDay.mockResolvedValue(calendarDay({ status: 'published' }));
+    mockListSaints.mockResolvedValue([]);
+    mockReadWorkingChanges.mockResolvedValue({ description: 'Опис', history: 'Історія', seoTitle: 'Назва', seoDescription: 'Опис', imageUrl: 'media/existing.png' });
+    const result = await fillMissingCalendarContent('day-1', draftContext);
+    expect(result.mode).toBe('proposal');
+    expect(mockGenerateChurchContent).not.toHaveBeenCalled();
+    expect(mockGenerateTelegramImage).not.toHaveBeenCalled();
+    expect(mockCreateHumanAuthoredProposal).not.toHaveBeenCalled();
+    expect(result.day.history).toBe('');
+  });
+
+  it.each([['en', 'The prophet served his people.'], ['ru', 'Пророк служил своему народу.']])('generates in the record language %s', async (language, text) => {
+    mockGetCalendarDay.mockResolvedValue(calendarDay({ language }));
+    mockListSaints.mockResolvedValue([]);
+    mockGenerateChurchContent.mockResolvedValue(text);
+    await generateCalendarDescription('day-1', draftContext);
+    expect(mockGenerateChurchContent).toHaveBeenCalledWith(expect.objectContaining({ language }));
+    expect(mockUpdateCalendarDay).toHaveBeenCalledWith('day-1', { description: text });
+  });
+
+  it('rejects Ukrainian prose for an English record before storage', async () => {
+    mockGetCalendarDay.mockResolvedValue(calendarDay({ language: 'en' }));
+    mockListSaints.mockResolvedValue([]);
+    mockGenerateChurchContent.mockResolvedValue('Святий служив народові.');
+    await expectRejectionDetails(generateCalendarDescription('day-1', draftContext), /LANGUAGE_MISMATCH/);
+    expect(mockUpdateCalendarDay).not.toHaveBeenCalled();
   });
 
   describe('generateCalendarDescription / regenerateCalendarDescription', () => {

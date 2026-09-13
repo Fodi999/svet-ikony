@@ -730,4 +730,18 @@ describe('content-plan-actions', () => {
       expect(source).not.toMatch(/sendAutopostMessage|client\.sendMessage|client\.sendPhoto/);
     });
   });
+  it('rejects an unsupported per-slot preparation type', async () => {
+    await expect(prepareContentPlanDay('2026-09-30', 'invalid')).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+
+  it('prepares only the requested slot and leaves other slots untouched', async () => {
+    mockFindTelegramPostBySlot.mockResolvedValue(draftPost({ status: 'ready', text: 'Approved' }));
+    const report = await prepareContentPlanDay(PLAIN_CIVIL_DATE, 'gospel');
+    expect(report.total).toBe(1);
+    expect(report.skippedReady).toBe(1);
+    expect(mockFindTelegramPostBySlot).toHaveBeenCalledTimes(1);
+    expect(mockFindTelegramPostBySlot).toHaveBeenCalledWith('gospel', PLAIN_CIVIL_DATE);
+    expect(mockGenerateTelegramPost).not.toHaveBeenCalled();
+  });
+
 });

@@ -31,7 +31,7 @@ export type OpenAiConfig = {
   model?: string;
   /** Optional override for lib/ai/openai-image.ts's image model, same
    * "unset -> code default" convention as `model` above (defaults to
-   * 'gpt-image-1' in openai-image.ts, not here). */
+   * 'gpt-image-2' in openai-image.ts, not here). */
   imageModel?: string;
 };
 

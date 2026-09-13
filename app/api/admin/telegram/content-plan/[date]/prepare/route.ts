@@ -13,6 +13,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ dat
     await requireSuperAdmin(request);
     const { date } = await params;
     if (!DATE_PATTERN.test(date)) throw ApiError.validation('date must be YYYY-MM-DD');
-    return Response.json(await prepareContentPlanDay(date));
+    const text = await request.text();
+    let body;
+    try { body = text ? JSON.parse(text) : {}; } catch { throw ApiError.validation('Invalid JSON'); }
+    if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(k => k !== 'contentType') ||
+        (body.contentType !== undefined && typeof body.contentType !== 'string')) throw ApiError.validation('Invalid preparation request');
+    return Response.json(await prepareContentPlanDay(date, body.contentType));
   });
 }

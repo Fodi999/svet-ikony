@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { describeSaintIconography, generateChurchContent } from './church-content';
+import { calendarSystemPrompt, describeSaintIconography, generateChurchContent } from './church-content';
 
 function chatResponse(content: string, status = 200) {
   return new Response(JSON.stringify({ choices: [{ message: { content } }] }), {
@@ -95,4 +95,11 @@ describe('describeSaintIconography', () => {
 
     expect(result).toBeNull();
   });
+});
+
+it.each(['ru', 'en'] as const)('locale %s replaces rather than contradicts the Ukrainian-only rule', language => {
+  const prompt = calendarSystemPrompt(language);
+  expect(prompt).not.toContain('ВИКЛЮЧНО українською');
+  expect(prompt).toContain(language === 'en' ? 'exclusively in English' : 'исключительно по-русски');
+  expect(prompt).toContain('НЕ вигадуй');
 });

@@ -96,3 +96,14 @@ export const LANGUAGE_GUARD_FAILURE_MESSAGE = 'Виявлено текст ін�
 export function describeLanguageGuardFailure(result: Extract<LanguageGuardResult, { ok: false }>): string {
   return `${LANGUAGE_GUARD_FAILURE_MESSAGE}: "${result.evidence}"`;
 }
+
+/** A conservative script check, not a semantic language detector. Canonical
+ * proper names are exempt; the generated prose itself must match the locale. */
+export function checkContentLanguage(text: string, language: string, canonicalName = ''): { ok: boolean } {
+  const prose = canonicalName ? text.split(canonicalName).join(' ') : text;
+  if (language === 'uk') return checkUkrainianLanguage(prose);
+  const clean = prose.replace(URL_OR_EMAIL, ' ');
+  if (language === 'en') return { ok: !/[\u0400-\u04ff]/u.test(clean) && /[a-z]/i.test(clean) };
+  if (language === 'ru') return { ok: !/[іїєґ]/i.test(clean) && !/[a-z]{2,}\s+[a-z]{2,}/i.test(clean) };
+  return { ok: false };
+}

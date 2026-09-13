@@ -1,5 +1,5 @@
 import { describeSaintIconography, generateChurchContent } from '@/lib/ai/church-content';
-import { checkUkrainianLanguage, describeLanguageGuardFailure } from '@/lib/ai/language-guard';
+import { checkContentLanguage } from '@/lib/ai/language-guard';
 import { generateTelegramImage } from '@/lib/ai/openai-image';
 import { getMediaBucket } from '@/lib/d1/env';
 import { ApiError } from '@/lib/d1/errors';
@@ -11,7 +11,7 @@ import {
 } from '@/lib/d1/repositories/calendarDays';
 import { listSaints, type ChurchSaintDto } from '@/lib/d1/repositories/saints';
 import { lookupVerifiedSaintReference } from '@/lib/church/saint-reference';
-import { IMAGE_HOUSE_STYLE } from '@/lib/telegram/content-format';
+import { IMAGE_HOUSE_STYLE, IMAGE_VISUAL_STYLE } from '@/lib/telegram/content-format';
 import { getOpenAiConfig } from '@/lib/telegram/env';
 import { generateMediaKey } from '@/lib/media/keys';
 import { verifySaintOfDay } from '@/lib/telegram/orthodox-calendar-verifier';
@@ -66,7 +66,7 @@ function buildSaintIllustrationPrompt(saintName: string, iconographyNotes: strin
     ? `Орієнтовні іконографічні риси цього святого (спирайся лише на це як на загальний орієнтир, не копіюй жодне конкретне зображення): ${iconographyNotes}. `
     : '';
   return (
-    `${IMAGE_HOUSE_STYLE} Це НОВА, самостійна ілюстрація святого на ім'я "${saintName}" у традиційній православній візуальній мові -- ` +
+    `${IMAGE_VISUAL_STYLE} Це НОВА, самостійна ілюстрація святого на ім'я "${saintName}" у традиційній православній візуальній мові -- ` +
     'шанобливий, реалістичний живописний стиль, детальне обличчя, природна шкіра, деталізоване вбрання, стримані золоті акценти, ' +
     "м'яке храмове освітлення, висока деталізація, чиста композиція. Святий -- явний головний об'єкт зображення, погруддя або поясний портрет. " +
     referenceLine +
@@ -139,9 +139,13 @@ async function requireOpenAi() {
  * right after every generateChurchContent() call, before it's ever
  * persisted via updateCalendarDay(). A failure here throws, so the
  * offending field is never written to the public-facing calendar day. */
-function assertUkrainianOrThrow(text: string): void {
-  const check = checkUkrainianLanguage(text);
-  if (!check.ok) throw ApiError.validation(describeLanguageGuardFailure(check));
+function contentLanguage(day: ChurchCalendarDayDto): 'uk' | 'ru' | 'en' {
+  if (day.language === 'uk' || day.language === 'ru' || day.language === 'en') return day.language;
+  throw ApiError.validation('Unsupported content language');
+}
+function assertContentLanguage(text: string, day: ChurchCalendarDayDto): void {
+  if (!checkContentLanguage(text, contentLanguage(day), day.title).ok)
+    throw ApiError.validation('Виявлено текст іншою мовою (LANGUAGE_MISMATCH)');
 }
 
 // ---------------------------------------------------------------------------
@@ -213,6 +217,7 @@ async function computeDescription(
   const description = await generateChurchContent({
     apiKey: openAi.apiKey,
     model: openAi.model,
+    language: contentLanguage(day),
     kind: 'description',
     civilDateIso: day.dateNewStyle,
     julianDateIso: day.dateOldStyle,
@@ -220,7 +225,7 @@ async function computeDescription(
     facts: buildFacts(day, saint),
     verified,
   });
-  assertUkrainianOrThrow(description);
+  assertContentLanguage(description, day);
   return description;
 }
 
@@ -258,6 +263,7 @@ async function computeHistory(
   const history = await generateChurchContent({
     apiKey: openAi.apiKey,
     model: openAi.model,
+    language: contentLanguage(day),
     kind: 'history',
     civilDateIso: day.dateNewStyle,
     julianDateIso: day.dateOldStyle,
@@ -265,7 +271,7 @@ async function computeHistory(
     facts: buildFacts(day, saint),
     verified,
   });
-  assertUkrainianOrThrow(history);
+  assertContentLanguage(history, day);
   return history;
 }
 
@@ -292,17 +298,17 @@ async function computeMissingSeo(
   verified: boolean,
   openAi: { apiKey: string; model?: string }
 ): Promise<{ seoTitle: string; seoDescription: string }> {
-  const base = { apiKey: openAi.apiKey, model: openAi.model, civilDateIso: day.dateNewStyle, julianDateIso: day.dateOldStyle, title: day.title, facts: buildFacts(day, saint), verified };
+  const base = { language: contentLanguage(day), apiKey: openAi.apiKey, model: openAi.model, civilDateIso: day.dateNewStyle, julianDateIso: day.dateOldStyle, title: day.title, facts: buildFacts(day, saint), verified };
 
   let seoTitle = day.seoTitle?.trim() ? day.seoTitle : null;
   if (!seoTitle) {
     seoTitle = await generateChurchContent({ ...base, kind: 'seo_title' });
-    assertUkrainianOrThrow(seoTitle);
+    assertContentLanguage(seoTitle, day);
   }
   let seoDescription = day.seoDescription?.trim() ? day.seoDescription : null;
   if (!seoDescription) {
     seoDescription = await generateChurchContent({ ...base, kind: 'seo_description' });
-    assertUkrainianOrThrow(seoDescription);
+    assertContentLanguage(seoDescription, day);
   }
   return { seoTitle, seoDescription };
 }
@@ -327,13 +333,13 @@ async function computeSeo(
   verified: boolean,
   openAi: { apiKey: string; model?: string }
 ): Promise<{ seoTitle: string; seoDescription: string }> {
-  const base = { apiKey: openAi.apiKey, model: openAi.model, civilDateIso: day.dateNewStyle, julianDateIso: day.dateOldStyle, title: day.title, facts: buildFacts(day, saint), verified };
+  const base = { language: contentLanguage(day), apiKey: openAi.apiKey, model: openAi.model, civilDateIso: day.dateNewStyle, julianDateIso: day.dateOldStyle, title: day.title, facts: buildFacts(day, saint), verified };
   const [seoTitle, seoDescription] = await Promise.all([
     generateChurchContent({ ...base, kind: 'seo_title' }),
     generateChurchContent({ ...base, kind: 'seo_description' }),
   ]);
-  assertUkrainianOrThrow(seoTitle);
-  assertUkrainianOrThrow(seoDescription);
+  assertContentLanguage(seoTitle, day);
+  assertContentLanguage(seoDescription, day);
   return { seoTitle, seoDescription };
 }
 
@@ -752,7 +758,12 @@ async function proposeMissingCalendarContent(
  */
 export async function fillMissingCalendarContent(dayId: string, context: FillMissingCalendarContext): Promise<FillMissingCalendarResult> {
   const day = await getCalendarDay(dayId);
-  if (day.status === 'published') return proposeMissingCalendarContent(day, context);
+  if (day.status === 'published') {
+    const { readWorkingChanges } = await import('@/lib/ai-access/proposals');
+    const changes = await readWorkingChanges(context.request, 'calendar', day.id);
+    const result = await proposeMissingCalendarContent({ ...day, ...changes }, context);
+    return { ...result, day };
+  }
   assertAutomaticEditAllowed(day);
   return fillMissingCalendarContentDraft(dayId, context);
 }

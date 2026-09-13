@@ -1,13 +1,9 @@
-/** OpenAI image generation for the Telegram autopost pipeline -- see
- * lib/telegram/autopost-image.ts, the only caller. Deliberately never takes
- * D1 facts or a saint's name as input (see content-format.ts's
- * CONTENT_TYPE_IMAGE_PROMPTS): the prompt is a fixed, generic "Світло
- * Ікони" house-style scene selected purely by content type, so it can
- * never invent a specific saint's portrait. */
+/** Shared Images API client for calendar and Telegram preparation.
+ * Callers own scene/identity policy. This client preserves the PNG/R2 contract. */
 import { OpenAiError } from './openai';
 
 const OPENAI_IMAGES_API_URL = 'https://api.openai.com/v1/images/generations';
-const DEFAULT_IMAGE_MODEL = 'gpt-image-1';
+export const DEFAULT_IMAGE_MODEL = 'gpt-image-2';
 const IMAGE_SIZE = '1024x1024';
 
 export interface GenerateTelegramImageInput {
@@ -38,6 +34,7 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
 export async function generateTelegramImage(input: GenerateTelegramImageInput): Promise<GeneratedImage> {
   const response = await fetch(OPENAI_IMAGES_API_URL, {
     method: 'POST',
+    signal: AbortSignal.timeout(90000),
     headers: {
       Authorization: `Bearer ${input.apiKey}`,
       'Content-Type': 'application/json',
@@ -46,6 +43,8 @@ export async function generateTelegramImage(input: GenerateTelegramImageInput): 
       model: input.model ?? DEFAULT_IMAGE_MODEL,
       prompt: input.prompt,
       size: IMAGE_SIZE,
+      quality: "medium",
+      output_format: "png",
       n: 1,
     }),
   });
@@ -58,7 +57,11 @@ export async function generateTelegramImage(input: GenerateTelegramImageInput): 
   }
 
   if (!response.ok) {
-    throw new OpenAiError(body.error?.message ?? `OpenAI image request failed (HTTP ${response.status})`);
+    // Provider error bodies can contain request data; never persist them in
+    // image_error or surface them verbatim in an admin toast.
+    const reason = response.status === 401 || response.status === 403 ? 'check API access to the image model'
+      : response.status === 429 ? 'rate limit or quota exceeded' : 'image generation failed';
+    throw new OpenAiError(`OpenAI image API: ${reason} (HTTP ${response.status})`);
   }
 
   const b64 = body.data?.[0]?.b64_json;
@@ -66,5 +69,10 @@ export async function generateTelegramImage(input: GenerateTelegramImageInput): 
     throw new OpenAiError('OpenAI image API returned no image data');
   }
 
-  return { bytes: base64ToArrayBuffer(b64), mimeType: 'image/png' };
+  let bytes: ArrayBuffer;
+  try { bytes = base64ToArrayBuffer(b64); } catch { throw new OpenAiError('OpenAI returned invalid image encoding'); }
+  const signature = new Uint8Array(bytes, 0, Math.min(8, bytes.byteLength));
+  if (![137, 80, 78, 71, 13, 10, 26, 10].every((value, index) => signature[index] === value))
+    throw new OpenAiError('OpenAI returned an invalid PNG image');
+  return { bytes, mimeType: 'image/png' };
 }

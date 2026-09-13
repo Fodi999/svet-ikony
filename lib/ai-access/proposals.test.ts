@@ -566,3 +566,27 @@ describe("createHumanAuthoredProposal (migration 0022: human-admin creator, no A
     ).toBe("");
   });
 });
+
+describe("human editor working copy", () => {
+  it("combines text and image in fields without changing the published row", async () => {
+    await proposal({ history: "Working text" });
+    await proposal({ imageUrl: "https://example.invalid/working.png" });
+    const w = await humanProposals(human(), ["editor", "calendar", id]) as { working: Record<string, unknown>; current: Record<string, unknown>; version: string; hasChanges: boolean };
+    expect(w.working.history).toBe("Working text");
+    expect(w.working.imageUrl).toBe("https://example.invalid/working.png");
+    expect(w.current.history).not.toBe("Working text");
+    await humanProposals(human("POST", { version: w.version, confirmation: `PUBLISH ${id}`, patch: { history: "Human reviewed", imageUrl: w.working.imageUrl } }), ["editor", "calendar", id]);
+    const after = await humanProposals(human(), ["editor", "calendar", id]) as { working: Record<string, unknown>; current: Record<string, unknown>; version: string; hasChanges: boolean };
+    expect(after.current.history).toBe("Human reviewed");
+    expect(after.current.status).toBe("published");
+    expect(after.hasChanges).toBe(false);
+    expect(state.db.prepare("SELECT COUNT(*) AS n FROM ai_proposal_audit WHERE action='applied'").get().n).toBe(3);
+  });
+  it("blocks AI and stale editor publication", async () => {
+    await expect(humanProposals(ai("POST", {}), ["editor", "calendar", id])).rejects.toThrow();
+    await proposal({ history: "A" });
+    const w = await humanProposals(human(), ["editor", "calendar", id]) as { working: Record<string, unknown>; current: Record<string, unknown>; version: string; hasChanges: boolean };
+    await proposal({ history: "B" });
+    await expect(humanProposals(human("POST", {version: w.version, confirmation: `PUBLISH ${id}`,patch:{history:"A"}}), ["editor", "calendar", id])).rejects.toThrow();
+  });
+});

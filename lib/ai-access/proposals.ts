@@ -122,7 +122,7 @@ async function patchFor(
       )
         throw ApiError.validation("Invalid image metadata");
     } else if (spec.numbers?.includes(k)) {
-      if (typeof v !== "number" || !Number.isFinite(v))
+      if (!(e === "alphabet" && k === "numericValue" && v === null) && (typeof v !== "number" || !Number.isFinite(v)))
         throw ApiError.validation("Invalid number");
     } else if (spec.booleans?.includes(k)) {
       if (typeof v !== "boolean") throw ApiError.validation("Invalid boolean");
@@ -326,6 +326,8 @@ export async function createHumanAuthoredProposal(
 export async function humanProposals(request: Request, path: string[]) {
   const user = await browserAdmin(request),
     env = environment(request);
+  if (path.length === 3 && path[0] === "editor")
+    return humanEditor(request, user.id, env, entity(path[1]), path[2]);
   if (request.method === "GET") {
     if (path.length === 1) {
       const p = await get(path[0], env);
@@ -553,4 +555,56 @@ async function logProposalFailure(
   } catch {
     /* No credential-bearing error logging. */
   }
+}
+
+/** A human-only editor projection. AI patches remain unpublished in existing storage. */
+async function humanEditor(request: Request, userId: string, env: string, e: Entity, id: string) {
+  const current = await raw(e, id);
+  if (!current) throw ApiError.notFound("Target not found");
+  const proposals = await d1All<Proposal>(
+    "SELECT * FROM ai_proposals WHERE environment=? AND target_type=? AND target_id=? AND status IN ('pending','stale') ORDER BY created_at,id",
+    env, e, id,
+  );
+  const dto = await adapters[e].get(id);
+  const combined = Object.assign({}, ...proposals.map(p => JSON.parse(p.proposed_changes_json))) as Row;
+  const version = await sha(JSON.stringify({ current, proposals }));
+  if (request.method === "GET") return { current: dto, working: { ...dto, ...combined }, version, hasChanges: proposals.length > 0 };
+  if (request.method !== "POST") throw ApiError.notFound("Unsupported route");
+  const body = await request.json() as Row;
+  if (body.version !== version) throw ApiError.conflict("Editor changed; reload before publishing");
+  if (body.confirmation !== `PUBLISH ${id}`) throw ApiError.validation("Human publication confirmation required");
+  // The complete editable patch is supplied by the human's visible form.
+  const patch = await patchFor(e, body.patch, current);
+  if (Object.keys(combined).some(k => !Object.hasOwn(patch, k)))
+    throw ApiError.validation("Editor must review every proposed field");
+  const t = new Date().toISOString(), nonce = crypto.randomUUID();
+  const entries = Object.entries(current);
+  const match = entries.map(([k]) => `"${k}" IS ?`).join(" AND ");
+  // A guarded INSERT creates the single human review receipt. Every subsequent
+  // mutation is conditional on that receipt, so a concurrent edit changes nothing.
+  const statements = [await d1Prepare(
+    `INSERT INTO ai_proposals(id,environment,target_type,target_id,target_version,target_snapshot_json,language,translation_group_id,proposed_changes_json,created_by_admin_user_id,reason,sources_json,created_at,status,reviewed_at,reviewed_by_admin_user_id,applied_at,review_nonce)
+     SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?, 'applied',?,?,?,? WHERE EXISTS(SELECT 1 FROM ${adapters[e].table} WHERE ${match})
+     AND (SELECT COUNT(*) FROM ai_proposals WHERE environment=? AND target_type=? AND target_id=? AND status IN ('pending','stale'))=?
+     ${proposals.map(() => "AND EXISTS(SELECT 1 FROM ai_proposals WHERE id=? AND status=? AND proposed_changes_json=?)").join(' ')}`,
+    nonce, env, e, id, version, JSON.stringify(current), current.language, current.translation_group_id,
+    JSON.stringify(patch), userId, "Human editor publication", "[]", t, t, userId, t, nonce,
+    ...entries.map(([,v]) => v), env,e,id,proposals.length,
+    ...proposals.flatMap(p => [p.id,p.status,p.proposed_changes_json]),
+  )];
+  statements.push(await d1Prepare(
+    `UPDATE ${adapters[e].table} SET ${Object.keys(patch).map(k => col(k)+"=?").join(",")},status='published',updated_at=? WHERE id=? AND EXISTS(SELECT 1 FROM ai_proposals WHERE id=?)`,
+    ...Object.values(patch).map(value), t, id, nonce,
+  ));
+  for (const p of proposals) {
+    statements.push(await d1Prepare("UPDATE ai_proposals SET status='applied',reviewed_at=?,reviewed_by_admin_user_id=?,applied_at=?,review_nonce=? WHERE id=? AND status IN ('pending','stale') AND EXISTS(SELECT 1 FROM ai_proposals WHERE id=?)",t,userId,t,nonce,p.id,nonce));
+    statements.push(await auditStatement(p.id,userId,t,nonce));
+    if (p.created_by_ai_grant_id) {
+      statements.push(await d1Prepare("INSERT INTO ai_activity_log(id,grant_id,admin_user_id,tool_name,module,operation,target_type,target_id,request_id,status,created_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM ai_proposals WHERE id=?)",crypto.randomUUID(),p.created_by_ai_grant_id,userId,"proposal.apply",e,"proposal.apply",e,id,nonce+p.id,"success",t,nonce));
+    }
+  }
+  statements.push(await auditStatement(nonce,userId,t,nonce));
+  await d1Batch(statements);
+  if (!await d1First("SELECT id FROM ai_proposals WHERE id=?",nonce)) throw ApiError.conflict("Editor changed; reload before publishing");
+  return { current: await adapters[e].get(id) };
 }

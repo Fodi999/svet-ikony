@@ -1,3 +1,4 @@
+PRAGMA defer_foreign_keys = ON;
 -- =============================================================================
 -- 0022_ai_proposals_human_creator
 -- Additive/local phase: "AI Fill" ("Заповнити відсутнє з AI") on a PUBLISHED
@@ -56,3 +57,5 @@ ALTER TABLE ai_proposals_new RENAME TO ai_proposals;
 CREATE INDEX ai_proposals_target ON ai_proposals(environment,target_type,target_id,status);
 CREATE INDEX ai_proposals_owner ON ai_proposals(created_by_ai_grant_id,created_at);
 CREATE INDEX ai_proposals_admin_owner ON ai_proposals(created_by_admin_user_id,created_at);
+
+PRAGMA defer_foreign_keys = OFF;

@@ -110,16 +110,7 @@ async function patchFor(
     )
       throw ApiError.validation("Unsupported proposal field");
     if (k === "imageMetadata") {
-      if (
-        v !== null &&
-        (typeof v !== "object" ||
-          Array.isArray(v) ||
-          (v as Row).origin !== "ai_generated" ||
-          (v as Row).identityVerified !== false ||
-          Object.keys(v).some(
-            (x) => !["origin", "identityVerified"].includes(x),
-          ))
-      )
+      if (v !== null && !isValidCalendarImageMetadata(v))
         throw ApiError.validation("Invalid image metadata");
     } else if (spec.numbers?.includes(k)) {
       if (!(e === "alphabet" && k === "numericValue" && v === null) && (typeof v !== "number" || !Number.isFinite(v)))
@@ -161,6 +152,41 @@ async function patchFor(
 }
 function safeImage(url: string) {
   return /^https:\/\/[^\s]+$/.test(url) || /^\/?media\/[^\s]+$/.test(url);
+}
+const IMAGE_METADATA_URL_FIELDS = ["referencePageUrl", "referenceImageUrl"] as const;
+const IMAGE_METADATA_TEXT_FIELDS = [
+  "referenceTitle", "referenceAuthor", "referenceLicense", "referenceAttribution",
+  "wikidataId", "commonsFileTitle", "commonsCategory", "fallbackReason", "customPrompt",
+] as const;
+/** Mirrors CalendarImageMetadata (lib/d1/repositories/calendarDays.ts)
+ * field-for-field -- the previous version here only ever allowed
+ * {origin:"ai_generated", identityVerified:false}, which is not the shape
+ * generateCalendarImage/regenerateCalendarImage actually produce (a
+ * verified saint reference has identityVerified:true plus several
+ * reference* fields; even the plain fallback carries fallbackReason), so
+ * every image generation on a PUBLISHED calendar day -- which always
+ * goes through a proposal -- failed this check with "Invalid image
+ * metadata" before it ever reached the proposal table. This is still a
+ * real validator, not a pass-through: origin/identityVerified/
+ * referenceProvider/referenceLanguage are checked against their exact
+ * literal unions, every other key must be one of the known optional
+ * string fields, and the two URL fields go through the same safeImage()
+ * check every other URL in a proposal patch already gets. */
+function isValidCalendarImageMetadata(v: unknown): boolean {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  const row = v as Row;
+  if (row.origin !== "ai_generated" && row.origin !== "manual") return false;
+  if (typeof row.identityVerified !== "boolean") return false;
+  if (row.referenceProvider !== undefined && row.referenceProvider !== "wikipedia" && row.referenceProvider !== "commons") return false;
+  if (row.referenceLanguage !== undefined && !["uk", "ru", "en"].includes(row.referenceLanguage as string)) return false;
+  for (const key of Object.keys(row)) {
+    if (key === "origin" || key === "identityVerified" || key === "referenceProvider" || key === "referenceLanguage") continue;
+    if (!(IMAGE_METADATA_URL_FIELDS as readonly string[]).includes(key) && !(IMAGE_METADATA_TEXT_FIELDS as readonly string[]).includes(key)) return false;
+    const value = row[key];
+    if (typeof value !== "string" || !value.trim()) return false;
+    if ((IMAGE_METADATA_URL_FIELDS as readonly string[]).includes(key) && !safeImage(value)) return false;
+  }
+  return true;
 }
 export async function aiProposals(request: Request, id?: string) {
   const access = await requireAiAccess(request),

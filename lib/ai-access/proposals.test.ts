@@ -565,6 +565,79 @@ describe("createHumanAuthoredProposal (migration 0022: human-admin creator, no A
       state.db.prepare("SELECT history FROM church_calendar_days WHERE id=?").get(id).history,
     ).toBe("");
   });
+
+  // Regression: generateCalendarImage/regenerateCalendarImage on a
+  // PUBLISHED day always goes through createHumanAuthoredProposal, and the
+  // real imageMetadata shapes those functions produce (calendar-ai-
+  // actions.ts) are all richer than {origin,identityVerified} -- the
+  // previous validator here rejected every one of them with "Invalid image
+  // metadata" (400) before the proposal was ever created, so the "generate
+  // photo" button never worked on a published day.
+  describe("imageMetadata shapes real image generation actually produces", () => {
+    it("accepts a verified saint reference (identityVerified: true, several reference* fields)", async () => {
+      const p = await createHumanAuthoredProposal(localRequest(), "owner", "calendar", id, {
+        imageMetadata: {
+          origin: "ai_generated",
+          identityVerified: true,
+          referenceProvider: "wikipedia",
+          referenceLanguage: "uk",
+          referencePageUrl: "https://uk.wikipedia.org/wiki/X",
+          referenceImageUrl: "https://upload.wikimedia.org/x.jpg",
+          referenceTitle: "X",
+          referenceAuthor: "Y",
+          referenceLicense: "CC BY-SA 4.0",
+          referenceAttribution: "Wikimedia Commons",
+          wikidataId: "Q123",
+        },
+      }, "Generate: зображення");
+      expect(p.status).toBe("pending");
+    });
+
+    it("accepts the generic fallback shape, including fallbackReason", async () => {
+      const p = await createHumanAuthoredProposal(localRequest(), "owner", "calendar", id, {
+        imageMetadata: { origin: "ai_generated", identityVerified: false, fallbackReason: "not_found" },
+      }, "Generate: зображення");
+      expect(p.status).toBe("pending");
+    });
+
+    it("accepts the custom-prompt shape, including customPrompt", async () => {
+      const p = await createHumanAuthoredProposal(localRequest(), "owner", "calendar", id, {
+        imageMetadata: { origin: "ai_generated", identityVerified: false, customPrompt: "a golden icon" },
+      }, "Generate: зображення за промптом");
+      expect(p.status).toBe("pending");
+    });
+
+    it("accepts imageMetadata: null (clearing it)", async () => {
+      const p = await createHumanAuthoredProposal(localRequest(), "owner", "calendar", id, { imageMetadata: null }, "reason");
+      expect(p.status).toBe("pending");
+    });
+
+    it("still rejects an invalid origin", async () => {
+      await expect(
+        createHumanAuthoredProposal(localRequest(), "owner", "calendar", id, { imageMetadata: { origin: "made_up", identityVerified: false } }, "reason"),
+      ).rejects.toThrow();
+    });
+
+    it("still rejects identityVerified when it isn't a boolean", async () => {
+      await expect(
+        createHumanAuthoredProposal(localRequest(), "owner", "calendar", id, { imageMetadata: { origin: "ai_generated", identityVerified: "false" } }, "reason"),
+      ).rejects.toThrow();
+    });
+
+    it("still rejects a field the real type doesn't have", async () => {
+      await expect(
+        createHumanAuthoredProposal(localRequest(), "owner", "calendar", id, { imageMetadata: { origin: "ai_generated", identityVerified: false, notAField: "x" } }, "reason"),
+      ).rejects.toThrow();
+    });
+
+    it("still rejects an unsafe referenceImageUrl", async () => {
+      await expect(
+        createHumanAuthoredProposal(localRequest(), "owner", "calendar", id, {
+          imageMetadata: { origin: "ai_generated", identityVerified: true, referenceImageUrl: "javascript:alert(1)" },
+        }, "reason"),
+      ).rejects.toThrow();
+    });
+  });
 });
 
 describe("human editor working copy", () => {

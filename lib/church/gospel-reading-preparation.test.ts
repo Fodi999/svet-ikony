@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { parseGospelReadingSource, prepareGospelReading, prepareGospelReadingForCalendarDay } from './gospel-reading-preparation';
+import { parseGospelReadingSource, prepareGospelReading, prepareGospelReadingForCalendarDay, previewGospelReadingForCalendarDay } from './gospel-reading-preparation';
 
 const getCalendarDayMock = vi.fn();
 vi.mock('@/lib/d1/repositories/calendarDays', () => ({ getCalendarDay: (id: string) => getCalendarDayMock(id) }));
@@ -151,6 +151,39 @@ describe('prepareGospelReadingForCalendarDay', () => {
   it('rejects a calendar day with no date at all before ever fetching anything', async () => {
     getCalendarDayMock.mockResolvedValue({ id: 'day-1', dateNewStyle: null, dateOldStyle: null, language: 'uk' });
     await expect(prepareGospelReadingForCalendarDay('day-1')).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * PHASE ADMIN-UX-1: the admin UX redesign needs a read-only "what would
+ * this create" step before the AI-preparation batch writes anything --
+ * this is that preview, reusing prepareGospelReading exactly as
+ * prepareGospelReadingForCalendarDay already does, minus the createGospel
+ * call.
+ */
+describe('previewGospelReadingForCalendarDay', () => {
+  beforeEach(() => {
+    getCalendarDayMock.mockReset().mockResolvedValue({ id: 'day-1', dateNewStyle: '2026-09-15', dateOldStyle: null, language: 'uk' });
+    createGospelMock.mockReset();
+  });
+
+  it('returns the prepared reading without creating anything', async () => {
+    fetchMock.mockResolvedValueOnce(htmlResponse(ORDINARY_DAY_PAGE));
+    const result = await previewGospelReadingForCalendarDay('day-1');
+    expect(result.reference).toBe('Мк. 7:5-16');
+    expect(createGospelMock).not.toHaveBeenCalled();
+  });
+
+  it('fails closed the same way the create path does when the source is unresolvable, still creating nothing', async () => {
+    fetchMock.mockResolvedValue(new Response('unavailable', { status: 503 }));
+    await expect(previewGospelReadingForCalendarDay('day-1')).rejects.toMatchObject({ status: 502 });
+    expect(createGospelMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a calendar day with no date at all before ever fetching anything', async () => {
+    getCalendarDayMock.mockResolvedValue({ id: 'day-1', dateNewStyle: null, dateOldStyle: null, language: 'uk' });
+    await expect(previewGospelReadingForCalendarDay('day-1')).rejects.toThrow();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

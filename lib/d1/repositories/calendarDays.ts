@@ -25,6 +25,7 @@ type Row = {
   seo_title: string | null;
   seo_description: string | null;
   image_metadata: string | null;
+  internal_note: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -112,6 +113,10 @@ export type ChurchCalendarDayDto = {
   seoTitle: string | null;
   seoDescription: string | null;
   imageMetadata: CalendarImageMetadata | null;
+  /** Admin-only free-text note (migration 0023) -- deliberately excluded
+   * from every public DTO (composeCalendarPages, the by-slug cross-link
+   * routes, etc.); only the admin CRUD routes ever read/write it. */
+  internalNote: string | null;
   isGlobal: boolean;
   createdAt: string;
   updatedAt: string;
@@ -133,6 +138,7 @@ export type ChurchCalendarDayPayload = Partial<{
   seoTitle: string | null;
   seoDescription: string | null;
   imageMetadata: CalendarImageMetadata | null;
+  internalNote: string | null;
   isGlobal: boolean;
 }>;
 
@@ -156,6 +162,7 @@ function toDto(row: Row): ChurchCalendarDayDto {
     seoTitle: row.seo_title,
     seoDescription: row.seo_description,
     imageMetadata: parseImageMetadata(row.image_metadata),
+    internalNote: row.internal_note,
     isGlobal: IS_GLOBAL_DEFAULT,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -163,7 +170,7 @@ function toDto(row: Row): ChurchCalendarDayDto {
 }
 
 const COLUMNS =
-  'id, date_old_style, date_new_style, calendar_type, title, slug, language, translation_group_id, day_type, description, history, image_url, rank, status, seo_title, seo_description, image_metadata, created_at, updated_at';
+  'id, date_old_style, date_new_style, calendar_type, title, slug, language, translation_group_id, day_type, description, history, image_url, rank, status, seo_title, seo_description, image_metadata, internal_note, created_at, updated_at';
 
 function filterByYearMonth(rows: ChurchCalendarDayDto[], year?: number, month?: number) {
   if (!year && !month) return rows;
@@ -212,9 +219,9 @@ export async function createCalendarDay(payload: ChurchCalendarDayPayload): Prom
   const fallbackGroupId = genId();
   const row = await d1First<Row>(
     `INSERT INTO church_calendar_days
-       (date_old_style, date_new_style, calendar_type, title, slug, language, day_type, description, history, image_url, rank, status, seo_title, seo_description, image_metadata,
+       (date_old_style, date_new_style, calendar_type, title, slug, language, day_type, description, history, image_url, rank, status, seo_title, seo_description, image_metadata, internal_note,
         translation_group_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         COALESCE((SELECT translation_group_id FROM church_calendar_days WHERE slug = ? LIMIT 1), ?))
      RETURNING ${COLUMNS}`,
     payload.dateOldStyle ?? null,
@@ -232,6 +239,7 @@ export async function createCalendarDay(payload: ChurchCalendarDayPayload): Prom
     payload.seoTitle ?? null,
     payload.seoDescription ?? null,
     payload.imageMetadata ? JSON.stringify(payload.imageMetadata) : null,
+    payload.internalNote ?? null,
     slugForMatch,
     fallbackGroupId
   );
@@ -246,7 +254,7 @@ export async function updateCalendarDay(id: string, payload: ChurchCalendarDayPa
     `UPDATE church_calendar_days SET
        date_old_style = ?, date_new_style = ?, calendar_type = ?, title = ?,
        slug = ?, language = ?, day_type = ?, description = ?, history = ?, image_url = ?, rank = ?, status = ?,
-       seo_title = ?, seo_description = ?, image_metadata = ?,
+       seo_title = ?, seo_description = ?, image_metadata = ?, internal_note = ?,
        translation_group_id = COALESCE(
          (SELECT other.translation_group_id FROM church_calendar_days other WHERE other.slug = ? AND other.id != ? LIMIT 1),
          (SELECT translation_group_id FROM church_calendar_days WHERE id = ?)
@@ -274,6 +282,7 @@ export async function updateCalendarDay(id: string, payload: ChurchCalendarDayPa
       : current.imageMetadata
         ? JSON.stringify(current.imageMetadata)
         : null,
+    payload.internalNote !== undefined ? payload.internalNote : current.internalNote,
     slugForMatch,
     id,
     id,

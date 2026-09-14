@@ -101,6 +101,7 @@ function calendarDay(overrides: Partial<ChurchCalendarDayDto> = {}): ChurchCalen
     seoTitle: null,
     seoDescription: null,
     imageMetadata: null,
+    internalNote: null,
     isGlobal: false,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',

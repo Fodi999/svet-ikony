@@ -129,12 +129,12 @@ class FakeStatement {
     }
 
     // createCalendarDay -- param order mirrors calendarDays.ts's INSERT
-    // exactly: 15 column values, then [slugForMatch, fallbackGroupId] for
-    // the COALESCE subquery.
+    // exactly: 16 column values (incl. internal_note, migration 0023),
+    // then [slugForMatch, fallbackGroupId] for the COALESCE subquery.
     if (/^INSERT INTO church_calendar_days/i.test(sql)) {
       const [
         date_old_style, date_new_style, calendar_type, title, slug, language, day_type,
-        description, history, image_url, rank, status, seo_title, seo_description, image_metadata,
+        description, history, image_url, rank, status, seo_title, seo_description, image_metadata, internal_note,
         slugForMatch, fallbackGroupId,
       ] = this.params;
 
@@ -144,7 +144,7 @@ class FakeStatement {
       const row: Row = {
         id: `day-${this.db.nextId++}`,
         date_old_style, date_new_style, calendar_type, title, slug, language, day_type,
-        description, history, image_url, rank, status, seo_title, seo_description, image_metadata,
+        description, history, image_url, rank, status, seo_title, seo_description, image_metadata, internal_note,
         translation_group_id,
         created_at: '2026-01-01T00:00:00.000Z',
         updated_at: '2026-01-01T00:00:00.000Z',
@@ -153,12 +153,13 @@ class FakeStatement {
       return [row];
     }
 
-    // updateCalendarDay -- 15 SET values, then [slugForMatch, excludeId,
-    // fallbackId, whereId] for the COALESCE subquery + final WHERE.
+    // updateCalendarDay -- 16 SET values (incl. internal_note), then
+    // [slugForMatch, excludeId, fallbackId, whereId] for the COALESCE
+    // subquery + final WHERE.
     if (/^UPDATE church_calendar_days SET/i.test(sql)) {
       const [
         date_old_style, date_new_style, calendar_type, title, slug, language, day_type,
-        description, history, image_url, rank, status, seo_title, seo_description, image_metadata,
+        description, history, image_url, rank, status, seo_title, seo_description, image_metadata, internal_note,
         slugForMatch, excludeId, fallbackId, whereId,
       ] = this.params;
 
@@ -174,7 +175,7 @@ class FakeStatement {
 
       Object.assign(row, {
         date_old_style, date_new_style, calendar_type, title, slug, language, day_type,
-        description, history, image_url, rank, status, seo_title, seo_description, image_metadata,
+        description, history, image_url, rank, status, seo_title, seo_description, image_metadata, internal_note,
         translation_group_id,
       });
       return [row];

@@ -32,6 +32,7 @@ function day(overrides: Partial<ChurchCalendarDayDto> = {}): ChurchCalendarDayDt
     seoTitle: null,
     seoDescription: null,
     imageMetadata: null,
+    internalNote: null,
     isGlobal: true,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -100,5 +101,24 @@ describe('composeCalendarPages', () => {
     const [page] = await composeCalendarPages([day({ id: 'day-1' })]);
 
     expect(page.icons.map((i) => i.id)).toEqual(['icon-1']);
+  });
+
+  /**
+   * PHASE ADMIN-UX-1: internal_note (migration 0023) is an admin-only free
+   * text field -- composeCalendarPages builds the public page shape
+   * field-by-field, so a new repository column is only a leak risk if
+   * someone later starts spreading the raw DTO. This locks in "never" as
+   * an actual regression test rather than only a plan-time promise.
+   */
+  it('never exposes internalNote on the composed public page even when set', async () => {
+    mockListIcons.mockResolvedValue([]);
+    mockListPrayers.mockResolvedValue([]);
+    mockListArticles.mockResolvedValue([]);
+    mockListGospel.mockResolvedValue([]);
+
+    const [page] = await composeCalendarPages([day({ internalNote: 'admin-only reminder, never public' })]);
+
+    expect(page).not.toHaveProperty('internalNote');
+    expect(JSON.stringify(page)).not.toContain('admin-only reminder');
   });
 });

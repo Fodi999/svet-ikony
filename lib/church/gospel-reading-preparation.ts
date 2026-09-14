@@ -106,6 +106,22 @@ function asReadingLanguage(value: string): ReadingLanguage {
 }
 
 /**
+ * Resolves the day's canonical Gospel citation WITHOUT creating anything --
+ * the read-only "review before you commit" step the admin UX redesign
+ * needs (task: "Do not immediately mutate everything when clicking the
+ * button"). Throws the exact same errors `prepareGospelReadingForCalendarDay`
+ * would (source unavailable / no Gospel citation found), which the caller
+ * surfaces as "⚠ Канонічне читання не визначено" rather than a generic
+ * failure -- never a reason to guess.
+ */
+export async function previewGospelReadingForCalendarDay(dayId: string): Promise<PreparedGospelReading> {
+  const day = await getCalendarDay(dayId);
+  const date = day.dateNewStyle || day.dateOldStyle;
+  if (!date) throw ApiError.validation('У цього дня немає дати для пошуку читання.');
+  return prepareGospelReading(date, asReadingLanguage(day.language));
+}
+
+/**
  * Sources and creates a new DRAFT Gospel reading pre-linked to this
  * calendar day -- the AI-populated counterpart to the manual "+ Створити
  * нове" quick-create already shipped for the relations tab. Never
@@ -115,8 +131,6 @@ function asReadingLanguage(value: string): ReadingLanguage {
  */
 export async function prepareGospelReadingForCalendarDay(dayId: string): Promise<ChurchGospelDto> {
   const day = await getCalendarDay(dayId);
-  const date = day.dateNewStyle || day.dateOldStyle;
-  if (!date) throw ApiError.validation('У цього дня немає дати для пошуку читання.');
-  const prepared = await prepareGospelReading(date, asReadingLanguage(day.language));
+  const prepared = await previewGospelReadingForCalendarDay(dayId);
   return createGospel({ ...prepared, language: day.language, calendarDayId: dayId, status: 'draft' });
 }

@@ -9,11 +9,20 @@ import { listIcons } from '@/lib/d1/repositories/icons';
 import { listPrayers } from '@/lib/d1/repositories/prayers';
 
 export interface PublicChurchContentPage {
-  calendarDay: ChurchCalendarDayDto;
+  calendarDay: Omit<ChurchCalendarDayDto, 'internalNote'>;
   icons: ChurchIconDto[];
   prayers: ChurchPrayerDto[];
   articles: ChurchArticleDto[];
   gospel: ChurchGospelDto[];
+}
+
+/** internal_note (migration 0023) is admin-only -- this function feeds
+ * public routes (see composeCalendarPages's own doc comment), so the raw
+ * repository DTO is never assigned to `calendarDay` as-is. */
+function omitInternalNote(day: ChurchCalendarDayDto): Omit<ChurchCalendarDayDto, 'internalNote'> {
+  const publicDay: Record<string, unknown> = { ...day };
+  delete publicDay.internalNote;
+  return publicDay as Omit<ChurchCalendarDayDto, 'internalNote'>;
 }
 
 /**
@@ -55,7 +64,7 @@ export async function composeCalendarPages(
   const visibleGospel = published(gospel);
 
   return days.map((calendarDay) => ({
-    calendarDay,
+    calendarDay: omitInternalNote(calendarDay),
     icons: byDay(visibleIcons, calendarDay.id),
     prayers: byDay(visiblePrayers, calendarDay.id),
     articles: byDay(visibleArticles, calendarDay.id),

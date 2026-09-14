@@ -617,13 +617,19 @@ export function LocalizedSaintDetail({ saint }: { saint: Saint }) {
           </div>
         </HeroCopy>
       </DetailHero>
-      {saint.relatedIcons.length || saint.prayers.length ? (
+      {saint.calendarDay || saint.relatedIcons.length || saint.prayers.length ? (
         <RelatedSection>
           <SectionHead>
             <Eyebrow>{t('calendarMaterial')}</Eyebrow>
             <SectionHeadTitle>{ui(locale, 'furtherReading')}</SectionHeadTitle>
           </SectionHead>
           <MiniGrid>
+            {saint.calendarDay ? (
+              <MiniGridLink href={localeHref(`/church/calendar/${saint.calendarDay.date}`)}>
+                {saint.calendarDay.title}
+                <MiniGridSmall>{t('churchCalendar')}</MiniGridSmall>
+              </MiniGridLink>
+            ) : null}
             {saint.relatedIcons.map((slug) => (
               <MiniGridLink key={slug} href={localeHref(`/icons/${slug}`)}>{slug}<MiniGridSmall>{t('navIcons')}</MiniGridSmall></MiniGridLink>
             ))}

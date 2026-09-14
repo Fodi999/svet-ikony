@@ -84,6 +84,7 @@ export default async function SaintPage({ params, searchParams }: Props) {
     );
   }
 
+  const calendarDate = page.calendarDay?.dateNewStyle || page.calendarDay?.dateOldStyle;
   const saint: Saint = {
     id: page.saint.id,
     slug: page.saint.slug,
@@ -99,7 +100,8 @@ export default async function SaintPage({ params, searchParams }: Props) {
     seoDescription: (page.saint.shortDescription || page.saint.biography).replace(/\s+/g, ' ').trim().slice(0, 180),
     status: page.saint.status === 'published' ? 'published' : 'draft',
     updatedAt: page.saint.updatedAt,
-    source: 'church' as const
+    source: 'church' as const,
+    calendarDay: calendarDate ? { date: calendarDate, title: page.calendarDay?.title || calendarDate } : null
   };
 
   return (

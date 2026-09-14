@@ -77,6 +77,12 @@ export type Saint = {
   source?: 'church';
   /** PHASE MULTILINGUAL-1 / P0.2 -- see Icon.translated. */
   translated?: boolean;
+  /** The calendar day this saint's commemoration belongs to, if any --
+   * mirrors the calendar-day cross-link already shown on icon/prayer/
+   * Gospel detail pages (app/icons/[slug]/page.tsx, LocalizedContent.tsx's
+   * prayer detail, app/church/gospel/[slug]/page.tsx). Only the two fields
+   * the link actually needs, not the full DTO. */
+  calendarDay?: { date: string; title: string } | null;
 };
 
 export type Prayer = {

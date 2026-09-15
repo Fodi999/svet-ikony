@@ -573,6 +573,8 @@ export function CalendarView({ icons, prayers, pages = [], calendar }: { icons: 
           oldDate={heroTodayOldDate}
           note={heroToday?.note}
           link={{ href: heroToday?.label ? heroTodayHref : '#calendar-grid', label: heroToday?.label ? t('more') : t('calendar') }}
+          imageUrl={heroToday?.imageUrl}
+          imageAlt={heroToday?.icon?.title || heroToday?.label}
         />
         <CalendarImageCard
           imageUrl={iconOfDay?.imageUrl}

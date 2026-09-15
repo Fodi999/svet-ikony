@@ -139,15 +139,60 @@ function ListPanelLinks({ item, detailHref, ariaLabel, labels }: { item: Calenda
   );
 }
 
-export function CalendarFeatureCard({ eyebrow, title, date, oldDate, note, link }: { eyebrow: string; title: string; date: string; oldDate?: string; note?: string; link: HeroLink }) {
+export function CalendarFeatureCard({
+  eyebrow,
+  title,
+  date,
+  oldDate,
+  note,
+  link,
+  imageUrl,
+  imageAlt,
+}: {
+  eyebrow: string;
+  title: string;
+  date: string;
+  oldDate?: string;
+  note?: string;
+  link: HeroLink;
+  /** The current CalendarDay's own imageUrl (see CalendarDay.imageUrl above
+   * -- the same field every grid/list day card already renders). When
+   * present, it replaces the decorative BrandLogo watermark as the card's
+   * background photo; when absent (no image generated/assigned yet for
+   * this day), the card falls back to exactly its previous look. */
+  imageUrl?: string;
+  imageAlt?: string;
+}) {
   const localeHref = useLocaleHref();
+  const hasImage = Boolean(imageUrl);
 
   return (
     <aside className={heroCardBaseClass}>
+      {hasImage ? (
+        <>
+          <StableImage
+            src={imageUrl!}
+            alt={imageAlt || title}
+            width={480}
+            height={600}
+            loading="eager"
+            className="absolute inset-0 z-0 size-full object-cover object-center [filter:saturate(.98)_contrast(1.02)]"
+          />
+          {/* Same dark-scrim technique CalendarImageCard already uses over its
+              own photo, sized to cover the whole card here (text is spread
+              through the card's full height, not just a bottom strip) so the
+              existing light-toned text classes below stay readable. */}
+          <div
+            className="absolute inset-0 z-[1] bg-[linear-gradient(160deg,rgba(11,11,10,.55)_0%,rgba(11,11,10,.82)_60%,rgba(8,8,7,.92)_100%)]"
+            aria-hidden="true"
+          />
+        </>
+      ) : (
+        <span className="absolute top-[clamp(16px,1.6vw,24px)] right-[clamp(16px,1.6vw,24px)] z-[1] grid place-items-center size-[clamp(72px,5.4vw,96px)] text-gold opacity-[.42] pointer-events-none max-[520px]:top-4 max-[520px]:right-3.5 max-[520px]:size-[66px] max-[520px]:opacity-[.34]">
+          <BrandLogo size={96} className="h-full w-full" />
+        </span>
+      )}
       <p className={heroEyebrowClass}>{eyebrow}</p>
-      <span className="absolute top-[clamp(16px,1.6vw,24px)] right-[clamp(16px,1.6vw,24px)] z-[1] grid place-items-center size-[clamp(72px,5.4vw,96px)] text-gold opacity-[.42] pointer-events-none max-[520px]:top-4 max-[520px]:right-3.5 max-[520px]:size-[66px] max-[520px]:opacity-[.34]">
-        <BrandLogo size={96} className="h-full w-full" />
-      </span>
       <strong className="relative z-[2] block min-w-0 max-w-full pr-[clamp(56px,4vw,92px)] text-[clamp(18px,1.05vw,23px)] font-extrabold leading-[1.14] text-foreground text-balance [overflow-wrap:anywhere] max-[900px]:text-[clamp(20px,4.8vw,28px)] max-[900px]:leading-[1.12] max-[520px]:text-[clamp(19px,5vw,25px)] max-[520px]:pr-12">
         {title}
       </strong>

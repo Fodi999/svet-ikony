@@ -29,6 +29,11 @@ import {
   getAlphabetLetter,
   createAlphabetLetter,
 } from "@/lib/d1/repositories/alphabet";
+import {
+  listProducts,
+  getProduct,
+  createProduct,
+} from "@/lib/d1/repositories/products";
 import { d1Run } from "@/lib/d1/db";
 import { ApiError } from "@/lib/d1/errors";
 import { CATALOG } from "./catalog";
@@ -77,10 +82,36 @@ export const adapters = {
     create: createAlphabetLetter,
     table: "church_alphabet_letters",
   },
+  /** Registered for Phase D (AI shop-copy on Product listings) --
+   * lib/church/product-ai-actions.ts's writeOrPropose() needs `products` in
+   * this map so createHumanAuthoredProposal() can resolve its table name
+   * for a PUBLISHED (isActive) product. Physically still `icon_order_options`
+   * (see lib/d1/repositories/products.ts's own doc comment). */
+  products: {
+    list: listProducts,
+    get: getProduct,
+    create: createProduct,
+    table: "icon_order_options",
+  },
 };
 type Entity = keyof typeof adapters;
+/**
+ * This entire endpoint models "a single draft row with `status` +
+ * `language` columns" (force `status: 'draft'` on write, block editing
+ * anything already published, forbid changing `language`/`slug`) --
+ * exactly what every other registered entity is, and exactly what
+ * `products` (icon_order_options) is NOT: no status column at all (only
+ * `is_active`), and one row holds all three languages as separate
+ * columns, not one row per language. `products` is therefore excluded
+ * from this generic AI-grant content endpoint entirely -- it's still a
+ * real `adapters`/`CATALOG` entry (needed by
+ * lib/ai-access/proposals.ts's createHumanAuthoredProposal, used by
+ * lib/church/product-ai-actions.ts for the human-admin shop-copy flow),
+ * just not reachable through this particular direct-draft-edit path.
+ */
+type DraftContentEntity = Exclude<Entity, "products">;
 export async function content(request: Request, entity: string, id?: string) {
-  if (!Object.hasOwn(adapters, entity))
+  if (!Object.hasOwn(adapters, entity) || entity === "products")
     throw ApiError.notFound("Unsupported module");
   if (
     !["GET", "POST", "PUT"].includes(request.method) ||
@@ -90,7 +121,7 @@ export async function content(request: Request, entity: string, id?: string) {
     throw ApiError.authorization("Operation unavailable");
   if (id && !/^[a-zA-Z0-9_-]{1,120}$/.test(id))
     throw ApiError.validation("Invalid ID");
-  const e = entity as Entity,
+  const e = entity as DraftContentEntity,
     adapter = adapters[e],
     write = request.method !== "GET",
     a = await requireAiAccess(request, e + (write ? ".write" : ".read")),
@@ -198,6 +229,11 @@ export async function content(request: Request, entity: string, id?: string) {
             throw ApiError.validation("Unsupported relationship");
           requireScope(a.scopes, target + ".read");
           const linked = await adapters[target as Entity].get(String(p[field]));
+          // products (icon_order_options) has no `language` column -- no
+          // current CATALOG entry's refs points at it; this guard makes
+          // that an explicit rejection rather than a silent type-unsafe
+          // access if one ever did.
+          if (!("language" in linked)) throw ApiError.validation("Unsupported relationship target");
           if (linked.language !== merged.language)
             throw ApiError.validation("Relationship language mismatch");
         }

@@ -720,6 +720,69 @@ describe("createHumanAuthoredProposal (migration 0022: human-admin creator, no A
   });
 });
 
+/**
+ * Phase D: AI shop-copy on Product listings. products (icon_order_options)
+ * is a brand-new CATALOG/adapters registration -- this proves patchFor()'s
+ * col() camelCase->snake_case conversion actually matches the REAL
+ * migrated schema's column names for every one of the 9 proposable
+ * fields, and that the deliberately-narrow allow-list actually rejects
+ * every commercial/operational field at the schema level (not just in
+ * product-ai-actions.ts's own code -- see CATALOG.products's own doc
+ * comment in lib/ai-access/catalog.ts for why this matters).
+ */
+describe("createHumanAuthoredProposal -- products (Phase D shop-copy)", () => {
+  const localRequest = () => new Request("http://localhost/api/admin/church-content/products");
+  let productId: string;
+
+  beforeEach(() => {
+    productId = "fixture-product-1";
+    state.db
+      .prepare("INSERT INTO icon_order_options(id, slug, is_active) VALUES(?,?,1)")
+      .run(productId, "fixture-product");
+  });
+
+  it("accepts a patch touching every one of the 9 proposable marketing/SEO fields", async () => {
+    const p = await createHumanAuthoredProposal(localRequest(), "owner", "products", productId, {
+      fullDescriptionUk: "Розгорнутий опис УК",
+      fullDescriptionRu: "Полное описание РУ",
+      fullDescriptionEn: "EN full description",
+      seoTitleUk: "SEO заголовок УК",
+      seoTitleRu: "SEO заголовок РУ",
+      seoTitleEn: "EN SEO title",
+      seoDescriptionUk: "SEO опис УК",
+      seoDescriptionRu: "SEO описание РУ",
+      seoDescriptionEn: "EN SEO description",
+    }, "Generate: shop copy");
+    expect(p.status).toBe("pending");
+  });
+
+  it.each([
+    ["priceCents", 999999],
+    ["currency", "USD"],
+    ["stockStatus", "unavailable"],
+    ["productionTime", "1 день"],
+    ["consecrationAvailable", true],
+    ["isActive", false],
+    ["featured", true],
+    ["sortOrder", 5],
+    ["nameUk", "Нова назва"],
+    ["slug", "nova-nazva"],
+    ["categoryId", "cat-x"],
+    ["photoUrl", "media/products/x/main/x.png"],
+    ["galleryUrls", ["media/products/x/gallery/x.png"]],
+  ])("rejects a proposal patch touching the protected field %s -- never modifiable via AI shop-copy", async (field, value) => {
+    await expect(
+      createHumanAuthoredProposal(localRequest(), "owner", "products", productId, { [field]: value }, "reason"),
+    ).rejects.toThrow();
+  });
+
+  it("rejects a field the real schema doesn't have", async () => {
+    await expect(
+      createHumanAuthoredProposal(localRequest(), "owner", "products", productId, { notAField: "x" }, "reason"),
+    ).rejects.toThrow();
+  });
+});
+
 describe("human editor working copy", () => {
   it("combines text and image in fields without changing the published row", async () => {
     await proposal({ history: "Working text" });

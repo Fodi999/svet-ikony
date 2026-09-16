@@ -133,4 +133,39 @@ export const CATALOG = {
     numbers: ["sortOrder", "numericValue"],
     refs: {},
   },
+  /**
+   * Phase D: AI shop-copy on Product listings. Deliberately excludes
+   * EVERY commercial/operational field (nameUk/Ru/En, slug, description,
+   * categoryId, photoUrl, galleryUrls, priceCents, currency,
+   * productionTime, consecrationAvailable, stockStatus, featured,
+   * isActive, sortOrder) from `strings`/`numbers`/`arrays`/`booleans` --
+   * NOT an oversight, the enforcement mechanism itself: patchFor() rejects
+   * any patch key that isn't in this allow-list with "Unsupported proposal
+   * field", so no code path (current or future) can ever propose a change
+   * to price/stock/production time/consecration/name/slug/category/photos
+   * through this entity's AI-proposal system, matching the explicit "never
+   * modify" requirement at the schema level, not just in
+   * product-ai-actions.ts's own code. Only the 9 marketing/SEO text
+   * columns are ever proposable. `required` is empty because none of
+   * those 9 are DB-required (nameUk/slug ARE required, but neither is
+   * proposable here at all, so listing them would be misleading).
+   */
+  products: {
+    path: "products",
+    required: [],
+    text: ["fullDescriptionUk"],
+    image: "photoUrl",
+    strings: [
+      "fullDescriptionUk",
+      "fullDescriptionRu",
+      "fullDescriptionEn",
+      "seoTitleUk",
+      "seoTitleRu",
+      "seoTitleEn",
+      "seoDescriptionUk",
+      "seoDescriptionRu",
+      "seoDescriptionEn",
+    ],
+    refs: {},
+  },
 } as const;

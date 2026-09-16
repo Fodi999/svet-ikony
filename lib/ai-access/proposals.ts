@@ -145,6 +145,12 @@ async function patchFor(
       const linkedEntity = entity(spec.refs[k]);
       if (scopes) requireScope(scopes, linkedEntity + ".read");
       const linked = await adapters[linkedEntity].get(String(v));
+      // products (icon_order_options) has neither `language` nor `status` --
+      // no current CATALOG entry's refs points at it, and this guard makes
+      // that an explicit rejection rather than a silent type-unsafe access
+      // if one ever did.
+      if (!("language" in linked) || !("status" in linked))
+        throw ApiError.validation("Unsupported relationship target");
       if (
         linked.language !== before.language ||
         (before.status === "published" && linked.status !== "published")

@@ -95,6 +95,15 @@ class FakeStatement {
       return [row];
     }
 
+    // linkedIconGroupExists(groupId) -- products.ts's own safety check that
+    // a NEW linkedIconTranslationGroupId actually matches a real icon,
+    // unrelated to this file's write-isolation claims. Always answers
+    // "found" so the round-trip tests below can set a new group without
+    // this fake also having to model church_icons.
+    if (/^SELECT EXISTS\(SELECT 1 FROM church_icons WHERE translation_group_id = \?\) AS found$/i.test(sql)) {
+      return [{ found: 1 }];
+    }
+
     throw new Error(`FakeProductsDb: unrecognized statement shape: ${sql}`);
   }
 }
@@ -107,7 +116,7 @@ vi.mock('@opennextjs/cloudflare', () => ({
 
 const { updateProduct } = await import('./products');
 
-function seedProductRow() {
+function seedProductRow(overrides: Partial<Row> = {}) {
   fakeDb.tables.icon_order_options.push({
     id: 'product-1',
     slug: 'ikona-mykolaya',
@@ -138,6 +147,7 @@ function seedProductRow() {
     sort_order: 0,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
+    ...overrides,
   });
 }
 
@@ -256,5 +266,67 @@ describe('updateProduct -- write isolation across name/fullDescription/seoTitle/
     expect(row.name_ru).toBe(''); // overwritten, NOT preserved
     expect(row.name_en).toBe('Icon of Nicholas'); // still untouched (key genuinely absent)
     expect(row.name_uk).toBe('Ікона Миколая'); // still untouched
+  });
+});
+
+/**
+ * Phase D prerequisite regression: svetikony-admin's admin-facing
+ * `linkedIconId` was hardcoded to `undefined` on both read and write
+ * (lib/api/http/products.ts), so a Product -> Icon link an admin picked in
+ * the UI silently vanished on save -- even though this repository layer
+ * itself already round-tripped `linkedIconTranslationGroupId` correctly
+ * the whole time. These tests lock in that this layer was never the
+ * problem: resolveUuidSentinel's omitted/cleared/set contract holds for
+ * this specific field exactly like it does for categoryId.
+ */
+describe('updateProduct -- linked_icon_translation_group_id round-trip (Product -> Icon linkage)', () => {
+  beforeEach(() => fakeDb.reset());
+
+  it('preserves the existing link when the payload omits linkedIconTranslationGroupId entirely', async () => {
+    seedProductRow({ linked_icon_translation_group_id: 'icon-mykolai' });
+
+    const updated = await updateProduct('product-1', { nameUk: 'Ікона Миколая (нове)' });
+
+    expect(updated.linkedIconTranslationGroupId).toBe('icon-mykolai');
+    const row = fakeDb.tables.icon_order_options.find((r) => r.id === 'product-1')!;
+    expect(row.linked_icon_translation_group_id).toBe('icon-mykolai');
+  });
+
+  it('sets a new link when linkedIconTranslationGroupId is provided', async () => {
+    seedProductRow({ linked_icon_translation_group_id: null });
+
+    const updated = await updateProduct('product-1', { linkedIconTranslationGroupId: 'icon-mykolai' });
+
+    expect(updated.linkedIconTranslationGroupId).toBe('icon-mykolai');
+    const row = fakeDb.tables.icon_order_options.find((r) => r.id === 'product-1')!;
+    expect(row.linked_icon_translation_group_id).toBe('icon-mykolai');
+  });
+
+  it('replaces an existing link with a different one', async () => {
+    seedProductRow({ linked_icon_translation_group_id: 'icon-mykolai' });
+
+    const updated = await updateProduct('product-1', { linkedIconTranslationGroupId: 'icon-troitsa' });
+
+    expect(updated.linkedIconTranslationGroupId).toBe('icon-troitsa');
+  });
+
+  it('clears the link when linkedIconTranslationGroupId is the empty-string sentinel -- clearing must actually clear it', async () => {
+    seedProductRow({ linked_icon_translation_group_id: 'icon-mykolai' });
+
+    const updated = await updateProduct('product-1', { linkedIconTranslationGroupId: '' });
+
+    expect(updated.linkedIconTranslationGroupId).toBeNull();
+    const row = fakeDb.tables.icon_order_options.find((r) => r.id === 'product-1')!;
+    expect(row.linked_icon_translation_group_id).toBeNull();
+  });
+
+  it('leaves the link untouched by an unrelated field edit, symmetric with the *_uk/*_ru/*_en isolation proven above', async () => {
+    seedProductRow({ linked_icon_translation_group_id: 'icon-mykolai' });
+
+    await updateProduct('product-1', { priceCents: 250000, featured: true });
+
+    const row = fakeDb.tables.icon_order_options.find((r) => r.id === 'product-1')!;
+    expect(row.linked_icon_translation_group_id).toBe('icon-mykolai');
+    expect(row.price_cents).toBe(250000);
   });
 });

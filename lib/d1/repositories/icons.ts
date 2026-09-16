@@ -25,6 +25,10 @@ type Row = {
   price_cents: number | null;
   currency: string;
   consecration_available: number;
+  history: string | null;
+  saint_image_description: string | null;
+  materials: string | null;
+  dimensions: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -50,6 +54,10 @@ export type ChurchIconDto = {
   priceCents: number | null;
   currency: string;
   consecrationAvailable: boolean;
+  history: string | null;
+  saintImageDescription: string | null;
+  materials: string | null;
+  dimensions: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -72,6 +80,10 @@ export type ChurchIconPayload = Partial<{
   priceCents: number | null;
   currency: string;
   consecrationAvailable: boolean;
+  history: string | null;
+  saintImageDescription: string | null;
+  materials: string | null;
+  dimensions: string | null;
 }>;
 
 function toDto(row: Row): ChurchIconDto {
@@ -96,6 +108,10 @@ function toDto(row: Row): ChurchIconDto {
     priceCents: row.price_cents,
     currency: row.currency,
     consecrationAvailable: toD1BoolRead(row.consecration_available),
+    history: row.history,
+    saintImageDescription: row.saint_image_description,
+    materials: row.materials,
+    dimensions: row.dimensions,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -108,7 +124,7 @@ function toD1BoolRead(value: number): boolean {
 }
 
 const COLUMNS =
-  'id, calendar_day_id, title, slug, image_url, gallery_urls, saint_name, feast_name, description, language, translation_group_id, status, order_enabled, order_block_text, production_time, price_cents, currency, consecration_available, created_at, updated_at';
+  'id, calendar_day_id, title, slug, image_url, gallery_urls, saint_name, feast_name, description, language, translation_group_id, status, order_enabled, order_block_text, production_time, price_cents, currency, consecration_available, history, saint_image_description, materials, dimensions, created_at, updated_at';
 
 export async function listIcons(params: { calendarDayId?: string; language?: string } = {}) {
   const rows = await d1All<Row>(
@@ -143,8 +159,9 @@ export async function createIcon(payload: ChurchIconPayload): Promise<ChurchIcon
     `INSERT INTO church_icons
        (calendar_day_id, title, slug, image_url, gallery_urls, saint_name, feast_name, description, language,
         status, order_enabled, order_block_text, production_time, price_cents, currency, consecration_available,
+        history, saint_image_description, materials, dimensions,
         translation_group_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         COALESCE((SELECT translation_group_id FROM church_icons WHERE slug = ? LIMIT 1), ?))
      RETURNING ${COLUMNS}`,
     payload.calendarDayId ?? null,
@@ -163,6 +180,10 @@ export async function createIcon(payload: ChurchIconPayload): Promise<ChurchIcon
     payload.priceCents ?? null,
     payload.currency ?? 'UAH',
     toD1Bool(payload.consecrationAvailable),
+    payload.history ?? null,
+    payload.saintImageDescription ?? null,
+    payload.materials ?? null,
+    payload.dimensions ?? null,
     slug,
     fallbackGroupId
   );
@@ -178,6 +199,7 @@ export async function updateIcon(id: string, payload: ChurchIconPayload): Promis
        calendar_day_id = ?, title = ?, slug = ?, image_url = ?, gallery_urls = ?, saint_name = ?, feast_name = ?,
        description = ?, language = ?, status = ?, order_enabled = ?, order_block_text = ?,
        production_time = ?, price_cents = ?, currency = ?, consecration_available = ?,
+       history = ?, saint_image_description = ?, materials = ?, dimensions = ?,
        translation_group_id = COALESCE(
          (SELECT other.translation_group_id FROM church_icons other WHERE other.slug = ? AND other.id != ? LIMIT 1),
          (SELECT translation_group_id FROM church_icons WHERE id = ?)
@@ -200,6 +222,10 @@ export async function updateIcon(id: string, payload: ChurchIconPayload): Promis
     payload.priceCents !== undefined ? payload.priceCents : current.priceCents,
     payload.currency ?? current.currency,
     toD1Bool(payload.consecrationAvailable ?? current.consecrationAvailable),
+    payload.history !== undefined ? payload.history : current.history,
+    payload.saintImageDescription !== undefined ? payload.saintImageDescription : current.saintImageDescription,
+    payload.materials !== undefined ? payload.materials : current.materials,
+    payload.dimensions !== undefined ? payload.dimensions : current.dimensions,
     slug,
     id,
     id,

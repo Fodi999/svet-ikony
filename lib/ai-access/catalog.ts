@@ -53,6 +53,8 @@ export const CATALOG = {
       "saintName",
       "feastName",
       "description",
+      "history",
+      "saintImageDescription",
       "language",
     ],
     arrays: ["galleryUrls"],

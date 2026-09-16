@@ -101,6 +101,7 @@ async function patchFor(
     ...(spec.booleans ?? []),
     ...Object.keys(spec.refs),
     ...(e === "calendar" ? ["imageMetadata"] : []),
+    ...(e === "icons" ? ["galleryMetadata"] : []),
   ]);
   for (const [k, v] of Object.entries(patch)) {
     if (
@@ -112,6 +113,9 @@ async function patchFor(
     if (k === "imageMetadata") {
       if (v !== null && !isValidCalendarImageMetadata(v))
         throw ApiError.validation("Invalid image metadata");
+    } else if (k === "galleryMetadata") {
+      if (v !== null && !isValidIconGalleryMetadata(v))
+        throw ApiError.validation("Invalid gallery metadata");
     } else if (spec.numbers?.includes(k)) {
       if (!(e === "alphabet" && k === "numericValue" && v === null) && (typeof v !== "number" || !Number.isFinite(v)))
         throw ApiError.validation("Invalid number");
@@ -185,6 +189,31 @@ function isValidCalendarImageMetadata(v: unknown): boolean {
     const value = row[key];
     if (typeof value !== "string" || !value.trim()) return false;
     if ((IMAGE_METADATA_URL_FIELDS as readonly string[]).includes(key) && !safeImage(value)) return false;
+  }
+  return true;
+}
+/** Mirrors IconGalleryMetadata (lib/d1/repositories/icons.ts) field-for-
+ * field -- a JSON object keyed by each gallery image's own URL/key (see
+ * that type's own doc comment for why it's keyed this way rather than
+ * index-aligned), used by icon-portfolio-actions.ts's
+ * addIconPortfolioImages() confirm step so an AI-generated portfolio
+ * photo's provenance (which source photo/preset/when) survives the
+ * proposal round-trip on a PUBLISHED icon exactly like it does for a
+ * DRAFT icon's direct write. Every key must itself be a safe image
+ * reference (the gallery photo it describes) and every entry must be
+ * exactly the known shape -- no extra fields, no free-form text. */
+function isValidIconGalleryMetadata(v: unknown): boolean {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  for (const [key, entry] of Object.entries(v as Row)) {
+    if (!safeImage(key)) return false;
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return false;
+    const row = entry as Row;
+    if (row.origin !== "ai_generated_portfolio") return false;
+    if (typeof row.sourceImageUrl !== "string" || !row.sourceImageUrl.trim() || !safeImage(row.sourceImageUrl)) return false;
+    if (typeof row.preset !== "string" || !row.preset.trim()) return false;
+    if (typeof row.generatedAt !== "string" || !row.generatedAt.trim()) return false;
+    const allowedKeys = ["origin", "sourceImageUrl", "preset", "generatedAt"];
+    if (Object.keys(row).some((k) => !allowedKeys.includes(k))) return false;
   }
   return true;
 }

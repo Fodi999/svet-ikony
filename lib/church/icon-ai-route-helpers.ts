@@ -23,3 +23,19 @@ export function handleIconAiAction(
     return Response.json(await action(id, { request, adminUserId: claims.sub }));
   });
 }
+
+/** Mirrors lib/church/calendar-ai-route-helpers.ts's own
+ * handleCalendarAiActionWithBody -- for icon-portfolio-actions.ts's
+ * addIconPortfolioImages(), the only Icon AI action that takes a body. */
+export function handleIconAiActionWithBody<TBody>(
+  request: Request,
+  params: Promise<{ id: string }>,
+  action: (iconId: string, body: TBody, context: IconAiActionContext) => Promise<unknown>
+): Promise<Response> {
+  return withErrors(async () => {
+    const claims = await requireSuperAdmin(request);
+    const { id } = await params;
+    const body = (await request.json()) as TBody;
+    return Response.json(await action(id, body, { request, adminUserId: claims.sub }));
+  });
+}

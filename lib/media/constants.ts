@@ -19,7 +19,7 @@ export const ALLOWED_MODULE_PURPOSES: Record<string, readonly string[]> = {
   prayers: ['image', 'audio'],
   saints: ['main'],
   articles: ['cover'],
-  icons: ['main'],
+  icons: ['main', 'portfolio'], // 'portfolio' -- AI-generated lifestyle/portfolio variants of the icon's own main photo (see lib/church/icon-portfolio-actions.ts), stored separately, never overwriting 'main'
   calendar: ['main'], // church_calendar_days.imageId — admin's Calendar Day "Медіа" tab
   church: ['gallery'],
   categories: ['main'],

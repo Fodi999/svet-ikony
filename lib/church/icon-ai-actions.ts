@@ -32,15 +32,17 @@ export type IconAiActionResult =
   | { mode: 'direct'; icon: ChurchIconDto }
   | { mode: 'proposal'; icon: ChurchIconDto; proposalId: string };
 
-function assertAutomaticEditAllowed(icon: ChurchIconDto): void {
+export function assertAutomaticEditAllowed(icon: ChurchIconDto): void {
   if (icon.status !== 'draft' && icon.status !== 'published')
     throw ApiError.authorization(`Automatic edits are refused for status "${icon.status}"; this record requires human review`);
 }
 
 /** Same write-routing rule as calendar-ai-actions.ts's writeOrPropose():
  * draft writes directly, published becomes a human-authored proposal, any
- * other status is refused outright. */
-async function writeOrPropose(
+ * other status is refused outright. Exported for reuse by
+ * icon-portfolio-actions.ts's addIconPortfolioImages() confirm step -- the
+ * same draft-direct/published-proposal policy applies there verbatim. */
+export async function writeOrPropose(
   icon: ChurchIconDto,
   patch: Record<string, unknown>,
   context: IconAiActionContext,
@@ -89,7 +91,7 @@ function buildFacts(icon: ChurchIconDto, primary: ChurchIconDto | null): string 
   return parts.join('\n\n');
 }
 
-async function requireOpenAi() {
+export async function requireOpenAi() {
   const config = await getOpenAiConfig();
   if (!config) throw ApiError.validation('OpenAI is not configured');
   return config;

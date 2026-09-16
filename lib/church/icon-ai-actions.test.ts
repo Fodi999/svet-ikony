@@ -44,6 +44,7 @@ function icon(overrides: Partial<ChurchIconDto> = {}): ChurchIconDto {
     slug: 'svt-mykolaia',
     imageUrl: '',
     galleryUrls: [],
+    galleryMetadata: {},
     saintName: 'Святитель Миколай',
     feastName: '',
     description: '',

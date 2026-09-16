@@ -2,6 +2,25 @@ import { d1All, d1First, d1Run } from '../db';
 import { ApiError } from '../errors';
 import { fromD1Json, genId, IS_GLOBAL_DEFAULT, SVETIKONY_SITE_ID, toD1Bool, toD1Json } from '../mappers';
 
+/** Provenance of one AI-generated portfolio/lifestyle gallery photo (see
+ * lib/church/icon-portfolio-actions.ts) -- `gallery_metadata` (migration
+ * 0025) is a JSON object of `{ [galleryImageKey]: IconGalleryImageMetadata }`,
+ * keyed by the gallery photo's own R2 key rather than aligned by array
+ * index, so reordering/removing gallery photos (already supported by the
+ * admin UI) can only ever orphan a metadata entry, never mislabel a
+ * different photo. A manually-uploaded gallery photo simply has no entry
+ * here at all. */
+export type IconGalleryImageMetadata = {
+  origin: 'ai_generated_portfolio';
+  /** The icon's own main photo key AT GENERATION TIME -- never the gallery
+   * image's own key, and never altered after the fact even if the main
+   * photo is later replaced. */
+  sourceImageUrl: string;
+  preset: string;
+  generatedAt: string;
+};
+export type IconGalleryMetadata = Record<string, IconGalleryImageMetadata>;
+
 /** Mirrors assistant/src/interfaces/http/church_content.rs
  * list_icons / get_icon (get_icon_row) / create_icon / update_icon /
  * delete_icon, minus site_id/is_global filtering. */
@@ -13,6 +32,7 @@ type Row = {
   slug: string;
   image_url: string;
   gallery_urls: string;
+  gallery_metadata: string | null;
   saint_name: string;
   feast_name: string;
   description: string;
@@ -41,6 +61,7 @@ export type ChurchIconDto = {
   slug: string;
   imageUrl: string;
   galleryUrls: string[];
+  galleryMetadata: IconGalleryMetadata;
   saintName: string;
   feastName: string;
   description: string;
@@ -68,6 +89,7 @@ export type ChurchIconPayload = Partial<{
   slug: string;
   imageUrl: string;
   galleryUrls: string[];
+  galleryMetadata: IconGalleryMetadata;
   saintName: string;
   feastName: string;
   description: string;
@@ -95,6 +117,7 @@ function toDto(row: Row): ChurchIconDto {
     slug: row.slug,
     imageUrl: row.image_url,
     galleryUrls: fromD1Json<string[]>(row.gallery_urls, []),
+    galleryMetadata: fromD1Json<IconGalleryMetadata>(row.gallery_metadata, {}),
     saintName: row.saint_name,
     feastName: row.feast_name,
     description: row.description,
@@ -124,7 +147,7 @@ function toD1BoolRead(value: number): boolean {
 }
 
 const COLUMNS =
-  'id, calendar_day_id, title, slug, image_url, gallery_urls, saint_name, feast_name, description, language, translation_group_id, status, order_enabled, order_block_text, production_time, price_cents, currency, consecration_available, history, saint_image_description, materials, dimensions, created_at, updated_at';
+  'id, calendar_day_id, title, slug, image_url, gallery_urls, gallery_metadata, saint_name, feast_name, description, language, translation_group_id, status, order_enabled, order_block_text, production_time, price_cents, currency, consecration_available, history, saint_image_description, materials, dimensions, created_at, updated_at';
 
 export async function listIcons(params: { calendarDayId?: string; language?: string } = {}) {
   const rows = await d1All<Row>(
@@ -157,11 +180,11 @@ export async function createIcon(payload: ChurchIconPayload): Promise<ChurchIcon
 
   const row = await d1First<Row>(
     `INSERT INTO church_icons
-       (calendar_day_id, title, slug, image_url, gallery_urls, saint_name, feast_name, description, language,
+       (calendar_day_id, title, slug, image_url, gallery_urls, gallery_metadata, saint_name, feast_name, description, language,
         status, order_enabled, order_block_text, production_time, price_cents, currency, consecration_available,
         history, saint_image_description, materials, dimensions,
         translation_group_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         COALESCE((SELECT translation_group_id FROM church_icons WHERE slug = ? LIMIT 1), ?))
      RETURNING ${COLUMNS}`,
     payload.calendarDayId ?? null,
@@ -169,6 +192,7 @@ export async function createIcon(payload: ChurchIconPayload): Promise<ChurchIcon
     slug,
     payload.imageUrl ?? '',
     toD1Json(payload.galleryUrls ?? []),
+    payload.galleryMetadata ? JSON.stringify(payload.galleryMetadata) : null,
     payload.saintName ?? '',
     payload.feastName ?? '',
     payload.description ?? '',
@@ -196,7 +220,7 @@ export async function updateIcon(id: string, payload: ChurchIconPayload): Promis
 
   const row = await d1First<Row>(
     `UPDATE church_icons SET
-       calendar_day_id = ?, title = ?, slug = ?, image_url = ?, gallery_urls = ?, saint_name = ?, feast_name = ?,
+       calendar_day_id = ?, title = ?, slug = ?, image_url = ?, gallery_urls = ?, gallery_metadata = ?, saint_name = ?, feast_name = ?,
        description = ?, language = ?, status = ?, order_enabled = ?, order_block_text = ?,
        production_time = ?, price_cents = ?, currency = ?, consecration_available = ?,
        history = ?, saint_image_description = ?, materials = ?, dimensions = ?,
@@ -211,6 +235,7 @@ export async function updateIcon(id: string, payload: ChurchIconPayload): Promis
     slug,
     payload.imageUrl ?? current.imageUrl,
     toD1Json(payload.galleryUrls ?? current.galleryUrls),
+    payload.galleryMetadata !== undefined ? JSON.stringify(payload.galleryMetadata) : JSON.stringify(current.galleryMetadata),
     payload.saintName ?? current.saintName,
     payload.feastName ?? current.feastName,
     payload.description ?? current.description,

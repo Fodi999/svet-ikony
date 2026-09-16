@@ -62,14 +62,15 @@ class FakeStatement {
     }
 
     // updateIcon(id, payload) -- mirrors icons.ts's exact UPDATE, param order:
-    // calendar_day_id, title, slug, image_url, gallery_urls, saint_name, feast_name,
-    // description, language, status, order_enabled, order_block_text, production_time,
-    // price_cents, currency, consecration_available, history, saint_image_description,
-    // materials, dimensions, [slug subquery], [id != subquery],
+    // calendar_day_id, title, slug, image_url, gallery_urls, gallery_metadata,
+    // saint_name, feast_name, description, language, status, order_enabled,
+    // order_block_text, production_time, price_cents, currency,
+    // consecration_available, history, saint_image_description, materials,
+    // dimensions, [slug subquery], [id != subquery],
     // [id fallback subquery], [id WHERE clause]
     if (/^UPDATE church_icons SET/i.test(sql)) {
       const [
-        calendar_day_id, title, slug, image_url, gallery_urls, saint_name, feast_name,
+        calendar_day_id, title, slug, image_url, gallery_urls, gallery_metadata, saint_name, feast_name,
         description, language, status, order_enabled, order_block_text, production_time,
         price_cents, currency, consecration_available,
         history, saint_image_description, materials, dimensions,
@@ -82,7 +83,7 @@ class FakeStatement {
       const row = this.db.tables.church_icons.find((r) => r.id === whereId);
       if (!row) return [];
       Object.assign(row, {
-        calendar_day_id, title, slug, image_url, gallery_urls, saint_name, feast_name,
+        calendar_day_id, title, slug, image_url, gallery_urls, gallery_metadata, saint_name, feast_name,
         description, language, status, order_enabled, order_block_text, production_time,
         price_cents, currency, consecration_available,
         history, saint_image_description, materials, dimensions,
@@ -113,6 +114,7 @@ function seedIconRow(overrides: Row): Row {
     slug: 'svt-mykolai',
     image_url: '',
     gallery_urls: '[]',
+    gallery_metadata: null,
     saint_name: '',
     feast_name: '',
     description: 'Опис українською',

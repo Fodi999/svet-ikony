@@ -638,6 +638,86 @@ describe("createHumanAuthoredProposal (migration 0022: human-admin creator, no A
       ).rejects.toThrow();
     });
   });
+
+  // Regression guard for Phase C (icon portfolio photos): addIconPortfolioImages
+  // (lib/church/icon-portfolio-actions.ts) proposes a galleryUrls + galleryMetadata
+  // patch together on a PUBLISHED icon -- the exact shape IconGalleryMetadata
+  // actually produces must round-trip through this real, migrated schema, not
+  // just the hand-rolled unit test's mocked patchFor.
+  describe("galleryMetadata shapes real icon portfolio generation actually produces", () => {
+    let iconId: string;
+    const portfolioKey = (id2: string) => `media/icons/${id2}/portfolio/22222222-2222-2222-2222-222222222222.png`;
+    const mainKey = (id2: string) => `media/icons/${id2}/main/11111111-1111-1111-1111-111111111111.png`;
+
+    beforeEach(() => {
+      iconId = "fixture-icon-1";
+      state.db
+        .prepare(
+          "INSERT INTO church_icons(id, title, slug, status, language, image_url) VALUES(?,?,?,?,?,?)",
+        )
+        .run(iconId, "Fixture Icon", "fixture-icon", "published", "uk", mainKey(iconId));
+    });
+
+    it("accepts the exact shape addIconPortfolioImages produces (galleryUrls + galleryMetadata together)", async () => {
+      const p = await createHumanAuthoredProposal(localRequest(), "owner", "icons", iconId, {
+        galleryUrls: [portfolioKey(iconId)],
+        galleryMetadata: {
+          [portfolioKey(iconId)]: {
+            origin: "ai_generated_portfolio",
+            sourceImageUrl: mainKey(iconId),
+            preset: "table_candle",
+            generatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        },
+      }, "Додати AI-портфоліо фото до галереї");
+      expect(p.status).toBe("pending");
+    });
+
+    it("rejects an invalid origin", async () => {
+      await expect(
+        createHumanAuthoredProposal(localRequest(), "owner", "icons", iconId, {
+          galleryMetadata: { [portfolioKey(iconId)]: { origin: "made_up", sourceImageUrl: mainKey(iconId), preset: "table_candle", generatedAt: "2026-01-01T00:00:00.000Z" } },
+        }, "reason"),
+      ).rejects.toThrow();
+    });
+
+    it("rejects a key that isn't itself a safe image reference", async () => {
+      await expect(
+        createHumanAuthoredProposal(localRequest(), "owner", "icons", iconId, {
+          galleryMetadata: { "not-a-safe-key": { origin: "ai_generated_portfolio", sourceImageUrl: mainKey(iconId), preset: "table_candle", generatedAt: "2026-01-01T00:00:00.000Z" } },
+        }, "reason"),
+      ).rejects.toThrow();
+    });
+
+    it("rejects an unsafe sourceImageUrl", async () => {
+      await expect(
+        createHumanAuthoredProposal(localRequest(), "owner", "icons", iconId, {
+          galleryMetadata: { [portfolioKey(iconId)]: { origin: "ai_generated_portfolio", sourceImageUrl: "javascript:alert(1)", preset: "table_candle", generatedAt: "2026-01-01T00:00:00.000Z" } },
+        }, "reason"),
+      ).rejects.toThrow();
+    });
+
+    it("rejects an entry missing a required field", async () => {
+      await expect(
+        createHumanAuthoredProposal(localRequest(), "owner", "icons", iconId, {
+          galleryMetadata: { [portfolioKey(iconId)]: { origin: "ai_generated_portfolio", sourceImageUrl: mainKey(iconId), generatedAt: "2026-01-01T00:00:00.000Z" } },
+        }, "reason"),
+      ).rejects.toThrow();
+    });
+
+    it("rejects a field the real type doesn't have", async () => {
+      await expect(
+        createHumanAuthoredProposal(localRequest(), "owner", "icons", iconId, {
+          galleryMetadata: { [portfolioKey(iconId)]: { origin: "ai_generated_portfolio", sourceImageUrl: mainKey(iconId), preset: "table_candle", generatedAt: "2026-01-01T00:00:00.000Z", notAField: "x" } },
+        }, "reason"),
+      ).rejects.toThrow();
+    });
+
+    it("accepts galleryMetadata: null (clearing it)", async () => {
+      const p = await createHumanAuthoredProposal(localRequest(), "owner", "icons", iconId, { galleryMetadata: null }, "reason");
+      expect(p.status).toBe("pending");
+    });
+  });
 });
 
 describe("human editor working copy", () => {

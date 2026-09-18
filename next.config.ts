@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
+import TerserPlugin from 'terser-webpack-plugin';
 
 // Initialize bindings before parallel page queries can start separate runtimes
 // against the same local D1 SQLite files.
@@ -83,6 +84,13 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  webpack(config) {
+    // SWC emits invalid octal escapes in @spz-loader/core's embedded WASM.
+    // Keep minification, but use Terser and syntax-check the emitted chunks.
+    config.optimization.minimizer = [new TerserPlugin({parallel: false})];
+    return config;
+  },
+  turbopack: {},
   distDir: process.env.EARTH_ASSET_MODE === 'local' ? '.next-earth-preview' : '.next',
   images: {
     unoptimized: true,

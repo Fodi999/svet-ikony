@@ -9,7 +9,7 @@
     "earth:rollback": "node scripts/earth/rollback.mjs",
     "terrain:alps:generate": "python3 scripts/terrain/generate_alps_dem.py",
     "terrain:alps:upload": "node scripts/terrain/upload-alps.mjs",
-    "next:build": "next build",
+    "next:build": "next build --webpack && node scripts/terrain/check-client-syntax.mjs",
     "build": "node scripts/terrain/cesium-runtime.mjs && opennextjs-cloudflare build",
     "start": "next start",
     "lint": "eslint .",
@@ -46,6 +46,7 @@
     "eslint-config-next": "^16.2.9",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4.3.3",
+    "terser-webpack-plugin": "5.3.14",
     "typescript": "^5",
     "vitest": "^3.2.7",
     "wrangler": "^4.116.0"

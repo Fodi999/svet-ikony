@@ -43,19 +43,37 @@ if (upload) {
   const proxy=await getPlatformProxy({configPath,persist:false,envFiles:[],remoteBindings:true});
   try {
   const target=proxy.env.RELEASE_BUCKET;
-  let completed=0;
-  for (const file of files) {
+  async function retry(operation) {
+    for(let attempt=0;;attempt++) {
+      try {return await operation();}
+      catch(error) {
+        if(attempt>=4)throw error;
+        await new Promise(resolve=>setTimeout(resolve,1000*2**attempt));
+      }
+    }
+  }
+  let completed=0, cursor=0;
+  async function worker() {
+  while(cursor<files.length) {
+    const file=files[cursor++];
     const local = path.join(build,file.path);
     const content=await readFile(local);
     if (hash(content) !== file.sha256) throw new Error(`Asset changed: ${file.path}`);
     const key = `${prefix}data/${file.path}`;
     const type = file.path.endsWith('.jpg')?'image/jpeg':file.path.endsWith('.png')?'image/png':file.path.endsWith('.json')?'application/json':'application/octet-stream';
-    await target.put(key,content,{onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:type},customMetadata:{sha256:file.sha256}});
-    const readback=await target.get(key);
-    if (!readback || hash(Buffer.from(await readback.arrayBuffer())) !== file.sha256) throw new Error(`Readback mismatch: ${file.path}`);
+    await retry(async()=>{
+      const existing=await target.head(key);
+      if(!existing)await target.put(key,content,{onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:type},customMetadata:{sha256:file.sha256}});
+      const readback=await target.get(key);
+      if (!readback || hash(Buffer.from(await readback.arrayBuffer())) !== file.sha256) throw new Error(`Readback mismatch: ${file.path}`);
+    });
     if(++completed%50===0)console.log(`Verified ${completed}/${files.length}`);
   }
-  await target.put(`${prefix}READY.json`,bytes,{onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});
+  }
+  const results=await Promise.allSettled(Array.from({length:4},()=>worker()));
+  const failure=results.find(result=>result.status==='rejected');
+  if(failure)throw failure.reason;
+  await retry(()=>target.put(`${prefix}READY.json`,bytes,{onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}}));
   console.log(`Ready: ${release}. Engine activation and deployment are separate steps.`);
   } finally {await proxy.dispose();}
 }

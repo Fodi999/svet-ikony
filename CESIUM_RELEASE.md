@@ -31,6 +31,7 @@ The production page defaults to Cesium. `?engine=three` selects the retained
 Three renderer for immediate per-page fallback. Redeploy the preceding Worker
 version for a site-wide rollback. Immutable release objects can remain in R2;
 rollback does not require deleting data or changing D1.
+Pre-release Worker version: `a97de776-af6c-45ea-9411-955ad19166bd`.
 
 ## Known limitations
 

@@ -35,6 +35,15 @@ function button(label: string) { const value = [...container.querySelectorAll('b
 async function click(element: Element) { await act(async () => { element.dispatchEvent(new MouseEvent('click', { bubbles: true })); }); }
 
 describe('history explorer', () => {
+  it('selects Alps country only when local preview is explicitly requested', async () => {
+    await mount();
+    expect(harness.country).toBeNull();
+    await act(async () => root.render(React.createElement(HistoryVisualizer, {
+      key: 'local-preview', events: [], baseEarthModelUrl: '/api/dev/earth-preview', initialAlpsPreview: true
+    })));
+    expect(harness.country).toBe('FR');
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it.each([
     ['UA','Україна','Украина','Ukraine'],['PL','Польща','Польша','Poland'],
     ['IT','Італія','Италия','Italy'],['FR','Франція','Франция','France'],
@@ -63,14 +72,14 @@ describe('history explorer', () => {
       expect(panel.querySelector('dd')?.textContent).toBe(capital);
       expect(panel.textContent).toContain(continent);
       expect(button(reset)).toBeDefined(); expect(button(fullscreen)).toBeDefined();
-      expect([...container.querySelectorAll('button')].some(el=>el.textContent===borders)).toBe(true);
+      expect(button(borders).getAttribute('aria-pressed')).toBe('true');
     }
   });
   it('selects real countries, switches from events, and resets without content requests', async () => {
     await mount();
     await act(async () => harness.selectCountry('UA'));
     expect(harness.country).toBe('UA');
-    expect(button('Закрити країну')).toBeDefined();
+    expect(button('Закрити')).toBeDefined();
     expect(container.querySelector('[data-country-code="UA"]')?.textContent).toContain('Київ');
     expect(container.querySelector('[aria-label="Історія: Україна"]')?.hasAttribute('disabled')).toBe(true);
     expect(fetch).not.toHaveBeenCalled();
@@ -114,11 +123,37 @@ describe('history explorer', () => {
     expect(container.textContent).toContain('ще немає опублікованих подій');
   });
   it('collapses the navigation without removing accessible section buttons', async () => {
-    await mount(); await click(button('Згорнути меню'));
+    await mount();
     expect(container.querySelector('main')?.dataset.navCollapsed).toBe('true');
     expect(button('Історія Церкви').getAttribute('aria-label')).toBe('Історія Церкви');
     await click(button('Розгорнути меню'));
     expect(container.querySelector('main')?.dataset.navCollapsed).toBe('false');
+    await click(button('Згорнути меню'));
+    expect(container.querySelector('main')?.dataset.navCollapsed).toBe('true');
+  });
+  it('starts map-first and toggles the timeline without clearing selection', async () => {
+    await mount();
+    const timeline = container.querySelector('section[aria-label="Часова шкала"]')!;
+    expect(timeline.hasAttribute('hidden')).toBe(true);
+    await click(button('Часова шкала'));
+    expect(timeline.hasAttribute('hidden')).toBe(false);
+    await act(async () => harness.selectCountry('IT'));
+    await click(button('Закрити'));
+    expect(harness.country).toBe('IT');
+    expect(container.querySelector('main')?.dataset.panelHidden).toBe('true');
+  });
+  it('searches countries and selects the real country target with Enter', async () => {
+    await mount();
+    const input = container.querySelector('input[type="search"]') as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Італія');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(container.querySelector(`.${styles.searchResults}`)?.textContent).toContain('Італія');
+    await act(async () => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+    expect(harness.country).toBe('IT');
+    expect(input.value).toBe('');
+    expect(container.querySelector('main')?.dataset.panelHidden).toBe('false');
   });
   it('uses the compact empty timeline and expands when published events arrive', async () => {
     await act(async () => root.render(React.createElement(HistoryVisualizer, { events: [], baseEarthModelUrl: null })));

@@ -36,9 +36,14 @@ vi.mock('three', async (importOriginal) => ({
     dispose = harness.dispose;
   },
 }));
-vi.mock('three/addons/controls/OrbitControls.js', () => ({
-  OrbitControls: class { target = { set() {} }; update() {} dispose() {} },
-}));
+vi.mock('three/addons/controls/OrbitControls.js', async () => {
+  const { Vector3 } = await import('three');
+  return { OrbitControls: class {
+    target = new Vector3(); minDistance = 0; maxDistance = Infinity;
+    minZoom = 0; maxZoom = Infinity;
+    update() {} dispose() {}
+  } };
+});
 vi.mock('three/addons/loaders/GLTFLoader.js', () => ({
   GLTFLoader: class { loadAsync = harness.load; },
 }));
@@ -80,7 +85,7 @@ describe('history scene startup', () => {
     expect(harness.load).not.toHaveBeenCalled();
     expect(harness.setters[1]).toHaveBeenCalledWith(true);
     const scene = harness.render.mock.calls[0][0] as import('three').Scene;
-    const globe = scene.children[2].children[0];
+    const globe = scene.getObjectByName('EarthRoot')!.children[0];
     expect(globe.children.length).toBeGreaterThan(100);
     const geometryDispose = vi.spyOn((globe.children[0] as import('three').Mesh).geometry, 'dispose');
     cleanup?.();
@@ -128,8 +133,8 @@ describe('event scenes', () => {
     const eventCleanup = harness.effects[2]();
     await vi.waitFor(() => expect(harness.setters[2]).toHaveBeenCalledWith('/media/event.glb'));
     const scene = harness.render.mock.calls[0][0] as import('three').Scene;
-    expect(scene.children[2].visible).toBe(false);
-    const bounds = new THREE.Box3().setFromObject(scene.children[3]);
+    expect(scene.getObjectByName('EarthRoot')!.visible).toBe(false);
+    const bounds = new THREE.Box3().setFromObject(scene.getObjectByName('EventRoot')!);
     expect(bounds.getSize(new THREE.Vector3()).x).toBeCloseTo(2.8);
     eventCleanup?.();
   });
@@ -172,11 +177,11 @@ describe('scene toolbar', () => {
     const scene = harness.render.mock.calls[0][0] as import('three').Scene;
     earth.rotation.y = Math.PI;
     tick(performance.now());
-    const pin = scene.children[4].children[0];
+    const pin = scene.getObjectByName('EventPins')!.children[0];
     expect(pin.getWorldPosition(new THREE.Vector3()).z).toBeCloseTo(-1.86, 2);
     expect(pin.visible).toBe(false);
     const geography = scene.getObjectByName('EarthGeography')!;
-    expect(geography.matrix.elements).toEqual(scene.children[4].matrixWorld.elements);
+    expect(geography.matrix.elements).toEqual(scene.getObjectByName('EventPins')!.matrixWorld.elements);
     earth.rotation.y = 0;
     tick(performance.now());
     expect(pin.visible).toBe(true);
@@ -210,10 +215,10 @@ describe('scene toolbar', () => {
     expect(select).toHaveBeenCalledWith('real-event');
     listeners.pointermove({ clientX: 480, clientY: 270 });
     const scene = harness.render.mock.calls[0][0] as import('three').Scene;
-    scene.children[2].rotation.y = Math.PI;
+    scene.getObjectByName('EarthRoot')!.rotation.y = Math.PI;
     tick(performance.now());
     expect(tooltip.hidden).toBe(true);
-    expect(scene.children[4].children[0].visible).toBe(false);
+    expect(scene.getObjectByName('EventPins')!.children[0].visible).toBe(false);
     pinCleanup?.();
   });
   it('gives the hovered pin its own material and scale without touching the others', async () => {
@@ -231,7 +236,7 @@ describe('scene toolbar', () => {
     const tick = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
     tick(performance.now());
     const scene = harness.render.mock.calls[0][0] as import('three').Scene;
-    const [firstPin, secondPin] = scene.children[4].children as import('three').Mesh[];
+    const [firstPin, secondPin] = scene.getObjectByName('EventPins')!.children as import('three').Mesh[];
     const firstCore = firstPin.children[0] as import('three').Mesh, secondCore = secondPin.children[0] as import('three').Mesh;
     const baseMaterial = firstCore.material;
     listeners.pointermove({ clientX: 480, clientY: 270 });
@@ -261,7 +266,7 @@ describe('scene toolbar', () => {
     const tick = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
     tick(performance.now());
     const scene = harness.render.mock.calls[0][0] as import('three').Scene;
-    const [firstPin, secondPin] = scene.children[4].children as import('three').Mesh[];
+    const [firstPin, secondPin] = scene.getObjectByName('EventPins')!.children as import('three').Mesh[];
     const firstCore = firstPin.children[0] as import('three').Mesh, secondCore = secondPin.children[0] as import('three').Mesh;
     const baseMaterial = firstCore.material;
     listeners.pointermove({ clientX: 480, clientY: 270 });
@@ -315,7 +320,7 @@ describe('manual Earth navigation', () => {
     await vi.waitFor(() => expect(harness.render).toHaveBeenCalled());
     if (withGlb) await vi.waitFor(() => expect(harness.setters[5]).toHaveBeenLastCalledWith(false));
     const scene = harness.render.mock.calls[0][0] as import('three').Scene;
-    const earthGroup = scene.children[2];
+    const earthGroup = scene.getObjectByName('EarthRoot')!;
     const before = [earthGroup.quaternion.clone(), earth.quaternion.clone(), clouds.quaternion.clone()];
     const tick = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
     const start = performance.now();

@@ -7,6 +7,9 @@ import styles from './history.module.css';
 import { INITIAL_TERRAIN, terrainMessages } from '@/lib/visualizer/terrain-state';
 import type { HistoricalTerritory } from '@/lib/visualizer/historical-territories';
 import { TERRAIN_PERFORMANCE } from '@/lib/visualizer/terrain-config';
+import { createSpaceEnvironment } from '@/lib/visualizer/space-environment';
+import type { CapitalCity } from '@/lib/visualizer/capital-cities';
+import { createCountryLabels } from '@/lib/visualizer/country-labels';
 
 export type SelectedEventTarget = {
   id?: string;
@@ -27,9 +30,13 @@ type Props = {
   showHint?: boolean;
   cameraCommand?: CameraCommand;
   selectedCountryCode?: string | null;
+  initialAlpsPreview?: boolean;
   onSelectCountry?: (code: string) => void;
   onBackToGlobe?: () => void;
   bordersVisible?: boolean;
+  capitalsVisible?: boolean;
+  citiesVisible?: boolean;
+  onSelectCapital?: (city: CapitalCity) => void;
   mapEvents?: MapEvent[];
   onSelectEvent?: (id: string) => void;
 };
@@ -111,6 +118,8 @@ type SceneHandle = {
   controls: import("three/addons/controls/OrbitControls.js").OrbitControls;
   mixer: import("three").AnimationMixer | null;
   terrain?: ReturnType<typeof import('@/lib/visualizer/terrain-controller').createTerrainController>;
+  capitals?: ReturnType<typeof import('@/lib/visualizer/capital-cities').createCapitalCitiesLayer>;
+  countryLabels?: ReturnType<typeof createCountryLabels>;
 };
 
 /**
@@ -126,7 +135,7 @@ type SceneHandle = {
  * render loop on `document.visibilitychange`, and disposing/reloading a
  * second (event-specific) GLB on selection change.
  */
-export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerritory = null, fill = false, showHint = true, cameraCommand, mapEvents = NO_MAP_EVENTS, onSelectEvent, bordersVisible = true, selectedCountryCode = null, onSelectCountry, onBackToGlobe }: Props) {
+export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerritory = null, fill = false, showHint = true, cameraCommand, mapEvents = NO_MAP_EVENTS, onSelectEvent, bordersVisible = true, capitalsVisible = true, citiesVisible = true, onSelectCapital, selectedCountryCode = null, initialAlpsPreview = false, onSelectCountry, onBackToGlobe }: Props) {
   const { t, locale } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -148,13 +157,17 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerr
   const countryTooltipRef = useRef<HTMLDivElement | null>(null);
   const countryDebugRef = useRef<HTMLOutputElement | null>(null);
   const countryPropsRef = useRef({selectedCountryCode,onSelectCountry,locale});
+  const alpsPreviewRequested = useRef(initialAlpsPreview);
   const [terrainState, setTerrainState] = useState(INITIAL_TERRAIN);
   const [tileDebug, setTileDebug] = useState(false);
   const [tileBorders, setTileBorders] = useState(false);
   const terrainMetricsRef = useRef<HTMLOutputElement | null>(null);
   const renderProbeUntil = useRef(0);
   const terrainAuditRef = useRef<HTMLOutputElement | null>(null);
+  const terrainPixelProbe = useRef(false);
   const eventTargetRef = useRef(selectedEvent);
+  const capitalLabelsRef = useRef<HTMLDivElement | null>(null);
+  const capitalProps = useRef({ capitalsVisible, citiesVisible, onSelectCapital, locale });
 
 
   useEffect(() => {
@@ -221,15 +234,16 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerr
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       rendererDispose = () => renderer.dispose();
 
-      const ambient = new THREE.AmbientLight(0xffffff, 0.85);
-      scene.add(ambient);
-      const directional = new THREE.DirectionalLight(0xffffff, 1.1);
-      directional.position.set(5, 3, 5);
-      scene.add(directional);
+      scene.background = new THREE.Color(0x020306);
+      const space = createSpaceEnvironment();
+      scene.add(space.group);
 
       const earthGroup = new THREE.Group();
       const eventGroup = new THREE.Group();
       const pins = new THREE.Group();
+      earthGroup.name = 'EarthRoot';
+      eventGroup.name = 'EventRoot';
+      pins.name = 'EventPins';
       scene.add(earthGroup, eventGroup, pins);
       sceneDispose = () => disposeObject3D(scene);
 
@@ -264,6 +278,10 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerr
         borders.geometry.dispose();
         borders.geometry = loaded.geometry;
         loaded.material.dispose();
+        if (countryTooltipRef.current?.parentElement) {
+          handle.countryLabels = createCountryLabels({index:prepareCountryIndex(data),container:countryTooltipRef.current.parentElement,
+            canvas,frame:geography,borders,camera:()=>handle.camera,locale:()=>countryPropsRef.current.locale,available:()=>earthGroup.visible});
+        }
         if (countryTooltipRef.current && countryPropsRef.current.onSelectCountry) {
           handle.countryInteraction = createCountryInteraction({
             canvas, tooltip: countryTooltipRef.current, debug: process.env.NODE_ENV === 'development' ? countryDebugRef.current : null,
@@ -337,14 +355,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerr
             }
             const lights: import('three').Light[] = [];
             gltf.scene.traverse((node) => { if (node instanceof THREE.Light) lights.push(node); });
-            if (lights.length) {
-              // Blender's exported photometric energies can wash out a web
-              // preview. Preserve their ratios while fitting display lighting.
-              const peak = Math.max(...lights.map((light) => light.intensity));
-              if (peak > 3) lights.forEach((light) => { light.intensity *= 3 / peak; });
-              ambient.intensity = 0.12;
-              directional.visible = false;
-            }
+            lights.forEach((light) => { light.visible = false; });
           }
           // Base Earth stays in its calibrated rest pose. OrbitControls is
           // the only idle navigation; embedded Earth/cloud loops do not autoplay.
@@ -381,6 +392,22 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerr
           flying: () => handle.transitioning, cancelFly: () => handle.countryInteraction?.cancelFly(),
           reducedMotion: prefersReducedMotion, notify: setTerrainState });
         handle.terrain.select(countryPropsRef.current.selectedCountryCode);
+        if (process.env.NODE_ENV === 'development' && alpsPreviewRequested.current) handle.terrain.requestAlpsPreview();
+        if (capitalLabelsRef.current) {
+          const labels = capitalLabelsRef.current;
+          void Promise.all([import('@/lib/visualizer/capital-cities'), fetch('/data/capitals-10m.json').then(response => {
+            if(!response.ok)throw new Error('Capital dataset unavailable'); return response.json();
+          }), fetch('/data/cities-10m.json').then(response=>{
+            if(!response.ok)throw new Error('City dataset unavailable'); return response.json();
+          }).catch(error=>{console.warn('City dataset unavailable',error);return {cities:[]};})]).then(([{ createCapitalCitiesLayer, parseCapitals, parseCities }, data, cityData]) => {
+            if(disposed)return;
+            handle.capitals=createCapitalCitiesLayer({cities:[...parseCapitals(data),...parseCities(cityData)],frame:geography,borders,canvas,labels,
+              camera:()=>handle.camera,locale:()=>capitalProps.current.locale,enabled:()=>capitalProps.current.capitalsVisible,
+              citiesEnabled:()=>capitalProps.current.citiesVisible,
+              available:()=>earthGroup.visible,elevation:(lat,lon)=>handle.terrain?.capitalElevation(lat,lon)??null,
+              terrain:()=>handle.terrain?.capitalOccluder()??null,onSelect:city=>capitalProps.current.onSelectCapital?.(city)});
+          }).catch(error=>console.warn('Capital cities layer unavailable',error));
+        }
       }
       renderer.render(scene, camera);
       setSceneReady(true);
@@ -425,7 +452,19 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerr
           handle.terrain?.tick(delta);
           handle.historyLayer?.tick(now);
           handle.updateMarkerOverlay?.();
+          handle.countryLabels?.tick();
+          handle.capitals?.tick(now);
+          space.update(handle.camera, Math.min(window.devicePixelRatio || 1, 2), earthGroup.visible);
           if (now >= renderProbeUntil.current) renderer.render(scene, handle.camera);
+          if (terrainPixelProbe.current && terrainAuditRef.current && now >= renderProbeUntil.current) {
+            terrainPixelProbe.current = false;
+            const gl = renderer.getContext(), pixel = new Uint8Array(4), samples:number[][] = [];
+            for (const x of [0.25, 0.5, 0.75]) for (const y of [0.25, 0.5, 0.75]) {
+              gl.readPixels(Math.floor(gl.drawingBufferWidth*x),Math.floor(gl.drawingBufferHeight*y),1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);
+              samples.push(Array.from(pixel));
+            }
+            terrainAuditRef.current.textContent=JSON.stringify({canvas:[gl.drawingBufferWidth,gl.drawingBufferHeight],nonblank:samples.some(p=>p[0]+p[1]+p[2]>0),uniqueColors:new Set(samples.map(p=>p.join(','))).size,samples});
+          }
           metrics?.end();
           const measurement = metrics?.sample(now);
           if (measurement && terrainMetricsRef.current) {
@@ -455,6 +494,8 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerr
       cancelAnimationFrame(rafId);
       resizeObserver?.disconnect();
       sceneRef.current?.historyLayer?.dispose();
+      sceneRef.current?.capitals?.dispose();
+      sceneRef.current?.countryLabels?.dispose();
       sceneRef.current?.terrain?.dispose();
       sceneRef.current?.countryInteraction?.dispose();
       controlsDispose?.();
@@ -695,6 +736,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerr
       handle!.updateMarkerOverlay?.();
     }
     function pointerUp(event: PointerEvent) {
+      if (event.defaultPrevented) { down = null; return; }
       if (!down || Math.hypot(event.clientX - down.x, event.clientY - down.y) > 6) { down = null; return; }
       down = null;
       const hit = hitAt(event);
@@ -737,8 +779,9 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerr
         handle.camera.zoom = Math.min(handle.controls.maxZoom, Math.max(handle.controls.minZoom, handle.camera.zoom * factor));
         handle.camera.updateProjectionMatrix();
       } else {
-        const distance = Math.min(handle.controls.maxDistance, Math.max(handle.controls.minDistance, handle.camera.position.length() / factor));
-        handle.camera.position.setLength(distance);
+        const offset = handle.camera.position.clone().sub(handle.controls.target);
+        const distance = Math.min(handle.controls.maxDistance, Math.max(handle.controls.minDistance, offset.length() / factor));
+        handle.camera.position.copy(handle.controls.target).add(offset.setLength(distance));
       }
     }
     handle.controls.update();
@@ -764,6 +807,8 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerr
     sceneRef.current?.historyLayer?.select(historicalTerritory, performance.now(), prefersReducedMotion());
   }, [historicalTerritory, sceneReady]);
 
+  useEffect(() => { capitalProps.current = { capitalsVisible, citiesVisible, onSelectCapital, locale }; }, [capitalsVisible, citiesVisible, onSelectCapital, locale]);
+
   if (!webglSupported) {
     return (
       <div className={`grid place-items-center bg-[#141511] p-8 text-center text-muted-foreground ${fill ? 'h-full min-h-0' : 'min-h-[360px] rounded-md border border-gold/28'}`}>
@@ -775,6 +820,7 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerr
   return (
     <div ref={containerRef} className={`relative w-full overflow-hidden bg-[#070706] ${fill ? 'h-full min-h-0' : 'aspect-video min-h-[360px] rounded-md border border-gold/28'}`}>
       <canvas ref={canvasRef} aria-label={t('historyGlobeLabel')} className="block h-full w-full" style={{ visibility: sceneReady && !sceneError ? 'visible' : 'hidden' }} />
+      <div ref={capitalLabelsRef} data-capital-labels className={styles.capitalLabels} />
       <div ref={tooltipRef} hidden role="tooltip" className="pointer-events-none absolute z-10 max-w-[min(240px,90%)] -translate-x-1/2 -translate-y-full whitespace-pre-line rounded-md border border-gold/30 bg-canvas/95 px-3 py-2 text-xs leading-relaxed text-gold-light shadow-lg" />
       <div ref={countryTooltipRef} hidden role="tooltip" className={`country-hover-tooltip ${styles.countryTooltip}`} />
       {!sceneReady || sceneError ? (
@@ -784,10 +830,20 @@ export function Earth3DCanvas({ baseEarthModelUrl, selectedEvent, historicalTerr
         <summary>Debug</summary><label><input type="checkbox" checked={geographicDebug} onChange={(event) => setGeographicDebug(event.target.checked)} /> Geographic Calibration Debug</label>
         {geographicDebug ? <p>Equator / 0° · North Pole · Greenwich · Kyiv · Rome · Jerusalem</p> : null}<output className="block" ref={diagnosticsRef} /><output className="block" ref={countryDebugRef} />
       </details> : null}
-      {selectedCountryCode === 'UA' && (terrainState.loading || terrainState.error) ? <div role="status" className="pointer-events-none absolute top-4 left-4 max-w-[65%] rounded bg-canvas/90 px-3 py-2 text-xs text-gold-light">{terrainMessages[locale ?? 'uk'][terrainState.error ? 'error' : 'loading']}</div> : null}
+      {['UA','FR','CH','IT'].includes(selectedCountryCode ?? '') && (terrainState.loading || terrainState.error) ? <div role="status" className="pointer-events-none absolute top-4 left-4 max-w-[65%] rounded bg-canvas/90 px-3 py-2 text-xs text-gold-light">{terrainMessages[locale ?? 'uk'][terrainState.error ? 'error' : 'loading']}</div> : null}
       {terrainState.viewLevel === 'REGION_L1' ? <button className="absolute top-4 left-4 rounded border border-gold/30 bg-canvas/95 px-3 py-2 text-xs text-gold-light" onClick={() => { sceneRef.current?.terrain?.back(); onBackToGlobe?.(); }}>{terrainMessages[locale ?? 'uk'].back}</button> : null}
-      {process.env.NODE_ENV === 'development' ? <details data-terrain-debug className="absolute bottom-28 left-3 max-w-[85%] rounded bg-black/75 p-2 text-[10px] text-[#e6d5a8]">
+      {process.env.NODE_ENV === 'development' ? <details data-terrain-debug className="absolute bottom-28 left-3 max-h-[60%] max-w-[80%] overflow-auto break-words rounded bg-black/75 p-2 text-[10px] text-[#e6d5a8]">
         <summary>Terrain debug</summary><label><input type="checkbox" checked={tileDebug} onChange={e => setTileDebug(e.target.checked)} /> Tile Debug</label>
+        {tileDebug ? <button onClick={()=>{terrainPixelProbe.current=true;}}>canvas audit</button> : null}
+        {tileDebug && ['FR','CH','IT'].includes(selectedCountryCode ?? '') ? <div className="flex flex-wrap gap-2">{[500000,100000,20000,1000,100,10].map(m=><button key={m} onClick={()=>sceneRef.current?.terrain?.inspectMontBlanc(m)}>Mont Blanc {m} m</button>)}</div> : null}
+        {tileDebug && ['FR','CH','IT'].includes(selectedCountryCode ?? '') ? <div className="flex flex-wrap gap-2">{[
+          ['Combined coverage',45.85,6.70,80000,false],['Seam 6.70',45.85,6.70,3500,true],
+          ['West L2',45.85,6.56,1500,true],['East of seam',45.85,6.72,3500,true],['West of seam',45.85,6.68,3500,true],
+          ['North 01 L2',45.975,6.70,1500,true],['South 01 L2',45.725,6.70,1500,true],['West 02 L2',45.85,6.28,1500,true],
+          ['West 03 L2',45.85,6.07,2000,true],['South 02 L2',45.675,6.49,2000,true],
+          ['Italy 01 L2',45.78,7.12,2500,true],['Italy 02 L2',45.78,7.40,2500,true],
+          ['Italy overview',45.825,7.26,75000,false],['Expanded coverage',45.825,6.77,160000,false]
+        ].map(([label,lat,lon,height,oblique])=><button key={String(label)} onClick={()=>sceneRef.current?.terrain?.inspectAlps(Number(lat),Number(lon),Number(height),Boolean(oblique))}>{String(label)}</button>)}</div> : null}
         {tileDebug ? <div><p>{terrainState.viewLevel} · {terrainState.loaded}/{terrainState.total} tiles · {(terrainState.bytes / 1e6).toFixed(2)} MB</p><p>Failed: {terrainState.failed.join(', ') || '—'}</p><p>TerrainRoot: {terrainState.transform}</p><p>Anchor residual: {terrainState.anchors}</p><output ref={terrainMetricsRef} className="block whitespace-pre-line" /><div className="flex flex-wrap gap-2"><button onClick={() => { renderProbeUntil.current = performance.now() + 3000; }}>3s no-draw probe</button><button onClick={() => { if(terrainAuditRef.current) terrainAuditRef.current.textContent=JSON.stringify(sceneRef.current?.terrain?.audit()); }}>texture audit</button>{(['west','center','south','edge'] as const).map(area=><button key={area} onClick={() => sceneRef.current?.terrain?.inspectArea(area)}>{area}</button>)}</div><output ref={terrainAuditRef} className="block max-h-24 overflow-auto" /><label><input type="checkbox" checked={tileBorders} onChange={e => { setTileBorders(e.target.checked); sceneRef.current?.terrain?.setBorders(e.target.checked); }} /> Tile Borders</label></div> : null}
       </details> : null}
       {usingDefaultEarth && sceneReady && !sceneError ? <div role="status" className="pointer-events-none absolute top-4 left-4 max-w-[65%] rounded bg-canvas/90 px-3 py-2 text-xs text-muted-foreground">

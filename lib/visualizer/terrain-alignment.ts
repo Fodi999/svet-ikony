@@ -24,14 +24,14 @@ export function terrainPoint(manifest: TerrainManifest, latitude: number, longit
 }
 export function terrainAnchorErrors(manifest: TerrainManifest, radius: number, center: THREE.Vector3) {
   const c = manifest.coordinateSystem as TerrainCoordinates, matrix = terrainRootMatrix(manifest, radius, center);
-  const anchors = manifest.anchors as {id:string;latitude:number;longitude:number;position?:number[]}[];
+  const anchors = (manifest.anchors ?? []) as {id:string;latitude:number;longitude:number;position?:number[]}[];
   return anchors.filter(a => ['Kyiv','Lviv','Odesa','Kharkiv'].includes(a.id)).map(a => {
     const actual = projectTerrainPoint(a.position ? new THREE.Vector3().fromArray(a.position) : terrainPoint(manifest,a.latitude,a.longitude),c.earthRadiusMeters/c.metersPerUnit).applyMatrix4(matrix).sub(center).normalize();
     const expected = latLngToVector3(a.latitude,a.longitude,1);
     return { id:a.id, meters:actual.angleTo(expected)*c.earthRadiusMeters };
   });
 }
-export function createTileBorders(root: THREE.Group, manifest: TerrainManifest) {
+export function createTileBorders(root: THREE.Group, manifest: TerrainManifest, offset=0.006) {
   const positions:number[]=[];
   // Extract the actual tile perimeter lattice. It includes terrain elevations,
   // so diagnostic lines sit on the same surface, never a flat bounding box.
@@ -41,7 +41,7 @@ export function createTileBorders(root: THREE.Group, manifest: TerrainManifest) 
     tileRoot.updateMatrixWorld(true);
     tileRoot.traverse(node => { const mesh=node as THREE.Mesh; if(!mesh.geometry)return; const p=mesh.geometry.getAttribute('position');if(p.count<nx*ny)return;
       const indices:number[]=[];for(let x=0;x<nx;x++)indices.push(x);for(let y=1;y<ny;y++)indices.push(y*nx+nx-1);for(let x=nx-2;x>=0;x--)indices.push((ny-1)*nx+x);for(let y=ny-2;y>=0;y--)indices.push(y*nx);
-      for(let i=1;i<indices.length;i++) for(const index of [indices[i-1],indices[i]]) { const v=new THREE.Vector3().fromBufferAttribute(p,index);v.y+=0.006;positions.push(v.x,v.y,v.z); }
+      for(let i=1;i<indices.length;i++) for(const index of [indices[i-1],indices[i]]) { const v=new THREE.Vector3().fromBufferAttribute(p,index);v.y+=offset;positions.push(v.x,v.y,v.z); }
     });
   }
   const geometry=new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(positions,3));

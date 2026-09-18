@@ -1,4 +1,5 @@
 .next
+.next-earth-preview
 node_modules
 out
 .env
@@ -20,3 +21,15 @@ scripts/d1-migration/import-sql/
 # generate-sql.mjs (the idempotent generator) are the real, reviewable
 # inputs kept in the repo.
 scripts/calendar-seed/seed.sql
+
+# Blender local Earth preview export (Phase C) -- never committed;
+# regenerate by exporting from Blender to this path, see
+# EARTH_ASSET_CONTRACT.md.
+tools/earth/export/
+
+# Generated terrain tile data (regenerate with npm run terrain:alps:generate,
+# see scripts/terrain/generate-alps.py). Large binary GLBs, not source.
+tools/terrain/*/raw/
+tools/terrain/*/build/
+tools/terrain/cesium/releases/
+public/cesium-runtime/

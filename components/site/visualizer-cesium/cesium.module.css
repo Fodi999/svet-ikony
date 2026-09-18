@@ -1,0 +1,5 @@
+.root { position:absolute; inset:0; overflow:hidden; background:#020306; }
+.canvas { position:absolute; inset:0; }
+.error { position:absolute; left:80px; right:16px; top:16px; background:#35191b; color:#fff; padding:12px; font-size:13px; }
+.root :global(.cesium-widget-credits) { bottom:8px; left:80px; max-width:calc(100% - 170px); font-size:10px; }
+@media(max-width:767px) { .root :global(.cesium-widget-credits) { left:12px; bottom:64px; } }

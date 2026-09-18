@@ -343,3 +343,79 @@
   .scrubberTrack { height: 68px; }
   .sceneControls { display: flex; top: 8px; }
 }
+
+/* Map-first explorer shell; panels overlay rather than shrink the globe. */
+.root.root { position: relative; grid-template-rows: 56px minmax(0,1fr); background: #151718; --line: #ffffff24; --muted: #b6babb; }
+.root.root[data-timeline-open='true'] { grid-template-rows: 56px minmax(0,1fr) 158px; }
+.root.root[data-expanded='true'], .root.root:fullscreen { position: fixed; inset: 0; height: 100dvh; }
+.root.root .topbar { position: relative; inset: auto; z-index: 20; display: flex; gap: 8px; padding: 6px 12px; background: #202324; border-bottom: 1px solid var(--line); }
+.root.root .topbar .heading { display: none; }
+.root.root .workspace { display: block; position: relative; }
+.root.root .scene { position: absolute; inset: 0; }
+.root.root .leftPanel { position: absolute; top: 14px; left: 12px; bottom: auto; z-index: 12; width: 224px; max-height: calc(100% - 100px); border: 1px solid var(--line); border-radius: 8px; background: #202324f5; box-shadow: 0 4px 20px #0004; }
+.root.root[data-nav-collapsed='true'] .leftPanel { width: 48px; }
+.root.root .atlasIdentity, .root.root .navNote { display: none; }
+.root.root .collapseBar { padding: 5px; justify-content: center; }
+.root.root .navigation { padding: 2px 5px 6px; }
+.root.root .navigation button { min-height: 38px; margin: 2px 0; padding: 8px; }
+.root.root[data-nav-collapsed='true'] .leftPanel .navigation { padding: 2px 5px 6px; }
+.root.root[data-nav-collapsed='true'] .leftPanel .navigation button { padding: 8px; }
+.root.root .navigation button[aria-pressed='true'] { background: #cfb87522; }
+.root.root .rightPanel { position: absolute; z-index: 13; top: 14px; right: 14px; width: 320px; max-height: calc(100% - 92px); margin: 0; border: 1px solid var(--line); border-radius: 8px; background: #202324f5; box-shadow: 0 6px 24px #0005; }
+.root.root[data-panel-hidden='true'] .rightPanel { display: none; }
+.floatingPanelHeading { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.root.root .countryPanel { padding: 16px; }
+.root.root .countryPanel h2 { font-size: 24px; }
+.root.root .countryFlag { font-size: 24px; margin-bottom: 8px; }
+.root.root .countryRegion { margin-bottom: 12px; }
+.root.root .countryPanel dl { padding: 12px 0; margin-bottom: 12px; }
+.root.root .countrySelector select { background: #292d2e; }
+.root.root .sceneControls { top: auto; right: 16px; bottom: 16px; display: flex; gap: 6px; z-index: 14; }
+.root.root .sceneControls button { width: 42px; height: 42px; border-radius: 50%; border: 1px solid #ffffff26; background: #252829ee; color: #e4e6e5; }
+.root.root .sceneControls button[aria-pressed='true'] { color: #ebcf89; background: #38382e; }
+.root.root .atlasLegend { bottom: 16px; left: 16px; border-radius: 6px; background: #202324ef; max-width: calc(100% - 230px); }
+.root.root .atlasLegend summary { padding: 10px; }
+.root.root .timeline { margin-left: 0; border-radius: 0; background: #202324; border-color: var(--line); }
+.root.root .timeline[hidden] { display: none; }
+.root.root .eventContent h2 { font-size: 24px; }
+.root.root .fullscreenButton { width: 40px; height: 40px; padding: 8px; flex-shrink: 0; }
+.root.root .fullscreenButton span { display: none; }
+.root.root .fullscreenButton svg { width: 19px; height: 19px; }
+.root.root :is(.iconButton,.fullscreenButton) { background: #292d2e; border-color: #ffffff20; color: #dedfdc; }
+.root.root button[aria-pressed='true'] { color: #ecd18d; }
+.mapSearch { position: relative; display: flex; align-items: center; gap: 10px; width: min(420px,100%); min-width: 0; margin-right: auto; padding: 0 12px; height: 40px; border: 1px solid #ffffff20; border-radius: 6px; background: #303435; color: #c8cdce; }
+.mapSearch > svg { flex-shrink: 0; }
+.mapSearch input { width: 100%; min-width: 0; height: 100%; border: 0; outline: none; background: transparent; color: #f1f2ef; font-size: 14px; }
+.mapSearch:focus-within { border-color: #d5ba77; }
+.searchResults { position: absolute; top: 46px; left: 0; right: 0; max-height: 50dvh; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; background: #252829; box-shadow: 0 8px 24px #0006; padding: 5px; }
+.searchResults button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 8px; border: 0; border-radius: 4px; background: transparent; color: #eceeea; text-align: left; cursor: pointer; }
+.searchResults button:hover { background: #ffffff12; }
+.searchResults button svg { flex-shrink: 0; }
+.searchResults button span { overflow-wrap: anywhere; }
+.searchResults p { padding: 8px; font-size: 13px; }
+.capitalLabels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 3; }
+.capitalLabels :global(.capital-city-label) { position: absolute; left: 0; top: 0; height: 18px; min-height: 0; min-width: 0; padding: 0 3px; border: 0; border-radius: 0; background: transparent; color: #f2eee3; font-family: Arial,sans-serif; font-weight: 500; line-height: 18px; white-space: nowrap; text-shadow: -1px -1px 1px #101315,1px -1px 1px #101315,-1px 1px 1px #101315,1px 1px 1px #101315,0 1px 3px #000; pointer-events: auto; cursor: pointer; letter-spacing: 0; }
+.capitalLabels :global(.capital-city-label[data-active='true']) { color: #ffe2a2; text-shadow: 0 0 4px #000,0 0 7px #a7894555; }
+.capitalCard { position: absolute; top: 16px; left: 80px; z-index: 15; width: 250px; max-width: calc(100% - 96px); padding: 12px 16px; border: 1px solid #ffffff28; border-radius: 8px; background: #202324f5; color: #eee; box-shadow: 0 6px 24px #0004; }
+.capitalCard header { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #c8b784; }
+.capitalCard h2 { font-size: 19px; margin: 8px 0; }
+.capitalCard p { font-size: 13px; margin: 6px 0; }
+.capitalToggle { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
+.root.root .capitalToggle input { min-width: 16px; min-height: 16px; accent-color: #dfc27e; }
+@media (max-width: 767px) { .capitalCard { top: 64px; left: 12px; max-width: calc(100% - 24px); } .root.root .capitalLabels button { min-width: 0; min-height: 0; } }
+.root.root .sceneHint { display: none; }
+.root.root :is(.eyebrow,.timelineLabel,.eventEyebrow,.panelHeading) { letter-spacing: 0; }
+@media (min-width: 1200px) { .root.root .scene > div > button { margin-left: 64px; } }
+@media (max-width: 1199px) { .desktopPanelToggle { display: none; } }
+@media (max-width: 767px) {
+  .root.root .topbar { gap: 4px; padding: 6px; }
+  .root.root .topbar > .panelToggle:nth-last-of-type(2) { display: none; }
+  .root.root .mapSearch { padding: 0 8px; gap: 6px; }
+  .mapSearch input { font-size: 12px; }
+  .root.root .sceneControls { right: 8px; bottom: 10px; gap: 4px; }
+  .root.root .atlasLegend { left: 8px; bottom: 10px; max-width: calc(100% - 208px); }
+  .root.root .atlasLegend summary { font-size: 0; gap: 6px; min-height: 44px; padding: 8px; }
+  .root.root .atlasLegend summary::after { font-size: 16px; }
+  .root.root .atlasLegend[open] { bottom: 64px; max-width: calc(100% - 16px); }
+  .root.root[data-timeline-open='true'] { grid-template-rows: 56px minmax(0,1fr) 152px; }
+}

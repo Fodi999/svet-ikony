@@ -8,6 +8,8 @@ import { isLocale, translate } from '@/lib/i18n';
 import type { ChurchVisualizerEventDto } from '@/lib/types';
 import { pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
+import { headers } from 'next/headers';
+import { resolveVisualizerEngine } from '@/lib/cesium/local-mode';
 
 export async function generateMetadata() {
   const locale = await getRequestLocale();
@@ -19,9 +21,17 @@ export async function generateMetadata() {
   });
 }
 
-export default async function PravoslavnaIstoriyaPage() {
+export default async function PravoslavnaIstoriyaPage({ searchParams }: { searchParams: Promise<{ terrainRegion?: string; engine?:string }> }) {
   const locale = await getRequestLocale();
-  const [events, baseEarthModel] = await Promise.all([
+  const useLocalEarthPreview = process.env.NODE_ENV === 'development' && process.env.EARTH_ASSET_MODE === 'local';
+  const host = (await headers()).get('host') ?? '';
+  const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(host);
+  const params=await searchParams;
+  const engine=process.env.NODE_ENV === 'production'
+    ? (params.engine === 'three' ? 'three' : 'cesium')
+    : resolveVisualizerEngine(process.env.NODE_ENV,host,params.engine ?? process.env.VISUALIZER_ENGINE);
+  const initialAlpsPreview = useLocalEarthPreview && localHost && params.terrainRegion === 'alps';
+  const [events, baseEarthModel] = useLocalEarthPreview ? [[], null] : await Promise.all([
     listVisualizerEvents({ status: 'published' }),
     getBaseEarthModel()
   ]);
@@ -32,10 +42,17 @@ export default async function PravoslavnaIstoriyaPage() {
         : []
     );
 
+  // Phase C: EARTH_ASSET_MODE=local lets a locally Blender-exported GLB be
+  // previewed without touching R2/D1 -- gated on NODE_ENV so a stray env
+  // var can never divert production away from the real Base Earth Model
+  // (the /api/dev/earth-preview route independently re-checks this too).
+  // See EARTH_ASSET_CONTRACT.md.
+  const baseEarthModelUrl = useLocalEarthPreview ? '/api/dev/earth-preview' : resolveMediaUrl(baseEarthModel?.r2Key) ?? null;
+
   return (
     <>
       <Hreflang locale={locale} path="/pravoslavna-istoriya" />
-      <HistoryVisualizer events={publishedEvents} baseEarthModelUrl={resolveMediaUrl(baseEarthModel?.r2Key) ?? null} />
+      <HistoryVisualizer events={publishedEvents} baseEarthModelUrl={baseEarthModelUrl} initialAlpsPreview={initialAlpsPreview} engine={engine} />
     </>
   );
 }

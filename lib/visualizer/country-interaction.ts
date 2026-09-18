@@ -51,7 +51,6 @@ export function createCountryInteraction(ctx:Context){
       layer.outline.material.color.setHex(event && !manual && !hover ? 0xbcb59e : 0xf1d397);
       const target=manual?1:hover?.9:event?.65:0;
       layer.fill.material.opacity=manual?.23:hover?.16:0;
-      layer.anchor.visible=manual||hover;
       if(layer.group.userData.target!==target){
         layer.group.userData.target=target;
         if(ctx.reducedMotion() || (!event && !layer.group.userData.event)){layer.outline.material.opacity=target;fades.delete(code);}
@@ -132,7 +131,7 @@ export function createCountryInteraction(ctx:Context){
     const click=!!down&&!dragged&&!multi&&Math.hypot(event.clientX-down.x,event.clientY-down.y)<=6;
     pointers.delete(event.pointerId);
     if(!pointers.size){down=null;dragged=false;multi=false;ctx.canvas.style.cursor='grab';}
-    if(click){const country=detect(event);if(country){if(country===selected)flyToCountry(country);ctx.onSelect(country.info.code);}}
+    if(click&&!event.defaultPrevented){const country=detect(event);if(country){if(country===selected)flyToCountry(country);ctx.onSelect(country.info.code);}}
   }
   function onCancel(){pointers.clear();down=null;dragged=false;multi=false;setHoveredCountry(null);}
   function onLeave(){lastMove=null;setHoveredCountry(null);}

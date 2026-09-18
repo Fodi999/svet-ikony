@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Church, Globe2, History, MapPin, Layers, Sparkles, Menu, X, Plus, Minus, RotateCcw, Maximize, ArrowUpRight, Box, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { BookOpen, Church, Globe2, History, MapPin, Layers, Sparkles, Menu, X, Plus, Minus, RotateCcw, Maximize, ArrowUpRight, Box, ChevronRight, ChevronsLeft, ChevronsRight, Search, PanelRight } from 'lucide-react';
 import { Dialog, DialogClose, DialogOverlay, DialogPopup, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { useI18n } from '@/components/site/LanguageProvider';
 import type { ChurchVisualizerEventDto, PublicChurchVisualizerEventPage } from '@/lib/types';
@@ -17,6 +17,9 @@ import { TimelineScrubber } from './TimelineScrubber';
 import { countryMetadata } from '@/lib/visualizer/countries';
 import { atlasMessages, historicalPalette, territoryForEvent, eventImage, type AtlasMapLayer } from '@/lib/visualizer/historical-territories';
 import { countryMessages } from '@/lib/visualizer/country-messages';
+import { capitalName, capitalCountry, isCapital, type CapitalCity } from '@/lib/visualizer/capital-cities';
+import dynamic from 'next/dynamic';
+const CesiumEarthCanvas=dynamic(()=>import('../visualizer-cesium/CesiumEarthCanvas').then(module=>module.CesiumEarthCanvas),{ssr:false});
 
 const datingLabels = { exact: 'historyExactDating', approximate: 'historyApproximateDating', traditional: 'historyTraditionalDating', period: 'historyPeriodDating', unknown: 'historyUnknownDating' } as const;
 
@@ -25,14 +28,14 @@ const sections = [
   ['chronology', History], ['map', MapPin], ['collections', Layers]
 ] as const;
 
-export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: ChurchVisualizerEventDto[]; baseEarthModelUrl: string | null }) {
+export function HistoryVisualizer({ events, baseEarthModelUrl, initialAlpsPreview = false, engine='three' }: { events: ChurchVisualizerEventDto[]; baseEarthModelUrl: string | null; initialAlpsPreview?: boolean; engine?:'three'|'cesium' }) {
   const { t, locale } = useI18n();
   const copy = explorerMessages[locale];
   const countryCopy = countryMessages[locale];
   const atlas = atlasMessages[locale];
   const [mapLayer, setMapLayer] = useState<AtlasMapLayer>('territories');
   const [nearbyOnly, setNearbyOnly] = useState(false);
-  const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null);
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(initialAlpsPreview ? 'FR' : null);
   const selectedCountry = selectedCountryCode ? countryMetadata[selectedCountryCode] ?? null : null;
   const rootRef = useRef<HTMLElement>(null);
   const sceneRef = useRef<HTMLElement>(null);
@@ -44,13 +47,31 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
   const [year, setYear] = useState('all');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [model, setModel] = useState<{ eventId: string; url: string | null } | null>(null);
-  const [navCollapsed, setNavCollapsed] = useState(false);
+  const [navCollapsed, setNavCollapsed] = useState(true);
+  const [timelineOpen, setTimelineOpen] = useState(false);
+  const [panelHidden, setPanelHidden] = useState(true);
+  const [search, setSearch] = useState('');
+  const searchLabel = locale === 'uk' ? 'Пошук країн і подій' : locale === 'ru' ? 'Поиск стран и событий' : 'Search countries and events';
+  const searchResults = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase(locale);
+    if (!query) return [];
+    return [
+      ...Object.values(countryMetadata).filter(country => country.name[locale].toLocaleLowerCase(locale).includes(query))
+        .map(country => ({ id: country.code, label: country.name[locale], kind: 'country' as const })),
+      ...events.filter(event => event.status === 'published' && event.title.toLocaleLowerCase(locale).includes(query))
+        .map(event => ({ id: event.id, label: event.title, kind: 'event' as const })),
+    ].slice(0, 8);
+  }, [search, locale, events]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [eventOpen, setEventOpen] = useState(false);
   const [articleOpen, setArticleOpen] = useState(false);
   const [immersiveMode, setImmersiveMode] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [bordersVisible, setBordersVisible] = useState(true);
+  const [capitalsVisible, setCapitalsVisible] = useState(true);
+  const [citiesVisible, setCitiesVisible] = useState(true);
+  const [selectedCapital, setSelectedCapital] = useState<CapitalCity | null>(null);
+  const capitalsLabel = locale === 'uk' ? 'Столиці' : locale === 'ru' ? 'Столицы' : 'Capitals';
   const [cameraCommand, setCameraCommand] = useState<CameraCommand | undefined>();
 
   const sectionList = useMemo(() => sectionEvents(events, section), [events, section]);
@@ -123,22 +144,25 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
   }
 
   const chooseEvent = useCallback((id: string) => {
+    setPanelHidden(false); setSearch('');
     setSelectedCountryCode(null);
     setSelectedEventId(id);
     setModel(null);
     if (window.matchMedia('(max-width: 1199px)').matches) setEventOpen(true);
   }, []);
   function chooseSection(value: HistorySection) {
+    setTimelineOpen(value !== 'visualizer');
     setNearbyOnly(false); setSection(value); setEra('all'); setCentury('all'); setYear('all');
     setSelectedEventId(null); setSelectedCountryCode(null); setDrawerOpen(false);
   }
   function resetCamera() { setSelectedCountryCode(null); setEventOpen(false); setSelectedEventId(null); setModel(null); setCameraCommand((previous) => ({ action: 'reset', sequence: (previous?.sequence ?? 0) + 1 })); }
   const chooseCountry = useCallback((code: string) => {
+    setPanelHidden(false); setSearch('');
     setSelectedCountryCode(code);
     if (window.matchMedia('(max-width: 1199px)').matches) setEventOpen(true);
   }, []);
   function zoom(action: 'in' | 'out') { setCameraCommand((previous) => ({ action, sequence: (previous?.sequence ?? 0) + 1 })); }
-  function focusTimeline() { setSection('chronology'); setNearbyOnly(false); setEventOpen(false); timelineRef.current?.focus(); }
+  function focusTimeline() { setTimelineOpen(true); setSection('chronology'); setNearbyOnly(false); setEventOpen(false); requestAnimationFrame(() => timelineRef.current?.focus()); }
 
   const navigation = <nav aria-label={copy.navigation} className={styles.navigation}>
     <p className={styles.eyebrow}>{copy.navigation}</p>
@@ -165,10 +189,20 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
     </div>
   </div> : <div className={styles.emptyEvent}><p>{copy.chooseCompact}</p></div>;
 
-  return <main ref={rootRef} data-history-app data-mode={section} data-immersive={immersiveMode} data-expanded={expanded} data-nav-collapsed={navCollapsed} data-empty-timeline={visibleEvents.length === 0} data-event-selected={!!selectedEvent || !!selectedCountry} className={styles.root} aria-label={t('historyPageTitle')}>
+  return <main ref={rootRef} data-history-app data-timeline-open={timelineOpen} data-panel-hidden={panelHidden} data-mode={section} data-immersive={immersiveMode} data-expanded={expanded} data-nav-collapsed={navCollapsed} data-empty-timeline={visibleEvents.length === 0} data-event-selected={!!selectedEvent || !!selectedCountry} className={styles.root} aria-label={t('historyPageTitle')}>
     <div className={styles.topbar}>
       <button className={`${styles.iconButton} ${styles.panelToggle}`} type="button" aria-label={copy.menu} aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}><Menu size={20} /></button>
       <div className={styles.heading}><span className={styles.eyebrow}>{t('historyPageEyebrow')}</span><h1>{t('historyPageTitle')}</h1><p>{t('historyPageDescription')}</p></div>
+      <div className={styles.mapSearch}>
+        <Search size={18} aria-hidden="true" />
+        <input type="search" aria-label={searchLabel} placeholder={searchLabel} value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === 'Escape') setSearch(''); if (event.key === 'Enter' && searchResults[0]) { const result = searchResults[0]; if (result.kind === 'country') chooseCountry(result.id); else chooseEvent(result.id); } }} />
+        {search.trim() ? <div className={styles.searchResults} aria-label={searchLabel}>
+          {searchResults.map(result => <button key={`${result.kind}-${result.id}`} type="button" onClick={() => result.kind === 'country' ? chooseCountry(result.id) : chooseEvent(result.id)}>{result.kind === 'country' ? <Globe2 size={16} /> : <MapPin size={16} />}<span>{result.label}</span></button>)}
+          {!searchResults.length ? <p role="status">{locale === 'uk' ? 'Нічого не знайдено' : locale === 'ru' ? 'Ничего не найдено' : 'No results'}</p> : null}
+        </div> : null}
+      </div>
+      <button className={styles.iconButton} type="button" title={copy.timeline} aria-label={copy.timeline} aria-pressed={timelineOpen} onClick={() => setTimelineOpen(value => !value)}><History size={19} /></button>
+      <button className={`${styles.iconButton} ${styles.desktopPanelToggle}`} type="button" title={countryCopy.country} aria-label={countryCopy.country} aria-pressed={!panelHidden} onClick={() => setPanelHidden(value => !value)}><PanelRight size={19} /></button>
       <button className={`${styles.iconButton} ${styles.panelToggle}`} type="button" aria-label={selectedEvent ? copy.eventPanel : countryCopy.country} aria-expanded={eventOpen} onClick={() => setEventOpen(true)}><BookOpen size={19} /></button>
       <button ref={fullscreenButtonRef} className={styles.fullscreenButton} type="button" aria-label={expanded ? copy.exit : copy.fullscreen} aria-pressed={expanded} onClick={() => void toggleFullscreen()}>
         {expanded ? <X size={19} /> : <Maximize size={19} />}<span>{expanded ? copy.exit : copy.fullscreen}</span>
@@ -179,7 +213,13 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
     <div className={styles.workspace}>
       <aside className={styles.leftPanel}><div className={styles.atlasIdentity}><span className={styles.eyebrow}>{t('historyPageEyebrow')}</span><h2>{t('historyPageTitle')}</h2><p>{t('historyPageDescription')}</p></div><div className={styles.collapseBar}><button type="button" aria-label={navCollapsed ? copy.expandNav : copy.collapseNav} title={navCollapsed ? copy.expandNav : copy.collapseNav} aria-expanded={!navCollapsed} onClick={() => setNavCollapsed((value) => !value)}>{navCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}</button></div>{navigation}</aside>
       <section ref={sceneRef} tabIndex={-1} className={styles.scene} aria-label={t('historyGlobeLabel')}>
-        <Earth3DCanvas baseEarthModelUrl={baseEarthModelUrl} selectedEvent={earthTarget} historicalTerritory={activeTerritory} bordersVisible={bordersVisible} fill showHint={false} cameraCommand={cameraCommand} mapEvents={mapEvents} onSelectEvent={chooseEvent} selectedCountryCode={selectedCountryCode} onSelectCountry={chooseCountry} onBackToGlobe={() => setSelectedCountryCode(null)} />
+        {engine==='cesium' ? <CesiumEarthCanvas mapEvents={mapEvents} selectedEvent={earthTarget} historicalTerritory={activeTerritory} onSelectEvent={chooseEvent} cameraCommand={cameraCommand} initialAlpsPreview={initialAlpsPreview} selectedCountryCode={selectedCountryCode} onSelectCountry={chooseCountry} onSelectCapital={setSelectedCapital} bordersVisible={bordersVisible} capitalsVisible={capitalsVisible}/> : <Earth3DCanvas capitalsVisible={capitalsVisible} citiesVisible={citiesVisible} onSelectCapital={setSelectedCapital} initialAlpsPreview={initialAlpsPreview} baseEarthModelUrl={baseEarthModelUrl} selectedEvent={earthTarget} historicalTerritory={activeTerritory} bordersVisible={bordersVisible} fill showHint={false} cameraCommand={cameraCommand} mapEvents={mapEvents} onSelectEvent={chooseEvent} selectedCountryCode={selectedCountryCode} onSelectCountry={chooseCountry} onBackToGlobe={() => setSelectedCountryCode(null)} />}
+        {selectedCapital && (isCapital(selectedCapital) ? capitalsVisible : citiesVisible) ? <section className={styles.capitalCard} aria-label={capitalName(selectedCapital,locale)}>
+          <header><span>{isCapital(selectedCapital) ? (locale === 'uk' ? 'Столиця' : locale === 'ru' ? 'Столица' : 'Capital') : (locale === 'uk' ? 'Місто' : locale === 'ru' ? 'Город' : 'City')}</span><button type="button" className={styles.iconButton} aria-label={copy.close} onClick={()=>setSelectedCapital(null)}><X size={16}/></button></header>
+          <h2>{capitalName(selectedCapital,locale)}</h2><p>{capitalCountry(selectedCapital,locale)}</p>
+          <p><small>{Math.abs(selectedCapital.lat).toFixed(6)}° {selectedCapital.lat>=0?'N':'S'}, {Math.abs(selectedCapital.lon).toFixed(6)}° {selectedCapital.lon>=0?'E':'W'}</small></p>
+          {selectedCapital.featureClass.endsWith(' alt') ? <small>{selectedCapital.featureClass}</small> : null}
+        </section> : null}
         {section === 'map' ? <div className={styles.mapModes} role="group" aria-label={atlas.map}>
           {(['events','territories'] as const).map(mode => <button key={mode} type="button" aria-pressed={mapLayer === mode} onClick={() => setMapLayer(mode)}>{atlas[mode]}</button>)}
           {nearbyOnly ? <button type="button" onClick={() => setNearbyOnly(false)}>{copy.all} ×</button> : null}
@@ -188,23 +228,24 @@ export function HistoryVisualizer({ events, baseEarthModelUrl }: { events: Churc
         <details className={styles.atlasLegend} style={{ '--territory-fill': historicalPalette(activeTerritory).fill, '--territory-border': historicalPalette(activeTerritory).border } as React.CSSProperties}>
           <summary><i className={styles.legendFill}/><Layers size={14} />{activeTerritory ? activeTerritory.name[locale] : atlas.legend}</summary>
           <div><p><i className={styles.legendFill}/>{atlas.territory}</p><p><i className={styles.legendBorder}/>{atlas.modern}</p><p><i className={styles.legendDot}/>{atlas.events}</p>
+            {process.env.NODE_ENV === 'development' ? <label className={styles.capitalToggle}><input type="checkbox" checked={capitalsVisible} onChange={event=>setCapitalsVisible(event.target.checked)}/>{capitalsLabel}</label> : null}
+            {process.env.NODE_ENV === 'development' && engine==='three' ? <label className={styles.capitalToggle}><input type="checkbox" checked={citiesVisible} onChange={event=>setCitiesVisible(event.target.checked)}/>{locale==='uk'?'Міста':locale==='ru'?'Города':'Cities'}</label> : null}
             {activeTerritory ? <><strong>{activeTerritory.name[locale]}</strong><small>{atlas.prototype} · {atlas.sourceYear}: {activeTerritory.source.year}</small><a href={activeTerritory.source.url} target="_blank" rel="noopener noreferrer">{atlas.source} ↗</a></> : <small>{atlas.noTerritory}</small>}
             <small>{atlas.reconstruction}</small>
           </div>
         </details>
         {activeTerritory ? <p className={styles.reconstructionNote}>{atlas.prototype} · {activeTerritory.source.year}</p> : null}
         <div className={styles.sceneControls} role="group" aria-label={copy.scene}>
-          <button type="button" className={styles.bordersToggle} aria-pressed={bordersVisible} onClick={() => setBordersVisible((value) => !value)}>{copy.borders}</button>
+          <button type="button" className={styles.bordersToggle} title={copy.borders} aria-label={copy.borders} aria-pressed={bordersVisible} onClick={() => setBordersVisible((value) => !value)}><Layers size={19} /></button>
           <button type="button" aria-label={copy.zoomIn} title={copy.zoomIn} onClick={() => zoom('in')}><Plus size={20} /></button>
           <button type="button" aria-label={copy.zoomOut} title={copy.zoomOut} onClick={() => zoom('out')}><Minus size={20} /></button>
           <button type="button" aria-label={copy.reset} title={copy.reset} onClick={resetCamera}><RotateCcw size={18} /></button>
         </div>
-        <p className={styles.sceneHint}>{countryCopy.hint}</p>
       </section>
-      <aside className={styles.rightPanel} aria-label={selectedEvent ? copy.event : countryCopy.country}>{selectedEvent && !selectedCountry ? <div className={styles.panelHeading}>{copy.event}<BookOpen size={15} aria-hidden="true" /></div> : null}{selectedEvent && !selectedCountry ? eventContent : <CountryPanel country={selectedCountry} onSelect={chooseCountry} onClose={resetCamera}/>}</aside>
+      <aside className={styles.rightPanel} aria-label={selectedEvent ? copy.event : countryCopy.country}><div className={styles.floatingPanelHeading}><span>{selectedEvent ? copy.event : countryCopy.country}</span><button type="button" className={styles.iconButton} title={copy.close} aria-label={copy.close} onClick={() => setPanelHidden(true)}><X size={18}/></button></div>{selectedEvent && !selectedCountry ? eventContent : <CountryPanel country={selectedCountry} onSelect={chooseCountry} onClose={() => setPanelHidden(true)} showClose={false}/>}</aside>
     </div>
 
-    <section ref={timelineRef} className={styles.timeline} aria-label={copy.timeline} tabIndex={-1}>
+    <section ref={timelineRef} className={styles.timeline} hidden={!timelineOpen} aria-label={copy.timeline} tabIndex={-1}>
       <div className={styles.timelineToolbar}>
         <span className={styles.timelineLabel}><History size={15} aria-hidden="true" />{copy.timeline}</span>
         <div className={styles.eraTabs} role="group" aria-label={copy.era}>

@@ -83,6 +83,7 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  distDir: process.env.EARTH_ASSET_MODE === 'local' ? '.next-earth-preview' : '.next',
   images: {
     unoptimized: true,
     remotePatterns: [

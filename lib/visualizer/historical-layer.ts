@@ -14,7 +14,6 @@ export function createHistoricalLayer(territory: HistoricalTerritory) {
   };
   const layer = createCountryHighlight(country);
   layer.group.name = `HistoricalTerritory:${territory.id}`;
-  layer.anchor.visible = false;
   const palette = historicalPalette(territory);
   layer.fill.material.color.set(palette.fill);
   layer.outline.material.color.set(palette.border);

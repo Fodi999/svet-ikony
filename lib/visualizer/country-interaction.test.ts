@@ -41,6 +41,17 @@ function setup() {
   return {canvas,tooltip,frame,borders,pins,controls,select,interaction,pointer,camera,setLocale:(next:typeof locale)=>{locale=next;interaction.refreshTooltip();}};
 }
 describe('country pointer lifecycle', () => {
+  it('highlights hovered and selected countries without a center dot', () => {
+    const s = setup();
+    s.pointer('pointermove'); flush(30);
+    const layer = s.frame.getObjectByName('CountryHighlight:UA')!;
+    expect(layer.visible).toBe(true);
+    expect(layer.children.map(child => child.type)).toEqual(['Mesh', 'LineSegments']);
+    s.interaction.setSelectedCountry('UA'); flush(1000);
+    expect(layer.visible).toBe(true);
+    expect(layer.children.map(child => child.type)).toEqual(['Mesh', 'LineSegments']);
+    expect((layer.children[0] as THREE.Mesh).geometry.type).toBe('BufferGeometry');
+  });
   it('updates a stationary tooltip in three languages without changing selection, camera or GPU layer', () => {
     const s = setup(); s.interaction.setSelectedCountry('UA'); flush(1000);
     s.pointer('pointermove'); flush(1030);

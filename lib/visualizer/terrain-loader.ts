@@ -15,8 +15,9 @@ export async function loadTerrainManifest(url: string, signal?: AbortSignal): Pr
   if (absolute.origin !== window.location.origin) throw new Error('Terrain must use this LOCAL origin');
   const response = await fetch(absolute, { signal: AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(30_000)]), redirect: 'error' });
   if (!response.ok || !response.headers.get('content-type')?.startsWith('application/json')) throw new Error('Terrain manifest unavailable');
-  const manifest = parseTerrainManifest(await response.json());
-  if (manifest.grid.lod !== 1) throw new Error('Only L1 rendering is enabled');
+  const localAlps = process.env.NODE_ENV === 'development' && /^\/terrain\/alps\/L[012]\/manifest\.json$/.test(absolute.pathname);
+  const manifest = parseTerrainManifest(await response.json(), localAlps);
+  if (manifest.grid.lod !== 1 && !localAlps) throw new Error('Only L1 rendering is enabled');
   return { ...manifest, sourceUrl: absolute.href };
 }
 export async function fetchTerrainTileBytes(tile: TerrainTile, manifest: LoadedManifest, signal?: AbortSignal) {

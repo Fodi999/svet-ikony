@@ -36,12 +36,10 @@ export function createCountryHighlight(country: Country) {
   for(let i=0;i<positions.length;i++)positions[i]*=1.0044;
   outlineGeometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
   const outline=new THREE.LineSegments(outlineGeometry,new THREE.LineBasicMaterial({color:0xf1d397,transparent:true,opacity:0.92,depthTest:true,depthWrite:false,toneMapped:false}));
-  const anchor=new THREE.Mesh(new THREE.SphereGeometry(0.0035,10,8),new THREE.MeshBasicMaterial({color:0xf4d793,depthTest:true,toneMapped:false}));
-  anchor.position.copy(latLngToVector3(country.point.latitude,country.point.longitude,1.008));
-  const group=new THREE.Group();group.name=`CountryHighlight:${country.info.code}`;group.add(fill,outline,anchor);
-  return {group,fill,outline,anchor};
+  const group=new THREE.Group();group.name=`CountryHighlight:${country.info.code}`;group.add(fill,outline);
+  return {group,fill,outline};
 }
 export type CountryHighlight = ReturnType<typeof createCountryHighlight>;
 export function disposeCountryHighlight(highlight:CountryHighlight){
-  for(const object of [highlight.fill,highlight.outline,highlight.anchor]){object.geometry.dispose();object.material.dispose();}
+  for(const object of [highlight.fill,highlight.outline]){object.geometry.dispose();object.material.dispose();}
 }

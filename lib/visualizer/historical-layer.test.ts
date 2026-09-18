@@ -55,7 +55,7 @@ describe('historical runtime', () => {
       if (mesh.material && !Array.isArray(mesh.material)) spies.push(vi.spyOn(mesh.material,'dispose'));
     });
     controller.dispose(); expect(frame.children).toEqual([modern]);
-    expect(spies.length).toBe(6); for (const spy of spies) expect(spy).toHaveBeenCalledOnce();
+    expect(spies.length).toBe(4); for (const spy of spies) expect(spy).toHaveBeenCalledOnce();
   });
   it('builds finite curved MultiPolygon fill above Earth without changing source data', () => {
     const before = JSON.stringify(rus); const layer = createHistoricalLayer(rus);

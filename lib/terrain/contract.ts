@@ -57,12 +57,13 @@ export function terrainPrefix(region: string, lod: number): string {
   if (!/^[a-zA-Z0-9_-]{1,80}$/.test(region) || ![1, 2, 3].includes(lod)) fail("invalid region/LOD");
   return `terrain/${region}/L${lod}/`;
 }
-export function parseTerrainManifest(input: unknown): TerrainManifest {
+export function parseTerrainManifest(input: unknown, localAlps = false): TerrainManifest {
   const m = obj(input, "manifest");
   if (typeof m.region !== "string") fail("region required");
   const g = obj(m.grid, "grid");
-  const lod = num(g.lod, "LOD", 1, 3, true);
-  terrainPrefix(m.region as string, lod);
+  const allowZero = localAlps && m.region === 'alps';
+  const lod = num(g.lod, "LOD", allowZero ? 0 : 1, 3, true);
+  if (lod !== 0) terrainPrefix(m.region as string, lod);
   const nx = num(g.countX, "countX", 1, 64, true),
     ny = num(g.countY, "countY", 1, 64, true);
   if (nx * ny > 256) fail("at most 256 tiles per bundle");
@@ -114,7 +115,7 @@ export function parseTerrainManifest(input: unknown): TerrainManifest {
   let total = 0;
   for (const value of m.tiles as unknown[]) {
     const t = obj(value, "tile");
-    if (typeof t.tile_id !== "string" || !/^l[123]_\d+_\d+$/.test(t.tile_id))
+    if (typeof t.tile_id !== "string" || !(allowZero ? /^l[0123]_\d+_\d+$/ : /^l[123]_\d+_\d+$/).test(t.tile_id))
       fail("invalid tile ID");
     if (ids.has(t.tile_id as string)) fail("duplicate tile ID");
     ids.add(t.tile_id as string);

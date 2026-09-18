@@ -100,7 +100,15 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     if (process.env.NODE_ENV !== 'production') return [];
-    return [{ source: '/(.*)', headers: SECURITY_HEADERS }];
+    const cesiumHeaders = SECURITY_HEADERS.map(header => header.key === 'Content-Security-Policy'
+      ? {...header, value: header.value.replace("script-src 'self' 'unsafe-inline'", "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'")}
+      : header);
+    return [
+      { source: '/(.*)', headers: SECURITY_HEADERS },
+      { source: '/:locale(uk|ru|en)/pravoslavna-istoriya', headers: cesiumHeaders },
+      { source: '/pravoslavna-istoriya', headers: cesiumHeaders },
+      { source: '/cesium-runtime/:path*', headers: cesiumHeaders },
+    ];
   },
 };
 

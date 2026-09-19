@@ -14,8 +14,13 @@ import type {HistoricalTerritory} from '@/lib/visualizer/historical-territories'
 import type {createCesiumEvents} from '@/lib/cesium/events';
 import {terrainZoomDistance} from '@/lib/cesium/camera';
 import {CESIUM_DATA, CESIUM_RUNTIME} from '@/lib/cesium/release';
+import {CalendarOverlay} from './CalendarOverlay';
+import {CalendarGlobeOverlay} from './CalendarGlobeOverlay';
+let nextInstanceId=0;
+const liveInstances=new Set<number>();
 
 export type CesiumCanvasProps = {
+  calendarExperience?:boolean;
   cameraCommand?:CameraCommand;
   initialAlpsPreview?:boolean;
   selectedCountryCode?:string|null;
@@ -28,8 +33,9 @@ export type CesiumCanvasProps = {
   historicalTerritory?:HistoricalTerritory|null;
   onSelectEvent?:(id:string)=>void;
 };
-export function CesiumEarthCanvas({cameraCommand,initialAlpsPreview=false,selectedCountryCode=null,onSelectCountry,onSelectCapital,bordersVisible=true,capitalsVisible=true,mapEvents,selectedEvent,historicalTerritory,onSelectEvent}:CesiumCanvasProps) {
+export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initialAlpsPreview=false,selectedCountryCode=null,onSelectCountry,onSelectCapital,bordersVisible=true,capitalsVisible=true,mapEvents,selectedEvent,historicalTerritory,onSelectEvent}:CesiumCanvasProps) {
   const [error,setError]=useState<string|null>(null);
+  const [calendarWidget,setCalendarWidget]=useState<CesiumWidget|null>(null);
   const events=useRef<ReturnType<typeof createCesiumEvents>|null>(null);
   const historyProps=useRef({mapEvents,selectedEvent,historicalTerritory,onSelectEvent});
   useEffect(()=>{historyProps.current={mapEvents,selectedEvent,historicalTerritory,onSelectEvent};events.current?.update(mapEvents??[],selectedEvent??null);},[mapEvents,selectedEvent,historicalTerritory,onSelectEvent]);
@@ -51,7 +57,16 @@ export function CesiumEarthCanvas({cameraCommand,initialAlpsPreview=false,select
       const instance=new C.CesiumWidget(root.current,{baseLayer:false,terrainProvider:new C.EllipsoidTerrainProvider(),
         requestRenderMode:true,maximumRenderTimeChange:Infinity,showRenderLoopErrors:false});
       widget.current=instance;
-      void import('@/lib/cesium/events').then(({createCesiumEvents})=>{
+      const instanceId=++nextInstanceId;liveInstances.add(instanceId);
+      instance.canvas.dataset.instanceId=String(instanceId);
+      if(process.env.NODE_ENV==='development')console.assert(liveInstances.size===1,'Expected one live CesiumWidget');
+      if(calendarExperience&&process.env.NODE_ENV==='development')instance.scene.postRender.addEventListener(()=>{
+        const position=instance.camera.positionWC;
+        instance.canvas.dataset.cameraPosition=[position.x,position.y,position.z].map(value=>value.toFixed(3)).join(',');
+        instance.canvas.dataset.liveInstances=String(liveInstances.size);
+      });
+      if(process.env.NODE_ENV==='development')setCalendarWidget(instance);
+      if(!calendarExperience)void import('@/lib/cesium/events').then(({createCesiumEvents})=>{
         if(disposed)return;
         const layer=createCesiumEvents(instance,id=>historyProps.current.onSelectEvent?.(id),e=>{if(!disposed)setError(String(e));});
         events.current=layer;
@@ -59,13 +74,15 @@ export function CesiumEarthCanvas({cameraCommand,initialAlpsPreview=false,select
         layer.focus(historyProps.current.selectedEvent??null);
         return layer.territory(historyProps.current.historicalTerritory??null);
       }).catch(e=>{if(!disposed)setError(String(e));});
-      void import('@/lib/cesium/countries').then(({createCesiumCountries})=>createCesiumCountries(instance,{signal:abort.signal,locale:()=>props.current.locale,onSelect:code=>props.current.onSelectCountry?.(code)})).then(layer=>{
+      if(!calendarExperience)void import('@/lib/cesium/countries').then(({createCesiumCountries})=>createCesiumCountries(instance,{signal:abort.signal,locale:()=>props.current.locale,onSelect:code=>props.current.onSelectCountry?.(code)})).then(layer=>{
         if(disposed){layer.dispose();return;}countries.current=layer;layer.setBorders(props.current.bordersVisible);layer.select(props.current.selectedCountryCode,!initialAlpsPreview);
       }).catch(e=>{if(!disposed)setError(String(e));});
-      void import('@/lib/cesium/capitals').then(({createCesiumCapitals})=>createCesiumCapitals(instance,{signal:abort.signal,locale:()=>props.current.locale,reserved:()=>countries.current?.labelBoxes()??[],onSelect:city=>props.current.onSelectCapital?.(city)})).then(layer=>{
+      if(!calendarExperience)void import('@/lib/cesium/capitals').then(({createCesiumCapitals})=>createCesiumCapitals(instance,{signal:abort.signal,locale:()=>props.current.locale,reserved:()=>countries.current?.labelBoxes()??[],onSelect:city=>props.current.onSelectCapital?.(city)})).then(layer=>{
         if(disposed){layer.dispose();return;}capitals.current=layer;layer.setVisible(props.current.capitalsVisible);
       }).catch(e=>{if(!disposed)setError(String(e));});
-      instance.resolutionScale=Math.min(window.devicePixelRatio || 1,1.5);
+      instance.useBrowserRecommendedResolution=false;
+      instance.resolutionScale=Math.min(window.devicePixelRatio||1,2)/(window.devicePixelRatio||1);
+      instance.scene.postProcessStages.fxaa.enabled=false;
       instance.scene.globe.enableLighting=true;
       instance.scene.globe.depthTestAgainstTerrain=true;
       instance.scene.screenSpaceCameraController.enableCollisionDetection=true;
@@ -82,11 +99,16 @@ export function CesiumEarthCanvas({cameraCommand,initialAlpsPreview=false,select
         credit:'Contains modified Copernicus Sentinel data 2023'}));
       sentinel.show=false;
       instance.scene.preRender.addEventListener(()=>{sentinel.show=instance.camera.positionCartographic.height<500000;});
-      instance.camera.setView({destination:C.Cartesian3.fromDegrees(initialAlpsPreview?6.86:12,initialAlpsPreview?45.83:46,initialAlpsPreview?150000:12000000)});
+      instance.camera.setView({destination:C.Cartesian3.fromDegrees(calendarExperience?16:initialAlpsPreview?6.86:12,calendarExperience?28:initialAlpsPreview?45.83:46,calendarExperience?(window.innerWidth<768?24000000:14000000):initialAlpsPreview?150000:12000000)});
+      if(process.env.NODE_ENV==='development'){
+        const view=new URLSearchParams(window.location.search).get('atlasView');
+        const preset=view==='europe'?[12,48,4500000]:view==='egypt'?[31,27,2400000]:view==='city'?[11.34,44.5,80000]:null;
+        if(preset)instance.camera.setView({destination:C.Cartesian3.fromDegrees(...preset as [number,number,number])});
+      }
       instance.scene.renderError.addEventListener((_scene:unknown,e:Error)=>{if(!disposed)setError(e.message);});
     }).catch(e=>{if(!disposed)setError(String(e));});
-    return ()=>{disposed=true;abort.abort();events.current?.dispose();events.current=null;countries.current?.dispose();countries.current=null;capitals.current?.dispose();capitals.current=null;widget.current?.destroy();widget.current=null;};
-  },[initialAlpsPreview]);
+    return ()=>{disposed=true;abort.abort();events.current?.dispose();events.current=null;countries.current?.dispose();countries.current=null;capitals.current?.dispose();capitals.current=null;if(widget.current){liveInstances.delete(Number(widget.current.canvas.dataset.instanceId));widget.current.destroy();}widget.current=null;};
+  },[initialAlpsPreview,calendarExperience]);
   useEffect(()=>{countries.current?.select(selectedCountryCode);},[selectedCountryCode]);
   useEffect(()=>{countries.current?.setBorders(bordersVisible);},[bordersVisible]);
   useEffect(()=>{capitals.current?.setVisible(capitalsVisible);},[capitalsVisible]);
@@ -109,5 +131,5 @@ export function CesiumEarthCanvas({cameraCommand,initialAlpsPreview=false,select
       w.scene.requestRender();
     }).catch(e=>{if(!w.isDestroyed())setError(String(e));});
   },[cameraCommand]);
-  return <div className={styles.root} data-visualizer-engine="cesium"><div ref={root} className={styles.canvas}/>{error?<output className={styles.error}>{error}</output>:null}</div>;
+  return <div className={styles.root} data-visualizer-engine="cesium"><div ref={root} className={styles.canvas}/>{process.env.NODE_ENV==='development'&&calendarWidget?(calendarExperience?<CalendarGlobeOverlay widget={calendarWidget}/>:<CalendarOverlay widget={calendarWidget}/>):null}{error?<output className={styles.error}>{error}</output>:null}</div>;
 }

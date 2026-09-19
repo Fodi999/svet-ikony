@@ -1,4 +1,5 @@
 import * as C from '@cesium/engine';
+import {createLayerHandler} from './handlers';
 import type {MapEvent, SelectedEventTarget} from '@/components/site/visualizer/Earth3DCanvas';
 import {historicalPalette, type HistoricalTerritory} from '@/lib/visualizer/historical-territories';
 
@@ -11,11 +12,11 @@ function located<T extends {latitude: number | null; longitude: number | null}>(
 /** The existing UI owns event/year filtering; this layer only renders its selection. */
 export function createCesiumEvents(widget: C.CesiumWidget, onSelect: (id: string) => void, onError: (error: unknown) => void) {
   const source = new C.CustomDataSource('HistoryEvents');
-  let disposed = false, generation = 0, visible = true, historical: C.GeoJsonDataSource | null = null;
+  let disposed = false, generation = 0, territoriesVisible = true, independentTerritories = false, historical: C.GeoJsonDataSource | null = null;
   void widget.dataSources.add(source).then(() => {
     if (disposed && !widget.isDestroyed()) widget.dataSources.remove(source, true);
   }).catch(onError);
-  const handler = new C.ScreenSpaceEventHandler(widget.canvas);
+  const input=createLayerHandler(widget),handler=input.handler;
   handler.setInputAction((movement: {position: C.Cartesian2}) => {
     const id = widget.scene.pick(movement.position)?.id?.properties?.eventId?.getValue();
     if (typeof id === 'string') onSelect(id);
@@ -24,10 +25,11 @@ export function createCesiumEvents(widget: C.CesiumWidget, onSelect: (id: string
     id: 'history-events', kind: 'event' as const,
     setVisible(value: boolean) {
       if (disposed) return;
-      visible = value; source.show = value;
-      if (historical) historical.show = value;
+      source.show = value;
+      if(!independentTerritories){territoriesVisible=value;if(historical)historical.show=value;}
       widget.scene.requestRender();
     },
+    setTerritoriesVisible(value:boolean){independentTerritories=true;territoriesVisible=value;if(historical)historical.show=value;widget.scene.requestRender();},
     update(events: MapEvent[], selected: SelectedEventTarget) {
       if (disposed) return;
       source.entities.removeAll();
@@ -59,7 +61,7 @@ export function createCesiumEvents(widget: C.CesiumWidget, onSelect: (id: string
       const next = await C.GeoJsonDataSource.load({type: 'Feature', properties: {id: territory.id}, geometry: territory.geometry},
         {clampToGround: true, fill: C.Color.fromCssColorString(palette.fill).withAlpha(0.3), stroke: C.Color.fromCssColorString(palette.border), strokeWidth: 2});
       if (disposed || current !== generation) { next.entities.removeAll(); return; }
-      next.show = visible;
+      next.show = territoriesVisible;
       historical = next;
       await widget.dataSources.add(next);
       if (disposed || current !== generation) {
@@ -70,7 +72,8 @@ export function createCesiumEvents(widget: C.CesiumWidget, onSelect: (id: string
     },
     dispose() {
       if (disposed) return;
-      disposed = true; generation++; handler.destroy();
+      disposed = true; generation++; input.dispose();
+      if(widget.isDestroyed())return;
       if (historical) widget.dataSources.remove(historical, true);
       widget.dataSources.remove(source, true);
     }

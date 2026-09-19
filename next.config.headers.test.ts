@@ -30,7 +30,10 @@ describe('next.config.ts headers()', () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.resetModules();
     const rules = await loadHeaders();
-    expect(rules).toHaveLength(1);
+    expect(rules.map(rule=>rule.source)).toEqual([
+      '/(.*)', '/:locale(uk|ru|en)/pravoslavna-istoriya',
+      '/pravoslavna-istoriya', '/cesium-runtime/:path*',
+    ]);
     expect(rules[0]!.source).toBe('/(.*)');
 
     const byKey = Object.fromEntries(rules[0]!.headers.map((h) => [h.key, h.value]));
@@ -55,5 +58,13 @@ describe('next.config.ts headers()', () => {
     expect(csp).toContain("img-src 'self' https: data:"); // arbitrary-HTTPS-host media trust is pre-existing, not new
     expect(csp).not.toMatch(/script-src[^;]*\*/);
     expect(csp).not.toContain('script-src *');
+    expect(csp).not.toContain("'wasm-unsafe-eval'");
+    expect(csp).not.toContain("'unsafe-eval'");
+    for (const rule of rules.slice(1)) {
+      const scoped = Object.fromEntries(rule.headers.map(header=>[header.key,header.value]));
+      expect(scoped).toEqual({...byKey, 'Content-Security-Policy': csp.replace(
+        "script-src 'self' 'unsafe-inline'", "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
+      )});
+    }
   });
 });

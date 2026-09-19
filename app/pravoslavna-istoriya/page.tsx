@@ -10,6 +10,7 @@ import { pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
 import { headers } from 'next/headers';
 import { resolveVisualizerEngine } from '@/lib/cesium/local-mode';
+import {CalendarExperience} from '@/components/site/visualizer-cesium/CalendarExperience';
 
 export async function generateMetadata() {
   const locale = await getRequestLocale();
@@ -21,12 +22,13 @@ export async function generateMetadata() {
   });
 }
 
-export default async function PravoslavnaIstoriyaPage({ searchParams }: { searchParams: Promise<{ terrainRegion?: string; engine?:string }> }) {
+export default async function PravoslavnaIstoriyaPage({ searchParams }: { searchParams: Promise<{ terrainRegion?: string; engine?:string;view?:string }> }) {
   const locale = await getRequestLocale();
   const useLocalEarthPreview = process.env.NODE_ENV === 'development' && process.env.EARTH_ASSET_MODE === 'local';
   const host = (await headers()).get('host') ?? '';
   const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(host);
   const params=await searchParams;
+  if(process.env.NODE_ENV==='development'&&localHost)return <CalendarExperience/>;
   const engine=process.env.NODE_ENV === 'production'
     ? (params.engine === 'three' ? 'three' : 'cesium')
     : resolveVisualizerEngine(process.env.NODE_ENV,host,params.engine ?? process.env.VISUALIZER_ENGINE);

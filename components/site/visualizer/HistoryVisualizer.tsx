@@ -28,6 +28,7 @@ const sections = [
   ['chronology', History], ['map', MapPin], ['collections', Layers]
 ] as const;
 
+/** Legacy production shell. Deprecated for local navigation; retained until release parity. */
 export function HistoryVisualizer({ events, baseEarthModelUrl, initialAlpsPreview = false, engine='three' }: { events: ChurchVisualizerEventDto[]; baseEarthModelUrl: string | null; initialAlpsPreview?: boolean; engine?:'three'|'cesium' }) {
   const { t, locale } = useI18n();
   const copy = explorerMessages[locale];

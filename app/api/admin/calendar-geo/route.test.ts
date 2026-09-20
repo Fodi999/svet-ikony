@@ -4,7 +4,7 @@ vi.mock('@/lib/d1/auth',()=>({requireSuperAdmin:mocks.service}));
 vi.mock('@/lib/d1/repositories/admin-sessions',()=>({validateSession:mocks.session}));
 vi.mock('@/lib/d1/session-token',()=>({hashSessionToken:mocks.hash}));
 vi.mock('@/lib/d1/repositories/calendarGeoReview',()=>({applyCalendarReview:mocks.apply}));
-import {POST} from './route';
+import {GET,POST} from './route';
 beforeEach(()=>{
   vi.stubEnv('NODE_ENV','development');vi.clearAllMocks();
   mocks.service.mockResolvedValue({});mocks.hash.mockResolvedValue('hashed');
@@ -30,4 +30,15 @@ it('takes the reviewer identity only from the verified server session',async()=>
 it('disables production mutations before authentication or database calls',async()=>{
   vi.stubEnv('NODE_ENV','production');expect((await POST(request())).status).toBe(404);
   expect(mocks.service).not.toHaveBeenCalled();expect(mocks.apply).not.toHaveBeenCalled();
+});
+it('disables production reads (GET) before authentication or database calls',async()=>{
+  vi.stubEnv('NODE_ENV','production');
+  const res=await GET(new Request('https://svetikony.com/api/admin/calendar-geo'));
+  expect(res.status).toBe(404);
+  expect(mocks.service).not.toHaveBeenCalled();
+});
+it('disables reads from a remote development host even when NODE_ENV stays development',async()=>{
+  const res=await GET(new Request('https://svetikony.com/api/admin/calendar-geo'));
+  expect(res.status).toBe(404);
+  expect(mocks.service).not.toHaveBeenCalled();
 });

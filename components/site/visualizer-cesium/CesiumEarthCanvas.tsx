@@ -65,7 +65,7 @@ export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initia
         instance.canvas.dataset.cameraPosition=[position.x,position.y,position.z].map(value=>value.toFixed(3)).join(',');
         instance.canvas.dataset.liveInstances=String(liveInstances.size);
       });
-      if(process.env.NODE_ENV==='development')setCalendarWidget(instance);
+      if(calendarExperience||process.env.NODE_ENV==='development')setCalendarWidget(instance);
       if(!calendarExperience)void import('@/lib/cesium/events').then(({createCesiumEvents})=>{
         if(disposed)return;
         const layer=createCesiumEvents(instance,id=>historyProps.current.onSelectEvent?.(id),e=>{if(!disposed)setError(String(e));});
@@ -131,5 +131,5 @@ export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initia
       w.scene.requestRender();
     }).catch(e=>{if(!w.isDestroyed())setError(String(e));});
   },[cameraCommand]);
-  return <div className={styles.root} data-visualizer-engine="cesium"><div ref={root} className={styles.canvas}/>{process.env.NODE_ENV==='development'&&calendarWidget?(calendarExperience?<CalendarGlobeOverlay widget={calendarWidget}/>:<CalendarOverlay widget={calendarWidget}/>):null}{error?<output className={styles.error}>{error}</output>:null}</div>;
+  return <div className={styles.root} data-visualizer-engine="cesium"><div ref={root} className={styles.canvas}/>{calendarWidget?(calendarExperience?<CalendarGlobeOverlay widget={calendarWidget}/>:process.env.NODE_ENV==='development'?<CalendarOverlay widget={calendarWidget}/>:null):null}{error?<output className={styles.error}>{error}</output>:null}</div>;
 }

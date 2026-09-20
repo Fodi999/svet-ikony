@@ -24,11 +24,21 @@ export async function generateMetadata() {
 
 export default async function PravoslavnaIstoriyaPage({ searchParams }: { searchParams: Promise<{ terrainRegion?: string; engine?:string;view?:string }> }) {
   const locale = await getRequestLocale();
+  const params=await searchParams;
+  // Default production/dev experience: the unified Cesium calendar globe.
+  // ?view=legacy keeps the previous HistoryVisualizer reachable without
+  // deleting it, per EARTH_ASSET_CONTRACT.md-style additive migration.
+  if(params.view!=='legacy') {
+    return (
+      <>
+        <Hreflang locale={locale} path="/pravoslavna-istoriya" />
+        <CalendarExperience/>
+      </>
+    );
+  }
   const useLocalEarthPreview = process.env.NODE_ENV === 'development' && process.env.EARTH_ASSET_MODE === 'local';
   const host = (await headers()).get('host') ?? '';
   const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(host);
-  const params=await searchParams;
-  if(process.env.NODE_ENV==='development'&&localHost)return <CalendarExperience/>;
   const engine=process.env.NODE_ENV === 'production'
     ? (params.engine === 'three' ? 'three' : 'cesium')
     : resolveVisualizerEngine(process.env.NODE_ENV,host,params.engine ?? process.env.VISUALIZER_ENGINE);

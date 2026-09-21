@@ -4,6 +4,10 @@ import {atlasLabel,cityRankAtHeight,styleCluster} from './atlas-style';
 import type {CapitalCity} from '@/lib/visualizer/capital-cities';
 import type {KnowledgeLayer} from './knowledge';
 
+/** Capital marker badge (public/icons/capital.svg); it replaced the old yellow point. */
+export const CAPITAL_ICON='/icons/capital.svg';
+export const CAPITAL_ICON_SIZE=22;
+
 export async function createCesiumCapitals(widget:C.CesiumWidget,options:{locale:()=> 'uk'|'ru'|'en';onSelect:(city:CapitalCity)=>void;signal:AbortSignal;reserved:()=>{x:number;y:number;w:number}[];kind?:'capital'|'city';onData?:(cities:CapitalCity[])=>void}):Promise<KnowledgeLayer> {
   const isCity=options.kind==='city',kind=isCity?'city':'capital',property=isCity?'cityId':'capitalId';
   const response=await fetch(isCity?'/data/cities-10m.json':'/data/capitals-10m.json',{signal:options.signal});if(!response.ok)throw new Error('City dataset unavailable');
@@ -16,10 +20,15 @@ export async function createCesiumCapitals(widget:C.CesiumWidget,options:{locale
   source.clustering.clusterLabels=false;
   const removeCluster=source.clustering.clusterEvent.addEventListener((_entities:unknown[],cluster:{label:C.Label;point:C.PointPrimitive;billboard:C.Billboard})=>styleCluster(cluster));
   const ordered=[...capitals].sort((a,b)=>a.scalerank-b.scalerank || b.population-a.population);
+  const range=new C.DistanceDisplayCondition(0,isCity?1800000:9000000),scale=new C.NearFarScalar(10000,1,isCity?1800000:9000000,.85);
   const makeEntity=(city:CapitalCity,position:C.Cartesian3)=>source.entities.add({id:`${kind}:${city.id}`,position,properties:{[property]:city.id},
-    point:{pixelSize:isCity?5:9,color:C.Color.fromCssColorString(isCity?'#c7d8e5':'#f5d89a'),outlineColor:C.Color.fromCssColorString('#17212a'),outlineWidth:isCity?1.5:2,
-      heightReference:C.HeightReference.CLAMP_TO_GROUND,disableDepthTestDistance:0,distanceDisplayCondition:new C.DistanceDisplayCondition(0,isCity?1800000:9000000),scaleByDistance:new C.NearFarScalar(10000,1,isCity?1800000:9000000,.85)},
-    label:{show:true,text:city.names[options.locale()] || city.name,...atlasLabel(kind),heightReference:C.HeightReference.CLAMP_TO_GROUND}});
+    // Capitals use the /icons/capital.svg badge (Cesium billboard: same ground clamping, picking and pick mapping as before); cities keep small dots.
+    ...(isCity?{point:{pixelSize:5,color:C.Color.fromCssColorString('#c7d8e5'),outlineColor:C.Color.fromCssColorString('#17212a'),outlineWidth:1.5,
+      heightReference:C.HeightReference.CLAMP_TO_GROUND,disableDepthTestDistance:0,distanceDisplayCondition:range,scaleByDistance:scale}}
+      :{billboard:{image:CAPITAL_ICON,width:CAPITAL_ICON_SIZE,height:CAPITAL_ICON_SIZE,verticalOrigin:C.VerticalOrigin.CENTER,horizontalOrigin:C.HorizontalOrigin.CENTER,
+      heightReference:C.HeightReference.CLAMP_TO_GROUND,disableDepthTestDistance:0,distanceDisplayCondition:range,scaleByDistance:scale}}),
+    label:{show:true,text:city.names[options.locale()] || city.name,...atlasLabel(kind),
+      ...(isCity?{}:{pixelOffset:new C.Cartesian2(CAPITAL_ICON_SIZE/2+5,0)}),heightReference:C.HeightReference.CLAMP_TO_GROUND}});
   // Keep the real catalog in CPU memory. Only the visible city subset gets Entities,
   // preserving native ground clamping, EntityCluster and the existing pick mapping.
   const entries=ordered.map(city=>{const position=C.Cartesian3.fromDegrees(city.lon,city.lat);return {city,position,entity:isCity?null:makeEntity(city,position)};});

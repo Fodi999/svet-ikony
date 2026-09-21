@@ -1,5 +1,7 @@
 # Cesium local architecture
 
+> **Update:** the calendar globe (`/pravoslavna-istoriya`) now streams ion imagery/terrain/buildings; see "Streamed real Earth" in `UNIFIED_GLOBE.md`. The same-origin-only rules below still apply to the legacy/self-hosted path.
+
 ## Runtime choice
 
 Use @cesium/engine and its CesiumWidget, not Viewer or @cesium/widgets.

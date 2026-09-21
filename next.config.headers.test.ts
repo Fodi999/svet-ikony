@@ -7,10 +7,21 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
  * this test rather than only being caught by eyeballing the config.
  */
 
+// Hosts the native CesiumJS providers contact for the streamed real Earth (ion imagery incl. Google Maps 2D proxy,
+// World Terrain, OSM Buildings, Bing fallback). Allowed in connect-src on the Cesium routes only.
+const CESIUM_STREAMING_HOSTS = [
+  'https://api.cesium.com',
+  'https://assets.ion.cesium.com',
+  'https://dev.virtualearth.net',
+  'https://*.tiles.virtualearth.net',
+];
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.resetModules();
 });
+
+const withoutCsp = (headers: Record<string, string>) => Object.fromEntries(Object.entries(headers).filter(([key]) => key !== 'Content-Security-Policy'));
 
 async function loadHeaders(): Promise<{ source: string; headers: { key: string; value: string }[] }[]> {
   const config = (await import('./next.config')).default as { headers?: () => Promise<{ source: string; headers: { key: string; value: string }[] }[]> };
@@ -26,7 +37,7 @@ describe('next.config.ts headers()', () => {
     expect(rules).toEqual([]);
   });
 
-  it('in production, applies the full security header set to every route', async () => {
+  it('in production, applies the full security header set to every route (Cesium routes add only wasm + streaming-Earth connect-src hosts)', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.resetModules();
     const rules = await loadHeaders();
@@ -50,8 +61,12 @@ describe('next.config.ts headers()', () => {
     // must not be swept up by a copy-pasted deny list.
     expect(byKey['Permissions-Policy']).not.toContain('clipboard-write=()');
 
+    // Every other route keeps the baseline CSP: no wasm, no streaming-Earth hosts.
     const csp = byKey['Content-Security-Policy']!;
-    expect(csp.split('; ').find((directive) => directive.startsWith('connect-src '))).toBe("connect-src 'self' blob:");
+    const directives = (value: string) => value.split('; ');
+    expect(directives(csp).find((directive) => directive.startsWith('connect-src '))).toBe("connect-src 'self' blob:");
+    for (const host of CESIUM_STREAMING_HOSTS) expect(csp).not.toContain(host);
+    expect(csp).not.toMatch(/cesium\.com|virtualearth\.net/);
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("object-src 'none'");
@@ -60,11 +75,31 @@ describe('next.config.ts headers()', () => {
     expect(csp).not.toContain('script-src *');
     expect(csp).not.toContain("'wasm-unsafe-eval'");
     expect(csp).not.toContain("'unsafe-eval'");
+
+    // Only the Cesium routes get the wasm allowance and the streamed-Earth connect-src hosts.
     for (const rule of rules.slice(1)) {
-      const scoped = Object.fromEntries(rule.headers.map(header=>[header.key,header.value]));
-      expect(scoped).toEqual({...byKey, 'Content-Security-Policy': csp.replace(
-        "script-src 'self' 'unsafe-inline'", "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
-      )});
+      const scoped = Object.fromEntries(rule.headers.map((header) => [header.key, header.value]));
+      // Every non-CSP security header is identical to the global set.
+      expect(withoutCsp(scoped)).toEqual(withoutCsp(byKey));
+      const cesiumCsp = scoped['Content-Security-Policy'];
+      // The CSP differs from the baseline in exactly two directives: script-src (+wasm) and connect-src (+ streaming hosts).
+      expect(cesiumCsp).toBeDefined();
+      const cesiumDirectives = directives(cesiumCsp!);
+      const baseline = directives(csp);
+      expect(cesiumDirectives).toHaveLength(baseline.length);
+      expect(cesiumDirectives.filter((directive) => !baseline.includes(directive)).sort()).toEqual([
+        `connect-src 'self' blob: ${CESIUM_STREAMING_HOSTS.join(' ')}`,
+        "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
+      ]);
+      expect(baseline.filter((directive) => !cesiumDirectives.includes(directive)).sort()).toEqual([
+        "connect-src 'self' blob:",
+        "script-src 'self' 'unsafe-inline'",
+      ]);
+      // Still not loosened: no wildcard scripts, no eval; connect-src is exactly 'self' blob: plus the four hosts above (asserted above).
+      expect(cesiumCsp).not.toMatch(/script-src[^;]*\*/);
+      expect(cesiumCsp).not.toContain("'unsafe-eval'");
+      expect(cesiumCsp).toContain("frame-ancestors 'none'");
+      expect(cesiumCsp).toContain("object-src 'none'");
     }
   });
 });

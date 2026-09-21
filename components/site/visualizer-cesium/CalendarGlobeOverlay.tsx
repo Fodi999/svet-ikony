@@ -11,6 +11,8 @@ import {calendarCopy} from './calendar-copy';
 import styles from './calendar-globe.module.css';
 import {useUnifiedLayers} from './useUnifiedLayers';
 import {modeFromParams,initialLayers,layersForMode,layerCopy,type GlobeMode,type GlobeLayers} from '@/lib/cesium/unified';
+import {EarthSourceControl} from './EarthSourceControl';
+import type {EarthStreaming} from '@/lib/cesium/earth-streaming';
 
 type Details={id:string;title:string;summary:string;biography?:string;entityType:string;matchStatus:string;wikipedia:string|null;places:CalendarGeoItem[];
   image:{url:string;author:string;license:string;commonsPage:string}|null;
@@ -22,7 +24,7 @@ const external=(url:string|null)=>url?.startsWith('https://')?url:undefined;
 const imageSource=(url:string)=>external(url)||(url.startsWith('/')&&!url.startsWith('//')?url:undefined);
 const contentHref=(link:Details['relatedContent'][number])=>`/${link.language}/${link.type==='life'?'saints':link.type==='prayer'?'prayers':link.type==='icon'?'church/icons':'church/articles'}/${encodeURIComponent(link.slug)}`;
 
-export function CalendarGlobeOverlay({widget}:{widget:C.CesiumWidget}) {
+export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;earth?:EarthStreaming|null}) {
   const {locale,setLocale}=useI18n(),text=calendarCopy[locale];
   const [mode,setMode]=useState<GlobeMode>(()=>modeFromParams(new URLSearchParams(window.location.search)));
   const [visibility,setVisibility]=useState(()=>initialLayers(new URLSearchParams(window.location.search))),[layerPanel,setLayerPanel]=useState(false);
@@ -172,6 +174,7 @@ export function CalendarGlobeOverlay({widget}:{widget:C.CesiumWidget}) {
       <button className={styles.roundButton} title={text.zoomOut} aria-label={text.zoomOut} onClick={()=>zoom(-1)}><Minus size={24}/></button>
     </div>
     <button className={styles.overview} onClick={overview}><Globe2 size={18}/>{text.showAll}</button>
+    <EarthSourceControl earth={earth}/>
     <button className={styles.sunToggle} aria-label={text.sun} title={text.sun} aria-pressed={sun} onClick={()=>{setCalendarLighting(widget,!sun);setSun(!sun);}}><Sun size={20}/></button>
     {mode==='history'?<nav className={styles.timeline} aria-label={text.history}><label>{labels.year} <select value={unified.year} onChange={event=>unified.setYear(event.target.value)}><option value="">{labels.all}</option>{unified.years.map(year=><option key={year}>{year}</option>)}</select></label><span>{unified.events.length?`${unified.events.length} ${labels.events}`:labels.empty}</span></nav>:<nav className={styles.timeline} aria-label={text.calendar}>{[-2,-1,0,1,2].map(offset=>{const value=offsetDate(date,offset);return <button key={offset} aria-current={offset===0?'date':undefined} aria-label={format(value)} onClick={()=>changeDate(value)}><i/><span>{format(value,offset===0?{day:'numeric',month:'long'}:{day:'numeric',month:'short'})}</span></button>;})}</nav>}
   </div>;

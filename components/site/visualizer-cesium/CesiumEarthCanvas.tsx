@@ -5,6 +5,7 @@ import type {CesiumWidget} from '@cesium/engine';
 import type {CameraCommand} from '../visualizer/Earth3DCanvas';
 import '@cesium/engine/Source/Widget/CesiumWidget.css';
 import styles from './cesium.module.css';
+import calendarStyles from './calendar-globe.module.css';
 import {useI18n} from '@/components/site/LanguageProvider';
 import type {CapitalCity} from '@/lib/visualizer/capital-cities';
 import type {createCesiumCountries} from '@/lib/cesium/countries';
@@ -16,6 +17,8 @@ import {terrainZoomDistance} from '@/lib/cesium/camera';
 import {CESIUM_DATA, CESIUM_RUNTIME} from '@/lib/cesium/release';
 import {CalendarOverlay} from './CalendarOverlay';
 import {CalendarGlobeOverlay} from './CalendarGlobeOverlay';
+import {createEarthStreaming,earthStreamingEnabled,parseBasemap,type EarthStreaming} from '@/lib/cesium/earth-streaming';
+import {installDevProbe} from '@/lib/cesium/dev-probe';
 let nextInstanceId=0;
 const liveInstances=new Set<number>();
 
@@ -36,26 +39,32 @@ export type CesiumCanvasProps = {
 export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initialAlpsPreview=false,selectedCountryCode=null,onSelectCountry,onSelectCapital,bordersVisible=true,capitalsVisible=true,mapEvents,selectedEvent,historicalTerritory,onSelectEvent}:CesiumCanvasProps) {
   const [error,setError]=useState<string|null>(null);
   const [calendarWidget,setCalendarWidget]=useState<CesiumWidget|null>(null);
+  const [earth,setEarth]=useState<EarthStreaming|null>(null);
   const events=useRef<ReturnType<typeof createCesiumEvents>|null>(null);
   const historyProps=useRef({mapEvents,selectedEvent,historicalTerritory,onSelectEvent});
   useEffect(()=>{historyProps.current={mapEvents,selectedEvent,historicalTerritory,onSelectEvent};events.current?.update(mapEvents??[],selectedEvent??null);},[mapEvents,selectedEvent,historicalTerritory,onSelectEvent]);
   useEffect(()=>{events.current?.focus(selectedEvent??null);},[selectedEvent]);
   useEffect(()=>{void events.current?.territory(historicalTerritory??null).catch(e=>setError(String(e)));},[historicalTerritory]);
-  const root=useRef<HTMLDivElement>(null),widget=useRef<CesiumWidget|null>(null);
+  const root=useRef<HTMLDivElement>(null),frame=useRef<HTMLDivElement>(null),credits=useRef<HTMLDivElement>(null),widget=useRef<CesiumWidget|null>(null);
   const countries=useRef<Awaited<ReturnType<typeof createCesiumCountries>>|null>(null),capitals=useRef<KnowledgeLayer|null>(null);
   const {locale}=useI18n();
   const props=useRef({locale,selectedCountryCode,onSelectCountry,onSelectCapital,bordersVisible,capitalsVisible});
   useEffect(()=>{props.current={locale,selectedCountryCode,onSelectCountry,onSelectCapital,bordersVisible,capitalsVisible};widget.current?.scene.requestRender();},[locale,selectedCountryCode,onSelectCountry,onSelectCapital,bordersVisible,capitalsVisible]);
   useEffect(()=>{
     let disposed=false;
+    let earthController:EarthStreaming|null=null;
+    installDevProbe();
     const abort=new AbortController();
     const dataBase=process.env.NODE_ENV === 'production'?CESIUM_DATA:'/api/dev/cesium/data/';
     (window as Window & {CESIUM_BASE_URL?:string}).CESIUM_BASE_URL=process.env.NODE_ENV === 'production'?CESIUM_RUNTIME:'/api/dev/cesium/';
     void import('@cesium/engine').then(C=>{
       if(disposed || !root.current)return;
       C.CreditDisplay.cesiumCredit=new C.Credit('<a href="https://cesium.com/platform/cesiumjs/">CesiumJS</a>',true);
+      // The calendar globe renders every credit (Cesium ion, Google Maps, CesiumJS, data attribution) in its own bottom strip
+      // instead of the default overlay inside the canvas; the attribution lightbox still opens over the whole frame.
+      const creditOptions=calendarExperience&&credits.current?{creditContainer:credits.current,creditViewport:frame.current??undefined}:{};
       const instance=new C.CesiumWidget(root.current,{baseLayer:false,terrainProvider:new C.EllipsoidTerrainProvider(),
-        requestRenderMode:true,maximumRenderTimeChange:Infinity,showRenderLoopErrors:false});
+        requestRenderMode:true,maximumRenderTimeChange:Infinity,showRenderLoopErrors:false,...creditOptions});
       widget.current=instance;
       const instanceId=++nextInstanceId;liveInstances.add(instanceId);
       instance.canvas.dataset.instanceId=String(instanceId);
@@ -87,18 +96,32 @@ export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initia
       instance.scene.globe.depthTestAgainstTerrain=true;
       instance.scene.screenSpaceCameraController.enableCollisionDetection=true;
       instance.scene.screenSpaceCameraController.minimumZoomDistance=10;
-      instance.scene.imageryLayers.addImageryProvider(new C.UrlTemplateImageryProvider({url:`${dataBase}nasa/{z}/{x}/{y}.jpg`,
+      // Streamed real Earth (Cesium ion imagery/terrain/buildings) only for the unified calendar globe; the
+      // self-hosted NASA layer stays underneath as the low-resolution fallback and the legacy path is untouched.
+      const streaming=calendarExperience&&earthStreamingEnabled(window.location.search);
+      const nasa=instance.scene.imageryLayers.addImageryProvider(new C.UrlTemplateImageryProvider({url:`${dataBase}nasa/{z}/{x}/{y}.jpg`,
         tilingScheme:new C.GeographicTilingScheme(),maximumLevel:4,credit:'NASA Earth Observatory'}));
-      void C.CesiumTerrainProvider.fromUrl(`${dataBase}alps-heightmap/`,{requestVertexNormals:false,requestWaterMask:false}).then(provider=>{
-        if(disposed)return;
-        instance.terrainProvider=provider;
-        instance.scene.requestRender();
-      }).catch(e=>{if(!disposed)setError(`Local terrain: ${String(e)}`);});
-      const sentinel=instance.scene.imageryLayers.addImageryProvider(new C.UrlTemplateImageryProvider({url:`${dataBase}sentinel/{z}/{x}/{y}.png`,
-        tilingScheme:new C.GeographicTilingScheme(),rectangle:C.Rectangle.fromDegrees(6.7,45.75,6.98,46),minimumLevel:7,maximumLevel:13,
-        credit:'Contains modified Copernicus Sentinel data 2023'}));
-      sentinel.show=false;
-      instance.scene.preRender.addEventListener(()=>{sentinel.show=instance.camera.positionCartographic.height<500000;});
+      if(!streaming){
+        void C.CesiumTerrainProvider.fromUrl(`${dataBase}alps-heightmap/`,{requestVertexNormals:false,requestWaterMask:false}).then(provider=>{
+          if(disposed)return;
+          instance.terrainProvider=provider;
+          instance.scene.requestRender();
+        }).catch(e=>{if(!disposed)setError(`Local terrain: ${String(e)}`);});
+        const sentinel=instance.scene.imageryLayers.addImageryProvider(new C.UrlTemplateImageryProvider({url:`${dataBase}sentinel/{z}/{x}/{y}.png`,
+          tilingScheme:new C.GeographicTilingScheme(),rectangle:C.Rectangle.fromDegrees(6.7,45.75,6.98,46),minimumLevel:7,maximumLevel:13,
+          credit:'Contains modified Copernicus Sentinel data 2023'}));
+        sentinel.show=false;
+        instance.scene.preRender.addEventListener(()=>{sentinel.show=instance.camera.positionCartographic.height<500000;});
+      }else{
+        const params=new URLSearchParams(window.location.search);
+        let saved:string|null=null;try{saved=window.localStorage.getItem('earth:basemap');}catch{/* storage unavailable */}
+        earthController=createEarthStreaming(C,instance,nasa,{basemap:parseBasemap(params.get('basemap')??saved)});
+        setEarth(earthController);
+        void earthController.setBasemap(earthController.state.basemap);
+        if(params.get('terrain')==='1'||params.get('buildings')==='1')void earthController.setTerrain(true);
+        if(params.get('buildings')==='1')void earthController.setBuildings(true);
+      }
+      if(calendarExperience&&process.env.NODE_ENV==='development')(window as Window&{__earth?:unknown}).__earth={widget:instance,earth:earthController,C};
       instance.camera.setView({destination:C.Cartesian3.fromDegrees(calendarExperience?16:initialAlpsPreview?6.86:12,calendarExperience?28:initialAlpsPreview?45.83:46,calendarExperience?(window.innerWidth<768?24000000:14000000):initialAlpsPreview?150000:12000000)});
       if(process.env.NODE_ENV==='development'){
         const view=new URLSearchParams(window.location.search).get('atlasView');
@@ -107,7 +130,7 @@ export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initia
       }
       instance.scene.renderError.addEventListener((_scene:unknown,e:Error)=>{if(!disposed)setError(e.message);});
     }).catch(e=>{if(!disposed)setError(String(e));});
-    return ()=>{disposed=true;abort.abort();events.current?.dispose();events.current=null;countries.current?.dispose();countries.current=null;capitals.current?.dispose();capitals.current=null;if(widget.current){liveInstances.delete(Number(widget.current.canvas.dataset.instanceId));widget.current.destroy();}widget.current=null;};
+    return ()=>{disposed=true;earthController?.dispose();earthController=null;abort.abort();events.current?.dispose();events.current=null;countries.current?.dispose();countries.current=null;capitals.current?.dispose();capitals.current=null;if(widget.current){liveInstances.delete(Number(widget.current.canvas.dataset.instanceId));widget.current.destroy();}widget.current=null;};
   },[initialAlpsPreview,calendarExperience]);
   useEffect(()=>{countries.current?.select(selectedCountryCode);},[selectedCountryCode]);
   useEffect(()=>{countries.current?.setBorders(bordersVisible);},[bordersVisible]);
@@ -131,5 +154,5 @@ export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initia
       w.scene.requestRender();
     }).catch(e=>{if(!w.isDestroyed())setError(String(e));});
   },[cameraCommand]);
-  return <div className={styles.root} data-visualizer-engine="cesium"><div ref={root} className={styles.canvas}/>{calendarWidget?(calendarExperience?<CalendarGlobeOverlay widget={calendarWidget}/>:process.env.NODE_ENV==='development'?<CalendarOverlay widget={calendarWidget}/>:null):null}{error?<output className={styles.error}>{error}</output>:null}</div>;
+  return <div ref={frame} className={styles.root} data-visualizer-engine="cesium"><div ref={root} className={styles.canvas}/>{calendarExperience?<div ref={credits} className={calendarStyles.credits} data-cesium-credits role="contentinfo" aria-label="Map data attribution"/>:null}{calendarWidget?(calendarExperience?<CalendarGlobeOverlay widget={calendarWidget} earth={earth}/>:process.env.NODE_ENV==='development'?<CalendarOverlay widget={calendarWidget}/>:null):null}{error?<output className={styles.error}>{error}</output>:null}</div>;
 }

@@ -47,3 +47,34 @@ visibility are ready; no records or coordinates were fabricated. Historical
 territories reuse the existing event-linked renderer. Routes have no connected
 dataset and their checkbox remains disabled. Full production content parity is
 not claimed; legacy source is retained and no production release was performed.
+
+## Streamed real Earth (calendar globe)
+
+The calendar globe (`/pravoslavna-istoriya`, Cesium) streams its Earth instead of
+shipping large textures. Nothing is downloaded into the repository. Implementation:
+`lib/cesium/earth-streaming.ts`, UI: `EarthSourceControl.tsx`.
+
+- Imagery: Google 2D Maps through Cesium ion (asset 3830182 Satellite, 3830184 Map).
+  If Google 2D is not available for the account, the controller records
+  `googleBlocked` and falls back to Cesium World Imagery (Bing Aerial / Roads).
+  Set `NEXT_PUBLIC_CESIUM_GOOGLE_2D=0` to skip Google 2D. Google's own attribution
+  stays visible in the Cesium credit bar.
+- Satellite / Map is a layer `show` switch on one `CesiumWidget`; nothing is recreated.
+  The old NASA/Blender Earth texture remains as the instant first-paint and offline
+  fallback and is hidden once streamed imagery is ready.
+- World Terrain and OSM Buildings (ion asset 96188) are dev-only toggles, default OFF.
+  Buildings need terrain, so enabling them also enables terrain. URL: `?terrain=1`,
+  `?buildings=1`, `?basemap=satellite|map`. `?earth=legacy` (dev) restores the old
+  NASA + Alps path.
+- Sacred Markers use the globe height (`globe.getHeight`) when terrain is on so
+  models stay on the ground; marker geometry/design is unchanged.
+- Token: `NEXT_PUBLIC_CESIUM_ION_TOKEN` (own ion token; never commit it). Without a
+  token, production stays on the legacy NASA path; dev uses Cesium's evaluation token
+  (it shows a credit warning and is not for production).
+- CSP: on the Cesium route `connect-src` also allows `api.cesium.com`,
+  `assets.ion.cesium.com`, `dev.virtualearth.net`, `*.tiles.virtualearth.net`.
+- Dev-only probes: `lib/cesium/dev-probe.ts` (`window.__earthProbe`) and
+  `window.__earth`; both are inactive in production builds.
+
+This supersedes the "no ion / World Imagery / World Terrain" rule in
+`CESIUM_ARCHITECTURE.md` for the calendar globe only.

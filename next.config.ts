@@ -41,6 +41,9 @@ if (process.env.NODE_ENV === 'development') {
  * this codebase (grepped directly), so connect-src/frame-src/script-src
  * need no external origins beyond 'self'.
  */
+// Hosts contacted by native CesiumJS providers for the streamed real Earth (observed in the browser network log).
+const CESIUM_STREAMING_HOSTS = 'https://api.cesium.com https://assets.ion.cesium.com https://dev.virtualearth.net https://*.tiles.virtualearth.net';
+
 const SECURITY_HEADERS = [
   {
     key: 'Content-Security-Policy',
@@ -101,7 +104,10 @@ const nextConfig: NextConfig = {
   async headers() {
     if (process.env.NODE_ENV !== 'production') return [];
     const cesiumHeaders = SECURITY_HEADERS.map(header => header.key === 'Content-Security-Policy'
-      ? {...header, value: header.value.replace("script-src 'self' 'unsafe-inline'", "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'")}
+      ? {...header, value: header.value
+        .replace("script-src 'self' 'unsafe-inline'", "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'")
+        // Streamed Cesium Earth (ion imagery incl. Google Maps 2D proxy, World Terrain, OSM Buildings; Bing fallback).
+        .replace("connect-src 'self' blob:", `connect-src 'self' blob: ${CESIUM_STREAMING_HOSTS}`)}
       : header);
     return [
       { source: '/(.*)', headers: SECURITY_HEADERS },

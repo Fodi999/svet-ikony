@@ -80,7 +80,6 @@
 .timeline i { width:6px; height:6px; border-radius:50%; background:#a4a09a; display:block; margin-top:9px; }
 .timeline [aria-current=date] { color:var(--gold); flex:1.7; }
 .timeline [aria-current=date] i { background:#f1cf88; width:12px; height:12px; margin-top:6px; box-shadow:0 0 16px #e9c47988; }
-.experience :global(.cesium-widget-credits) { left:28px; bottom:8px; opacity:.65; max-width:calc(100% - 56px); font-size:9px; }
 @media(min-width:1800px) { .detail { right:36px; width:380px; } .overlay[data-selected=true] .cameraControls { right:434px; } }
 @media(max-width:1199px) { .brand b { font-size:25px; } .brand small { font-size:11px; } .brand { left:18px; gap:6px; } .dateBar { width:336px; } .dateLabel strong { font-size:20px; } .navigation { width:70px; left:14px; } .navigation span { display:none; } .drawer { left:94px; } .topActions { gap:5px; right:16px; } .topActions>.iconButton:not(.menuButton) { display:none; } .detail { width:320px; right:16px; } .overlay[data-selected=true] .cameraControls { right:350px; } .timeline { width:420px; } }
 @media(max-width:767px) {
@@ -97,7 +96,6 @@
   .overview { bottom:99px; right:14px; font-size:11px!important; padding:8px 12px; } .sunToggle { bottom:100px; left:14px; width:34px; height:34px; }
   .timeline { bottom:24px; width:calc(100% - 28px); height:61px; padding:8px; } .timeline button { font-size:10px; } .timeline i { margin-top:11px; } .timeline [aria-current=date] i { margin-top:8px; }
   .overlay:has(.detail) .timeline,.overlay:has(.drawer) .timeline,.overlay:has(.drawer) .overview,.overlay:has(.detail) .overview,.overlay:has(.detail) .sunToggle,.overlay:has(.drawer) .sunToggle { visibility:hidden; }
-  .experience :global(.cesium-widget-credits) { bottom:3px; left:14px; font-size:8px; }
 }
 @media(max-width:359px) { .brand b { font-size:19px; } .brand img { width:25px; } .topActions { gap:0; right:8px; } .today { padding:6px; } }
 @media(prefers-reduced-motion:reduce) { .cameraControls { transition:none; } }
@@ -116,3 +114,29 @@
   .layerError {left:14px;right:14px;}
   .overlay:has(.drawer) .layersButton,.overlay:has(.detail) .layersButton {visibility:hidden;}
 }
+
+/* Streamed Earth: compact Satellite | Map switch (+ dev-only Terrain / Buildings toggles). */
+.earthControl {position:absolute;left:32px;bottom:104px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;z-index:6;pointer-events:auto;}
+.basemapSwitch {display:inline-flex;border:1px solid var(--line);border-radius:18px;background:var(--glass);overflow:hidden;}
+.basemapSwitch button {display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:0;background:transparent;color:#aeb2b9;font-size:12px;letter-spacing:.02em;}
+.basemapSwitch button[aria-pressed=true] {color:var(--gold);background:#e8c77f1f;}
+.earthTools {display:flex;gap:12px;padding:6px 10px;border:1px solid var(--line);border-radius:14px;background:var(--glass);}
+.earthTools label {display:flex;align-items:center;gap:6px;color:#e7e9ec;font-size:11px;}
+.earthTools input {accent-color:#e8c77f;}
+@media(max-width:767px) {
+  .earthControl {left:14px;bottom:146px;}
+  .overlay:has(.detail) .earthControl,.overlay:has(.drawer) .earthControl {visibility:hidden;}
+}
+
+/* Attribution strip: Cesium ion / Google Maps / CesiumJS credits live in their own bottom container (CesiumWidget creditContainer)
+   and are never hidden or clipped. It sits in the free band under the timeline; "Data attribution" opens Cesium's full lightbox. */
+.credits {position:absolute;left:0;right:0;bottom:6px;min-height:22px;z-index:4;display:flex;align-items:center;justify-content:center;padding:0 16px;pointer-events:none;color:#b9bfc8;font-size:10px;line-height:22px;}
+.credits :global(.cesium-widget-credits) {position:static!important;display:flex!important;flex-wrap:wrap;align-items:center;justify-content:center;gap:0 8px;inset:auto!important;max-width:100%!important;padding:0!important;color:inherit;font-size:inherit!important;text-align:center;text-shadow:none;pointer-events:none;}
+.credits :global(.cesium-credit-logoContainer),.credits :global(.cesium-credit-textContainer) {display:inline-flex!important;flex-wrap:wrap;align-items:center;justify-content:center;gap:0 8px;}
+.credits :global(.cesium-credit-wrapper) {display:inline-flex!important;align-items:center;}
+.credits img {display:block;height:14px;width:auto;max-width:96px;object-fit:contain;opacity:.85;vertical-align:middle!important;}
+.credits a,.credits :global(.cesium-credit-expand-link) {display:inline-flex!important;align-items:center;color:#d8dce2;text-decoration:none;cursor:pointer;pointer-events:auto;}
+.credits a:hover,.credits :global(.cesium-credit-expand-link):hover {color:var(--gold,#e9c479);text-decoration:underline;}
+.credits :global(.cesium-credit-delimiter) {opacity:.6;}
+.experience :global(.cesium-credit-lightbox-overlay) {z-index:30;}
+@media(max-width:767px) {.credits {bottom:2px;min-height:16px;padding:0 8px;font-size:8px;line-height:16px;} .credits :global(.cesium-widget-credits),.credits :global(.cesium-credit-logoContainer),.credits :global(.cesium-credit-textContainer) {gap:0 5px;} .credits img {height:11px;max-width:70px;}}

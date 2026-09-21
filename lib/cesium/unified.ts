@@ -4,7 +4,7 @@ export function modeFromParams(params:URLSearchParams):GlobeMode {
   const mode=params.get('mode');
   return globeModes.includes(mode as GlobeMode)?mode as GlobeMode:params.get('view')==='history'?'history':params.has('calendarDate')||params.has('date')?'calendar':'globe';
 }
-export const defaultLayers={countries:true,borders:true,capitals:true,cities:false,saints:false,churches:false,monasteries:false,calendar:false,events:false,territories:false,routes:false};
+export const defaultLayers={countries:true,borders:true,capitals:true,cities:true,christianPlaces:true,sacredModels:true,saints:false,churches:false,monasteries:false,calendar:false,events:false,territories:false,routes:false};
 export type GlobeLayers=typeof defaultLayers;
 export function layersForMode(layers:GlobeLayers,mode:GlobeMode):GlobeLayers {
   return {...layers,calendar:mode==='calendar',saints:mode==='saints',churches:mode==='churches',monasteries:mode==='churches',events:mode==='history',territories:mode==='history'};

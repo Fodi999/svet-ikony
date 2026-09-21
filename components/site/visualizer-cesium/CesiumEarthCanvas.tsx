@@ -125,8 +125,12 @@ export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initia
       instance.camera.setView({destination:C.Cartesian3.fromDegrees(calendarExperience?16:initialAlpsPreview?6.86:12,calendarExperience?28:initialAlpsPreview?45.83:46,calendarExperience?(window.innerWidth<768?24000000:14000000):initialAlpsPreview?150000:12000000)});
       if(process.env.NODE_ENV==='development'){
         const view=new URLSearchParams(window.location.search).get('atlasView');
-        const preset=view==='europe'?[12,48,4500000]:view==='egypt'?[31,27,2400000]:view==='city'?[11.34,44.5,80000]:null;
+        const preset=view==='europe'?[12,48,4500000]:view==='egypt'?[31,27,2400000]:view==='city'?[11.34,44.5,80000]:view==='sacred'?[12.5,41.9,350000]:view==='sacred-close'?[11.86,41.4,12000]:null;
         if(preset)instance.camera.setView({destination:C.Cartesian3.fromDegrees(...preset as [number,number,number])});
+        if(view==='sacred'||view==='sacred-close'){
+          instance.camera.lookAt(C.Cartesian3.fromDegrees(view==='sacred'?12.82:12.5,view==='sacred'?42.14:41.9),new C.HeadingPitchRange(0,-Math.PI/4,view==='sacred'?350000:12000));
+          instance.camera.lookAtTransform(C.Matrix4.IDENTITY);
+        }
       }
       instance.scene.renderError.addEventListener((_scene:unknown,e:Error)=>{if(!disposed)setError(e.message);});
     }).catch(e=>{if(!disposed)setError(String(e));});

@@ -11,6 +11,9 @@ import {calendarCopy} from './calendar-copy';
 import styles from './calendar-globe.module.css';
 import {useUnifiedLayers} from './useUnifiedLayers';
 import {modeFromParams,initialLayers,layersForMode,layerCopy,type GlobeMode,type GlobeLayers} from '@/lib/cesium/unified';
+import {sacredDemo} from '@/lib/cesium/sacred-demo';
+import {christianPlaces,christianCopy,chessIcon,chessModel,sacredPlaceItem,type SacredPlace} from '@/lib/cesium/christian-places';
+import {countryMetadata} from '@/lib/visualizer/countries';
 import {EarthSourceControl} from './EarthSourceControl';
 import type {EarthStreaming} from '@/lib/cesium/earth-streaming';
 
@@ -26,18 +29,38 @@ const contentHref=(link:Details['relatedContent'][number])=>`/${link.language}/$
 
 export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;earth?:EarthStreaming|null}) {
   const {locale,setLocale}=useI18n(),text=calendarCopy[locale];
+  const [demo]=useState(()=>sacredDemo(new URLSearchParams(window.location.search),window.location.hostname));
   const [mode,setMode]=useState<GlobeMode>(()=>modeFromParams(new URLSearchParams(window.location.search)));
   const [visibility,setVisibility]=useState(()=>initialLayers(new URLSearchParams(window.location.search))),[layerPanel,setLayerPanel]=useState(false);
   const [date,setDate]=useState(()=>{const params=new URLSearchParams(window.location.search),value=params.get('date')??params.get('calendarDate');return value&&validDate(value)?value:today();});
-  const [items,setItems]=useState<CalendarGeoItem[]>([]),[entries,setEntries]=useState<CalendarEntry[]>([]);
+  const [items,setItems]=useState<CalendarGeoItem[]>(()=>demo?.items??[]),[entries,setEntries]=useState<CalendarEntry[]>([]);
   const [selected,setSelected]=useState<string|null>(()=>new URLSearchParams(window.location.search).get('entity')),[loadedDetails,setDetails]=useState<Details|null>(null);
   const [drawer,setDrawer]=useState(()=>!['globe','map'].includes(mode)),[menu,setMenu]=useState(false),[query,setQuery]=useState('');
-  const unified=useUnifiedLayers(widget,locale,visibility,selected,id=>{setSelected(id);setDetails(null);setDrawer(false);}),labels=layerCopy[locale];
+  const unified=useUnifiedLayers(widget,locale,visibility,selected,id=>{setSelected(id);setDetails(null);setDrawer(false);}),labels={...layerCopy[locale],...christianCopy[locale]};
+  const sacred=christianPlaces.find(place=>`place:${place.id}`===selected);
   const baseSelection=!!selected&&/^(country|capital|city|event):/.test(selected);
-  const details=baseSelection?unified.selectionDetails():loadedDetails;
-  const [status,setStatus]=useState('loading'),[detailError,setDetailError]=useState(false),[retry,setRetry]=useState(0);
+  const fixture=demo?.items.find(item=>item.entityId===selected);
+  const details:Details|null=sacred?{id:`place:${sacred.id}`,title:sacred.name[locale],summary:sacred.description[locale],entityType:sacred.type,matchStatus:'editorial_demo',wikipedia:sacred.source,places:[sacredPlaceItem(sacred,locale)],image:null,sources:[{type:'editorial_source',url:sacred.source}],relatedContent:[]}:fixture?{id:fixture.entityId,title:fixture.title,summary:'Local visual test fixture. Not a calendar record.',entityType:fixture.entityType,matchStatus:'local_fixture',wikipedia:null,places:[fixture],image:null,sources:[],relatedContent:[]}:baseSelection?unified.selectionDetails():loadedDetails;
+  const [status,setStatus]=useState(demo?'ready':'loading'),[detailError,setDetailError]=useState(false),[retry,setRetry]=useState(0);
   const [mapMode,setMapMode]=useState(false),[sun,setSun]=useState(true);
   const layer=useRef<ReturnType<typeof createOrthodoxCalendarLayer>|null>(null);
+  const placesLayer=useRef<ReturnType<typeof createOrthodoxCalendarLayer>|null>(null);
+  const [placeError,setPlaceError]=useState('');
+  useEffect(()=>{
+    const instance=createOrthodoxCalendarLayer(widget,id=>{setSelected(id);setDetails(null);setDrawer(false);},error=>setPlaceError(String(error)),{
+      name:'ChristianPlaces',farDistance:30_000_000,
+      model:item=>{const place=christianPlaces.find(place=>place.id===item.placeId);return place?chessModel(place.markerType):undefined;},
+      icon:(item,active)=>chessIcon(christianPlaces.find(place=>place.id===item.placeId)?.markerType??'pawn',active),
+    });
+    placesLayer.current=instance;
+    unified.manager.current.add({...instance,id:'christianPlaces'});
+    unified.manager.current.add({id:'sacredModels',kind:'event',setVisible(){},dispose(){}});
+    return()=>{instance.dispose();placesLayer.current=null;};
+  },[widget,unified.manager]);
+  useEffect(()=>{
+    placesLayer.current?.update(christianPlaces.map(place=>sacredPlaceItem(place,locale)),'all',selected,visibility.sacredModels);
+    placesLayer.current?.setVisible(visibility.christianPlaces);
+  },[locale,selected,visibility.sacredModels,visibility.christianPlaces]);
   const entityVisibility=useRef<Record<string,boolean>>({});
   const refreshEntities=useRef(()=>{});
   const itemsRef=useRef(items),entryRef=useRef(entries);
@@ -46,7 +69,7 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
     const instance=createOrthodoxCalendarLayer(widget,id=>{
       const entry=entityVisibility.current.calendar?entryRef.current.find(entry=>entry.entityId===id):null;
       setSelected(entry?'entry:'+entry.id:id);setDetails(current=>current?.id===id?current:null);setDetailError(false);setDrawer(false);
-      instance.focus(itemsRef.current.filter(item=>item.entityId===id));
+      // Picking an already visible marker must not fly away from its near model.
     },()=>setStatus('error'));
     layer.current=instance;
     const manager=unified.manager.current;
@@ -55,6 +78,7 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
     return()=>{instance.dispose();layer.current=null;};
   },[widget,unified.manager]);
   useEffect(()=>{
+    if(demo)return;
     const controller=new AbortController();layer.current?.update([]);
     const load=async()=>{
       setStatus('loading');setItems([]);setEntries([]);setDetailError(false);
@@ -65,24 +89,25 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
         if(!controller.signal.aborted){setItems(payload.items);setEntries(payload.entries);setStatus('ready');}
       }catch{if(!controller.signal.aborted)setStatus('error');}
     };void load();return()=>controller.abort();
-  },[date,locale,retry]);
+  },[date,locale,retry,demo]);
   const selectedId=baseSelection?null:selected?.startsWith('entry:')?entries.find(entry=>entry.id===selected.slice(6))?.entityId:selected;
   useEffect(()=>{
     refreshEntities.current=()=>{
       const flags=entityVisibility.current;
       const global=unified.catalog.items.filter(item=>(flags.saints&&['saint','feast','icon'].includes(item.entityType))||(flags.churches&&['church','shrine'].includes(item.entityType))||(flags.monasteries&&item.entityType==='monastery'));
-      const visible=[...(flags.calendar?items:[]),...global];itemsRef.current=visible;
-      layer.current?.update(visible,'all',selectedId??null);
+      const visible=demo?demo.items:[...(flags.calendar?items:[]),...global];itemsRef.current=visible;
+      layer.current?.update(visible,'all',selectedId??null,visibility.sacredModels);
     };refreshEntities.current();
-  },[items,selectedId,unified.catalog.items]);
+  },[items,selectedId,unified.catalog.items,demo,visibility.sacredModels]);
   useEffect(()=>{
-    if(!selected||baseSelection)return;const controller=new AbortController(),isEntry=selected.startsWith('entry:');
+    if(!selected||baseSelection||selected.startsWith('place:'))return;const controller=new AbortController(),isEntry=selected.startsWith('entry:');
+    if(demo?.items.some(item=>item.entityId===selected))return;
     void fetch(`/api/calendar/${isEntry?'entry':'entity'}/${encodeURIComponent(isEntry?selected.slice(6):selected)}?locale=${locale}`,{signal:controller.signal}).then(async response=>{
       if(!response.ok)throw new Error('card');const data=await response.json() as Details;
       if(!Array.isArray(data.places)||!Array.isArray(data.sources)||!Array.isArray(data.relatedContent))throw new Error('card payload');
       if(!controller.signal.aborted)setDetails(data);
     }).catch(()=>{if(!controller.signal.aborted)setDetailError(true);});return()=>controller.abort();
-  },[selected,locale,baseSelection]);
+  },[selected,locale,baseSelection,demo]);
   useEffect(()=>{
     const url=new URL(window.location.href);url.searchParams.delete('view');url.searchParams.delete('engine');url.searchParams.delete('calendarDate');url.searchParams.set('mode',mode);url.searchParams.set('date',date);
     url.searchParams.set('layers',Object.entries(visibility).filter(([,value])=>value).map(([key])=>key).join(','));
@@ -102,6 +127,13 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
     if(entry.hasGeo)layer.current?.focus(items.filter(item=>item.entityId===entry.entityId));else widget.camera.cancelFlight();
   };
   const closeCard=()=>{setSelected(null);setDetails(null);};
+  const openPlace=(place:SacredPlace)=>{
+    setSelected(`place:${place.id}`);setDetails(null);setDrawer(false);setMenu(false);
+    setVisibility(current=>({...current,christianPlaces:true}));
+    if(widget.scene.mode!==C.SceneMode.SCENE3D)widget.scene.morphTo3D(0);
+    setMapMode(false);
+    widget.camera.flyTo({destination:C.Cartesian3.fromDegrees(place.lng,place.lat-.65,180000),orientation:{heading:0,pitch:-Math.PI/3,roll:0},duration:1.2});
+  };
   const openDrawer=()=>{if(mode!=='calendar')switchMode('calendar');else setDrawer(value=>!value);setSelected(null);setDetails(null);setMenu(false);};
   const overview=()=>{widget.camera.cancelFlight();if(widget.scene.mode!==C.SceneMode.SCENE3D)widget.scene.morphTo3D(0);setMapMode(false);widget.camera.flyTo({destination:C.Cartesian3.fromDegrees(16,28,window.innerWidth<768?24000000:14000000),duration:1.5});};
   const zoom=(direction:number)=>{widget.camera.cancelFlight();const amount=Math.max(25,widget.camera.positionCartographic.height*.35);if(direction>0)widget.camera.zoomIn(amount);else widget.camera.zoomOut(amount);widget.scene.requestRender();};
@@ -110,6 +142,7 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
   const categories=['saint','feast','icon','event'] as const;
   const filtered=entries.filter(entry=>entry.title.toLocaleLowerCase(locale).includes(query.toLocaleLowerCase(locale)));
   const catalogEntries=unified.catalog.entries.filter(entry=>mode==='churches'?['church','monastery','shrine'].includes(entry.entityType):['saint','feast','icon'].includes(entry.entityType)).filter(entry=>entry.title.toLocaleLowerCase(locale).includes(query.toLocaleLowerCase(locale)));
+  const matchingPlaces=christianPlaces.filter(place=>Object.values(place.name).join(' ').toLocaleLowerCase(locale).includes(query.toLocaleLowerCase(locale)));
   return <div className={styles.overlay} data-calendar-overlay data-mode={mode} data-selected={!!selected}>
     <a href={'/'+locale} className={styles.brand}><BrandLogo size={48}/><span><b>Svet Ikony</b><small>{text.tagline}</small></span></a>
     <nav className={`${styles.navigation} ${menu?styles.menuOpen:''}`} aria-label={text.menu}>
@@ -119,6 +152,7 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
       <button data-mode-button="churches" aria-label={text.churches} title={text.churches} aria-current={mode==='churches'?'page':undefined} onClick={()=>switchMode('churches')}><Church/><span>{text.churches}</span></button>
       <button data-mode-button="history" aria-label={text.history} title={text.history} aria-current={mode==='history'?'page':undefined} onClick={()=>switchMode('history')}><BookOpen/><span>{text.history}</span></button>
       <button data-mode-button="map" aria-label={text.map} title={text.map} aria-current={mode==='map'?'page':undefined} onClick={()=>switchMode('map')}><Map/><span>{text.map}</span></button>
+      <button className={styles.mobileSearch} aria-label={text.search} onClick={()=>{setDrawer(true);setMenu(false);closeCard();}}><Search/><span>{text.search}</span></button>
     </nav>
     <div className={styles.dateBar}>
       <button className={styles.iconButton} aria-label={text.previous} title={text.previous} onClick={()=>changeDate(offsetDate(date,-1))}><ChevronLeft size={20}/></button>
@@ -127,7 +161,7 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
     </div>
     <div className={styles.topActions}>
       <button className={`${styles.iconButton} ${styles.layersButton}`} title={labels.layers} aria-label={labels.layers} aria-expanded={layerPanel} onClick={()=>{setLayerPanel(value=>!value);setDrawer(false);}}><Layers size={19}/></button>
-      <button className={styles.iconButton} title={text.search} aria-label={text.search} onClick={()=>{if(mode==='globe'||mode==='map')switchMode('saints');else setDrawer(true);setMenu(false);closeCard();}}><Search size={19}/></button>
+      <button className={styles.iconButton} title={text.search} aria-label={text.search} onClick={()=>{setDrawer(true);setLayerPanel(false);setMenu(false);closeCard();}}><Search size={19}/></button>
       <button className={styles.today} onClick={()=>changeDate(today())}>{text.today}</button>
       <select aria-label="Language" value={locale} onChange={event=>setLocale(event.target.value as 'uk'|'ru'|'en')}><option value="uk">UK</option><option value="ru">RU</option><option value="en">EN</option></select>
       <button className={`${styles.iconButton} ${styles.menuButton}`} aria-label={text.menu} aria-expanded={menu} onClick={()=>setMenu(value=>!value)}><Menu size={24}/></button>
@@ -135,9 +169,11 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
     <button className={styles.dayToggle} aria-expanded={drawer} onClick={openDrawer}><CalendarDays size={16}/><span>{status==='ready'?`${entries.length} ${text.count}`:status==='error'?text.error:text.loading}</span><ChevronRight size={14}/></button>
     {layerPanel?<aside className={styles.layerPanel} aria-label={labels.layers}>{(Object.keys(visibility) as (keyof GlobeLayers)[]).map(id=><label key={id}><input type="checkbox" data-layer={id} checked={visibility[id]} disabled={id==='routes'} onChange={event=>setVisibility(current=>({...current,[id]:event.target.checked}))}/>{labels[id]}</label>)}</aside>:null}
     {unified.error?<output className={styles.layerError} role="alert">{unified.error}</output>:null}
+    {placeError?<output className={styles.layerError} role="alert">{placeError}</output>:null}
     {drawer&&mode!=='calendar'?<aside className={styles.drawer} data-testid="mode-panel">
       <header><h2>{text[mode==='map'?'map':mode==='globe'?'globe':mode]}</h2><button className={styles.iconButton} aria-label={text.close} onClick={()=>setDrawer(false)}><X size={18}/></button></header>
       <label className={styles.search}><Search size={17}/><input aria-label={text.search} value={query} onChange={event=>setQuery(event.target.value)}/></label>
+      <section className={styles.placeResults}><h3>{labels.christianPlaces}</h3><ul>{matchingPlaces.map(place=><li key={place.id}><button data-place={place.id} onClick={()=>openPlace(place)}><span>{place.name[locale]}</span><small>{countryMetadata[place.country]?.name[locale]??place.country}</small><MapPin size={14}/></button></li>)}</ul></section>
       <div className={styles.scrollArea}><ul>{mode==='history'?unified.events.filter(event=>event.title.toLocaleLowerCase(locale).includes(query.toLocaleLowerCase(locale))).map(event=><li key={event.id}><button onClick={()=>{setSelected('event:'+event.id);setDrawer(false);}}>{event.title}<small>{event.displayDate}</small></button></li>):catalogEntries.map(entry=><li key={entry.id}><button onClick={()=>{setDetails(null);setSelected(entry.id);setDrawer(false);}}>{entry.title}{entry.hasGeo?<MapPin size={14}/>:null}</button></li>)}</ul>{(mode==='history'?!unified.events.length:!catalogEntries.length)?<p>{labels.empty}</p>:null}</div>
     </aside>:null}
     {drawer&&mode==='calendar'?<aside className={styles.drawer} aria-label={text.day} data-testid="calendar-day">
@@ -155,8 +191,10 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
         <div className={styles.cardBody}>
           <h2>{details.title}</h2>
           {!baseSelection?<p className={styles.meta}>{firstPlace?`${firstPlace.lat.toFixed(4)}°, ${firstPlace.lon.toFixed(4)}°`:format(date)}</p>:null}
-          <span className={styles.type}>{details.entityType==='country'?labels.countries:details.entityType==='capital'?labels.capitals:details.entityType==='city'?labels.cities:text[details.entityType as 'saint'|'feast'|'icon'|'event']??text.event}</span>
+          <span className={styles.type}>{sacred?`${labels[sacred.type]} · ${labels[sacred.denomination]}`:details.entityType==='country'?labels.countries:details.entityType==='capital'?labels.capitals:details.entityType==='city'?labels.cities:text[details.entityType as 'saint'|'feast'|'icon'|'event']??text.event}</span>
+          {sacred?<p className={styles.meta}>{countryMetadata[sacred.country]?.name[locale]??sacred.country}</p>:null}
           {details.summary?<p className={styles.description}>{details.summary}</p>:null}
+          {sacred?.relatedSaints?.length?<section><h3>{labels.related}</h3>{sacred.relatedSaints.map(saint=><p key={saint.en}>{saint[locale]}</p>)}</section>:null}
           {!firstPlace&&!baseSelection?<small className={styles.noPlace}>{text.noPlace}</small>:null}
           {details.biography?<details className={styles.life}><summary>{text.life}</summary><p>{details.biography}</p></details>:null}
           {firstPlace?<ul className={styles.places}>{details.places.map(place=><li key={place.placeId+place.relationType}><MapPin size={14}/><span>{place.placeTitle}<small>{text[place.relationType as 'birth'|'death'|'burial'|'residence']??place.relationType}</small></span></li>)}</ul>:null}

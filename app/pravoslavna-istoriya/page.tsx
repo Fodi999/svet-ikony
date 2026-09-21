@@ -9,7 +9,7 @@ import type { ChurchVisualizerEventDto } from '@/lib/types';
 import { pageMetadata } from '@/lib/seo';
 import { getRequestLocale } from '@/lib/serverLocale';
 import { headers } from 'next/headers';
-import { resolveVisualizerEngine } from '@/lib/cesium/local-mode';
+import { resolveHistoryExperience, resolveVisualizerEngine } from '@/lib/cesium/local-mode';
 import {CalendarExperience} from '@/components/site/visualizer-cesium/CalendarExperience';
 
 export async function generateMetadata() {
@@ -26,9 +26,10 @@ export default async function PravoslavnaIstoriyaPage({ searchParams }: { search
   const locale = await getRequestLocale();
   const params=await searchParams;
   // Default production/dev experience: the unified Cesium calendar globe.
-  // ?view=legacy keeps the previous HistoryVisualizer reachable without
-  // deleting it, per EARTH_ASSET_CONTRACT.md-style additive migration.
-  if(params.view!=='legacy') {
+  // ?engine=three (temporary rollback) or ?view=legacy keeps the previous
+  // Three.js HistoryVisualizer reachable without deleting it, per
+  // EARTH_ASSET_CONTRACT.md-style additive migration.
+  if(resolveHistoryExperience(params)==='cesium-calendar') {
     return (
       <>
         <Hreflang locale={locale} path="/pravoslavna-istoriya" />

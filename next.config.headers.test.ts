@@ -7,8 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
  * this test rather than only being caught by eyeballing the config.
  */
 
-// Hosts the native CesiumJS providers contact for the streamed real Earth (ion imagery incl. Google Maps 2D proxy,
-// World Terrain, OSM Buildings, Bing fallback). Allowed in connect-src on the Cesium routes only.
+// Hosts the native CesiumJS providers contact for the streamed real Earth (ion World Imagery / Bing Aerial,
+// World Terrain, OSM Buildings). Allowed in connect-src on the Cesium routes only.
 const CESIUM_STREAMING_HOSTS = [
   'https://api.cesium.com',
   'https://assets.ion.cesium.com',
@@ -42,7 +42,7 @@ describe('next.config.ts headers()', () => {
     vi.resetModules();
     const rules = await loadHeaders();
     expect(rules.map(rule=>rule.source)).toEqual([
-      '/(.*)', '/:locale(uk|ru|en)/pravoslavna-istoriya',
+      '/(.*)', '/', '/:locale(uk|ru|en)', '/:locale(uk|ru|en)/pravoslavna-istoriya',
       '/pravoslavna-istoriya', '/cesium-runtime/:path*',
     ]);
     expect(rules[0]!.source).toBe('/(.*)');

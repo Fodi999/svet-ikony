@@ -39,7 +39,7 @@ type OrderModalCopy = {
 
 const copy: Record<'uk' | 'ru' | 'en', OrderModalCopy> = {
   uk: {
-    trigger: 'Замовити',
+    trigger: 'Оформити замовлення',
     title: 'Оформлення замовлення',
     nameLabel: 'Імʼя',
     namePlaceholder: 'Як до вас звертатися',
@@ -66,7 +66,7 @@ const copy: Record<'uk' | 'ru' | 'en', OrderModalCopy> = {
     requiredError: 'Заповніть імʼя, контакт і погодьтесь на обробку даних.'
   },
   ru: {
-    trigger: 'Заказать',
+    trigger: 'Оформить заказ',
     title: 'Оформление заказа',
     nameLabel: 'Имя',
     namePlaceholder: 'Как к вам обращаться',
@@ -93,7 +93,7 @@ const copy: Record<'uk' | 'ru' | 'en', OrderModalCopy> = {
     requiredError: 'Заполните имя, контакт и согласие на обработку данных.'
   },
   en: {
-    trigger: 'Order',
+    trigger: 'Place an order',
     title: 'Place an order',
     nameLabel: 'Name',
     namePlaceholder: 'How should we address you',

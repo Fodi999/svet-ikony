@@ -2,6 +2,7 @@ import * as C from '@cesium/engine';
 import {createLayerHandler} from './handlers';
 import type {MapEvent, SelectedEventTarget} from '@/components/site/visualizer/Earth3DCanvas';
 import {historicalPalette, type HistoricalTerritory} from '@/lib/visualizer/historical-territories';
+import {createSelectionHexController,selectionHex} from './selection-hex';
 
 function located<T extends {latitude: number | null; longitude: number | null}>(target: T | null): target is T & {latitude: number; longitude: number} {
   return target != null && target.latitude != null && target.longitude != null &&
@@ -12,6 +13,7 @@ function located<T extends {latitude: number | null; longitude: number | null}>(
 /** The existing UI owns event/year filtering; this layer only renders its selection. */
 export function createCesiumEvents(widget: C.CesiumWidget, onSelect: (id: string) => void, onError: (error: unknown) => void) {
   const source = new C.CustomDataSource('HistoryEvents');
+  const selectionHexes=createSelectionHexController(widget,source);
   let disposed = false, generation = 0, territoriesVisible = true, independentTerritories = false, historical: C.GeoJsonDataSource | null = null;
   void widget.dataSources.add(source).then(() => {
     if (disposed && !widget.isDestroyed()) widget.dataSources.remove(source, true);
@@ -45,11 +47,29 @@ export function createCesiumEvents(widget: C.CesiumWidget, onSelect: (id: string
           position: C.Cartesian3.fromDegrees(selected.longitude, selected.latitude),
           model: {uri: selected.modelUrl, heightReference: C.HeightReference.CLAMP_TO_GROUND, minimumPixelSize: 48}});
       }
+      if(located(selected))source.entities.add({id:'event-selection-hex',...selectionHex(selected.longitude,selected.latitude,{eventId:selected.id})});
+      selectionHexes.refresh();
       widget.scene.requestRender();
     },
     focus(selected: SelectedEventTarget) {
       if (disposed || !located(selected)) return;
       widget.camera.flyTo({destination: C.Cartesian3.fromDegrees(selected.longitude, selected.latitude, 150000)});
+    },
+    mosaic(selected:SelectedEventTarget,label:string,focus=false){
+      if(disposed)return;
+      source.entities.removeById('history-mosaic');
+      if(!located(selected)){widget.scene.requestRender();return;}
+      source.entities.removeById('event-selection-hex');
+      const marker=source.entities.getById(`event:${selected.id}`);if(marker)marker.show=false;
+      source.entities.add({id:'history-mosaic',...selectionHex(selected.longitude,selected.latitude,{eventId:selected.id}),
+        label:{text:label,font:'24px sans-serif',scale:.65,style:C.LabelStyle.FILL_AND_OUTLINE,fillColor:C.Color.WHITE,outlineColor:C.Color.BLACK,outlineWidth:2,
+          heightReference:C.HeightReference.CLAMP_TO_GROUND,pixelOffset:new C.Cartesian2(0,-24),distanceDisplayCondition:new C.DistanceDisplayCondition(0,40000)},
+      });
+      selectionHexes.refresh();
+      if(focus){widget.camera.cancelFlight();widget.camera.flyToBoundingSphere(new C.BoundingSphere(C.Cartesian3.fromDegrees(selected.longitude,selected.latitude),700),{
+        offset:new C.HeadingPitchRange(0,-Math.PI/3,7000),duration:1.4,
+      });}
+      widget.scene.requestRender();
     },
     async territory(territory: HistoricalTerritory | null) {
       if (disposed) return;
@@ -72,7 +92,7 @@ export function createCesiumEvents(widget: C.CesiumWidget, onSelect: (id: string
     },
     dispose() {
       if (disposed) return;
-      disposed = true; generation++; input.dispose();
+      disposed = true; generation++; selectionHexes.dispose();input.dispose();
       if(widget.isDestroyed())return;
       if (historical) widget.dataSources.remove(historical, true);
       widget.dataSources.remove(source, true);

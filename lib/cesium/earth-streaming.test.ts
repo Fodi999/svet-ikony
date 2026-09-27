@@ -3,7 +3,7 @@ import type * as Cesium from '@cesium/engine';
 import {createEarthStreaming,earthStreamingEnabled,parseBasemap} from './earth-streaming';
 
 type Layer={provider:string;show:boolean;isDestroyed:()=>boolean};
-function fakeCesium(options:{googleFails?:boolean}={}){
+function fakeCesium(){
   const calls:string[]=[];
   const layers:Layer[]=[];
   class ImageryLayer{provider:string;show=true;constructor(provider:string){this.provider=provider;}isDestroyed(){return false;}}
@@ -11,9 +11,8 @@ function fakeCesium(options:{googleFails?:boolean}={}){
   const C={
     Ion:{defaultAccessToken:''},
     ImageryLayer,EllipsoidTerrainProvider,
-    IonWorldImageryStyle:{AERIAL:2,ROAD:4},
-    IonImageryProvider:{fromAssetId:async(id:number)=>{calls.push(`google:${id}`);if(options.googleFails)throw new Error('403');return `google-${id}`;}},
-    createWorldImageryAsync:async({style}:{style:number})=>{calls.push(`bing:${style}`);return `bing-${style}`;},
+    IonWorldImageryStyle:{AERIAL:2,AERIAL_WITH_LABELS:3,ROAD:4},
+    createWorldImageryAsync:async({style}:{style:number})=>{calls.push(`world-imagery:${style}`);return `world-imagery-${style}`;},
     createWorldTerrainAsync:async()=>{calls.push('terrain');return {kind:'world'};},
     createOsmBuildingsAsync:async()=>{calls.push('buildings');return {show:true,destroy(){},isDestroyed:()=>false};},
   };
@@ -24,10 +23,19 @@ function fakeCesium(options:{googleFails?:boolean}={}){
 }
 
 it('parses the basemap query and defaults to satellite',()=>{
-  expect(parseBasemap('map')).toBe('map');
   expect(parseBasemap('satellite')).toBe('satellite');
+  expect(parseBasemap('streets')).toBe('streets');
   expect(parseBasemap(null)).toBe('satellite');
   expect(parseBasemap('bogus')).toBe('satellite');
+});
+
+it('migrates legacy Google-era basemap values so old links/localStorage never resurrect Google imagery',()=>{
+  expect(parseBasemap('google')).toBe('satellite');
+  expect(parseBasemap('cesium')).toBe('satellite');
+  expect(parseBasemap('map')).toBe('streets');
+  expect(parseBasemap('google-streets')).toBe('streets');
+  expect(parseBasemap('hybrid')).toBe('streets');
+  expect(parseBasemap('overlay')).toBe('streets');
 });
 
 it('keeps the legacy NASA path unless a token is configured or in development',()=>{
@@ -40,29 +48,28 @@ it('keeps the legacy NASA path unless a token is configured or in development',(
   if(original===undefined)delete process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;else process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN=original;
 });
 
-it('switches Satellite and Map on one widget without recreating layers or the widget',async()=>{
+it('switches Satellite and Satellite+Streets on one widget without recreating layers or the widget, using Cesium World Imagery only',async()=>{
   const env=fakeCesium();
   const earth=createEarthStreaming(env.C,env.widget,env.fallback);
   await earth.setBasemap('satellite');
-  await earth.setBasemap('map');
+  await earth.setBasemap('streets');
   await earth.setBasemap('satellite');
   expect(env.layers.length).toBe(2);
   expect(env.layers.map(layer=>layer.show)).toEqual([true,false]);
-  expect(env.calls.filter(call=>call.startsWith('google')).length).toBe(2);
+  // AERIAL (2) for satellite, AERIAL_WITH_LABELS (3) for streets -- each built exactly once and reused.
+  expect(env.calls).toEqual(['world-imagery:2','world-imagery:3']);
   expect(env.fallback.show).toBe(false);
-  expect(earth.state.provider).toBe('google-2d');
+  expect(earth.state.provider).toBe('cesium-world-imagery');
   expect(env.raw.canvas.dataset.earthBasemap).toBe('satellite');
 });
 
-it('falls back to Cesium World Imagery when Google Maps 2D is blocked by the ion account',async()=>{
-  const env=fakeCesium({googleFails:true});
+it('falls back to the NASA layer if Cesium World Imagery fails to load, never to Google',async()=>{
+  const env=fakeCesium();
+  env.C.createWorldImageryAsync=async()=>{throw new Error('network');};
   const earth=createEarthStreaming(env.C,env.widget,env.fallback);
-  await earth.setBasemap('map');
-  expect(earth.state.googleBlocked).toBe(true);
-  expect(earth.state.provider).toBe('cesium-world-imagery');
-  expect(env.calls).toEqual(['google:3830184','bing:4']);
   await earth.setBasemap('satellite');
-  expect(env.calls).toEqual(['google:3830184','bing:4','bing:2']);
+  expect(env.fallback.show).toBe(true);
+  expect(earth.state.error).toContain('imagery');
 });
 
 it('toggles World Terrain and needs it for OSM Buildings',async()=>{

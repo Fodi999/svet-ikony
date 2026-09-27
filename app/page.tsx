@@ -1,13 +1,9 @@
-import { CalendarView } from '@/components/site/CalendarView';
+import { CalendarExperience } from '@/components/site/visualizer-cesium/CalendarExperience';
 import { Hreflang } from '@/components/site/Hreflang';
-import { buildCalendarHero, calendarDayFromChurchPage, dedupeCalendarDaysByDay, prayerFromChurchDto } from '@/lib/api';
-import { composeCalendarPages } from '@/lib/church-public/calendar-page';
-import { selectCalendarDaysForLocale } from '@/lib/church-public/select-calendar-day';
-import { listCalendarDays } from '@/lib/d1/repositories/calendarDays';
-import { listPrayers } from '@/lib/d1/repositories/prayers';
-import { jsonLd, pageMetadata } from '@/lib/seo';
+import { buildCalendarHero } from '@/lib/api';
+import { jsonLd } from '@/lib/seo';
+import { shellMetadata } from '@/lib/shell-metadata';
 import { getRequestLocale } from '@/lib/serverLocale';
-import type { ChurchIconDto, ChurchPrayerDto, PublicChurchContentPage } from '@/lib/types';
 
 export const revalidate = 0;
 
@@ -23,7 +19,7 @@ export const revalidate = 0;
  */
 export async function generateMetadata() {
   const locale = await getRequestLocale();
-  return pageMetadata({ path: '/', locale });
+  return shellMetadata('/', locale);
 }
 
 function firstParam(value: string | string[] | undefined) {
@@ -40,55 +36,63 @@ function normalizedYear(value: string | undefined) {
   return Number.isFinite(year) ? year : new Date().getFullYear();
 }
 
-function mergeBySlug<T extends { slug: string }>(primary: T[], secondary: T[]) {
-  const seen = new Set<string>();
-  return [...primary, ...secondary].filter((item) => {
-    if (seen.has(item.slug)) return false;
-    seen.add(item.slug);
-    return true;
-  });
-}
+/**
+ * Homepage shell copy (GlobeShell pilot): kept minimal and file-local since
+ * this text exists purely as the semantic SSR fallback below, not as UI a
+ * person interacts with -- see the comment on <section id="home-intro">.
+ */
+const homeShellCopy = {
+  uk: { h1: 'Svet Ikony — православний глобус свят, святинь і храмів', intro: (month: string) => `Інтерактивна мапа православних святинь, храмів і місць памʼяті святих разом із церковним календарем на ${month}. Оберіть святиню на глобусі або перейдіть до розділів нижче.`, links: { saints: 'Святі', icons: 'Ікони', prayers: 'Молитви', shop: 'Магазин', history: 'Православна історія' } },
+  ru: { h1: 'Svet Ikony — православный глобус праздников, святынь и храмов', intro: (month: string) => `Интерактивная карта православных святынь, храмов и мест памяти святых вместе с церковным календарём на ${month}. Выберите святыню на глобусе или перейдите в разделы ниже.`, links: { saints: 'Святые', icons: 'Иконы', prayers: 'Молитвы', shop: 'Магазин', history: 'Православная история' } },
+  en: { h1: 'Svet Ikony — an Orthodox globe of feasts, shrines and churches', intro: (month: string) => `An interactive map of Orthodox shrines, churches and places tied to the saints, together with the church calendar for ${month}. Pick a shrine on the globe or jump to a section below.`, links: { saints: 'Saints', icons: 'Icons', prayers: 'Prayers', shop: 'Shop', history: 'Orthodox history' } }
+} as const;
 
+/**
+ * GlobeShell homepage. Deliberately does NOT fetch listCalendarDays/
+ * listPrayers/composeCalendarPages the way this page used to (when it
+ * rendered <CalendarView>) -- ТЗ п.18 asks the homepage's initial load to
+ * stay lightweight (place catalog only, no eager per-day/per-shrine
+ * content), and now that CalendarExperience (the globe) is what actually
+ * renders here, that whole SSR day-listing pass was dead weight: the only
+ * thing still read from it was calendar.hero.monthTitle, which
+ * buildCalendarHero() computes synchronously from year/month with no DB
+ * call at all. CalendarView and the heavier fetch chain still exist and
+ * are exercised by /pravoslavna-istoriya's own history-mode branch and by
+ * other pages -- nothing about them was removed, this page just stopped
+ * needing them.
+ */
 export default async function HomePage({ searchParams }: { searchParams?: Promise<{ year?: string | string[]; month?: string | string[] }> }) {
   const params = await searchParams;
   const locale = await getRequestLocale();
   const year = normalizedYear(firstParam(params?.year));
   const month = normalizedMonth(firstParam(params?.month));
-  const [allCalendarDays, allPrayers] = await Promise.all([
-    listCalendarDays({ year, month }),
-    listPrayers({ language: locale })
-  ]);
-  // Public homepage — draft days (and any draft icon/prayer/article/gospel
-  // attached to a day) must never appear here; composeCalendarPages()
-  // itself already filters related entities, but the day list it's given
-  // has to be pre-filtered by the caller (see that function's own doc
-  // comment for why the split is at this boundary). A date can have more
-  // than one published translation (uk/ru/en); selectCalendarDaysForLocale
-  // picks the one matching this page's own locale (falling back to uk,
-  // then whatever exists) instead of picking by content completeness
-  // regardless of language, like dedupeCalendarDaysByDay does below.
-  const calendarDays = selectCalendarDaysForLocale(allCalendarDays, locale);
-  const calendarPages = await composeCalendarPages(calendarDays, locale);
-  const publicCalendarPages = calendarPages as unknown as PublicChurchContentPage[];
-  const mapPrayer = (prayer: (typeof allPrayers)[number], icon?: (typeof calendarPages)[number]['icons'][number]) =>
-    prayerFromChurchDto(prayer as unknown as ChurchPrayerDto, icon as unknown as ChurchIconDto | undefined);
-  const calendarPrayers = calendarPages.flatMap((page) =>
-    page.prayers.map((prayer) => mapPrayer(prayer, page.icons.find((icon) => icon.id === prayer.iconId) || page.icons[0]))
-  );
-  const prayers = mergeBySlug(
-    calendarPrayers,
-    allPrayers.filter((prayer) => prayer.status === 'published').map((prayer) => mapPrayer(prayer))
-  );
-  const calendar = {
-    hero: buildCalendarHero(year, month),
-    days: dedupeCalendarDaysByDay(publicCalendarPages.map(calendarDayFromChurchPage)),
-    services: []
-  };
+  const hero = buildCalendarHero(year, month);
+  const copy = homeShellCopy[locale] ?? homeShellCopy.uk;
   return (
     <main className="min-h-dvh bg-canvas p-0">
       <Hreflang locale={locale} path="/" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd('Organization', { name: 'svetikony.com', url: 'https://svetikony.com' })) }} />
-      <CalendarView icons={[]} prayers={prayers} pages={[]} calendar={calendar} />
+      {/*
+        Semantic SSR shell (ТЗ п.2 "SSR shell/fallback"): real server-rendered
+        HTML for crawlers and no-JS clients. CalendarExperience below mounts
+        a `position:fixed;inset:0;z-index:1001` full-viewport Cesium canvas
+        client-side only (`ssr:false`) -- see calendar-globe.module.css's
+        .experience -- which visually covers this section once it mounts,
+        so nothing needs to be hidden here; the homepage is simply never an
+        empty canvas for anyone who doesn't run the client bundle.
+      */}
+      <section id="home-intro">
+        <h1>{copy.h1}</h1>
+        <p>{copy.intro(hero.monthTitle)}</p>
+        <nav aria-label={copy.h1}>
+          <a href={`/${locale}/saints`}>{copy.links.saints}</a>
+          <a href={`/${locale}/icons`}>{copy.links.icons}</a>
+          <a href={`/${locale}/prayers`}>{copy.links.prayers}</a>
+          <a href={`/${locale}/shop`}>{copy.links.shop}</a>
+          <a href={`/${locale}/pravoslavna-istoriya`}>{copy.links.history}</a>
+        </nav>
+      </section>
+      <CalendarExperience />
     </main>
   );
 }

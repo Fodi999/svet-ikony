@@ -3,9 +3,17 @@ import {existsSync} from 'node:fs';
 import {christianPlaces,chessModel,chessIcon,sacredPlaceItem} from './christian-places';
 import {initialLayers,layersForMode,defaultLayers,globeModes} from './unified';
 import {calendarModelGraphics} from './sacred-markers';
-it('contains twenty unique, localized finite anchors without calendar IDs',()=>{
- expect(christianPlaces).toHaveLength(20);expect(new Set(christianPlaces.map(p=>p.id)).size).toBe(20);
+it('contains unique, localized finite anchors without calendar IDs',()=>{
+ expect(christianPlaces).toHaveLength(21);expect(new Set(christianPlaces.map(p=>p.id)).size).toBe(21);
  for(const p of christianPlaces){expect(Math.abs(p.lat)).toBeLessThanOrEqual(90);expect(Math.abs(p.lng)).toBeLessThanOrEqual(180);expect(p.source).toMatch(/^https:\/\//);for(const locale of ['ru','uk','en'] as const){expect(p.name[locale].length).toBeGreaterThan(1);expect(p.description[locale].length).toBeGreaterThan(20);expect(sacredPlaceItem(p,locale).entityId).toBe('place:'+p.id);}}
+});
+it('locates Barbara at the cathedral but never supplies a hardcoded image',()=>{
+ const place=christianPlaces.find(p=>p.id==='barbara-kyiv')!;
+ expect(place.coordinateSource).toContain('Q1417441');
+ expect(place.source).toContain('katedral.org.ua');
+ expect(place.prayerSlug).toBe('molytva-do-sviatoi-velykomuchenytsi-varvary');
+ expect(place.imageUrl).toBeUndefined();
+ expect(sacredPlaceItem(place,'ru')).toMatchObject({thumbnail:null,imageVerified:false,geoStatus:'reviewed_verified',lat:50.444939,lon:30.508719,placeTitle:'Владимирский собор, Киев'});
 });
 it('reuses six different existing GLBs with distinct far symbols',()=>{
  const roles=['king','queen','bishop','knight','rook','pawn'] as const;

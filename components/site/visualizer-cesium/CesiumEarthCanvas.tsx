@@ -19,6 +19,7 @@ import {CalendarOverlay} from './CalendarOverlay';
 import {CalendarGlobeOverlay} from './CalendarGlobeOverlay';
 import {createEarthStreaming,earthStreamingEnabled,parseBasemap,type EarthStreaming} from '@/lib/cesium/earth-streaming';
 import {installDevProbe} from '@/lib/cesium/dev-probe';
+import {installRenderQuality} from '@/lib/cesium/render-quality';
 let nextInstanceId=0;
 const liveInstances=new Set<number>();
 
@@ -54,13 +55,15 @@ export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initia
     let disposed=false;
     let earthController:EarthStreaming|null=null;
     installDevProbe();
+    let disposeQuality:(()=>void)|undefined;
     const abort=new AbortController();
+    abort.signal.addEventListener('abort',()=>disposeQuality?.(),{once:true});
     const dataBase=process.env.NODE_ENV === 'production'?CESIUM_DATA:'/api/dev/cesium/data/';
     (window as Window & {CESIUM_BASE_URL?:string}).CESIUM_BASE_URL=process.env.NODE_ENV === 'production'?CESIUM_RUNTIME:'/api/dev/cesium/';
     void import('@cesium/engine').then(C=>{
       if(disposed || !root.current)return;
       C.CreditDisplay.cesiumCredit=new C.Credit('<a href="https://cesium.com/platform/cesiumjs/">CesiumJS</a>',true);
-      // The calendar globe renders every credit (Cesium ion, Google Maps, CesiumJS, data attribution) in its own bottom strip
+      // The calendar globe renders every credit (Cesium ion / Bing, CesiumJS, data attribution) in its own bottom strip
       // instead of the default overlay inside the canvas; the attribution lightbox still opens over the whole frame.
       const creditOptions=calendarExperience&&credits.current?{creditContainer:credits.current,creditViewport:frame.current??undefined}:{};
       const instance=new C.CesiumWidget(root.current,{baseLayer:false,terrainProvider:new C.EllipsoidTerrainProvider(),
@@ -89,8 +92,7 @@ export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initia
       if(!calendarExperience)void import('@/lib/cesium/capitals').then(({createCesiumCapitals})=>createCesiumCapitals(instance,{signal:abort.signal,locale:()=>props.current.locale,reserved:()=>countries.current?.labelBoxes()??[],onSelect:city=>props.current.onSelectCapital?.(city)})).then(layer=>{
         if(disposed){layer.dispose();return;}capitals.current=layer;layer.setVisible(props.current.capitalsVisible);
       }).catch(e=>{if(!disposed)setError(String(e));});
-      instance.useBrowserRecommendedResolution=false;
-      instance.resolutionScale=Math.min(window.devicePixelRatio||1,2)/(window.devicePixelRatio||1);
+      disposeQuality=installRenderQuality(instance);
       instance.scene.postProcessStages.fxaa.enabled=false;
       instance.scene.globe.enableLighting=true;
       instance.scene.globe.depthTestAgainstTerrain=true;

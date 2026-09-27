@@ -281,4 +281,16 @@ describe('app/sitemap.ts (PHASE MULTILINGUAL-1 / P0.7)', () => {
     expect(urls).toContain('https://svetikony.com/ru/icons');
     expect(urls).toContain('https://svetikony.com/en/icons');
   });
+  it('includes library and about once per locale with matching language alternatives',async()=>{
+    setDefaults();
+    const entries=await runSitemap();
+    for(const path of ['/explore','/about']){
+      const languages=Object.fromEntries(['uk','ru','en'].map(locale=>[locale,`https://svetikony.com/${locale}${path}`]));
+      for(const url of Object.values(languages)){
+        const matches=entries.filter(entry=>entry.url===url);
+        expect(matches).toHaveLength(1);
+        expect(matches[0].alternates?.languages).toEqual(languages);
+      }
+    }
+  });
 });

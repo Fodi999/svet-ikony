@@ -1,12 +1,16 @@
 import type * as Cesium from '@cesium/engine';
 
 /**
- * Streamed real-Earth sources for the single CesiumWidget: Cesium ion imagery
- * (Google Maps 2D when the account has it, otherwise Cesium World Imagery /
- * Bing), optional Cesium World Terrain and optional Cesium OSM Buildings.
- * Nothing is bundled or copied into the repository; every source is streamed
- * by native CesiumJS providers and is toggled with `show` / terrainProvider
+ * Streamed real-Earth sources for the single CesiumWidget: Cesium World
+ * Imagery (Bing Aerial / Aerial with road labels) via Cesium ion, plus
+ * optional Cesium World Terrain and optional Cesium OSM Buildings. Nothing
+ * is bundled or copied into the repository; every source is streamed by
+ * native CesiumJS providers and is toggled with `show` / terrainProvider
  * swaps, so the widget is never recreated.
+ *
+ * Google Maps 2D imagery (ion assets 3830182/3830184) was removed from
+ * production: Cesium World Imagery is now the only basemap. Do not
+ * reintroduce IonImageryProvider.fromAssetId for a Google asset here.
  *
  * Token: NEXT_PUBLIC_CESIUM_ION_TOKEN (public by design, restrict it by URL in
  * the ion dashboard). Without it production keeps the old self-hosted NASA
@@ -14,27 +18,31 @@ import type * as Cesium from '@cesium/engine';
  * evaluation token is used so the feature can be evaluated locally.
  */
 type CesiumModule = typeof Cesium;
-export type Basemap = 'satellite' | 'map';
+export type Basemap = 'satellite' | 'streets';
 export type EarthStreamingState = {
   basemap: Basemap;
   provider: string;
-  googleBlocked: boolean;
   terrain: boolean;
   buildings: boolean;
   error: string;
 };
 export type EarthStreaming = ReturnType<typeof createEarthStreaming>;
 
-// Cesium ion asset ids of the "Google Maps 2D" imagery (added from the asset depot).
-const GOOGLE_2D_ASSET: Record<Basemap, number> = { satellite: 3830182, map: 3830184 };
-
 export function earthStreamingEnabled(search = '') {
   if (new URLSearchParams(search).get('earth') === 'legacy' && process.env.NODE_ENV === 'development') return false;
   return Boolean(process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN) || process.env.NODE_ENV === 'development';
 }
 
+// Legacy basemap values from before the Google-imagery removal, kept so old
+// localStorage entries and shared URLs don't silently fall through to the
+// default instead of the closest surviving mode.
+const LEGACY_BASEMAP: Record<string, Basemap> = {
+  google: 'satellite', cesium: 'satellite', map: 'streets', 'google-streets': 'streets', hybrid: 'streets', overlay: 'streets',
+};
 export function parseBasemap(value: string | null | undefined): Basemap {
-  return value === 'map' ? 'map' : 'satellite';
+  if (value === 'satellite' || value === 'streets') return value;
+  if (value && LEGACY_BASEMAP[value]) return LEGACY_BASEMAP[value];
+  return 'satellite';
 }
 
 export function createEarthStreaming(C: CesiumModule, widget: Cesium.CesiumWidget, fallback: Cesium.ImageryLayer, options: { basemap?: Basemap } = {}) {
@@ -42,7 +50,7 @@ export function createEarthStreaming(C: CesiumModule, widget: Cesium.CesiumWidge
   if (token) C.Ion.defaultAccessToken = token;
   const layers: Partial<Record<Basemap, Cesium.ImageryLayer>> = {};
   const building = new Map<Basemap, Promise<Cesium.ImageryLayer>>();
-  const state: EarthStreamingState = { basemap: options.basemap ?? 'satellite', provider: 'nasa-fallback', googleBlocked: false, terrain: false, buildings: false, error: '' };
+  const state: EarthStreamingState = { basemap: options.basemap ?? 'satellite', provider: 'nasa-fallback', terrain: false, buildings: false, error: '' };
   const listeners = new Set<(state: EarthStreamingState) => void>();
   let disposed = false;
   let terrainRun = 0;
@@ -63,16 +71,7 @@ export function createEarthStreaming(C: CesiumModule, widget: Cesium.CesiumWidge
   };
 
   async function providerFor(mode: Basemap) {
-    if (process.env.NEXT_PUBLIC_CESIUM_GOOGLE_2D !== '0' && !state.googleBlocked) {
-      try {
-        const provider = await C.IonImageryProvider.fromAssetId(GOOGLE_2D_ASSET[mode]);
-        return { provider, name: 'google-2d' };
-      } catch {
-        // Not enabled for this ion account/token (GOOGLE 2D MAPS = BLOCKED BY ACCOUNT CONFIG): fall back.
-        state.googleBlocked = true;
-      }
-    }
-    const provider = await C.createWorldImageryAsync({ style: mode === 'map' ? C.IonWorldImageryStyle.ROAD : C.IonWorldImageryStyle.AERIAL });
+    const provider = await C.createWorldImageryAsync({ style: mode === 'streets' ? C.IonWorldImageryStyle.AERIAL_WITH_LABELS : C.IonWorldImageryStyle.AERIAL });
     return { provider, name: 'cesium-world-imagery' };
   }
   function layerFor(mode: Basemap) {

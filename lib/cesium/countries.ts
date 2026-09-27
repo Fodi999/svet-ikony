@@ -1,5 +1,5 @@
 import * as C from '@cesium/engine';
-import {createLayerHandler} from './handlers';
+import {createLayerHandler,pickCalendarMarker} from './handlers';
 import {getCountryAtLatLng,prepareCountryIndex} from '@/lib/visualizer/countries';
 import type {CountryData} from '@/lib/visualizer/country-borders';
 import {atlasLabel} from './atlas-style';
@@ -20,6 +20,22 @@ export async function createCesiumCountries(widget:C.CesiumWidget,options:{local
   const countryLabels=[...index.countries].sort((a,b)=>b.angularExtent-a.angularExtent).map(country=>({country,label:labels.add({position:C.Cartesian3.fromDegrees(country.point.longitude,country.point.latitude),
     text:country.info.name[options.locale()],...atlasLabel('country'),disableDepthTestDistance:Number.POSITIVE_INFINITY})}));
   let selected:string|null=null,hovered:string|null=null,highlight:C.GeoJsonDataSource|null=null,generation=0,disposed=false,enabled=true;
+  let coast:C.GeoJsonDataSource|null=null,bordersEnabled=true;
+  if(process.env.NODE_ENV==='development'){
+    void fetch('/data/bosphorus-swbd.geojson',{signal:options.signal}).then(response=>{
+      if(!response.ok)throw new Error('SWBD unavailable');return response.json();
+    }).then(data=>C.GeoJsonDataSource.load(data,{clampToGround:true})).then(async source=>{
+      if(disposed)return;
+      source.name='Bosphorus SWBD (2000)';source.show=false;
+      for(const entity of source.entities.values)if(entity.polyline){
+        entity.polyline.width=new C.ConstantProperty(4);
+        entity.polyline.material=new C.PolylineOutlineMaterialProperty({color:C.Color.fromCssColorString('#f1d495'),outlineColor:C.Color.fromCssColorString('#252a28'),outlineWidth:1});
+      }
+      coast=source;await widget.dataSources.add(source);
+      if(disposed&&!widget.isDestroyed())widget.dataSources.remove(source,true);
+      if(!widget.isDestroyed())widget.scene.requestRender();
+    }).catch(error=>{if(!options.signal.aborted)console.warn('[SWBD]',error);});
+  }
   async function highlightCountry(code:string|null){
     const seq=++generation;
     if(highlight){widget.dataSources.remove(highlight,true);highlight=null;}
@@ -36,6 +52,11 @@ export async function createCesiumCountries(widget:C.CesiumWidget,options:{local
     highlight=source;await widget.dataSources.add(source);widget.scene.requestRender();
   }
   const input=createLayerHandler(widget),handler=input.handler;
+  let hoverTimer:ReturnType<typeof setTimeout>|undefined;
+  let hoverPosition:C.Cartesian2|undefined;
+  const clearHover=()=>{clearTimeout(hoverTimer);hoverTimer=undefined;hoverPosition=undefined;};
+  const leave=()=>{clearHover();hovered=null;if(!selected&&!disposed)void highlightCountry(null).catch(console.warn);};
+  widget.canvas.addEventListener('pointerleave',leave);
   function countryAt(position:C.Cartesian2){
     const ray=widget.camera.getPickRay(position);if(!ray)return null;
     const point=widget.scene.globe.pick(ray,widget.scene);if(!point)return null;
@@ -43,22 +64,39 @@ export async function createCesiumCountries(widget:C.CesiumWidget,options:{local
     return getCountryAtLatLng(index,C.Math.toDegrees(cartographic.latitude),C.Math.toDegrees(cartographic.longitude));
   }
   handler.setInputAction((movement:{endPosition:C.Cartesian2})=>{
-    if(!enabled)return;
-    const code=countryAt(movement.endPosition)?.info.code??null;
-    if(code===hovered)return;hovered=code;
-    if(!selected)void highlightCountry(code).catch(console.warn);
+    if(!enabled||selected)return;
+    hoverPosition=C.Cartesian2.clone(movement.endPosition,hoverPosition);
+    if(hoverTimer!==undefined)return;
+    hoverTimer=setTimeout(()=>{
+      hoverTimer=undefined;
+      if(disposed||!enabled||selected||!hoverPosition)return;
+      const code=countryAt(hoverPosition)?.info.code??null;
+      if(code===hovered)return;hovered=code;
+      void highlightCountry(code).catch(console.warn);
+    },80);
   },C.ScreenSpaceEventType.MOUSE_MOVE);
   handler.setInputAction((movement:{position:C.Cartesian2})=>{
     if(!enabled)return;
+    if(pickCalendarMarker(widget,movement.position))return;
+    if(widget.scene.drillPick(movement.position).some(hit=>Array.isArray(hit.id)||hit.id?.properties?.calendarEntityId||hit.id?.properties?.sacredPlaceId))return;
     const picked=widget.scene.pick(movement.position);
     if(Array.isArray(picked?.id))return;
-    if(picked?.id?.properties?.capitalId || picked?.id?.properties?.cityId || picked?.id?.properties?.eventId || picked?.id?.properties?.calendarEntityId)return;
+    /* Sacred Place markers/territory (properties.sacredPlaceId) and Sacred
+       Plot hexes (a plain {sacredPlotId} pick id, see lib/cesium/sacred-plots-layer.ts
+       -- not an Entity, so no .properties) must win over the country polygon
+       underneath them, same as the existing capital/city/event/entity guards below. */
+    if(picked?.id?.properties?.capitalId || picked?.id?.properties?.cityId || picked?.id?.properties?.eventId || picked?.id?.properties?.calendarEntityId || picked?.id?.properties?.sacredPlaceId || picked?.id?.sacredPlotId)return;
     const country=countryAt(movement.position);if(country)options.onSelect(country.info.code);
   },C.ScreenSpaceEventType.LEFT_CLICK);
   let labelBoxes:{x:number;y:number;w:number}[]=[];
   const remove=widget.scene.preRender.addEventListener(()=>{
     const occupied:{x:number;y:number;w:number}[]=[];
     const altitude=widget.camera.positionCartographic.height;
+    const camera=widget.camera.positionCartographic,lon=C.Math.toDegrees(camera.longitude),lat=C.Math.toDegrees(camera.latitude);
+    const localCoast=!!coast&&altitude<90000&&lon>28.65&&lon<29.3&&lat>40.9&&lat<41.25;
+    if(coast)coast.show=bordersEnabled&&localCoast;
+    borders.show=bordersEnabled&&!localCoast;
+    if(highlight)highlight.show=enabled&&!localCoast;
     const selectedCard=!!widget.container.parentElement?.querySelector('[data-selected="true"]'),canvasWidth=widget.canvas.clientWidth,canvasHeight=widget.canvas.clientHeight;
     const budget=Math.max(3,Math.min(altitude>8000000?10:18,Math.floor(widget.canvas.clientWidth*widget.canvas.clientHeight/55000)));
     for(const {country,label} of countryLabels){
@@ -74,9 +112,9 @@ export async function createCesiumCountries(widget:C.CesiumWidget,options:{local
   return {
     labelBoxes:()=>labelBoxes,
     setVisible(value:boolean){enabled=value;if(!value)void highlightCountry(null);widget.scene.requestRender();},
-    setBorders(value:boolean){borders.show=value;widget.scene.requestRender();},
+    setBorders(value:boolean){bordersEnabled=value;borders.show=value;widget.scene.requestRender();},
     select(code:string|null,fly=true){selected=code;void highlightCountry(code).catch(console.warn);const country=code?index.byCode.get(code):null;
       if(country && fly)widget.camera.flyTo({destination:C.Cartesian3.fromDegrees(country.point.longitude,country.point.latitude,Math.max(100000,country.angularExtent*130000))});},
-    dispose(){disposed=true;generation++;input.dispose();remove();if(widget.isDestroyed())return;if(highlight)widget.dataSources.remove(highlight,true);widget.scene.groundPrimitives.remove(borders);widget.scene.primitives.remove(labels);}
+    dispose(){disposed=true;generation++;clearHover();widget.canvas.removeEventListener('pointerleave',leave);input.dispose();remove();if(widget.isDestroyed())return;if(coast)widget.dataSources.remove(coast,true);if(highlight)widget.dataSources.remove(highlight,true);widget.scene.groundPrimitives.remove(borders);widget.scene.primitives.remove(labels);}
   };
 }

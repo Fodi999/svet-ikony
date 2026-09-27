@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { Breadcrumbs } from '@/components/site/Breadcrumbs';
 import { Hreflang } from '@/components/site/Hreflang';
-import { DetailActions, DetailHero, Eyebrow, HeroCopy, HeroTitle, Lead, Page, Panel, PanelLabel, ReaderText, RelatedSection, SectionHead } from '@/components/site/PageChrome';
+import { DetailActions, DetailHero, Eyebrow, HeroCopy, HeroTitle, Page, Panel, PanelLabel, ReaderText, RelatedSection, SectionHead } from '@/components/site/PageChrome';
 import { ProductCard } from '@/components/site/ProductCard';
 import { ProductGallery } from '@/components/site/ProductGallery';
+import {ProductPlaceLink} from '@/components/site/ProductPlaceLink';
+import shellStyles from '@/components/site/site-shell.module.css';
 import { ProductOrderTrigger } from '@/components/site/ProductOrderModal';
 import { T } from '@/components/site/TranslatedText';
 import { publicApi } from '@/lib/api';
@@ -113,7 +115,7 @@ export default async function ProductPage({ params }: Props) {
   const productUrl = await absoluteSiteUrl(withLocale(`/shop/${product.slug}`, locale));
 
   return (
-    <Page>
+    <Page className={shellStyles.page}>
       <Hreflang locale={locale} path={`/shop/${product.slug}`} languages={productLanguages(product)} />
       <script
         type="application/ld+json"
@@ -146,7 +148,7 @@ export default async function ProductPage({ params }: Props) {
         <HeroCopy>
           {category ? <Eyebrow>{categoryName(category, locale)}</Eyebrow> : null}
           <HeroTitle>{name}</HeroTitle>
-          <Lead>{product.description}</Lead>
+          <p className={shellStyles.lead}>{product.description}</p>
           <dl className="mb-4.5 flex flex-wrap gap-2.5">
             <div className="rounded-xs border border-gold/28 bg-gold/6 px-3 py-2">
               <dt className="mb-0.5 text-[11px] font-bold text-muted-foreground uppercase">{priceLabel[locale]}</dt>
@@ -175,6 +177,7 @@ export default async function ProductPage({ params }: Props) {
               <Link href={withLocale(`/icons/${iconSlug}`, locale)}>{translate(locale, 'aboutIconLink')}</Link>
             </p>
           ) : null}
+          <ProductPlaceLink productId={product.id}/>
         </HeroCopy>
       </DetailHero>
 

@@ -1,97 +1,35 @@
 'use client';
-
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
-import { usePathname } from 'next/navigation';
-import { stripLocaleFromPathname } from '@/lib/i18n';
-import { BrandLogo } from './BrandLogo';
-import { LanguageSwitch, useI18n, useLocaleHref } from './LanguageProvider';
+import {useEffect,useRef,useState} from 'react';
+import {usePathname} from 'next/navigation';
+import {BookOpen,Church,Globe2,Info,Layers,Menu,X} from 'lucide-react';
+import {stripLocaleFromPathname} from '@/lib/i18n';
+import {BrandLogo} from './BrandLogo';
+import {useI18n,useLocaleHref} from './LanguageProvider';
+import {siteShellCopy} from './site-shell-copy';
+import styles from './site-shell.module.css';
 
-const nav = [
-  ['navIcons', '/icons'],
-  ['navShop', '/shop'],
-  ['navPrayers', '/prayers'],
-  ['navSaints', '/saints'],
-  ['navGospel', '/gospel'],
-  ['navChurches', '/churches'],
-  ['navAlphabet', '/staroslavyanskaya-azbuka'],
-  ['navHistory', '/pravoslavna-istoriya']
-] as const;
-
-function navLinkClass(isActive: boolean) {
-  return `inline-flex min-h-[38px] items-center border border-transparent rounded-full px-3.5 text-[14px] font-extrabold leading-none no-underline whitespace-nowrap transition-colors duration-[180ms] ease-brand hover:bg-[rgba(214,168,79,.1)] hover:text-foreground focus-visible:bg-[rgba(214,168,79,.1)] focus-visible:text-foreground max-[1040px]:flex-none max-[900px]:[scroll-snap-align:start] max-[640px]:min-h-[36px] max-[640px]:px-[11px] max-[640px]:text-[13px] max-[430px]:min-h-[34px] max-[430px]:px-2.5 max-[430px]:text-[12px] ${
-    isActive ? 'border-gold-light bg-gold-light text-canvas' : 'text-muted-foreground'
-  }`;
-}
-
-export function Header() {
-  const { t } = useI18n();
-  const localeHref = useLocaleHref();
-  const pathname = usePathname();
-  const currentPath = stripLocaleFromPathname(pathname || '/');
-  const navRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const nav = navRef.current;
-    const active = nav?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (!nav || !active) return;
-    const reveal = () => {
-      if (nav.scrollWidth <= nav.clientWidth) return;
-      const container = nav.getBoundingClientRect();
-      const item = active.getBoundingClientRect();
-      if (item.right > container.right - 8) nav.scrollLeft += item.right - container.right + 8;
-      else if (item.left < container.left + 8) nav.scrollLeft += item.left - container.left - 8;
-    };
-    reveal();
-    const observer = new ResizeObserver(reveal);
-    observer.observe(nav);
-    observer.observe(active);
-    return () => observer.disconnect();
-  }, [currentPath, pathname]);
-
-  return (
-    <header data-site-header className="sticky top-2.5 z-[1000] w-[calc(100%-clamp(24px,4vw,72px))] max-w-[1840px] min-h-0 mt-2.5 mx-auto grid grid-cols-[minmax(270px,360px)_minmax(0,1fr)_auto] items-center gap-[clamp(14px,2.4vw,34px)] py-[5px] px-[clamp(16px,4vw,48px)] border border-[rgba(232,211,169,.13)] rounded-[8px] bg-[rgba(11,12,10,.94)] text-foreground shadow-[0_6px_18px_rgba(0,0,0,.18)] [backdrop-filter:blur(18px)_saturate(1.08)] overflow-clip isolate max-[1040px]:grid-cols-[minmax(170px,1fr)_auto] max-[1040px]:gap-x-3.5 max-[1040px]:gap-y-2.5 max-[900px]:grid-cols-[minmax(0,1fr)_auto] max-[900px]:pt-1.5 max-[900px]:px-3 max-[900px]:pb-2 max-[640px]:w-[calc(100%-12px)] max-[640px]:mt-1.5 max-[640px]:min-h-auto max-[640px]:py-1 max-[640px]:px-2.5 max-[640px]:gap-2.5 max-[430px]:grid-cols-[minmax(0,1fr)_auto] max-[430px]:gap-x-2.5 max-[430px]:gap-y-2 max-[430px]:py-2 max-[430px]:px-2.5 [@media(display-mode:standalone)]:w-[calc(100%-max(12px,env(safe-area-inset-left))-max(12px,env(safe-area-inset-right)))] [@media(display-mode:standalone)]:mt-[max(6px,env(safe-area-inset-top))]">
-      <Link
-        className="relative min-w-0 w-max inline-flex items-center gap-3 text-foreground no-underline max-[900px]:max-w-full max-[900px]:gap-[9px] max-[430px]:gap-2"
-        href={localeHref('/')}
-      >
-        <span className="relative grid place-items-center size-[58px] flex-[0_0_58px] overflow-hidden max-[900px]:w-[54px] max-[900px]:h-[54px] max-[900px]:flex-[0_0_58px] max-[640px]:size-[48px] max-[640px]:flex-[0_0_48px] max-[430px]:size-[42px] max-[430px]:flex-[0_0_42px]">
-          <BrandLogo className="block w-full h-full object-contain opacity-100" size={58} />
-        </span>
-        <span className="min-w-0 grid gap-[3px] max-[900px]:overflow-hidden">
-          <small className="text-muted-foreground text-[10px] font-black tracking-[.16em] leading-none uppercase max-[640px]:hidden">{t('portal')}</small>
-          <b className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-foreground font-serif text-[19px] font-bold tracking-[.01em] leading-none max-[900px]:max-w-[min(28vw,190px)] max-[900px]:text-[17px] max-[640px]:max-w-[min(34vw,150px)] max-[640px]:text-[clamp(14px,3.8vw,17px)] max-[430px]:max-w-[min(32vw,130px)] max-[430px]:text-[clamp(13px,4vw,16px)]">
-            {t('brand')}
-          </b>
-        </span>
-      </Link>
-      <nav ref={navRef}
-        // The horizontal-scroll mask (mask-image, [1040px] tier only) is a
-        // purely visual affordance -- nav items already never shrink/
-        // truncate (navLinkClass's own flex-none + whitespace-nowrap), so
-        // "items getting cut off" was really the last item's edge landing
-        // flush with the viewport with no visual hint that scrolling
-        // further reveals the rest. Fades that edge instead of hard-clipping.
-        className="min-w-0 w-max max-w-full justify-self-center inline-flex items-center justify-center gap-1 border border-[rgba(232,211,169,.13)] rounded-full p-1 bg-[rgba(5,5,5,.18)] max-[1040px]:col-span-full max-[1040px]:row-start-2 max-[1040px]:w-full max-[1040px]:justify-self-stretch max-[1040px]:justify-start max-[1040px]:overflow-x-auto max-[1040px]:[scrollbar-width:none] max-[1040px]:[&::-webkit-scrollbar]:hidden max-[1040px]:[mask-image:linear-gradient(to_right,transparent,black_14px,black_calc(100%-14px),transparent)] max-[1040px]:[-webkit-mask-image:linear-gradient(to_right,transparent,black_14px,black_calc(100%-14px),transparent)] max-[430px]:mx-0 max-[430px]:p-[3px] max-[430px]:gap-0.5"
-        aria-label={t('catalog')}
-      >
-        {nav.map(([label, href]) => {
-          const active = currentPath === href || currentPath.startsWith(`${href}/`);
-          return (
-            <Link key={href} aria-current={active ? 'page' : undefined} className={`${navLinkClass(active)} ${active && href === '/pravoslavna-istoriya' ? 'shadow-[0_0_14px_rgba(205,164,90,.18)] ring-1 ring-gold/30 hover:!bg-gold-light hover:!text-canvas focus-visible:!text-canvas' : ''}`} href={localeHref(href)}>
-              {t(label)}
-            </Link>
-          );
-        })}
-      </nav>
-      <div className="min-w-0 inline-flex items-center justify-end gap-2.5 max-[1040px]:col-start-2 max-[1040px]:row-start-1 max-[1040px]:self-center max-[430px]:gap-2 max-[430px]:justify-self-end">
-        <LanguageSwitch />
-        <Link
-          className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-md border border-gold/28 bg-gold/8 px-4 text-[13px] font-black tracking-[.06em] text-gold-light uppercase leading-[1.15] no-underline whitespace-nowrap cursor-pointer transition-[border-color,background,color,transform] duration-[180ms] ease-brand hover:border-gold hover:bg-[linear-gradient(180deg,#e9cb84,#cda45a)] hover:text-canvas focus-visible:border-gold focus-visible:bg-[linear-gradient(180deg,#e9cb84,#cda45a)] focus-visible:text-canvas max-[900px]:hidden"
-          href={localeHref('/churches')}
-        >
-          {t('forChurches')}
-        </Link>
-      </div>
-    </header>
-  );
+export function Header(){
+ const {locale,setLocale}=useI18n(),href=useLocaleHref(),pathname=usePathname();
+ const text=siteShellCopy[locale],path=stripLocaleFromPathname(pathname||'/');
+ const [open,setOpen]=useState(false),toggle=useRef<HTMLButtonElement>(null),panel=useRef<HTMLElement>(null);
+ const active=path==='/'||path==='/earth'||path==='/pravoslavna-istoriya'?'planet':path.startsWith('/shop')?'collection':['/explore','/icons','/saints','/prayers','/gospel','/staroslavyanskaya-azbuka','/church/'].some(p=>path.startsWith(p))?'library':null;
+ const links=[{key:'planet',url:'/',icon:Globe2},{key:'collection',url:'/shop',icon:Layers},{key:'library',url:'/explore',icon:BookOpen}] as const;
+ // Entering Cesium needs a new document: client navigation retains the library's stricter CSP.
+ useEffect(()=>{const close=()=>setOpen(false);window.addEventListener('popstate',close);return()=>window.removeEventListener('popstate',close);},[]);
+ useEffect(()=>{
+  if(!open)return;
+  panel.current?.querySelector<HTMLElement>('a')?.focus();
+  const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape'){setOpen(false);toggle.current?.focus();}if(event.key==='Tab'){const nodes=[toggle.current,...Array.from(panel.current?.querySelectorAll<HTMLElement>('a,button,select')??[])].filter(Boolean) as HTMLElement[];const index=nodes.indexOf(document.activeElement as HTMLElement);event.preventDefault();nodes[(index+(event.shiftKey?-1:1)+nodes.length)%nodes.length]?.focus();}};
+  document.addEventListener('keydown',onKey);return()=>document.removeEventListener('keydown',onKey);
+ },[open]);
+ return <><header data-site-header data-unified-header className={styles.header}>
+  <a className={styles.brand} href={href('/')}><BrandLogo size={38}/><span>Svet Ikony</span></a>
+  <nav className={styles.primaryNav} aria-label={text.navigation}>{links.map(({key,url,icon:Icon})=>{const NavigationLink=key==='planet'?'a':Link;return <NavigationLink key={key} href={href(url)} aria-current={active===key?'page':undefined}><Icon size={17}/>{text[key]}</NavigationLink>;})}</nav>
+  <div className={styles.actions}><select aria-label={text.language} value={locale} onChange={event=>setLocale(event.target.value as 'ru'|'uk'|'en')}><option value="uk">UK</option><option value="ru">RU</option><option value="en">EN</option></select>{active!=='planet'?<button ref={toggle} className={styles.menuToggle} aria-label={open?text.close:text.menu} aria-expanded={open} aria-controls="site-menu" onClick={()=>setOpen(value=>!value)}>{open?<X size={22}/>:<Menu size={22}/>}</button>:null}</div>
+  {open&&active!=='planet'?<><button className={styles.scrim} aria-label={text.close} tabIndex={-1} onClick={()=>setOpen(false)}/><nav id="site-menu" ref={panel} className={styles.menu} aria-label={text.menu}>
+   {links.map(({key,url,icon:Icon})=>{const NavigationLink=key==='planet'?'a':Link;return <NavigationLink key={key} href={href(url)} onClick={()=>setOpen(false)} aria-current={active===key?'page':undefined}><Icon size={20}/>{text[key]}</NavigationLink>;})}
+   <hr/><Link href={href('/about')} onClick={()=>setOpen(false)}><Info size={20}/>{text.about}</Link><Link href={href('/churches')} onClick={()=>setOpen(false)}><Church size={20}/>{text.churches}</Link>
+  </nav></>:null}
+ </header><nav className={styles.mobileNav} aria-label={text.navigation}>{links.map(({key,url,icon:Icon})=>{const NavigationLink=key==='planet'?'a':Link;return <NavigationLink key={key} href={href(url)} data-active={active===key} onClick={()=>setOpen(false)}><Icon size={20}/><span>{text[key]}</span></NavigationLink>;})}</nav></>;
 }

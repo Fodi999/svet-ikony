@@ -1,0 +1,64 @@
+/* Sacred Plots pilot panel -- deliberately a SEPARATE small CSS module from
+   sacred-place-panel.module.css (not shared classnames) even though the
+   visual language is the same premium dark/gold card, so this file can be
+   edited freely without any risk of touching the (already shipped)
+   SacredPlacePanel's styles. Same --gold/--glass/--line custom properties
+   inherited from the .overlay root (calendar-globe.module.css). */
+
+.panel {
+  position: absolute;
+  top: 74px;
+  right: 24px;
+  width: 380px;
+  max-height: calc(100% - 238px);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #111820 0%, #0f151b 100%);
+  border: 1px solid rgba(233, 196, 121, 0.45);
+  border-radius: 8px;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 24px 70px #000a, 0 0 0 1px rgba(233, 196, 121, 0.08), 0 2px 0 #fff1 inset;
+  overflow: hidden;
+  pointer-events: auto;
+  z-index: 6;
+  color: #f4f2eb;
+}
+
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 16px 14px 14px 18px; border-bottom: 1px solid var(--line); }
+.headerTitle { display: flex; align-items: flex-start; gap: 8px; min-width: 0; color: var(--gold); }
+.headerTitle > svg { flex: none; margin-top: 3px; }
+.headerTitleText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.headerTitleText b { font: 19px/1.3 Georgia, serif; color: var(--gold); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.headerTitleText small { color: #9fa6ae; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.close { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #b7bcc2; cursor: pointer; flex: none; }
+.close:hover { color: var(--gold); background: rgba(233, 196, 121, 0.1); }
+
+.body { flex: 1; min-height: 0; overflow: auto; padding: 18px; scrollbar-width: thin; scrollbar-color: #62676b transparent; display: flex; flex-direction: column; gap: 16px; }
+.relatedTo { margin: 0; font-size: 13px; color: #d7d9dc; }
+.relatedTo b { color: var(--gold); font-weight: 400; }
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, 0.02); }
+.stats dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #9fa6ae; margin: 0 0 4px; }
+.stats dd { margin: 0; font-size: 15px; color: #f4f2eb; }
+.price { color: var(--gold); font: 18px/1 Georgia, serif; }
+
+.statusPill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; border: 1px solid transparent; }
+.statusPill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.statusPill[data-status="available"] { color: #8fe0ab; border-color: rgba(143, 224, 171, 0.35); background: rgba(143, 224, 171, 0.08); }
+.statusPill[data-status="owned"] { color: #9db6ee; border-color: rgba(157, 182, 238, 0.35); background: rgba(157, 182, 238, 0.08); }
+.statusPill[data-status="reserved"] { color: #b7c0cc; border-color: rgba(183, 192, 204, 0.35); background: rgba(183, 192, 204, 0.08); }
+
+.buyButton { display: block; width: 100%; padding: 12px 16px; border: 0; border-radius: 8px; background: var(--gold); color: #14181c; font-weight: 700; font-size: 14px; text-align: center; cursor: not-allowed; opacity: 0.55; }
+.secondaryRow { display: flex; gap: 10px; }
+.secondaryButton { display:flex; align-items:center; justify-content:center; gap:8px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--gold); font-size: 13px; cursor: pointer; }
+.disclaimer { margin: 0; padding-top: 6px; border-top: 1px solid var(--line); font-size: 11px; line-height: 1.5; color: #7c828a; font-style: italic; }
+
+@media (max-width: 1199px) { .panel { width: 340px; right: 16px; } }
+
+@media (max-width: 767px) {
+  .panel {
+    top: auto; bottom: 0; left: 0; right: 0; width: auto;
+    max-height: 60dvh; border-radius: 18px 18px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

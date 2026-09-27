@@ -54,18 +54,21 @@ The calendar globe (`/pravoslavna-istoriya`, Cesium) streams its Earth instead o
 shipping large textures. Nothing is downloaded into the repository. Implementation:
 `lib/cesium/earth-streaming.ts`, UI: `EarthSourceControl.tsx`.
 
-- Imagery: Google 2D Maps through Cesium ion (asset 3830182 Satellite, 3830184 Map).
-  If Google 2D is not available for the account, the controller records
-  `googleBlocked` and falls back to Cesium World Imagery (Bing Aerial / Roads).
-  Set `NEXT_PUBLIC_CESIUM_GOOGLE_2D=0` to skip Google 2D. Google's own attribution
-  stays visible in the Cesium credit bar.
-- Satellite / Map is a layer `show` switch on one `CesiumWidget`; nothing is recreated.
-  The old NASA/Blender Earth texture remains as the instant first-paint and offline
-  fallback and is hidden once streamed imagery is ready.
+- Imagery: Cesium World Imagery through Cesium ion (Bing Aerial), the only basemap
+  in production. Google Maps 2D (ion assets 3830182/3830184) was removed; do not
+  reintroduce `IonImageryProvider.fromAssetId` for a Google asset in
+  `earth-streaming.ts`. Two modes: Satellite (`IonWorldImageryStyle.AERIAL`) and
+  Satellite + Streets (`IonWorldImageryStyle.AERIAL_WITH_LABELS`). Bing's own
+  attribution stays visible in the Cesium credit bar.
+- Satellite / Satellite+Streets is a layer `show` switch on one `CesiumWidget`;
+  nothing is recreated. The old NASA/Blender Earth texture remains as the instant
+  first-paint and offline fallback and is hidden once streamed imagery is ready.
 - World Terrain and OSM Buildings (ion asset 96188) are dev-only toggles, default OFF.
   Buildings need terrain, so enabling them also enables terrain. URL: `?terrain=1`,
-  `?buildings=1`, `?basemap=satellite|map`. `?earth=legacy` (dev) restores the old
-  NASA + Alps path.
+  `?buildings=1`, `?basemap=satellite|streets`. Legacy basemap values from before
+  the Google removal (`google`, `cesium`, `map`, `google-streets`, `hybrid`,
+  `overlay`) are migrated by `parseBasemap` so old links/localStorage keep working.
+  `?earth=legacy` (dev) restores the old NASA + Alps path.
 - Sacred Markers use the globe height (`globe.getHeight`) when terrain is on so
   models stay on the ground; marker geometry/design is unchanged.
 - Token: `NEXT_PUBLIC_CESIUM_ION_TOKEN` (own ion token; never commit it). Without a

@@ -2,9 +2,10 @@ import {d1All,d1First} from '@/lib/d1/db';
 import {ApiError} from '@/lib/d1/errors';
 import {entryCategory} from '@/lib/church/calendar-entry';
 import {resolveMediaUrl} from '@/lib/media/resolver';
+import {getSacredFlagsForPlaceIds} from './calendarGeoPlaces';
 // Published, explicitly linked internal content takes precedence over external translations.
 const internalName=`(SELECT s.name FROM church_saints s JOIN calendar_geo_content_links l ON l.translation_group_id=s.translation_group_id AND l.content_type='saint' WHERE l.entity_id=e.id AND s.status='published' AND s.language=? ORDER BY s.id LIMIT 1)`;
-export type CalendarGeoItem={entityId:string;entityType:string;title:string;placeId:string;placeTitle:string;relationType:string;lat:number;lon:number;markerPriority:number;thumbnail:string|null;matchStatus:string;geoStatus?:string};
+export type CalendarGeoItem={entityId:string;entityType:string;title:string;placeId:string;placeTitle:string;relationType:string;lat:number;lon:number;markerPriority:number;thumbnail:string|null;matchStatus:string;geoStatus?:string;hasProfile?:boolean;hasCollection?:boolean};
 const mapSelect=`SELECT DISTINCT e.id AS entityId,e.entity_type AS entityType,
  COALESCE(t.name,te.name,e.canonical_name) AS title,
  p.id AS placeId,COALESCE(pt.name,pte.name,p.canonical_name) AS placeTitle,
@@ -70,7 +71,9 @@ export async function calendarGeoEntity(id:string,locale:string) {
     LEFT JOIN calendar_geo_translations t ON t.entity_id=e.id AND t.locale=?
     LEFT JOIN calendar_geo_translations te ON te.entity_id=e.id AND te.locale='en' WHERE e.id=?`,locale,locale,id);
   if(!entity)throw ApiError.notFound('Unknown calendar entity');
-  const places=await d1All<CalendarGeoItem>(`${mapSelect} WHERE ${credible} AND e.id=? ORDER BY placeId,relationType`,locale,locale,id);
+  const rawPlaces=await d1All<CalendarGeoItem>(`${mapSelect} WHERE ${credible} AND e.id=? ORDER BY placeId,relationType`,locale,locale,id);
+  const sacredFlags=await getSacredFlagsForPlaceIds(rawPlaces.map(place=>place.placeId));
+  const places=rawPlaces.map(place=>({...place,...sacredFlags[place.placeId]}));
   const commemorations=await d1All('SELECT DISTINCT o.civil_date AS date,o.calendar_system AS calendarSystem,o.tradition FROM calendar_geo_occurrences o JOIN calendar_geo_rules r ON r.id=o.rule_id WHERE r.entity_id=? ORDER BY o.civil_date',id);
   const sources=await d1All(`SELECT DISTINCT s.source_type AS type,s.source_url AS url,s.license,s.attribution,s.retrieved_at AS retrievedAt FROM calendar_geo_sources s WHERE s.id IN (
     SELECT source_id FROM calendar_geo_provenance WHERE entity_id=? UNION SELECT source_id FROM calendar_geo_translations WHERE entity_id=? UNION SELECT source_id FROM calendar_geo_images WHERE entity_id=?)`,id,id,id);

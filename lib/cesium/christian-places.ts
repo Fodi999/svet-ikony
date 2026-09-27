@@ -3,12 +3,14 @@ import {markerModel} from './sacred-markers';
 
 type Locale='ru'|'uk'|'en';
 type Text=Record<Locale,string>;
+type PlaceMedia={imageUrl?:string;prayerSlug?:string;placeTitle?:Text;coordinateSource?:string;verifiedAnchor?:boolean};
 export type SacredPlace={id:string;name:Text;type:'major_center'|'cathedral'|'monastery'|'pilgrimage'|'event'|'saint_place';denomination:'orthodox'|'catholic'|'shared';lat:number;lng:number;country:string;description:Text;relatedSaints?:Text[];markerType:'king'|'queen'|'bishop'|'knight'|'rook'|'pawn';importance:number;source:string};
 const names=(ru:string,uk:string,en:string):Text=>({ru,uk,en});
 const unesco=(id:number)=>`https://whc.unesco.org/en/list/${id}/`;
 // Small editorial starter catalog, never written to D1. Coordinates are map anchors,
 // not surveyed building entrances. Marker roles express atlas hierarchy, not doctrine.
-export const christianPlaces:SacredPlace[]=[
+export const christianPlaces:(SacredPlace&PlaceMedia)[]=[
+ {id:'barbara-kyiv',name:names('Святая Варвара','Свята Варвара','Saint Barbara'),type:'saint_place',denomination:'orthodox',lat:50.444939,lng:30.508719,country:'UA',markerType:'pawn',importance:95,verifiedAnchor:true,placeTitle:names('Владимирский собор, Киев','Володимирський собор, Київ','St Volodymyr’s Cathedral, Kyiv'),description:names('Место почитания мощей святой великомученицы Варвары во Владимирском соборе Киева. Метка обозначает собор, а не место рождения или мученичества святой и не точное положение раки внутри здания.','Місце шанування мощей святої великомучениці Варвари у Володимирському соборі Києва. Позначка вказує на собор, а не місце народження чи мучеництва святої та не точне положення раки всередині будівлі.','A place of veneration of Saint Barbara’s relics at St Volodymyr’s Cathedral in Kyiv. The marker locates the cathedral, not her birthplace or martyrdom site, nor the exact position of the reliquary inside.'),source:'https://www.katedral.org.ua/svjatyni/115-varvara.html',coordinateSource:'https://www.wikidata.org/wiki/Q1417441',prayerSlug:'molytva-do-sviatoi-velykomuchenytsi-varvary'},
  {id:'jerusalem',name:names('Иерусалим','Єрусалим','Jerusalem'),type:'major_center',denomination:'shared',lat:31.7784,lng:35.2296,country:'IL / PS',markerType:'king',importance:100,description:names('Старый город и храм Гроба Господня — центр христианского паломничества.','Старе місто й храм Гробу Господнього — центр християнського паломництва.','The Old City and Church of the Holy Sepulchre are central Christian pilgrimage sites.'),source:unesco(148)},
  {id:'bethlehem',name:names('Вифлеем','Вифлеєм','Bethlehem'),type:'pilgrimage',denomination:'shared',lat:31.7043,lng:35.2075,country:'PS',markerType:'queen',importance:95,description:names('Храм Рождества стоит на месте, почитаемом христианами как место рождения Иисуса.','Храм Різдва стоїть на місці, яке християни шанують як місце народження Ісуса.','The Church of the Nativity marks the traditional birthplace of Jesus.'),source:unesco(1433)},
  {id:'nazareth',name:names('Назарет','Назарет','Nazareth'),type:'pilgrimage',denomination:'shared',lat:32.7022,lng:35.2978,country:'IL',markerType:'queen',importance:90,description:names('Город евангельского Благовещения и детства Иисуса.','Місто євангельського Благовіщення та дитинства Ісуса.','A city associated with the Annunciation and the childhood of Jesus.'),source:'https://www.custodia.org/en/sanctuaries/nazareth'},
@@ -32,8 +34,11 @@ export const christianPlaces:SacredPlace[]=[
 ];
 const roles={king:'major_sacred_place',queen:'icon',bishop:'monastery',knight:'pilgrimage_route',rook:'church',pawn:'saint'} as const;
 export const chessModel=(role:SacredPlace['markerType'])=>markerModel(roles[role]);
-export function sacredPlaceItem(place:SacredPlace,locale:Locale):CalendarGeoItem {
- return {entityId:`place:${place.id}`,entityType:place.type,title:place.name[locale],placeId:place.id,placeTitle:place.name[locale],lat:place.lat,lon:place.lng,relationType:'historical_place',markerPriority:place.importance,thumbnail:null,matchStatus:'editorial_demo'};
+export function sacredPlaceItem(place:SacredPlace&PlaceMedia,locale:Locale):CalendarGeoItem&{imageVerified:boolean} {
+ return {...placeItem(place,locale),imageVerified:false};
+}
+function placeItem(place:SacredPlace&PlaceMedia,locale:Locale):CalendarGeoItem {
+ return {entityId:`place:${place.id}`,entityType:place.type,title:place.name[locale],placeId:place.id,placeTitle:place.placeTitle?.[locale]??place.name[locale],lat:place.lat,lon:place.lng,relationType:'historical_place',markerPriority:place.importance,thumbnail:place.imageUrl??null,geoStatus:place.verifiedAnchor?'reviewed_verified':undefined,matchStatus:place.verifiedAnchor?'reviewed_verified':'editorial_demo'};
 }
 export function chessIcon(role:SacredPlace['markerType'],selected:boolean){
  const paths={king:'M22 43h20M25 39l-3-17 7 5 3-7 3 7 7-5-3 17M32 9v11M27 14h10',queen:'M23 40h18L38 28l5-12-11 7-11-7 5 12z',bishop:'M24 42h16l-4-14 5-7-9-12-9 12 5 7zM32 13v12',knight:'M23 42h20l-2-21-9-12-2 8-10 9 4 7 8-7-5 16z',rook:'M23 42h18l-3-18 5-4V11h-6v6h-5v-6h-5v6h-6v7l5 1z',pawn:'M24 42h16l-5-16h-6zM38 18a6 6 0 1 0-12 0 6 6 0 0 0 12 0'};

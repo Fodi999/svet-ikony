@@ -1,6 +1,6 @@
-.experience { position:fixed; inset:0; height:100dvh; background:#020407; overflow:hidden; z-index:1001; }
+.experience { position:fixed; inset:76px 0 0; height:calc(100dvh - 76px); background:#020407; overflow:hidden; z-index:1001; }
 :global(body):has(.experience) { overflow:hidden; }
-:global(body):has(.experience) :global([data-site-header]),:global(body):has(.experience)>:global(footer) { display:none; }
+:global(body):has(.experience)>:global(footer) { display:none; }
 .overlay { position:absolute; inset:0; pointer-events:none; color:#f4f2eb; --gold:#e9c479; --glass:rgba(15,20,24,.89); --line:rgba(205,216,229,.23); font-size:14px; letter-spacing:0; }
 .overlay button,.overlay a,.overlay select,.overlay input,.overlay aside,.overlay label { pointer-events:auto; }
 .overlay button,.overlay a,.overlay select { -webkit-tap-highlight-color:transparent; }
@@ -8,6 +8,28 @@
 .overlay button:focus-visible,.overlay a:focus-visible,.overlay select:focus-visible,.overlay label:focus-within { outline:2px solid var(--gold); outline-offset:4px; }
 .overlay a { color:inherit; text-decoration:none; }
 .overlay button:hover,.overlay a:hover { color:var(--gold); }
+.topHeader { position:absolute; inset:0 0 auto 0; height:68px; display:flex; align-items:center; gap:18px; padding:0 22px; background:rgba(11,15,19,.92); backdrop-filter:blur(20px); border-bottom:1px solid var(--line); z-index:6; }
+.headerBrand { display:flex; align-items:center; gap:10px; flex:none; }
+.headerBrand span { display:flex; flex-direction:column; line-height:1.15; }
+.headerBrand b { font:20px/1 Georgia,serif; color:var(--gold); font-weight:400; letter-spacing:.03em; }
+.headerBrand small { color:#9a9689; font-size:9px; letter-spacing:.14em; text-transform:uppercase; margin-top:3px; }
+.headerNav { display:flex; align-items:center; gap:6px; margin:0 auto; }
+.headerNav button,.headerNav a { display:flex; align-items:center; gap:8px; padding:10px 14px; border:0; border-bottom:2px solid transparent; background:transparent; border-radius:0; color:#d7d9dc; font-size:14px; white-space:nowrap; }
+.headerNav button:hover,.headerNav a:hover { color:var(--gold); }
+.headerNav [aria-current=page] { color:var(--gold); border-bottom-color:var(--gold); }
+.headerActions { display:flex; align-items:center; gap:10px; flex:none; }
+.headerSearch { display:flex; align-items:center; gap:8px; width:230px; padding:8px 12px; border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.03); color:#9fa6ae; }
+.headerSearch input { flex:1; min-width:0; border:0; background:transparent; color:#f4f2eb; font-size:13px; }
+.headerSearch input::placeholder { color:#767c83; }
+.headerToday { padding:9px 16px; border:1px solid var(--line); border-radius:999px; background:transparent; color:#d7d9dc; font-size:13px; }
+.headerToday:hover { border-color:var(--gold); color:var(--gold); }
+.headerLocale { border:1px solid var(--line); border-radius:999px; background:transparent; color:#d7d9dc; padding:8px 10px; font-size:12px; }
+.headerProfile { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border:1px solid var(--line); border-radius:50%; background:transparent; color:#d7d9dc; }
+.headerProfile:hover { border-color:var(--gold); color:var(--gold); }
+.topHeader .menuButton { display:none; }
+
+.navigation .shopNavLink { display:none; }
+
 .brand { position:absolute; top:24px; left:28px; display:flex; align-items:center; gap:14px; }
 .brand b { display:block; font:32px/1.1 Georgia,serif; color:var(--gold); }
 .brand small { display:block; color:#c9bb9a; font-size:13px; margin-top:6px; }
@@ -15,20 +37,20 @@
 .navigation a,.navigation button { display:flex; align-items:center; gap:18px; min-height:52px; padding:8px 16px; border:0; background:transparent; text-align:left; font-size:15px; border-left:2px solid transparent; }
 .navigation svg { width:25px; height:25px; stroke-width:1.5; color:var(--gold); flex:none; }
 .navigation [aria-current=page] { border-left-color:var(--gold); background:rgba(229,187,107,.1); color:var(--gold); }
-.dateBar { position:absolute; top:22px; left:50%; transform:translateX(-50%); width:390px; height:66px; display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid var(--line); border-radius:8px; background:var(--glass); backdrop-filter:blur(20px); padding:8px; }
+.dateBar { position:absolute; top:84px; left:50%; transform:translateX(-50%); width:390px; height:66px; display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid var(--line); border-radius:8px; background:var(--glass); backdrop-filter:blur(20px); padding:8px; }
 .iconButton { display:inline-flex; align-items:center; justify-content:center; flex:none; width:38px; height:38px; padding:0; border:0; border-radius:50%; background:transparent; }
 .dateLabel { position:relative; flex:1; min-width:0; text-align:center; overflow:hidden; cursor:pointer; }
 .dateLabel strong { display:block; font:22px/1.3 Georgia,serif; }
 .dateLabel small { display:block; font-size:11px; color:#afb4bb; margin-top:3px; text-transform:capitalize; white-space:nowrap; }
 .dateLabel input { position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; color-scheme:dark; }
 .dateLabel input::-webkit-calendar-picker-indicator { position:absolute; inset:0; width:100%; height:100%; cursor:pointer; }
-.topActions { position:absolute; top:29px; right:26px; display:flex; align-items:center; gap:12px; }
+.topActions { position:absolute; top:84px; right:26px; display:flex; align-items:center; gap:12px; }
 .topActions select { border:0; color:#edece7; background:#11151a; padding:8px 5px; border-radius:4px; font-size:13px; }
 .today { background:var(--glass); padding:9px 16px; border:1px solid var(--line); border-radius:24px; height:40px; }
 .menuButton { display:none; }
 .navigation .mobileSearch {display:none;}
 @media(max-width:1199px) {.navigation .mobileSearch {display:flex;}}
-.dayToggle { position:absolute; top:102px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:9px; padding:9px 14px; background:rgba(12,17,21,.8); border:1px solid var(--line); border-radius:22px; font-size:12px!important; }
+.dayToggle { position:absolute; top:164px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:9px; padding:9px 14px; background:rgba(12,17,21,.8); border:1px solid var(--line); border-radius:22px; font-size:12px!important; }
 .dayToggle svg { color:var(--gold); }
 .drawer,.detail { position:absolute; top:116px; max-height:calc(100% - 238px); width:350px; background:var(--glass); border:1px solid var(--line); border-radius:8px; backdrop-filter:blur(24px); box-shadow:0 16px 60px #0006; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#62676b transparent; }
 .drawer { left:208px; display:flex; flex-direction:column; z-index:3; }
@@ -75,7 +97,7 @@
 .life { font-size:13px; margin:16px 0; }
 .life p { line-height:1.65; white-space:pre-wrap; }
 .cameraControls { position:absolute; right:28px; bottom:166px; display:grid; gap:10px; transition:right .25s; }
-.overlay[data-selected=true] .cameraControls { right:392px; }
+.overlay[data-selected=true] .cameraControls, .overlay[data-sacred-place-open=true] .cameraControls { right:392px; }
 .roundButton { display:grid; place-items:center; border:1px solid var(--line); background:var(--glass); border-radius:50%; width:48px; height:48px; }
 .overview { position:absolute; bottom:47px; right:26px; border:1px solid var(--line); background:var(--glass); border-radius:24px; padding:12px 18px; display:flex; gap:10px; align-items:center; }
 .sunToggle { position:absolute; bottom:49px; left:32px; display:grid; place-items:center; border:1px solid var(--line); background:var(--glass); border-radius:50%; width:44px; height:44px; color:var(--gold)!important; }
@@ -86,22 +108,25 @@
 .timeline i { width:6px; height:6px; border-radius:50%; background:#a4a09a; display:block; margin-top:9px; }
 .timeline [aria-current=date] { color:var(--gold); flex:1.7; }
 .timeline [aria-current=date] i { background:#f1cf88; width:12px; height:12px; margin-top:6px; box-shadow:0 0 16px #e9c47988; }
-@media(min-width:1800px) { .detail { right:36px; width:380px; } .overlay[data-selected=true] .cameraControls { right:434px; } }
-@media(max-width:1199px) { .brand b { font-size:25px; } .brand small { font-size:11px; } .brand { left:18px; gap:6px; } .dateBar { width:336px; } .dateLabel strong { font-size:20px; } .navigation { width:70px; left:14px; } .navigation span { display:none; } .drawer { left:94px; } .topActions { gap:5px; right:16px; } .topActions>.iconButton:not(.menuButton) { display:none; } .detail { width:320px; right:16px; } .overlay[data-selected=true] .cameraControls { right:350px; } .timeline { width:420px; } }
+@media(min-width:1800px) { .detail { right:36px; width:380px; } .overlay[data-selected=true] .cameraControls, .overlay[data-sacred-place-open=true] .cameraControls { right:434px; } }
+@media(max-width:1199px) { .brand b { font-size:25px; } .brand small { font-size:11px; } .brand { left:18px; gap:6px; } .dateBar { width:336px; } .dateLabel strong { font-size:20px; } .navigation { width:70px; left:14px; } .navigation span { display:none; } .drawer { left:94px; } .topActions { gap:5px; right:16px; } .topActions>.iconButton:not(.menuButton) { display:none; } .detail { width:320px; right:16px; } .overlay[data-selected=true] .cameraControls, .overlay[data-sacred-place-open=true] .cameraControls { right:350px; } .timeline { width:420px; } .headerSearch { display:none; } .headerNav button,.headerNav a { padding:10px; font-size:0; } .headerNav svg { margin:0; } }
 @media(max-width:767px) {
-  .experience:has([data-selected=true]) :global([data-visualizer-engine])>div:first-child { transform:translateY(-90px); }
-  .brand { top:17px; left:14px; gap:5px; } .brand img { width:30px; height:36px; } .brand b { font-size:23px; } .brand small { display:none; }
-  .topActions { top:16px; right:12px; gap:3px; } .topActions select { font-size:12px; background:transparent; width:48px; } .today { height:34px; padding:6px 9px; font-size:12px!important; } .menuButton { display:inline-flex; width:32px; height:34px; }
-  .dateBar { top:76px; width:calc(100% - 28px); height:62px; } .dateLabel strong { font-size:21px; } .dateLabel small { font-size:10px; }
-  .dayToggle { top:151px; padding:8px 12px; white-space:nowrap; }
-  .navigation { display:none; top:64px; right:12px; left:auto; width:206px; padding:10px; border:1px solid var(--line); border-radius:8px; background:#11161bf5; z-index:10; gap:0; } .navigation span { display:block; } .navigation a,.navigation button { min-height:48px; padding:8px; gap:14px; font-size:14px; } .menuOpen { display:grid; }
+  .experience:has([data-selected=true]) :global([data-visualizer-engine])>div:first-child,.experience:has([data-sacred-place-open=true]) :global([data-visualizer-engine])>div:first-child { transform:translateY(-90px); }
+  .topHeader { height:56px; padding:0 12px; gap:8px; }
+  .headerBrand b { font-size:17px; } .headerBrand small { display:none; } .headerBrand svg,.headerBrand img { width:26px; height:31px; }
+  .headerNav,.headerSearch,.headerToday,.headerLocale,.headerProfile { display:none; }
+  .topHeader .menuButton { display:inline-flex; width:34px; height:34px; }
+  .topActions { top:12px; right:12px; }
+  .dateBar { top:64px; width:calc(100% - 28px); height:62px; } .dateLabel strong { font-size:21px; } .dateLabel small { font-size:10px; }
+  .dayToggle { top:139px; padding:8px 12px; white-space:nowrap; }
+  .navigation { display:none; top:60px; right:12px; left:auto; width:206px; padding:10px; border:1px solid var(--line); border-radius:8px; background:#11161bf5; z-index:10; gap:0; } .navigation span { display:block; } .navigation a,.navigation button { min-height:48px; padding:8px; gap:14px; font-size:14px; } .navigation .shopNavLink { display:flex; } .menuOpen { display:grid; }
   .drawer,.detail { top:auto; bottom:calc(18px + env(safe-area-inset-bottom)); left:10px; right:10px; width:auto; max-height:51dvh; border-radius:8px; background:rgba(14,20,25,.96); }
   .drawer { max-height:58dvh; } .drawer header { padding:15px; } .drawer h2 { font-size:20px; } .drawer .scrollArea { min-height:0; }
   .detail h2 { font-size:24px; } .cardBody { padding:16px; } .detail header { padding:6px 10px 6px 16px; } .detail img { aspect-ratio:2; } .description { font-size:13px; }
-  .cameraControls { right:14px; bottom:140px; gap:8px; } .roundButton { width:38px; height:38px; } .overlay[data-selected=true] .cameraControls { display:none; }
+  .cameraControls { right:14px; bottom:140px; gap:8px; } .roundButton { width:38px; height:38px; } .overlay[data-selected=true] .cameraControls, .overlay[data-sacred-place-open=true] .cameraControls { display:none; }
   .overview { bottom:99px; right:14px; font-size:11px!important; padding:8px 12px; } .sunToggle { bottom:100px; left:14px; width:34px; height:34px; }
   .timeline { bottom:24px; width:calc(100% - 28px); height:61px; padding:8px; } .timeline button { font-size:10px; } .timeline i { margin-top:11px; } .timeline [aria-current=date] i { margin-top:8px; }
-  .overlay:has(.detail) .timeline,.overlay:has(.drawer) .timeline,.overlay:has(.drawer) .overview,.overlay:has(.detail) .overview,.overlay:has(.detail) .sunToggle,.overlay:has(.drawer) .sunToggle { visibility:hidden; }
+  .overlay:has(.detail) .timeline,.overlay:has(.drawer) .timeline,.overlay:has([data-sacred-place-panel]) .timeline,.overlay:has(.drawer) .overview,.overlay:has(.detail) .overview,.overlay:has([data-sacred-place-panel]) .overview,.overlay:has(.detail) .sunToggle,.overlay:has(.drawer) .sunToggle,.overlay:has([data-sacred-place-panel]) .sunToggle { visibility:hidden; }
 }
 @media(max-width:359px) { .brand b { font-size:19px; } .brand img { width:25px; } .topActions { gap:0; right:8px; } .today { padding:6px; } }
 @media(prefers-reduced-motion:reduce) { .cameraControls { transition:none; } }
@@ -118,7 +143,7 @@
   .topActions>.layersButton {position:fixed;left:60px;bottom:100px;width:34px;height:34px;border:1px solid var(--line);background:var(--glass);}
   .layerPanel {top:200px;right:14px;width:calc(100% - 28px);max-height:calc(100dvh - 310px);}
   .layerError {left:14px;right:14px;}
-  .overlay:has(.drawer) .layersButton,.overlay:has(.detail) .layersButton {visibility:hidden;}
+  .overlay:has(.drawer) .layersButton,.overlay:has(.detail) .layersButton,.overlay:has([data-sacred-place-panel]) .layersButton {visibility:hidden;}
 }
 
 /* Streamed Earth: compact Satellite | Map switch (+ dev-only Terrain / Buildings toggles). */
@@ -131,7 +156,7 @@
 .earthTools input {accent-color:#e8c77f;}
 @media(max-width:767px) {
   .earthControl {left:14px;bottom:146px;}
-  .overlay:has(.detail) .earthControl,.overlay:has(.drawer) .earthControl {visibility:hidden;}
+  .overlay:has(.detail) .earthControl,.overlay:has(.drawer) .earthControl,.overlay:has([data-sacred-place-panel]) .earthControl {visibility:hidden;}
 }
 
 /* Attribution strip: Cesium ion / Google Maps / CesiumJS credits live in their own bottom container (CesiumWidget creditContainer)
@@ -143,6 +168,58 @@
 .credits img {display:block;height:14px;width:auto;max-width:96px;object-fit:contain;opacity:.85;vertical-align:middle!important;}
 .credits a,.credits :global(.cesium-credit-expand-link) {display:inline-flex!important;align-items:center;color:#d8dce2;text-decoration:none;cursor:pointer;pointer-events:auto;}
 .credits a:hover,.credits :global(.cesium-credit-expand-link):hover {color:var(--gold,#e9c479);text-decoration:underline;}
+.navigation{max-height:calc(100% - 150px);overflow-y:auto;scrollbar-width:thin;}
+.mapSearch{position:absolute;left:88px;top:18px;display:flex;align-items:center;gap:10px;width:260px;height:44px;padding:0 14px;background:var(--glass);border:1px solid var(--line);border-radius:6px;pointer-events:auto;}
+.mapSearch input{width:100%;min-width:0;background:transparent;border:0;color:#f4f2eb;outline:none;font-size:13px;}
+.dateBar{top:18px;height:44px;width:350px;border-radius:6px;gap:2px;padding:3px;}
+.dateLabel strong{font-size:16px;}.dateLabel small{display:none;}.dateBar .today{font-size:11px;height:32px;border:0;padding:0 9px;}
+.navigation{top:18px;left:18px;width:52px;gap:4px;background:var(--glass);border:1px solid var(--line);border-radius:6px;padding:4px;}
+.navigation button,.navigation a{padding:8px;min-height:42px;justify-content:center;}.navigation span{display:none;}
+.topActions{top:18px;right:20px;}.dayToggle{top:74px;font-size:11px!important;}.drawer{top:74px;left:88px;max-height:calc(100% - 180px);}.detail{top:74px;}
+@media(max-width:1100px){.mapSearch{width:220px;}.dateBar{left:auto;right:76px;transform:none;width:320px;}}
+@media(max-width:767px){.navigation{display:grid;top:124px;left:14px;right:auto;width:44px;z-index:2;gap:2px;padding:2px;}.navigation button,.navigation a{min-height:36px;padding:6px;}.navigation svg{width:20px;height:20px;}.navigation span{display:none;}.mapSearch{top:12px;left:14px;width:calc(100% - 76px);height:40px;}.dateBar{top:64px;left:14px;right:14px;width:auto;transform:none;height:40px;}.dayToggle{display:none;}.topActions{top:12px;right:14px;}.topActions>.layersButton{position:static;width:40px;height:40px;}.drawer{top:auto;left:10px;bottom:18px;max-height:58dvh;}.detail{top:auto;}.layerPanel{top:116px;max-height:calc(100% - 140px);}.overlay:has(.drawer) .navigation,.overlay:has(.detail) .navigation,.overlay:has([data-sacred-place-panel]) .navigation,.overlay:has([data-sacred-plot-panel]) .navigation{display:none;}}
+@media(max-width:700px){.experience{top:64px;height:calc(100dvh - 64px);}}
 .credits :global(.cesium-credit-delimiter) {opacity:.6;}
+.overlay{--glass:rgba(5,15,20,.94);--line:rgba(190,165,111,.35);--gold:#e8c17b}
+.navigation{background:rgba(5,15,20,.8);border-color:#b8995a30}.navigation button[aria-current=page]{background:#e8c17b12;color:#edc982}
+.dateBar{border-color:#b8995a65;background:rgba(5,15,20,.93);border-radius:8px}.mapSearch{background:#061219eb;border-color:#a7b7bf35}.timeline{background:#061219e8;border-color:#b8995a40}
+@media(max-width:767px){.experience{bottom:calc(64px + env(safe-area-inset-bottom));height:calc(100dvh - 140px - env(safe-area-inset-bottom))}}
+@media(max-width:700px){.experience{height:calc(100dvh - 128px - env(safe-area-inset-bottom))}}
 .experience :global(.cesium-credit-lightbox-overlay) {z-index:30;}
-@media(max-width:767px) {.credits {bottom:2px;min-height:16px;padding:0 8px;font-size:8px;line-height:16px;} .credits :global(.cesium-widget-credits),.credits :global(.cesium-credit-logoContainer),.credits :global(.cesium-credit-textContainer) {gap:0 5px;} .credits img {height:11px;max-width:70px;}}
+/* A single information rail leaves the centre of the map unobstructed. */
+.overlay:has(.detail) .drawer,.overlay:has([data-sacred-place-panel]) .drawer,.overlay:has([data-sacred-plot-panel]) .drawer,
+.overlay:has(.detail) .layerPanel,.overlay:has([data-sacred-place-panel]) .layerPanel,.overlay:has([data-sacred-plot-panel]) .layerPanel {display:none;}
+.drawer,.detail,.layerPanel {left:80px;right:auto;top:72px;width:320px;max-height:calc(100% - 108px);}
+.layerPanel header {display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.layerPanel .earthControl {position:static;visibility:visible;margin-bottom:16px;width:100%;}
+.layerPanel .earthControl>div {width:100%;max-width:100%;}
+.overlay .cameraControls,.overlay[data-selected=true] .cameraControls,.overlay[data-sacred-place-open=true] .cameraControls {right:16px;bottom:88px;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--glass);}
+.cameraControls .roundButton {width:40px;height:40px;border:0;border-radius:0;border-bottom:1px solid var(--line);}
+.overview {right:16px;bottom:36px;width:40px;height:40px;padding:0;justify-content:center;font-size:0!important;border-radius:8px;}
+.overview svg {flex:none;}
+.overlay:not([data-mode=calendar]):not([data-mode=history]) .timeline,.overlay:not([data-mode=calendar]) .dayToggle {display:none;}
+.overlay:not([data-mode=calendar]) .dateBar {display:none;}
+.overlay:has(.drawer) .timeline,.overlay:has(.detail) .timeline,.overlay:has(.layerPanel) .timeline {display:none;}
+.navigation {width:44px;left:16px;gap:0;}
+.navigation button {min-height:38px;padding:6px;}
+.navigation svg {width:21px;height:21px;}
+.mapSearch {left:80px;width:320px;}
+.topActions .layersButton {background:var(--glass);border:1px solid var(--line);border-radius:8px;}
+@media(max-width:767px) {
+ .mapSearch {left:12px;width:calc(100% - 72px);}
+ .navigation {top:62px;left:12px;width:40px;}
+ .drawer,.detail,.layerPanel {top:auto;left:10px;right:10px;bottom:24px;width:auto;max-height:42%;}
+ .layerPanel {max-height:48%;}
+ .overlay:has(.layerPanel) .navigation {display:none;}
+ .overlay:has(.drawer) .cameraControls,.overlay:has(.detail) .cameraControls,.overlay:has(.layerPanel) .cameraControls {display:none;}
+ .overlay:has(.layerPanel) .overview {display:none;}
+ .overlay:has(.drawer) .layersButton,.overlay:has(.detail) .layersButton,.overlay:has([data-sacred-place-panel]) .layersButton {visibility:visible;}
+ .dateBar {top:62px;left:64px;right:12px;width:auto;}
+ .dateLabel strong {font-size:14px;}
+ .dateBar .today {display:none;}
+ .detail h2 {font-size:21px;}
+ .cardBody {padding:14px;}
+}
+.imageDetail {left:auto;right:20px;width:min(400px,calc(100% - 40px));}
+.imageDetail figure img {width:100%;max-height:280px;object-fit:contain;}
+@media(max-width:767px) {.imageDetail {left:12px;right:12px;top:auto;bottom:20px;max-height:55vh;width:auto;} .credits {bottom:2px;min-height:16px;padding:0 8px;font-size:8px;line-height:16px;} .credits :global(.cesium-widget-credits),.credits :global(.cesium-credit-logoContainer),.credits :global(.cesium-credit-textContainer) {gap:0 5px;} .credits img {height:11px;max-width:70px;}}

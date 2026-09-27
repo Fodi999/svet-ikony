@@ -106,11 +106,13 @@ const nextConfig: NextConfig = {
     const cesiumHeaders = SECURITY_HEADERS.map(header => header.key === 'Content-Security-Policy'
       ? {...header, value: header.value
         .replace("script-src 'self' 'unsafe-inline'", "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'")
-        // Streamed Cesium Earth (ion imagery incl. Google Maps 2D proxy, World Terrain, OSM Buildings; Bing fallback).
+        // Streamed Cesium Earth (ion World Imagery / Bing Aerial, World Terrain, OSM Buildings).
         .replace("connect-src 'self' blob:", `connect-src 'self' blob: ${CESIUM_STREAMING_HOSTS}`)}
       : header);
     return [
       { source: '/(.*)', headers: SECURITY_HEADERS },
+      { source: '/', headers: cesiumHeaders },
+      { source: '/:locale(uk|ru|en)', headers: cesiumHeaders },
       { source: '/:locale(uk|ru|en)/pravoslavna-istoriya', headers: cesiumHeaders },
       { source: '/pravoslavna-istoriya', headers: cesiumHeaders },
       { source: '/cesium-runtime/:path*', headers: cesiumHeaders },

@@ -22,3 +22,20 @@ export function calendarQuery(params:URLSearchParams) {
   if(!['uk','ru','en'].includes(locale)||!['julian','gregorian'].includes(calendarSystem)||tradition!=='orthodox')throw ApiError.validation('Unsupported calendar policy or locale');
   return {date,locale,calendarSystem,tradition};
 }
+
+/** GET /api/calendar/places?bbox=west,south,east,north&zoom=N -- viewport
+ * query for the Sacred Place marker layer. zoom is optional (null means
+ * "no decimation"); everything else is required and range-checked so a
+ * malformed bbox fails fast instead of silently returning the whole table. */
+export function placesBboxQuery(params:URLSearchParams) {
+  const raw=(params.get('bbox')??'').split(',').map(Number);
+  if(raw.length!==4||raw.some(value=>!Number.isFinite(value)))throw ApiError.validation('bbox must be "west,south,east,north"');
+  const [west,south,east,north]=raw;
+  if(west<-180||east>180||south<-90||north>90||west>=east||south>=north)throw ApiError.validation('bbox out of range');
+  const locale=params.get('locale')??'uk';
+  if(!['uk','ru','en'].includes(locale))throw ApiError.validation('Invalid locale');
+  const zoomParam=params.get('zoom');
+  const zoom=zoomParam===null?null:Number(zoomParam);
+  if(zoom!==null&&!Number.isFinite(zoom))throw ApiError.validation('zoom must be numeric');
+  return {bbox:{west,south,east,north},zoom,locale:locale as 'uk'|'ru'|'en'};
+}

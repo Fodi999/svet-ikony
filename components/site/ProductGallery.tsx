@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { StableImage } from './StableImage';
+import styles from './collection.module.css';
 
 export function ProductGallery({ images, alt }: { images: string[]; alt: string }) {
   const [active, setActive] = useState(0);
@@ -9,8 +10,8 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
   const activeIndex = Math.min(active, safeImages.length - 1);
 
   return (
-    <div className="grid gap-3.5">
-      <figure className="relative m-0 grid aspect-[4/5] place-items-center overflow-hidden rounded-md border border-gold/28 bg-[linear-gradient(110deg,transparent_0_28%,rgba(232,203,132,.13)_42%,transparent_56%),linear-gradient(160deg,rgba(127,141,101,.09),transparent_62%),#1b1c16] p-[clamp(18px,2.6vw,40px)]">
+    <div className={styles.gallery}>
+      <figure>
         <StableImage
           src={safeImages[activeIndex]}
           alt={alt}

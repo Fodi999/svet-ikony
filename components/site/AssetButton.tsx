@@ -40,6 +40,7 @@ export function AssetButton({ children, href, download, icon, variant = 'light',
   if (href && (download || target || /^https?:\/\//i.test(href))) {
     return (
       <Button
+        nativeButton={false}
         variant={variant}
         size="asset"
         className={className}
@@ -52,7 +53,7 @@ export function AssetButton({ children, href, download, icon, variant = 'light',
 
   if (href) {
     return (
-      <Button variant={variant} size="asset" className={className} render={<Link href={localeHref(href)} aria-label={ariaLabel} />}>
+      <Button nativeButton={false} variant={variant} size="asset" className={className} render={<Link href={localeHref(href)} aria-label={ariaLabel} />}>
         {content}
       </Button>
     );

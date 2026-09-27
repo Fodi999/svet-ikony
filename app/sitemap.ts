@@ -26,8 +26,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))),
     publicApi.products()
   ]);
-  const staticPages = ['', '/icons', '/shop', '/prayers', '/saints', '/gospel', '/churches', '/staroslavyanskaya-azbuka'];
-  const localized = (path: string) => locales.map((locale) => ({ url: `${siteUrl}${withLocale(path || '/', locale)}`, lastModified: new Date() }));
+  const staticPages = ['', '/explore', '/about', '/icons', '/shop', '/prayers', '/saints', '/gospel', '/churches', '/staroslavyanskaya-azbuka'];
+  const localized = (path: string) => locales.map((locale) => ({ url: `${siteUrl}${withLocale(path || '/', locale)}`, lastModified: new Date(), alternates: {languages: Object.fromEntries(locales.map(language=>[language,`${siteUrl}${withLocale(path || '/',language)}`]))} }));
   const churchPath = (kind: string, slug: string) => {
     if (kind === 'calendar') return `/church/calendar/${slug}`;
     if (kind === 'gospel') return `/church/gospel/${slug}`;

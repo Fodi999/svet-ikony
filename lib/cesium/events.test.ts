@@ -14,9 +14,9 @@ vi.mock('@cesium/engine', async importOriginal => {
 
 function setup() {
   const sources: {entities: {values: {id: string}[]}; show: boolean}[] = [];
-  const widget = {canvas: {}, dataSources: {
+  const widget = {canvas: {clientWidth:1440,clientHeight:1000}, dataSources: {
     add: vi.fn(async source => {sources.push(source); return source;}), remove: vi.fn()
-  }, camera: {flyTo: vi.fn()}, scene: {requestRender: vi.fn()}, isDestroyed: () => false};
+  }, camera: {flyTo: vi.fn(),getPixelSize:()=>1}, scene: {requestRender: vi.fn()}, isDestroyed: () => false};
   const layer = createCesiumEvents(widget as unknown as CesiumWidget, vi.fn(), vi.fn());
   return {layer, widget, sources};
 }
@@ -39,7 +39,7 @@ describe('Cesium history event layer', () => {
     layer.focus(selected);
     layer.update([], selected);
     expect(widget.camera.flyTo).toHaveBeenCalledOnce();
-    expect(sources[0].entities.values.map(entity => entity.id)).toEqual(['selected-event-model']);
+    expect(sources[0].entities.values.map(entity => entity.id)).toEqual(['selected-event-model','event-selection-hex']);
     layer.setVisible(false);
     expect(sources[0].show).toBe(false);
     layer.dispose();

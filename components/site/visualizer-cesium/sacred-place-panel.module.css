@@ -1,0 +1,150 @@
+/* Rendered inside CalendarGlobeOverlay's .overlay element, so it inherits
+   --gold/--glass/--line custom properties defined there (calendar-globe.module.css)
+   instead of redefining them. Desktop: right panel, "premium dark" card per
+   the reference mockup. Mobile: bottom sheet, same breakpoint/positioning
+   convention as .detail/.drawer already use at max-width:767px. */
+
+.panel {
+  position: absolute;
+  top: 74px;
+  right: 24px;
+  bottom: auto;
+  width: 452px;
+  max-height: calc(100% - 238px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(5, 16, 21, .96);
+  border: 1px solid rgba(233, 196, 121, 0.35);
+  border-radius: 8px;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 24px 70px #000a, 0 2px 0 #fff1 inset;
+  overflow: hidden;
+  pointer-events: auto;
+  z-index: 5;
+  color: #f4f2eb;
+}
+
+.placeActions{display:flex;flex-wrap:wrap;gap:10px;padding:14px 18px;border-top:1px solid #ffffff20;flex-shrink:0;}
+.placeActions button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px;flex:1;border:1px solid #d6b77a66;border-radius:6px;padding:8px 12px;background:#cba76018;color:#efd195;font-size:12px;cursor:pointer;}
+.placeActions button:last-child{background:#dbb46d;border-color:#f0d19a;color:#17150f;font-weight:600}.placeActions button:hover{filter:brightness(1.08)}
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 14px 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.headerTitle { display: flex; align-items: flex-start; gap: 8px; min-width: 0; color: var(--gold); }
+.headerTitle > svg { flex: none; margin-top: 3px; }
+.headerTitleText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.headerTitleText b { font: 19px/1.3 Georgia, serif; color: var(--gold); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.headerTitleText small { color: #9fa6ae; font-size: 12px; }
+.headerActions { display: flex; align-items: center; gap: 4px; flex: none; }
+.favorite,.close { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #b7bcc2; cursor: pointer; }
+.favorite:hover,.close:hover { color: var(--gold); background: rgba(233, 196, 121, 0.1); }
+.favorite[data-active=true] { color: #e2665b; }
+
+.hierarchy { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 18px 10px; font-size: 12px; }
+.hierarchyLabel { color: #9fa6ae; }
+.hierarchyList { display: flex; flex-wrap: wrap; gap: 6px; }
+.hierarchyLink { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--gold); font-size: 12px; cursor: pointer; }
+.hierarchyLink:hover { border-color: var(--gold); background: rgba(233, 196, 121, 0.1); }
+
+.tabs { display: flex; gap: 4px; padding: 8px 14px 0; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.tabs button { flex: none; padding: 10px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #b7bcc2; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.tabs button:hover { color: #f4f2eb; }
+.tabs button[aria-current=page] { color: var(--gold); border-bottom-color: var(--gold); }
+
+.body { flex: 1; min-height: 0; overflow: auto; padding: 18px; scrollbar-width: thin; scrollbar-color: #62676b transparent; }
+.body p { margin: 0 0 12px; line-height: 1.55; font-size: 14px; color: #d7d9dc; }
+.body p:last-child { margin-bottom: 0; }
+.empty { color: #9fa6ae; font-style: italic; }
+
+.about ul { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; color: #c7cacd; }
+.about li { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }
+.links { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; }
+.links a { display: inline-flex; align-items: center; gap: 6px; color: var(--gold); font-size: 13px; text-decoration: none; }
+.links a:hover { text-decoration: underline; }
+.routeButton { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: #7c828a; font-size: 13px; cursor: not-allowed; }
+
+.collectionTab { display: flex; flex-direction: column; gap: 16px; }
+.collectionHeading h3 { margin: 0 0 4px; font: 18px/1.3 Georgia, serif; color: var(--gold); font-weight: 400; }
+.collectionHeading p { margin: 0; font-size: 12px; color: #9fa6ae; }
+
+.carousel { display: flex; flex-direction: column; gap: 14px; }
+.carouselMain { display: flex; align-items: stretch; gap: 8px; }
+.carouselNav { flex: none; align-self: center; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: #d7d9dc; cursor: pointer; }
+.carouselNav:hover { color: var(--gold); border-color: var(--gold); }
+.carouselCard { flex: 1; min-width: 0; display: flex; flex-direction: row; align-items: stretch; border: 1px solid rgba(233, 196, 121, 0.3); border-radius: 14px; overflow: hidden; background: rgba(0, 0, 0, 0.2); }
+.carouselFigureLink { display: block; flex: none; width: 42%; max-width: 190px; }
+.carouselFigure { position: relative; margin: 0; width: 100%; height: 100%; min-height: 190px; background: #0c1013; }
+.carouselImage { width: 100%; height: 100%; object-fit: cover; }
+.primaryBadge { position: absolute; top: 10px; left: 10px; padding: 4px 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.7); border: 1px solid var(--gold); color: var(--gold); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+.carouselBody { flex: 1; min-width: 0; padding: 14px 16px 16px; display: flex; flex-direction: column; }
+.productLabel { color: var(--gold); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+.carouselBody h3 { margin: 0 0 6px; font: 19px/1.3 Georgia, serif; color: #f4f2eb; font-weight: 400; }
+.carouselBody h3 a { color: inherit; text-decoration: none; }
+.carouselBody h3 a:hover { color: var(--gold); }
+.carouselTagline { font-size: 13px; font-style: italic; color: #b7bcc2; margin: 0 0 10px; }
+.carouselMetaList { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #c7cacd; }
+.carouselMetaList li { display: flex; align-items: center; gap: 8px; }
+.carouselMetaList svg { color: var(--gold); flex: none; }
+.carouselDivider { height: 1px; background: var(--line); margin: 0 0 12px; }
+.carouselMeta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.carouselMeta b { color: var(--gold); font-size: 20px; font-weight: 400; font-family: Georgia, serif; }
+.buyButton { display: block; padding: 11px 16px; border-radius: 8px; background: var(--gold); color: #14181c; font-weight: 700; font-size: 13px; text-align: center; text-decoration: none; }
+.buyButton:hover { filter: brightness(1.08); color: #14181c; }
+.browseHint { margin: 10px 0 0; text-align: center; font-size: 12px; color: #9fa6ae; }
+
+.filmstrip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.filmstripItem { flex: none; width: 56px; height: 56px; padding: 0; border: 2px solid transparent; border-radius: 6px; overflow: hidden; background: #14181c; cursor: pointer; opacity: 0.65; }
+.filmstripItem:hover { opacity: 1; }
+.filmstripItem[data-active=true] { border-color: var(--gold); opacity: 1; }
+.filmstripImage { width: 100%; height: 100%; object-fit: cover; }
+.dots { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.dot { width: 6px; height: 6px; padding: 0; border: 0; border-radius: 50%; background: var(--line); cursor: pointer; }
+.dot[data-active=true] { background: var(--gold); width: 16px; border-radius: 4px; }
+
+@media (max-width: 1199px) { .panel { width: 380px; right: 16px; } }
+
+/* Desktop/tablet: the drag-handle button only makes sense as a bottom-sheet
+   affordance, and the mobile-preview row (ТЗ п.17's collapsed state) is a
+   mobile-only concept -- both stay hidden above the 767px breakpoint, and
+   .tabs/.body are always shown (data-expanded is ignored) so nothing here
+   can accidentally hide desktop content. */
+.handle { display: none; }
+.mobilePreview { display: none; }
+
+@media (max-width: 767px) {
+  .panel {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    max-height: 75dvh;
+    border-radius: 18px 18px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    transition: max-height .22s ease;
+  }
+  /* Collapsed (ТЗ п.17): name/type/photo only -- tabs and the tab body stay
+     mounted (so their data keeps loading in the background) but hidden,
+     and the sheet itself shrinks so the map stays visible above it. */
+  .panel[data-expanded="false"] { max-height: 190px; }
+  .panel[data-expanded="false"] .tabs,
+  .panel[data-expanded="false"] .body,
+  .panel[data-expanded="false"] .placeActions,
+  .panel[data-expanded="false"] .hierarchy { display: none; }
+  .handle { display: flex; align-items: center; justify-content: center; width: 100%; padding: 8px 0 2px; border: 0; background: transparent; cursor: pointer; }
+  .handleBar { width: 36px; height: 4px; border-radius: 999px; background: var(--line); }
+  .header { padding: 6px 14px 12px 18px; }
+  .mobilePreview { display: flex; align-items: center; gap: 12px; width: 100%; padding: 2px 18px 16px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+  .mobilePreviewPhoto { flex: none; width: 56px; height: 56px; border-radius: 12px; object-fit: cover; background: linear-gradient(160deg, rgba(233,196,121,.16), rgba(233,196,121,.04)); border: 1px solid var(--line); }
+  .mobilePreviewMeta { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .mobilePreviewType { font-size: 12px; letter-spacing: .02em; color: #9fa6ae; text-transform: uppercase; }
+  .mobilePreviewHint { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--gold); }
+  .carouselCard { flex-direction: column; }
+  .carouselFigureLink { width: 100%; max-width: none; }
+  .carouselFigure { aspect-ratio: 4/3; min-height: 0; }
+}

@@ -343,9 +343,10 @@ function IconStory({ text, images }: { text?: string; images: string[] }) {
 export function LocalizedBackendPrayersList({ prayers }: { prayers: Prayer[] }) {
   const { locale } = useI18n();
   const localeHref = useLocaleHref();
+  const orderedPrayers = [...prayers].sort((a, b) => Number(Boolean(b.imageUrl)) - Number(Boolean(a.imageUrl)));
   return (
-    <div className="grid grid-cols-3 gap-[clamp(14px,2vw,28px)] mt-[clamp(28px,4vw,58px)] max-[900px]:grid-cols-1 max-[900px]:gap-3 max-[900px]:mt-6">
-      {prayers.map((prayer) => {
+    <div className="grid grid-cols-3 items-start gap-[clamp(14px,2vw,28px)] mt-[clamp(28px,4vw,58px)] max-[900px]:grid-cols-1 max-[900px]:gap-3 max-[900px]:mt-6">
+      {orderedPrayers.map((prayer) => {
         const title = prayerTitle(prayer.title, locale);
         const image = prayer.imageUrl || '';
         return (
@@ -371,7 +372,9 @@ export function LocalizedBackendPrayersList({ prayers }: { prayers: Prayer[] }) 
                 <strong className="text-foreground font-black">{title}</strong>
               </Link>
               <p className="text-muted-foreground">{textPreview(prayer.text, 190)}</p>
-              <div className="grid grid-cols-2 gap-2.5 items-center mt-1.5 max-[900px]:grid-cols-1">
+              {prayer.audioUrl ? <audio controls preload="none" src={prayer.audioUrl} aria-label={title} className="w-full min-w-0" /> : null}
+              {image ? <PrayerQr url={clientAbsoluteUrl(localeHref(`/prayers/${prayer.slug}`))} label={ui(locale, 'qrCode')} downloadLabel={ui(locale, 'downloadQr')} downloadName={`${prayer.slug}-qr.png`} /> : null}
+              <div className="grid grid-cols-1 gap-2.5 items-center mt-1.5">
                 <AssetButton href={localeHref(`/prayers/${prayer.slug}`)}>{ui(locale, 'readPrayer')}</AssetButton>
               </div>
             </div>

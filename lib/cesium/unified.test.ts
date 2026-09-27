@@ -1,5 +1,5 @@
 import {expect,it,vi} from 'vitest';
-import {defaultLayers,initialLayers,layersForMode,modeFromParams,globeModes} from './unified';
+import {defaultLayers,initialLayers,layersForMode,modeFromParams,globeModes,placeFromParams,tabFromParams} from './unified';
 import {KnowledgeLayerManager} from './knowledge';
 it('maps legacy links into one mode without a second renderer',()=>{
   expect(modeFromParams(new URLSearchParams())).toBe('globe');
@@ -18,6 +18,13 @@ it('restores explicit URL layers including an empty set',()=>{
   expect(initialLayers(new URLSearchParams('mode=calendar')).calendar).toBe(true);
   expect(initialLayers(new URLSearchParams('layers=countries,capitals'))).toMatchObject({countries:true,capitals:true,borders:false,calendar:false});
   expect(Object.values(initialLayers(new URLSearchParams('layers='))).every(value=>!value)).toBe(true);
+});
+it('reads the Sacred Place place/tab URL state independently of mode/entity',()=>{
+  expect(placeFromParams(new URLSearchParams())).toBeNull();
+  expect(placeFromParams(new URLSearchParams('place=place-kyiv-pechersk-lavra&mode=calendar'))).toBe('place-kyiv-pechersk-lavra');
+  expect(tabFromParams(new URLSearchParams())).toBe('about');
+  expect(tabFromParams(new URLSearchParams('tab=collection'))).toBe('collection');
+  expect(tabFromParams(new URLSearchParams('tab=not-a-real-tab'))).toBe('about');
 });
 it('applies pending visibility to asynchronous layers and disposes once',()=>{
   const manager=new KnowledgeLayerManager();manager.setVisible('cities',false);

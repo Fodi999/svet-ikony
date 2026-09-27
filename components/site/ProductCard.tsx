@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { ChurchProductDto } from '@/lib/types';
 import { useI18n, useLocaleHref } from './LanguageProvider';
 import { StableImage } from './StableImage';
+import styles from './collection.module.css';
 
 function localizedName(product: ChurchProductDto, locale: 'uk' | 'ru' | 'en') {
   if (locale === 'ru') return product.nameRu || product.nameUk;
@@ -22,7 +23,7 @@ export function ProductCard({ product }: { product: ChurchProductDto }) {
 
   return (
     <Link
-      className="grid min-w-0 grid-rows-[auto_1fr] gap-0 rounded-md border border-gold/28 bg-background p-0 no-underline transition-[border-color,transform] duration-200 ease-brand hover:-translate-y-0.5 hover:border-gold"
+      className={styles.card}
       href={localeHref(`/shop/${product.slug}`)}
     >
       {/*
@@ -36,7 +37,7 @@ export function ProductCard({ product }: { product: ChurchProductDto }) {
        * a large empty gap. aspect-square + h-full/w-full ties the image's
        * size to its actual container at every breakpoint instead.
        */}
-      <figure className="relative m-0 grid aspect-square place-items-center overflow-hidden border-b border-gold/28 bg-[linear-gradient(160deg,rgba(127,141,101,.09),transparent_62%),#1b1c16] p-[clamp(16px,2.2vw,34px)]">
+      <figure className={styles.figure}>
         <StableImage
           src={product.photoUrl}
           alt={name}
@@ -45,15 +46,15 @@ export function ProductCard({ product }: { product: ChurchProductDto }) {
           className="block h-full w-full rounded-xs object-contain"
         />
         {product.stockStatus !== 'available' ? (
-          <span className="absolute top-3 right-3 rounded-full border border-gold/28 bg-black/78 px-2.5 py-1 text-[11px] font-extrabold text-gold-light uppercase">
+          <span className={styles.badge}>
             {t(product.stockStatus === 'made_to_order' ? 'stockMadeToOrder' : 'stockUnavailable')}
           </span>
         ) : null}
       </figure>
-      <div className="grid content-start gap-2.5 p-[clamp(16px,2vw,22px)]">
-        <h3 className="m-0 text-[clamp(17px,1.6vw,21px)] leading-tight text-foreground">{name}</h3>
+      <div className={styles.body}>
+        <h3>{name}</h3>
         {product.description ? <p className="m-0 line-clamp-2 text-sm leading-snug text-muted-foreground">{product.description}</p> : null}
-        <div className="flex items-center justify-between gap-2.5">
+        <div className={styles.price}>
           <b className="text-[17px] text-gold-light">{formatMoney(product.priceCents, product.currency)}</b>
           <small className="font-bold tracking-[.06em] text-muted-foreground uppercase">{t('viewProduct')}</small>
         </div>

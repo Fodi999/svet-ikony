@@ -107,7 +107,12 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
     plots?.hover(plots?.pickAt(movement.endPosition)?.plotId??null);
   },C.ScreenSpaceEventType.MOUSE_MOVE);
   handler.setInputAction((movement: {position: C.Cartesian2}) => {
-    const picked=widget.scene.pick(movement.position)?.id;
+    // A country polygon or another layer may sit above a clamped marker.
+    // Resolve this layer's owned entity from the complete pick stack.
+    const picked=widget.scene.drillPick(movement.position).map(hit=>hit.id).find(id=>
+      Array.isArray(id)?id.length>0&&id.every(entity=>markers.entities.contains(entity)):
+      !!id?.properties?.sacredPlaceId
+    );
     if(Array.isArray(picked)&&picked.length&&picked.every(entity=>markers.entities.contains(entity))){
       const points=picked.map(entity=>entity.position?.getValue(widget.clock.currentTime)).filter((p):p is C.Cartesian3=>!!p);
       if(points.length){
@@ -129,7 +134,7 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
     // pickAt() header comment for why.
     const plot = plots?.pickAt(movement.position);
     if (plot) { plots?.select(plot.plotId); onSelectPlot(plot); return; }
-    const id = widget.scene.pick(movement.position)?.id?.properties?.sacredPlaceId?.getValue();
+    const id = picked?.properties?.sacredPlaceId?.getValue();
     if (typeof id === 'string') onSelect(id);
   }, C.ScreenSpaceEventType.LEFT_CLICK);
 

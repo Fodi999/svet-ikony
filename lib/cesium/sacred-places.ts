@@ -61,7 +61,18 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
   const selectionHexes=createSelectionHexController(widget,markers);
   markers.clustering.enabled=true;markers.clustering.minimumClusterSize=2;markers.clustering.pixelRange=2;
   markers.clustering.clusterLabels=false;
-  const removeCluster=markers.clustering.clusterEvent.addEventListener((entities,cluster)=>{cluster.label.text=String(entities.length);styleCluster(cluster);cluster.label.id=entities;cluster.point.id=entities;cluster.billboard.id=entities;});
+  const removeCluster=markers.clustering.clusterEvent.addEventListener((entities,cluster)=>{
+    cluster.label.text=String(entities.length);styleCluster(cluster);
+    const photographed=entities.find(entity=>entity.properties?.publishedPhoto?.getValue()&&entity.billboard);
+    if(photographed){
+      cluster.billboard.show=true;
+      cluster.billboard.image=photographed.billboard!.image?.getValue(widget.clock.currentTime);
+      cluster.billboard.width=64;cluster.billboard.height=76;
+      cluster.label.show=true;cluster.label.showBackground=true;
+      cluster.label.pixelOffset=new C.Cartesian2(28,-28);
+    }
+    cluster.label.id=entities;cluster.point.id=entities;cluster.billboard.id=entities;
+  });
   const plots = options.legacyPlots ? createSacredPlotsLayer(widget) : null;
   let disposed = false, generation = 0, territories: C.GeoJsonDataSource | null = null, lastSelectedId: string | null = null;
   let placesVisible = true, plotsToggle = true;
@@ -99,7 +110,17 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
     const picked=widget.scene.pick(movement.position)?.id;
     if(Array.isArray(picked)&&picked.length&&picked.every(entity=>markers.entities.contains(entity))){
       const points=picked.map(entity=>entity.position?.getValue(widget.clock.currentTime)).filter((p):p is C.Cartesian3=>!!p);
-      if(points.length){const sphere=C.BoundingSphere.fromPoints(points);widget.camera.flyToBoundingSphere(sphere,{duration:1,offset:new C.HeadingPitchRange(0,-Math.PI/3,Math.max(1500,sphere.radius*3))});}
+      if(points.length){
+        const sphere=C.BoundingSphere.fromPoints(points);
+        // Coincident records cannot be separated by zooming. Open the photo
+        // record; all records remain independently available in place search.
+        if(sphere.radius<1){
+          const target=picked.find(entity=>entity.properties?.publishedPhoto?.getValue())??picked[0];
+          const id=target.properties?.sacredPlaceId?.getValue();
+          if(typeof id==='string'){onSelect(id);return;}
+        }
+        widget.camera.flyToBoundingSphere(sphere,{duration:1,offset:new C.HeadingPitchRange(0,-Math.PI/3,Math.max(1500,sphere.radius*3))});
+      }
       return;
     }
     // Sacred Plot hexes take priority over whatever sits underneath them
@@ -207,7 +228,7 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
         const publication=markerPublication(images,null,place.id);
         if(publication?.markerKey){
           const image=new Image();image.crossOrigin='anonymous';
-          image.onload=()=>{if(disposed||markers.entities.getById(entity.id)!==entity)return;const bitmap=photoMarker(image,selected);if(bitmap)entity.billboard=new C.BillboardGraphics(markerBillboard(bitmap,selected));widget.scene.requestRender();};
+          image.onload=()=>{if(disposed||markers.entities.getById(entity.id)!==entity)return;const bitmap=photoMarker(image,selected);if(bitmap){entity.billboard=new C.BillboardGraphics(markerBillboard(bitmap,selected));entity.properties!.addProperty('publishedPhoto',true);markers.clustering.enabled=false;markers.clustering.enabled=true;}widget.scene.requestRender();};
           image.src='/'+publication.markerKey;
         }
       }

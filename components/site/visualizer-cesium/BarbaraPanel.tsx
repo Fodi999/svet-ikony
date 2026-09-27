@@ -10,10 +10,10 @@ const copy={
  uk:{title:'Свята великомучениця Варвара',tabs:['Про святу','Молитви','Місця','Колекція'],feast:'4 грудня за новим стилем; 4 грудня юліанського календаря = 17 грудня цивільного (1900–2099).',bio:'За церковним переданням, Варвара сповідувала християнську віру та прийняла мученицьку смерть. Її шанують за вірність Христу й мужність перед стражданнями.',full:'Читати повністю',connection:'Зв’язок із цим місцем',place:'Володимирський собор, Київ',relation:'У соборі шанують мощі святої Варвари. Позначка вказує на будівлю собору, а не місце її народження чи мучеництва.',open:'Відкрити місце',back:'До святої',empty:'Пов’язані колекційні ікони поки не додані.',original:'Мова оригіналу: українська',loading:'Завантаження молитви…',error:'Молитва недоступна. Спробуйте відкрити картку знову.',close:'Закрити',expand:'Розгорнути картку'},
  en:{title:'Holy Great Martyr Barbara',tabs:['About','Prayers','Places','Collection'],feast:'December 4, New Calendar; December 4 Julian = December 17 civil calendar (1900–2099).',bio:'According to Church tradition, Barbara confessed the Christian faith and suffered martyrdom. She is venerated for her faithfulness to Christ and courage in suffering.',full:'Read more',connection:'Connection to this place',place:'St Volodymyr’s Cathedral, Kyiv',relation:'Saint Barbara’s relics are venerated in this cathedral. The marker locates the cathedral building, not her birthplace or martyrdom site.',open:'Open place',back:'Back to saint',empty:'No linked collectible icons have been added.',original:'Original language: Ukrainian',loading:'Loading prayer…',error:'Prayer unavailable. Please reopen the panel to retry.',close:'Close',expand:'Expand panel'}
 };
-export function BarbaraPanel({locale,onClose,onPlace,onCalendar}:{locale:'ru'|'uk'|'en';onClose:()=>void;onPlace:()=>void;onCalendar:()=>void}){
- return <BarbaraPanelContent key={locale} locale={locale} onClose={onClose} onPlace={onPlace} onCalendar={onCalendar}/>;
+export function BarbaraPanel({locale,onClose,onPlace,onCalendar,imageUrl}:{locale:'ru'|'uk'|'en';onClose:()=>void;onPlace:()=>void;onCalendar:()=>void;imageUrl?:string}){
+ return <BarbaraPanelContent key={locale} locale={locale} onClose={onClose} onPlace={onPlace} onCalendar={onCalendar} imageUrl={imageUrl}/>;
 }
-function BarbaraPanelContent({locale,onClose,onPlace,onCalendar}:{locale:'ru'|'uk'|'en';onClose:()=>void;onPlace:()=>void;onCalendar:()=>void}){
+function BarbaraPanelContent({locale,onClose,onPlace,onCalendar,imageUrl}:{locale:'ru'|'uk'|'en';onClose:()=>void;onPlace:()=>void;onCalendar:()=>void;imageUrl?:string}){
  const [iconGroup,setIconGroup]=useState<string|null>(null);
  const t=copy[locale];const [tab,setTab]=useState(0),[place,setPlace]=useState(false),[expanded,setExpanded]=useState(false),[prayer,setPrayer]=useState<Prayer|null>(null),[error,setError]=useState(false);
  useEffect(()=>{const controller=new AbortController();void (async()=>{
@@ -27,7 +27,7 @@ function BarbaraPanelContent({locale,onClose,onPlace,onCalendar}:{locale:'ru'|'u
   <header><span>{place?t.place:t.title}</span><button onClick={onClose} aria-label={t.close}><X size={20}/></button></header>
   <button className={styles.expand} onClick={()=>setExpanded(v=>!v)} aria-label={t.expand} aria-expanded={expanded}><ChevronUp size={18}/></button>
   {place?<div className={styles.body}><button onClick={()=>setPlace(false)}><ArrowLeft size={16}/>{t.back}</button><h2>{t.place}</h2><p>{t.relation}</p><p>50.444939°, 30.508719°</p><button onClick={onPlace}><MapPin size={16}/>{t.open}</button><p><a href="https://www.katedral.org.ua/svjatyni/115-varvara.html" target="_blank" rel="noreferrer">katedral.org.ua</a></p></div>:<>
-  <img className={styles.image} src={markerFallback('saint')} alt={t.title}/>
+  <img className={styles.image} src={imageUrl??markerFallback('saint')} alt={t.title} onError={event=>{event.currentTarget.onerror=null;event.currentTarget.src=markerFallback('saint');}}/>
   <div className={styles.body}><h2>{t.title}</h2><p className={styles.meta}>{t.feast}</p>
   <button onClick={onCalendar}>{locale==='ru'?'Показать в календаре':locale==='uk'?'Показати в календарі':'Show in calendar'}</button>
   <div className={styles.tabs} role="tablist">{t.tabs.map((title,index)=><button key={title} role="tab" id={`barbara-tab-${index}`} aria-selected={tab===index} aria-controls="barbara-content" onClick={()=>setTab(index)}>{index===3?{ru:'Иконы',uk:'Ікони',en:'Icons'}[locale]:title}</button>)}</div>

@@ -17,6 +17,7 @@ import {countryMetadata} from '@/lib/visualizer/countries';
 import {EarthSourceControl} from './EarthSourceControl';
 import {BarbaraPanel} from './BarbaraPanel';
 import {useMarkerImages} from './useMarkerImages';
+import {markerPublication} from '@/lib/cesium/marker-publication';
 import {markerFallback} from '@/lib/cesium/photo-marker';
 import type {EarthStreaming} from '@/lib/cesium/earth-streaming';
 import {createSacredPlacesLayer,type TerritoryFeature} from '@/lib/cesium/sacred-places';
@@ -105,9 +106,9 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
     return()=>{instance.dispose();placesLayer.current=null;};
   },[widget,unified.manager]);
   useEffect(()=>{
-    placesLayer.current?.update(christianPlaces.map(place=>sacredPlaceItem(place,locale)),'all',selected,visibility.sacredModels);
+    placesLayer.current?.update(christianPlaces.map(place=>{const item=sacredPlaceItem(place,locale),image=markerPublication(markerImages,item.entityId,item.placeId);return image?{...item,thumbnail:image.markerKey?'/'+image.markerKey:null,imageVerified:!!image.markerKey}:item;}),'all',selected,visibility.sacredModels);
     placesLayer.current?.setVisible(visibility.christianPlaces);
-  },[locale,selected,visibility.sacredModels,visibility.christianPlaces]);
+  },[locale,selected,visibility.sacredModels,visibility.christianPlaces,markerImages]);
   useEffect(()=>{
     const instance=createSacredPlacesLayer(widget,id=>selectPlace.current(id),plot=>{
       // Sacred Plot hex click (ТЗ п.4/п.7): clears any place/entity selection
@@ -144,7 +145,7 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
   },[locale]);
   // Retired pilot grid: a selected object now owns a single visual footprint.
   useEffect(()=>{sacredLayer.current?.setPlotsVisible(false);},[widget]);
-  useEffect(()=>{sacredLayer.current?.update(sacredPlaces,placeId);},[sacredPlaces,placeId]);
+  useEffect(()=>{sacredLayer.current?.update(sacredPlaces,placeId,markerImages);},[sacredPlaces,placeId,markerImages]);
   useEffect(()=>{sacredLayer.current?.setVisible(visibility.christianPlaces||visibility.churches||visibility.monasteries);},[visibility.christianPlaces,visibility.churches,visibility.monasteries]);
   useEffect(()=>{
     if(!placeId){focusedSacredPlace.current=null;return;}
@@ -184,13 +185,13 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
     };void load();return()=>controller.abort();
   },[date,locale,retry,demo]);
   const selectedId=baseSelection?null:selected?.startsWith('entry:')?entries.find(entry=>entry.id===selected.slice(6))?.entityId:selected;
-  const publishedImage=markerImages.find(row=>row.entityId===selectedId);
+  const publishedImage=markerPublication(markerImages,selectedId,sacred?.id);
   useEffect(()=>{
     refreshEntities.current=()=>{
       const flags=entityVisibility.current;
       const global=unified.catalog.items.filter(item=>(flags.saints&&['saint','feast','icon'].includes(item.entityType))||(flags.churches&&['church','shrine'].includes(item.entityType))||(flags.monasteries&&item.entityType==='monastery'));
       const visible=(demo?demo.items:[...(flags.calendar?items:[]),...global]).map(item=>{
-        const image=markerImages.find(row=>row.entityId===item.entityId);
+        const image=markerPublication(markerImages,item.entityId,item.placeId);
         return image?{...item,thumbnail:image.markerKey?'/'+image.markerKey:null,imageVerified:!!image.markerKey}:item;
       });itemsRef.current=visible;
       layer.current?.update(visible,'all',selectedId??null,visibility.sacredModels);
@@ -295,7 +296,7 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
         {categories.map(category=>{const group=filtered.filter(entry=>entry.entityType===category);return group.length?<section key={category}><h3>{text[category]} <small>{group.length}</small></h3><ul>{group.map(entry=><li key={entry.id}><button onClick={()=>openEntry(entry)}><span>{entry.title}</span>{entry.hasGeo?<MapPin size={14} aria-label={text.places}/>:null}<ChevronRight size={14}/></button></li>)}</ul></section>:null;})}
       </div>
     </aside>:null}
-    {selected==='place:barbara-kyiv'&&!selectedPlot?<BarbaraPanel locale={locale} onClose={closeCard} onCalendar={()=>{setDate(`${date.slice(0,4)}-12-17`);setMode('calendar');setVisibility(current=>({...current,calendar:true}));}} onPlace={()=>{const place=christianPlaces.find(p=>p.id==='barbara-kyiv');if(place)placesLayer.current?.focus([sacredPlaceItem(place,locale)]);}}/>:null}
+    {selected==='place:barbara-kyiv'&&!selectedPlot?<BarbaraPanel imageUrl={publishedImage?.panelKey?'/'+publishedImage.panelKey:undefined} locale={locale} onClose={closeCard} onCalendar={()=>{setDate(`${date.slice(0,4)}-12-17`);setMode('calendar');setVisibility(current=>({...current,calendar:true}));}} onPlace={()=>{const place=christianPlaces.find(p=>p.id==='barbara-kyiv');if(place)placesLayer.current?.focus([sacredPlaceItem(place,locale)]);}}/>:null}
     {selected&&selected!=='place:barbara-kyiv'&&!selectedPlot?<aside className={`${styles.detail} ${publishedImage?styles.imageDetail:''}`} aria-label={details?.title??text.loading} data-testid="calendar-card">
       <header><span>{firstPlace?<><MapPin size={16}/>{firstPlace.placeTitle}</>:baseSelection?<><MapPin size={16}/>{details?.title}</>:<><CalendarDays size={16}/>{text.day}</>}</span><button className={styles.iconButton} aria-label={text.close} title={text.close} onClick={closeCard}><X size={20}/></button></header>
       {!details?<p role="status">{detailError?text.error:text.loading}</p>:<>
@@ -319,7 +320,7 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
         </div>
       </>}
     </aside>:null}
-    {activeSacredPlace&&!selectedPlot?<SacredPlacePanel key={`${activeSacredPlace.id}:${locale}`} place={activeSacredPlace} tab={placeTab} locale={locale} onTabChange={setPlaceTab} onClose={()=>setPlaceId(null)} onNavigate={navigateToPlace}/>:null}
+    {activeSacredPlace&&!selectedPlot?<SacredPlacePanel imageUrl={markerPublication(markerImages,null,activeSacredPlace.id)?.panelKey?'/'+markerPublication(markerImages,null,activeSacredPlace.id)!.panelKey:undefined} key={`${activeSacredPlace.id}:${locale}`} place={activeSacredPlace} tab={placeTab} locale={locale} onTabChange={setPlaceTab} onClose={()=>setPlaceId(null)} onNavigate={navigateToPlace}/>:null}
     {selectedPlot?<SacredPlotPanel plot={selectedPlot} locale={locale} onClose={closePlot} onNavigate={()=>{selectPlace.current(selectedPlot.associatedSacredPlaceId,{push:true});setPlaceTab('collection');}}
       placeTitle={sacredPlaces.find(item=>item.id===selectedPlot.sacredPlaceId)?.title??selectedPlot.sacredPlaceId}
       associatedTitle={sacredPlaces.find(item=>item.id===selectedPlot.associatedSacredPlaceId)?.title??selectedPlot.associatedSacredPlaceId}/>:null}

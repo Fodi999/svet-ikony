@@ -7,9 +7,11 @@ import {placeTabs, type PlaceTab} from '@/lib/cesium/unified';
 import {countryMetadata} from '@/lib/visualizer/countries';
 import {calendarCopy, placeTypeCopy, sacredPlaceCopy} from './calendar-copy';
 import {PlaceCollectionCarousel} from './PlaceCollectionCarousel';
+import {markerFallback} from '@/lib/cesium/photo-marker';
 import styles from './sacred-place-panel.module.css';
 
 type Props = {
+  imageUrl?: string;
   place: SacredPlaceMarker;
   tab: PlaceTab;
   locale: 'uk' | 'ru' | 'en';
@@ -36,7 +38,7 @@ const formatCoordinate = (lat: number, lon: number) =>
  * Keyed entirely by `place` (a calendar_geo_places.id-based marker), never
  * by the calendar entity id used elsewhere in CalendarGlobeOverlay.
  */
-export function SacredPlacePanel({place, tab, locale, onTabChange, onClose, onNavigate, onShowPlots}: Props) {
+export function SacredPlacePanel({place, tab, locale, onTabChange, onClose, onNavigate, onShowPlots,imageUrl}: Props) {
   const text = {...calendarCopy[locale], ...sacredPlaceCopy[locale]};
   const shell=siteShellCopy[locale];
   const [profile, setProfile] = useState<PlaceProfile | null>(null);
@@ -104,6 +106,7 @@ export function SacredPlacePanel({place, tab, locale, onTabChange, onClose, onNa
           <button type="button" className={styles.close} aria-label={text.close} title={text.close} onClick={onClose}><X size={20} /></button>
         </span>
       </header>
+      <img src={imageUrl??markerFallback(place.type)} alt={place.title} style={{width:'100%',height:240,objectFit:'contain'}} onError={event=>{event.currentTarget.onerror=null;event.currentTarget.src=markerFallback(place.type);}}/>
       {!expanded ? (
         <button type="button" className={styles.mobilePreview} onClick={() => setExpanded(true)} aria-label={text.expand}>
           {previewPhoto ? <img src={previewPhoto} alt="" className={styles.mobilePreviewPhoto} /> : <span className={styles.mobilePreviewPhoto} aria-hidden="true" />}

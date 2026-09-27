@@ -1,5 +1,6 @@
 import * as C from '@cesium/engine';
-import {markerBillboard,markerFallback} from './photo-marker';
+import {markerBillboard,markerFallback,photoMarker} from './photo-marker';
+import {markerPublication,type MarkerPublication} from './marker-publication';
 import {styleCluster} from './atlas-style';
 import {createLayerHandler} from './handlers';
 import {markerModel, calendarModelGraphics} from './sacred-markers';
@@ -149,7 +150,7 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
     getPlot(plotId: string) {
       return plots?.getPlot(plotId);
     },
-    update(places: SacredPlaceMarker[], selectedId: string | null) {
+    update(places: SacredPlaceMarker[], selectedId: string | null, images:MarkerPublication[] = []) {
       if (disposed) return;
       // Restyle the territory polygons (if any are currently loaded) so the
       // selected place's polygon is visually highlighted and any previously
@@ -190,7 +191,7 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
         // Cesium has no bloom/blur on a billboard of its own, so this is a
         // deliberate, documented approximation, same spirit as the
         // territory-highlight glow already used elsewhere in this file.
-        markers.entities.add({
+        const entity=markers.entities.add({
           id: `sacred-place:${place.id}`, name: place.title,
           properties: {sacredPlaceId: place.id},
           position: C.Cartesian3.fromDegrees(place.lon, place.lat),
@@ -203,6 +204,12 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
           billboard: markerBillboard(markerFallback(place.type,selected),selected),
           label
         });
+        const publication=markerPublication(images,null,place.id);
+        if(publication?.markerKey){
+          const image=new Image();image.crossOrigin='anonymous';
+          image.onload=()=>{if(disposed||markers.entities.getById(entity.id)!==entity)return;const bitmap=photoMarker(image,selected);if(bitmap)entity.billboard=new C.BillboardGraphics(markerBillboard(bitmap,selected));widget.scene.requestRender();};
+          image.src='/'+publication.markerKey;
+        }
       }
       selectionHexes.refresh();
       widget.scene.requestRender();

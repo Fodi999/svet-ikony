@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
-type PublishedImage={ownerId:string;entityId:string|null;placeId:string|null;versionId:string|null;markerKey:string|null;panelKey:string|null};
+import type {MarkerPublication as PublishedImage} from '@/lib/cesium/marker-publication';
 const loads=new Map<string,Promise<boolean>>();
 function ready(key:string){
  if(!loads.has(key))loads.set(key,new Promise(resolve=>{const image=new Image();image.crossOrigin='anonymous';image.onload=()=>resolve(true);image.onerror=()=>resolve(false);image.src='/'+key;}));

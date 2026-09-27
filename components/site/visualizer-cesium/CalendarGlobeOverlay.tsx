@@ -121,11 +121,15 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
     return()=>{instance.dispose();sacredLayer.current=null;};
   },[widget]);
   useEffect(()=>{
-    const controller=new AbortController();
+    let controller=new AbortController();
+    const refresh=()=>{
+    controller.abort();
+    controller=new AbortController();
+    const current=controller;
     void fetch('/api/calendar/places?bbox=-180,-90,180,90&locale='+locale,{signal:controller.signal})
       .then(response=>{if(!response.ok)throw new Error('places');return response.json() as Promise<SacredPlaceMarker[]>;})
       .then(async data=>{
-        if(controller.signal.aborted)return;
+        if(current.signal.aborted)return;
         setSacredPlaces(data);
         const withTerritory=data.filter(item=>item.hasTerritory);
         const features=(await Promise.all(withTerritory.map(async item=>{
@@ -136,12 +140,15 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
             return profile.territory?{placeId:item.id,geometry:profile.territory.geometry as TerritoryFeature['geometry']}:null;
           }catch{return null;}
         }))).filter((feature):feature is TerritoryFeature=>feature!==null);
-        if(!controller.signal.aborted){
+        if(!current.signal.aborted){
           void sacredLayer.current?.setTerritories(features);
         }
       })
       .catch(()=>{});
-    return()=>controller.abort();
+    };
+    refresh();
+    window.addEventListener('focus',refresh);
+    return()=>{controller.abort();window.removeEventListener('focus',refresh);};
   },[locale]);
   // Retired pilot grid: a selected object now owns a single visual footprint.
   useEffect(()=>{sacredLayer.current?.setPlotsVisible(false);},[widget]);

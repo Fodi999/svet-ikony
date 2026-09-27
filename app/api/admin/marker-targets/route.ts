@@ -2,6 +2,7 @@ import {requireSuperAdmin} from '@/lib/d1/auth';
 import {withErrors,ApiError} from '@/lib/d1/errors';
 import {getDb} from '@/lib/d1/env';
 import {christianPlaces} from '@/lib/cesium/christian-places';
+import {createMarkerPlace} from '@/lib/d1/repositories/createMarkerPlace';
 
 export async function GET(request:Request){return withErrors(async()=>{
  await requireSuperAdmin(request);const db=await getDb();
@@ -14,6 +15,7 @@ export async function GET(request:Request){return withErrors(async()=>{
 export async function POST(request:Request){return withErrors(async()=>{
  await requireSuperAdmin(request);const raw=await request.json();const db=await getDb();
  if(!raw||typeof raw!=='object')throw ApiError.validation('Object required');
+ if('kind' in raw&&raw.kind==='create-place')return Response.json(await createMarkerPlace('place' in raw?raw.place:undefined),{status:201});
  const body=raw as {id?:string;kind?:string;groupId?:string};
  if(!body||typeof body.id!=='string')throw ApiError.validation('Marker ID required');
  if(body.kind==='place'){

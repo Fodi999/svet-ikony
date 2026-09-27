@@ -167,8 +167,8 @@ export async function getPlaceProfile(placeId: string, locale: Locale): Promise<
     directions: string;
   }>(
     `SELECT p.website_url AS websiteUrl, p.map_url AS mapUrl, p.opening_hours_json AS openingHoursJson,
-      COALESCE(NULLIF(t.history_text,''), te.history_text, '') AS historyText,
-      COALESCE(NULLIF(t.address,''), te.address, '') AS address,
+      COALESCE(NULLIF(t.history_text,''), NULLIF(te.history_text,''), (SELECT history_text FROM calendar_geo_place_profile_translations WHERE place_id=p.place_id AND history_text!='' ORDER BY locale LIMIT 1), '') AS historyText,
+      COALESCE(NULLIF(t.address,''), NULLIF(te.address,''), (SELECT address FROM calendar_geo_place_profile_translations WHERE place_id=p.place_id AND address!='' ORDER BY locale LIMIT 1), '') AS address,
       COALESCE(NULLIF(t.directions,''), te.directions, '') AS directions
      FROM calendar_geo_place_profiles p
      LEFT JOIN calendar_geo_place_profile_translations t ON t.place_id = p.place_id AND t.locale = ?

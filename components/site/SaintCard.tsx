@@ -4,18 +4,18 @@ import Link from 'next/link';
 import type { Saint } from '@/lib/types';
 import { formatFeastDay } from '@/lib/dates';
 import { textPreview } from '@/lib/iconContent';
-import { useI18n, useLocaleHref } from './LanguageProvider';
+import { useContentHref, useI18n } from './LanguageProvider';
 import { StableImage } from './StableImage';
 import { UntranslatedBadge } from './UntranslatedBadge';
 
 export function SaintCard({ saint }: { saint: Saint }) {
   const { t, locale } = useI18n();
-  const localeHref = useLocaleHref();
+  const contentHref = useContentHref();
 
   return (
     <Link
       className="group relative min-w-0 grid grid-rows-[auto_1fr] gap-0 rounded-[8px] border border-gold/28 bg-[linear-gradient(135deg,rgba(205,164,90,.065),transparent_44%),linear-gradient(160deg,rgba(127,141,101,.055),transparent_60%),#141511] p-0 text-foreground no-underline overflow-hidden transition-[border-color,background,transform] duration-[180ms] ease-brand hover:-translate-y-0.5 hover:border-gold hover:bg-[linear-gradient(135deg,rgba(205,164,90,.095),transparent_44%),linear-gradient(160deg,rgba(127,141,101,.075),transparent_60%),#1b1c16]"
-      href={localeHref(`/saints/${saint.slug}`)}
+      href={contentHref(`/saints/${saint.slug}`, saint)}
     >
       <figure className="relative grid place-items-center aspect-[4/5] min-h-0 m-0 border-b border-gold/28 p-[clamp(16px,2.2vw,34px)] bg-[linear-gradient(110deg,transparent_0_28%,rgba(232,203,132,.13)_42%,transparent_56%),linear-gradient(160deg,rgba(127,141,101,.09),transparent_62%),#1b1c16] bg-[length:220%_100%,100%_100%] overflow-hidden max-[520px]:p-3.5">
         {saint.imageUrl ? (

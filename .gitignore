@@ -24,7 +24,7 @@ scripts/calendar-seed/seed.sql
 
 # Blender local Earth preview export (Phase C) -- never committed;
 # regenerate by exporting from Blender to this path, see
-# EARTH_ASSET_CONTRACT.md.
+# docs/EARTH_ASSET_CONTRACT.md.
 tools/earth/export/
 
 # Generated terrain tile data (regenerate with npm run terrain:alps:generate,
@@ -33,3 +33,11 @@ tools/terrain/*/raw/
 tools/terrain/*/build/
 tools/terrain/cesium/releases/
 public/cesium-runtime/
+
+# Local dev media uploads (referenced by the local D1 in .wrangler/state)
+public/media/
+
+# Local database dumps (may contain admin credentials) and tool caches
+backup-*.sql
+__pycache__/
+*.blend1

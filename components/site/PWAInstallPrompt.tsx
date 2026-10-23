@@ -142,15 +142,16 @@ export function PWAInstallPrompt() {
   if (!visible || (!deferredPrompt && !showIosHint)) return null;
 
   return (
+    // Bottom-left: the right edge belongs to the globe's map controls.
     <aside data-pwa-install
-      className="fixed right-[clamp(12px,3vw,28px)] bottom-[calc(clamp(12px,3vw,28px)+env(safe-area-inset-bottom))] z-[1200] w-[min(420px,calc(100vw-24px))] grid grid-cols-[minmax(0,1fr)_auto] gap-3.5 items-center border border-[rgba(214,168,79,.52)] rounded-[8px] bg-[linear-gradient(135deg,rgba(214,168,79,.16),rgba(11,11,10,.92)_42%),rgba(11,11,10,.96)] shadow-lg p-3.5 text-foreground [backdrop-filter:blur(18px)_saturate(1.08)] max-[900px]:left-3 max-[900px]:right-3 max-[900px]:grid-cols-1"
+      className="fixed left-[clamp(12px,3vw,28px)] bottom-[calc(clamp(12px,3vw,28px)+env(safe-area-inset-bottom))] z-[1200] w-[min(340px,calc(100vw-24px))] grid gap-3 border border-[rgba(214,168,79,.38)] rounded-[12px] bg-[linear-gradient(160deg,rgba(214,168,79,.12),rgba(11,11,10,.9)_55%),rgba(11,11,10,.94)] shadow-lg px-4 py-3.5 text-foreground [backdrop-filter:blur(18px)_saturate(1.08)] max-[900px]:right-3 max-[900px]:left-3 max-[900px]:w-auto"
       aria-live="polite"
     >
       <div>
-        <strong className="block mb-1 text-gold-light text-[14px] font-black leading-[1.15] uppercase">{copy.title}</strong>
-        <p className="m-0 text-muted-foreground font-serif text-[14px] leading-[1.35]">{showIosHint && !deferredPrompt ? copy.ios : copy.body}</p>
+        <strong className="block mb-1 text-gold-light font-serif text-[16px] font-semibold leading-[1.2]">{copy.title}</strong>
+        <p className="m-0 text-muted-foreground text-[13px] leading-[1.45]">{showIosHint && !deferredPrompt ? copy.ios : copy.body}</p>
       </div>
-      <div className="inline-flex gap-2 items-center max-[900px]:grid max-[900px]:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2 [&>*:only-child]:col-span-2">
         {deferredPrompt ? (
           <Button variant="light" size="sm" onClick={install}>
             {copy.install}

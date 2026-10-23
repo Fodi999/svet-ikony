@@ -1,18 +1,28 @@
 import * as C from '@cesium/engine';
+import {glyphGroup,type OrthodoxGlyph} from '@/lib/icons/orthodox';
 
 export const MARKER_SIZE=64;
-export const markerScale=()=>new C.NearFarScalar(1000,1,30000000,.875);
+/** Full size up close; about 60% at whole-Earth distance so a zoomed-out
+ * globe stays readable instead of being covered by pins. */
+export const MARKER_FAR_SCALE=.6;
+export const markerScale=()=>new C.NearFarScalar(250000,1,20000000,MARKER_FAR_SCALE);
 export function verifiedMarkerImage(url:string|null|undefined,verified:boolean){
   return verified&&url&&(/^(https:\/\/|\/[^/])/.test(url))?url:undefined;
 }
+/** Which glyph of the site's icon set (lib/icons/orthodox.ts) a marker type shows. */
+export function markerGlyph(type:string):OrthodoxGlyph{
+  if(['church','cathedral','major_center'].includes(type))return 'church';
+  if(type==='monastery')return 'monastery';
+  if(['shrine','relic','relic_location','pilgrimage','pilgrimage_place','burial_place'].includes(type))return 'lampada';
+  if(['saint','saint_place','birthplace','martyrdom_place'].includes(type))return 'saint';
+  if(type==='icon')return 'icon';
+  if(type==='feast')return 'feast';
+  if(['event','historical_region','council'].includes(type))return 'scroll';
+  return 'cross';
+}
 export function markerFallback(type:string,selected=false){
   const gold=selected?'#ffe5a0':'#e9c479';
-  const path=['church','cathedral','monastery','major_center'].includes(type)
-    ?'M18 43V26l14-10 14 10v17H18M28 43V32h8v11M32 10v10M28 14h8'
-    :['saint','saint_place','icon'].includes(type)
-    ?'M21 44v-4a11 11 0 0 1 22 0v4M38 28a6 6 0 1 0-12 0 6 6 0 0 0 12 0M43 25a11 11 0 1 0-22 0'
-    :'M32 16v28M22 27h20M25 20h14';
-  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="192" height="216" viewBox="0 0 64 72"><path d="M25 57L32 70L39 57" fill="${gold}"/><circle cx="32" cy="31" r="28" fill="#101a20" stroke="${gold}" stroke-width="2"/><path d="${path}" fill="none" stroke="${gold}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="192" height="216" viewBox="0 0 64 72"><path d="M25 57L32 70L39 57" fill="${gold}"/><circle cx="32" cy="31" r="28" fill="#101a20" stroke="${gold}" stroke-width="2"/>${glyphGroup(markerGlyph(type),14,13,36,gold,1.45)}</svg>`);
 }
 export function photoMarker(image:HTMLImageElement,selected=false){
   const canvas=document.createElement('canvas');canvas.width=192;canvas.height=216;

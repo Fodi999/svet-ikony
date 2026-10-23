@@ -23,6 +23,14 @@ export function calendarQuery(params:URLSearchParams) {
   return {date,locale,calendarSystem,tradition};
 }
 
+/** GET /api/calendar/geo/year -- the same calendar policy as calendarQuery, for a whole civil year. */
+export function calendarYearQuery(params:URLSearchParams) {
+  const year=Number(params.get('year')??'');
+  if(!Number.isInteger(year)||year<1900||year>2100)throw ApiError.validation('year must be between 1900 and 2100');
+  const {locale,calendarSystem,tradition}=calendarQuery(new URLSearchParams({...Object.fromEntries(params),date:`${year}-01-01`}));
+  return {year,locale,calendarSystem,tradition};
+}
+
 /** GET /api/calendar/places?bbox=west,south,east,north&zoom=N -- viewport
  * query for the Sacred Place marker layer. zoom is optional (null means
  * "no decimation"); everything else is required and range-checked so a

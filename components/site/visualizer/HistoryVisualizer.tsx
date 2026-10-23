@@ -1,5 +1,6 @@
 'use client';
 
+import {Select} from '@/components/ui/select';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Church, Globe2, History, MapPin, Layers, Sparkles, Menu, X, Plus, Minus, RotateCcw, Maximize, ArrowUpRight, Box, ChevronRight, ChevronsLeft, ChevronsRight, Search, PanelRight } from 'lucide-react';
 import { Dialog, DialogClose, DialogOverlay, DialogPopup, DialogPortal, DialogTitle } from '@/components/ui/dialog';
@@ -253,8 +254,8 @@ export function HistoryVisualizer({ events, baseEarthModelUrl, initialAlpsPrevie
           {(['all', ...TIMELINE_ERAS, ...(sectionList.some((event) => timelineEra(event.era) === 'other') ? ['other'] : [])] as const).map((value) => <button key={value} type="button" aria-label={copy[value as keyof typeof copy]} aria-pressed={era === value} onClick={() => { setEra(value); setCentury('all'); setYear('all'); }}>{copy[value as keyof typeof copy]}</button>)}
         </div>
         {section === 'chronology' ? <div className={styles.dateFilters}>
-          <select aria-label={copy.century} value={century} onChange={(event) => { setCentury(event.target.value); setYear('all'); }}><option value="all">{copy.century}: {copy.allDates}</option>{centuries.map(([key, event]) => <option key={key} value={key}>{centuryText(event, locale)}</option>)}</select>
-          <select aria-label={copy.year} value={year} onChange={(event) => setYear(event.target.value)}><option value="all">{copy.year}: {copy.allDates}</option>{years.map(([key, event]) => <option key={key} value={key}>{dateText(event, locale, false)}</option>)}</select>
+          <Select size="sm" aria-label={copy.century} prefix={`${copy.century}:`} value={century} onChange={(value) => { setCentury(value); setYear('all'); }} options={[{value: 'all', label: copy.allDates}, ...centuries.map(([key, event]) => ({value: key, label: centuryText(event, locale)}))]} />
+          <Select size="sm" aria-label={copy.year} prefix={`${copy.year}:`} value={year} onChange={setYear} options={[{value: 'all', label: copy.allDates}, ...years.map(([key, event]) => ({value: key, label: dateText(event, locale, false)}))]} />
         </div> : null}
         <div className={styles.viewModes}><button type="button" aria-pressed={section === 'map'} onClick={() => { setSection('map'); setNearbyOnly(false); }}><Globe2 size={14}/>{atlas.map}</button><button type="button" aria-pressed={section === 'chronology'} onClick={focusTimeline}><History size={14}/>{copy.chronology}</button></div>
       </div>

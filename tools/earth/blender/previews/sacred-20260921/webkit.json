@@ -1,0 +1,176 @@
+[
+  {
+    "scenario": "1",
+    "errors": [],
+    "downloads": [
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-saint.glb",
+        "status": 200,
+        "bytes": null
+      }
+    ],
+    "stats": {
+      "instanceId": "1",
+      "cameraPosition": "4959356.037,1128558.690,4239683.857",
+      "liveInstances": "1",
+      "sacredModels": "1",
+      "sacredCandidates": "1",
+      "layers": "[{\"id\":\"events\",\"visible\":false},{\"id\":\"territories\",\"visible\":false},{\"id\":\"entities\",\"visible\":true},{\"id\":\"calendar\",\"visible\":false},{\"id\":\"saints\",\"visible\":false},{\"id\":\"churches\",\"visible\":false},{\"id\":\"monasteries\",\"visible\":false},{\"id\":\"countries\",\"visible\":true},{\"id\":\"borders\",\"visible\":true},{\"id\":\"cities\",\"visible\":false},{\"id\":\"capitals\",\"visible\":true}]",
+      "sources": "[{\"name\":\"HistoryEvents\",\"count\":0,\"show\":false},{\"name\":\"OrthodoxCalendarLayer\",\"count\":1,\"show\":true},{\"name\":\"Cities\",\"count\":0,\"show\":false},{\"name\":\"CapitalCities\",\"count\":215,\"show\":true}]",
+      "primitives": "5",
+      "layerHandlers": "5",
+      "preRenderListeners": "5",
+      "sacredReady": "1",
+      "sacredBenchmark": "{\"frames\":301,\"elapsedMs\":5005,\"fps\":59.94005994005994,\"frameMs\":16.683333333333334,\"active\":1,\"ready\":1,\"gpuMemoryBytes\":null}",
+      "renderer": "Apple GPU"
+    }
+  },
+  {
+    "scenario": "5",
+    "errors": [],
+    "downloads": [
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-saint.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-church.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-icon.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-knight.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-monastery.glb",
+        "status": 200,
+        "bytes": null
+      }
+    ],
+    "stats": {
+      "instanceId": "1",
+      "cameraPosition": "4959356.037,1128558.690,4239683.857",
+      "liveInstances": "1",
+      "sacredModels": "5",
+      "sacredCandidates": "5",
+      "layers": "[{\"id\":\"events\",\"visible\":false},{\"id\":\"territories\",\"visible\":false},{\"id\":\"entities\",\"visible\":true},{\"id\":\"calendar\",\"visible\":false},{\"id\":\"saints\",\"visible\":false},{\"id\":\"churches\",\"visible\":false},{\"id\":\"monasteries\",\"visible\":false},{\"id\":\"capitals\",\"visible\":true},{\"id\":\"cities\",\"visible\":false},{\"id\":\"countries\",\"visible\":true},{\"id\":\"borders\",\"visible\":true}]",
+      "sources": "[{\"name\":\"HistoryEvents\",\"count\":0,\"show\":false},{\"name\":\"OrthodoxCalendarLayer\",\"count\":5,\"show\":true},{\"name\":\"CapitalCities\",\"count\":215,\"show\":true},{\"name\":\"Cities\",\"count\":0,\"show\":false}]",
+      "primitives": "9",
+      "layerHandlers": "5",
+      "preRenderListeners": "5",
+      "sacredReady": "5",
+      "sacredBenchmark": "{\"frames\":301,\"elapsedMs\":4996,\"fps\":60.0480384307446,\"frameMs\":16.653333333333332,\"active\":5,\"ready\":5,\"gpuMemoryBytes\":null}",
+      "renderer": "Apple GPU"
+    }
+  },
+  {
+    "scenario": "10",
+    "errors": [],
+    "downloads": [
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-saint.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-church.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-icon.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-knight.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-monastery.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-major.glb",
+        "status": 200,
+        "bytes": null
+      }
+    ],
+    "stats": {
+      "instanceId": "1",
+      "cameraPosition": "4959356.037,1128558.690,4239683.857",
+      "liveInstances": "1",
+      "sacredModels": "10",
+      "sacredCandidates": "10",
+      "layers": "[{\"id\":\"events\",\"visible\":false},{\"id\":\"territories\",\"visible\":false},{\"id\":\"entities\",\"visible\":true},{\"id\":\"calendar\",\"visible\":false},{\"id\":\"saints\",\"visible\":false},{\"id\":\"churches\",\"visible\":false},{\"id\":\"monasteries\",\"visible\":false},{\"id\":\"capitals\",\"visible\":true},{\"id\":\"cities\",\"visible\":false},{\"id\":\"countries\",\"visible\":true},{\"id\":\"borders\",\"visible\":true}]",
+      "sources": "[{\"name\":\"HistoryEvents\",\"count\":0,\"show\":false},{\"name\":\"OrthodoxCalendarLayer\",\"count\":10,\"show\":true},{\"name\":\"CapitalCities\",\"count\":215,\"show\":true},{\"name\":\"Cities\",\"count\":0,\"show\":false}]",
+      "primitives": "14",
+      "layerHandlers": "5",
+      "preRenderListeners": "5",
+      "sacredReady": "10",
+      "sacredBenchmark": "{\"frames\":300,\"elapsedMs\":5000,\"fps\":59.8,\"frameMs\":16.722408026755854,\"active\":10,\"ready\":10,\"gpuMemoryBytes\":null}",
+      "renderer": "Apple GPU"
+    }
+  },
+  {
+    "scenario": "25",
+    "errors": [],
+    "downloads": [
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-saint.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-church.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-icon.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-knight.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-monastery.glb",
+        "status": 200,
+        "bytes": null
+      },
+      {
+        "url": "http://localhost:3000/markers/sacred/marker-major.glb",
+        "status": 200,
+        "bytes": null
+      }
+    ],
+    "stats": {
+      "instanceId": "1",
+      "cameraPosition": "4959356.037,1128558.690,4239683.857",
+      "liveInstances": "1",
+      "sacredModels": "25",
+      "sacredCandidates": "25",
+      "layers": "[{\"id\":\"events\",\"visible\":false},{\"id\":\"territories\",\"visible\":false},{\"id\":\"entities\",\"visible\":true},{\"id\":\"calendar\",\"visible\":false},{\"id\":\"saints\",\"visible\":false},{\"id\":\"churches\",\"visible\":false},{\"id\":\"monasteries\",\"visible\":false},{\"id\":\"capitals\",\"visible\":true},{\"id\":\"countries\",\"visible\":true},{\"id\":\"borders\",\"visible\":true},{\"id\":\"cities\",\"visible\":false}]",
+      "sources": "[{\"name\":\"HistoryEvents\",\"count\":0,\"show\":false},{\"name\":\"OrthodoxCalendarLayer\",\"count\":25,\"show\":true},{\"name\":\"CapitalCities\",\"count\":215,\"show\":true},{\"name\":\"Cities\",\"count\":0,\"show\":false}]",
+      "primitives": "29",
+      "layerHandlers": "5",
+      "preRenderListeners": "5",
+      "sacredReady": "25",
+      "sacredBenchmark": "{\"frames\":298,\"elapsedMs\":5001,\"fps\":59.388122375524894,\"frameMs\":16.838383838383837,\"active\":25,\"ready\":25,\"gpuMemoryBytes\":null}",
+      "renderer": "Apple GPU"
+    }
+  }
+]

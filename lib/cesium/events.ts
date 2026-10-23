@@ -1,5 +1,5 @@
 import * as C from '@cesium/engine';
-import {createLayerHandler} from './handlers';
+import {createLayerHandler,entityValue,interactiveHit} from './handlers';
 import type {MapEvent, SelectedEventTarget} from '@/components/site/visualizer/Earth3DCanvas';
 import {historicalPalette, type HistoricalTerritory} from '@/lib/visualizer/historical-territories';
 import {createSelectionHexController,selectionHex} from './selection-hex';
@@ -20,7 +20,7 @@ export function createCesiumEvents(widget: C.CesiumWidget, onSelect: (id: string
   }).catch(onError);
   const input=createLayerHandler(widget),handler=input.handler;
   handler.setInputAction((movement: {position: C.Cartesian2}) => {
-    const id = widget.scene.pick(movement.position)?.id?.properties?.eventId?.getValue();
+    const id = entityValue(interactiveHit(widget, movement.position), 'eventId');
     if (typeof id === 'string') onSelect(id);
   }, C.ScreenSpaceEventType.LEFT_CLICK);
   return {

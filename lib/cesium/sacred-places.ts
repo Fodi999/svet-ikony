@@ -1,8 +1,8 @@
 import * as C from '@cesium/engine';
 import {markerBillboard,markerFallback,photoMarker} from './photo-marker';
 import {markerPublication,type MarkerPublication} from './marker-publication';
-import {styleCluster} from './atlas-style';
-import {createLayerHandler} from './handlers';
+import {createMarkerGroup} from './marker-groups';
+import {createLayerHandler,interactiveHit,registerHoverResolver} from './handlers';
 import {markerModel, calendarModelGraphics} from './sacred-markers';
 import type {SacredPlaceMarker} from '@/lib/d1/repositories/calendarGeoPlaces';
 import {createSacredPlotsLayer} from './sacred-plots-layer';
@@ -34,6 +34,31 @@ const MODEL_IMPORTANCE_THRESHOLD = 90;
  * calendarModelGraphics' own MODEL_MAX_DISTANCE (600km), matching "far away:
  * only major markers survive". */
 const BILLBOARD_MAX_DISTANCE = 350_000;
+/** Admin-configured GLB (calendar_geo_place_models, published only): shown
+ * up close, where the 2D pin hands over to it. */
+export const PLACE_MODEL_MAX_DISTANCE = 3000, PLACE_PIN_MIN_DISTANCE_WITH_MODEL = 1200;
+/** CesiumJS treats a glTF's +Z as "forward" and turns it to local East at
+ * heading 0 (ModelUtility.getAxisCorrectionMatrix, Axis.Z_UP_TO_X_UP), so a
+ * model authored north-up (Blender +Y = glTF -Z = north, e.g. the Varvara
+ * church built on its OSM footprint) would appear turned 90° to the left.
+ * This constant compensates, making the admin heading mean "degrees
+ * clockwise from true north for a north-up model": heading 0 = as authored. */
+export const GLTF_NORTH_HEADING_OFFSET = 90;
+export function placeModelEntity(place: Pick<SacredPlaceMarker, 'id' | 'title' | 'lat' | 'lon' | 'model'>): C.Entity.ConstructorOptions | null {
+  const model = place.model;
+  if (!model) return null;
+  const position = C.Cartesian3.fromDegrees(place.lon, place.lat, (model.altitude ?? 0) + model.heightOffset);
+  return {
+    id: `sacred-model:${place.id}`, name: place.title, properties: {sacredPlaceId: place.id}, position,
+    orientation: C.Transforms.headingPitchRollQuaternion(position, new C.HeadingPitchRoll(C.Math.toRadians(model.heading + GLTF_NORTH_HEADING_OFFSET), C.Math.toRadians(model.pitch), C.Math.toRadians(model.roll))),
+    model: {
+      uri: model.url, scale: model.scale, minimumPixelSize: 0,
+      // No surveyed altitude: stand on the terrain, lifted by heightOffset.
+      heightReference: model.altitude === null ? C.HeightReference.RELATIVE_TO_GROUND : C.HeightReference.NONE,
+      distanceDisplayCondition: new C.DistanceDisplayCondition(0, PLACE_MODEL_MAX_DISTANCE),
+    },
+  };
+}
 
 type TerritoryGeometry = {type: 'Polygon'; coordinates: number[][][]} | {type: 'MultiPolygon'; coordinates: number[][][][]};
 export type TerritoryFeature = {placeId: string; geometry: TerritoryGeometry};
@@ -57,13 +82,10 @@ export type TerritoryFeature = {placeId: string; geometry: TerritoryGeometry};
  * the existing one, so callers that only care about places are unaffected.
  */
 export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (placeId: string) => void, onSelectPlot: (plot: SacredPlot) => void, onError: (error: unknown) => void, options:{legacyPlots?:boolean}={}) {
-  const markers = new C.CustomDataSource('SacredPlaces');
-  const selectionHexes=createSelectionHexController(widget,markers);
-  markers.clustering.enabled=true;markers.clustering.minimumClusterSize=2;markers.clustering.pixelRange=2;
-  markers.clustering.clusterLabels=false;
-  const removeCluster=markers.clustering.clusterEvent.addEventListener((entities,cluster)=>{
-    cluster.label.text=String(entities.length);styleCluster(cluster);
-    const photographed=entities.find(entity=>entity.properties?.publishedPhoto?.getValue()&&entity.billboard);
+  const markers = createMarkerGroup(widget,'SacredPlaces',{onError,
+    open:entity=>{const id=entity.properties?.sacredPlaceId?.getValue();if(typeof id==='string')onSelect(id);},
+    decorate:(entities,cluster)=>{
+    const photographed=entities.find(entity=>markers.contains(entity)&&entity.properties?.publishedPhoto?.getValue()&&entity.billboard);
     if(photographed){
       cluster.billboard.show=true;
       cluster.billboard.image=photographed.billboard!.image?.getValue(widget.clock.currentTime);
@@ -71,8 +93,8 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
       cluster.label.show=true;cluster.label.showBackground=true;
       cluster.label.pixelOffset=new C.Cartesian2(28,-28);
     }
-    cluster.label.id=entities;cluster.point.id=entities;cluster.billboard.id=entities;
-  });
+  }});
+  const selectionHexes=createSelectionHexController(widget,markers);
   const plots = options.legacyPlots ? createSacredPlotsLayer(widget) : null;
   let disposed = false, generation = 0, territories: C.GeoJsonDataSource | null = null, lastSelectedId: string | null = null;
   let placesVisible = true, plotsToggle = true;
@@ -95,11 +117,9 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
       entity.polygon.outlineWidth = new C.ConstantProperty(highlighted ? 2.75 : 2);
     }
   };
-  void widget.dataSources.add(markers).then(() => {
-    if (disposed && !widget.isDestroyed()) widget.dataSources.remove(markers, true);
-  }).catch(onError);
   const input = createLayerHandler(widget), handler = input.handler;
   const clearPlotHover=()=>plots?.hover(null);
+  const removeHoverResolver=registerHoverResolver(widget,position=>{const plot=plots?.pickAt(position);return plot?`#${plot.displayNumber} · ${plot.areaM2.toFixed(1)} m²`:null;});
   widget.canvas.addEventListener('pointerleave',clearPlotHover);
   let lastHover=0;
   handler.setInputAction((movement:{endPosition:C.Cartesian2})=>{
@@ -107,34 +127,20 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
     plots?.hover(plots?.pickAt(movement.endPosition)?.plotId??null);
   },C.ScreenSpaceEventType.MOUSE_MOVE);
   handler.setInputAction((movement: {position: C.Cartesian2}) => {
-    // A country polygon or another layer may sit above a clamped marker.
-    // Resolve this layer's owned entity from the complete pick stack.
-    const picked=widget.scene.drillPick(movement.position).map(hit=>hit.id).find(id=>
-      Array.isArray(id)?id.length>0&&id.every(entity=>markers.entities.contains(entity)):
-      !!id?.properties?.sacredPlaceId
-    );
-    if(Array.isArray(picked)&&picked.length&&picked.every(entity=>markers.entities.contains(entity))){
-      const points=picked.map(entity=>entity.position?.getValue(widget.clock.currentTime)).filter((p):p is C.Cartesian3=>!!p);
-      if(points.length){
-        const sphere=C.BoundingSphere.fromPoints(points);
-        // Coincident records cannot be separated by zooming. Open the photo
-        // record; all records remain independently available in place search.
-        if(sphere.radius<1){
-          const target=picked.find(entity=>entity.properties?.publishedPhoto?.getValue())??picked[0];
-          const id=target.properties?.sacredPlaceId?.getValue();
-          if(typeof id==='string'){onSelect(id);return;}
-        }
-        widget.camera.flyToBoundingSphere(sphere,{duration:1,offset:new C.HeadingPitchRange(0,-Math.PI/3,Math.max(1500,sphere.radius*3))});
-      }
-      return;
-    }
+    // The shared topmost hit (handlers.ts) -- a pin/cluster of another layer
+    // on top of this one's territory polygon keeps its own click.
+    const top=interactiveHit(widget,movement.position);
+    // Clusters (possibly mixing layers) are resolved by the shared marker source (marker-groups.ts).
+    if(Array.isArray(top))return;
+    const picked=top instanceof C.Entity&&top.properties?.hasProperty('sacredPlaceId')?top:undefined;
+    if(top&&!picked&&!('sacredPlotId' in top))return;
     // Sacred Plot hexes take priority over whatever sits underneath them
     // (territory polygon, country polygon) -- resolved via an exact ground
     // lookup rather than scene.pick's z-order, see sacred-plots-layer.ts's
     // pickAt() header comment for why.
     const plot = plots?.pickAt(movement.position);
     if (plot) { plots?.select(plot.plotId); onSelectPlot(plot); return; }
-    const id = picked?.properties?.sacredPlaceId?.getValue();
+    const id = picked instanceof C.Entity ? picked.properties?.sacredPlaceId?.getValue() : undefined;
     if (typeof id === 'string') onSelect(id);
   }, C.ScreenSpaceEventType.LEFT_CLICK);
 
@@ -187,11 +193,16 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
       // is async and independent of selection) still gets highlighted.
       lastSelectedId = selectedId;
       highlightTerritories(territories, selectedId);
-      markers.entities.removeAll();
+      markers.removeAll();
       for (const place of places) {
         if (!Number.isFinite(place.lat) || !Number.isFinite(place.lon) || Math.abs(place.lat) > 90 || Math.abs(place.lon) > 180) continue;
         const selected = place.id === selectedId;
-        if(selected)markers.entities.add({id:`selection-hex:${place.id}`,...selectionHex(place.lon,place.lat,{sacredPlaceId:place.id})});
+        // With a published 3D model the pin hands over to the model up close.
+        const pinFor=(image:string|HTMLCanvasElement)=>{
+          const options=markerBillboard(image,selected);
+          return place.model?{...options,distanceDisplayCondition:new C.DistanceDisplayCondition(PLACE_PIN_MIN_DISTANCE_WITH_MODEL,Number.MAX_VALUE)}:options;
+        };
+        if(selected)markers.add({id:`selection-hex:${place.id}`,...selectionHex(place.lon,place.lat,{sacredPlaceId:place.id})});
         const glbUri = undefined;
         const label = selected ? {
           text: place.title, font: '14px Georgia, serif',
@@ -202,7 +213,7 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
         if (glbUri) {
           // "major/особо важных" tier (ТЗ п.3): the existing chess-piece GLB
           // system's own model + selection-glow math, untouched.
-          markers.entities.add({
+          markers.add({
             id: `sacred-place:${place.id}`, name: place.title,
             properties: {sacredPlaceId: place.id},
             position: C.Cartesian3.fromDegrees(place.lon, place.lat),
@@ -217,7 +228,7 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
         // Cesium has no bloom/blur on a billboard of its own, so this is a
         // deliberate, documented approximation, same spirit as the
         // territory-highlight glow already used elsewhere in this file.
-        const entity=markers.entities.add({
+        const entity=markers.add({
           id: `sacred-place:${place.id}`, name: place.title,
           properties: {sacredPlaceId: place.id},
           position: C.Cartesian3.fromDegrees(place.lon, place.lat),
@@ -227,13 +238,15 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
             disableDepthTestDistance: 0,
             distanceDisplayCondition: new C.DistanceDisplayCondition(0, BILLBOARD_MAX_DISTANCE)
           } : undefined,
-          billboard: markerBillboard(markerFallback(place.type,selected),selected),
+          billboard: pinFor(markerFallback(place.type,selected)),
           label
         });
+        const modelEntity=placeModelEntity(place);
+        if(modelEntity)markers.add(modelEntity);
         const publication=markerPublication(images,null,place.id);
         if(publication?.markerKey){
           const image=new Image();image.crossOrigin='anonymous';
-          image.onload=()=>{if(disposed||markers.entities.getById(entity.id)!==entity)return;const bitmap=photoMarker(image,selected);if(bitmap){entity.billboard=new C.BillboardGraphics(markerBillboard(bitmap,selected));entity.properties!.addProperty('publishedPhoto',true);markers.clustering.enabled=false;markers.clustering.enabled=true;}widget.scene.requestRender();};
+          image.onload=()=>{if(disposed||markers.getById(entity.id)!==entity)return;const bitmap=photoMarker(image,selected);if(bitmap){entity.billboard=new C.BillboardGraphics(pinFor(bitmap));entity.properties!.addProperty('publishedPhoto',true);markers.recluster();}widget.scene.requestRender();};
           image.src='/'+publication.markerKey;
         }
       }
@@ -286,10 +299,9 @@ export function createSacredPlacesLayer(widget: C.CesiumWidget, onSelect: (place
     },
     dispose() {
       if (disposed) return;
-      disposed = true; generation++; selectionHexes.dispose();removeCluster();widget.canvas.removeEventListener('pointerleave',clearPlotHover); input.dispose(); plots?.dispose();
+      disposed = true; generation++; selectionHexes.dispose();removeHoverResolver();widget.canvas.removeEventListener('pointerleave',clearPlotHover); input.dispose(); plots?.dispose(); markers.dispose();
       if (widget.isDestroyed()) return;
       if (territories) widget.dataSources.remove(territories, true);
-      widget.dataSources.remove(markers, true);
     }
   };
 }

@@ -25,6 +25,7 @@ function fakeCesium(){
 it('parses the basemap query and defaults to satellite',()=>{
   expect(parseBasemap('satellite')).toBe('satellite');
   expect(parseBasemap('streets')).toBe('streets');
+  expect(parseBasemap('road')).toBe('road');
   expect(parseBasemap(null)).toBe('satellite');
   expect(parseBasemap('bogus')).toBe('satellite');
 });

@@ -1,5 +1,6 @@
 'use client';
 
+import {Select} from '@/components/ui/select';
 import { useMemo } from 'react';
 import { ArrowUpRight, X } from 'lucide-react';
 import { useI18n } from '@/components/site/LanguageProvider';
@@ -38,12 +39,10 @@ export function CountryPanel({ country, onSelect, onClose, showClose = true }: P
       </div>
       <p className={styles.countryEmpty}>{copy.empty}</p>
     </> : <p className={styles.countryPrompt}>{copy.choose}</p>}
-    <label className={styles.countrySelector}>
+    <div className={styles.countrySelector}>
       <span>{copy.select}</span>
-      <select aria-label={copy.select} value={country?.code ?? ''} onChange={event => event.target.value ? onSelect(event.target.value) : onClose()}>
-        <option value="">{copy.select}</option>
-        {options.map(item => <option key={item.code} value={item.code}>{item.name[locale]}</option>)}
-      </select>
-    </label>
+      <Select aria-label={copy.select} value={country?.code ?? ''} onChange={value => value ? onSelect(value) : onClose()}
+        options={[{value: '', label: copy.select}, ...options.map(item => ({value: item.code, label: item.name[locale]}))]} />
+    </div>
   </div>;
 }

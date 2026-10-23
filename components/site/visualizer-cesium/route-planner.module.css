@@ -1,0 +1,18 @@
+/* "How to get there" — shared by the sacred place panel and the saint card. */
+.planner { display:grid; gap:10px; margin:12px 0 4px; padding:12px; border:1px solid rgba(232,193,123,.2); border-radius:10px; background:rgba(2,9,14,.55); }
+.modes { display:grid; grid-template-columns:1fr 1fr; gap:3px; padding:3px; border:1px solid #ffffff15; border-radius:8px; background:#02090e; }
+.modes button { display:flex; align-items:center; justify-content:center; gap:6px; min-height:36px; border:1px solid transparent; border-radius:6px; background:transparent; color:#abb6bd; font-size:13px; cursor:pointer; }
+.modes button[aria-pressed=true] { color:#f0ce8d; background:#e0b96b18; border-color:#d7b57566; }
+.primary { display:flex; align-items:center; justify-content:center; gap:8px; min-height:42px; border:0; border-radius:8px; background:#e8c17b; color:#15110a!important; font-weight:600; font-size:14px; cursor:pointer; }
+.primary:hover { background:#f2d293; }
+.primary:disabled { cursor:progress; opacity:.75; }
+.summary { display:flex; align-items:center; gap:10px; min-height:42px; padding:0 4px 0 12px; border:1px solid rgba(232,193,123,.35); border-radius:8px; color:#f0ce8d; }
+.summary strong { font:600 17px/1 Georgia,serif; color:#f2f0ea; }
+.summary span { color:#a7aeb6; font-size:13px; }
+.clear { margin-left:auto; display:grid; place-items:center; width:34px; height:34px; border:0; border-radius:6px; background:transparent; color:#a7aeb6; cursor:pointer; }
+.clear:hover { background:rgba(255,255,255,.06); color:#f2f0ea; }
+.notice { margin:0; color:#e9c48a; font-size:12.5px; line-height:1.45; }
+.links { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; font-size:12.5px; color:#7f878f; }
+.links a { display:inline-flex; align-items:center; gap:4px; color:#d8dce2; text-decoration:none; }
+.links a:hover { color:#f0ce8d; text-decoration:underline; }
+.privacy { color:#6f777e; font-size:11px; line-height:1.4; }

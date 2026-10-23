@@ -1,0 +1,23 @@
+/* Site select: glass trigger and popup in the site's gold-on-dark palette. */
+.trigger { display:inline-flex; align-items:center; gap:8px; min-width:0; border:1px solid rgba(232,193,123,.28); border-radius:10px; background:rgba(7,15,21,.6); color:#f2f0ea; font:inherit; font-weight:600; letter-spacing:.04em; cursor:pointer; transition:border-color .15s ease,background-color .15s ease; -webkit-tap-highlight-color:transparent; }
+.md { height:40px; padding:0 10px 0 14px; font-size:13px; }
+.sm { height:32px; padding:0 8px 0 10px; font-size:12px; }
+.trigger:hover { border-color:rgba(232,193,123,.55); background:rgba(232,193,123,.08); }
+.trigger:focus-visible { outline:2px solid #e9c479; outline-offset:2px; }
+.trigger[data-popup-open] { border-color:#e9c479; background:rgba(232,193,123,.12); }
+.trigger[data-disabled] { cursor:not-allowed; opacity:.5; }
+.prefix { color:#a7aeb6; font-weight:500; letter-spacing:0; }
+.value { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.icon { display:grid; place-items:center; margin-left:auto; color:#e9c479; transition:transform .18s ease; }
+.trigger[data-popup-open] .icon { transform:rotate(180deg); }
+/* Above the sticky header (1200) and the globe overlay. */
+.positioner { z-index:2000; outline:0; }
+.popup { min-width:max(var(--anchor-width),120px); max-height:min(var(--available-height),340px); padding:5px; overflow:hidden; border:1px solid rgba(232,193,123,.32); border-radius:12px; background:rgba(9,17,23,.97); box-shadow:0 18px 44px rgba(0,0,0,.5); color:#f2f0ea; -webkit-backdrop-filter:blur(18px) saturate(1.2); backdrop-filter:blur(18px) saturate(1.2); transform-origin:var(--transform-origin); transition:opacity .14s ease,transform .14s ease; outline:0; }
+.popup[data-starting-style],.popup[data-ending-style] { opacity:0; transform:scale(.97) translateY(-4px); }
+.list { max-height:inherit; overflow-y:auto; scrollbar-width:thin; outline:0; }
+.item { display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:38px; padding:0 10px 0 12px; border-radius:8px; font-size:13px; font-weight:600; letter-spacing:.03em; cursor:pointer; outline:0; user-select:none; }
+.item[data-highlighted] { background:rgba(232,193,123,.14); color:#fff2cf; }
+.item[data-selected] { color:#e9c479; }
+.indicator { display:grid; place-items:center; color:#e9c479; }
+@media(pointer:coarse) { .item { min-height:44px; } .md { height:44px; } }
+@media(prefers-reduced-motion:reduce) { .popup,.icon { transition:none; } }

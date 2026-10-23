@@ -2,10 +2,10 @@
 .brand{display:flex;align-items:center;gap:12px;flex-shrink:0;text-decoration:none;color:#e9c479;font:26px Georgia,serif}.brand svg,.brand img{flex:none}
 .header[data-unified-header]>.brand{width:auto;min-width:0}.header[data-unified-header] .menu{display:flex;flex-direction:column;width:min(360px,100%);padding:24px;gap:0;overflow-y:auto}.header[data-unified-header] .menu a{font-size:16px;padding:0;min-height:56px}
 @media(max-width:767px){.header[data-unified-header] .primaryNav{display:none}}
-.librarySymbol{display:grid;place-items:center;color:#c6b58d;}
+.librarySymbol{display:grid;place-items:center;color:#c6b58d;}.libraryPreview .librarySymbol{width:100%;height:100%}.libraryPreview .librarySymbol svg{width:32px;height:32px;color:#e8c17b}
 .mobileNav{display:none}
 .primaryNav{display:flex;height:100%;gap:8px;align-items:center}.primaryNav a,.menu a{display:flex;align-items:center;gap:10px;text-decoration:none;color:#bcc3ca;font-size:14px}.primaryNav a{height:44px;padding:0 18px;border-bottom:2px solid transparent}.primaryNav a[aria-current=page]{color:#efd091;border-color:#d4ad64}.primaryNav a:hover,.menu a:hover{color:#fff0c9}
-.actions{display:flex;align-items:center;gap:16px}.actions select{background:transparent;border:0;color:inherit;padding:8px;font-size:13px;color-scheme:dark}.menuToggle{width:42px;height:42px;display:grid;place-items:center;background:transparent;border:1px solid #ffffff25;border-radius:6px;color:inherit;cursor:pointer;position:relative;z-index:2}.header :focus-visible{outline:2px solid #e9c479;outline-offset:4px}
+.actions{display:flex;align-items:center;gap:16px}.menuToggle{width:42px;height:42px;display:grid;place-items:center;background:transparent;border:1px solid #ffffff25;border-radius:6px;color:inherit;cursor:pointer;position:relative;z-index:2}.header :focus-visible{outline:2px solid #e9c479;outline-offset:4px}
 .scrim{position:fixed;inset:76px 0 0;background:#0008;border:0;cursor:pointer}.menu{position:fixed;top:76px;right:0;bottom:0;width:min(360px,100%);padding:24px;background:#0e151d;border-left:1px solid #ffffff20;box-shadow:-20px 0 60px #0005;overflow-y:auto}.menu a{min-height:56px;font-size:16px}.menu hr{border:0;border-top:1px solid #ffffff20;margin:18px 0}.menu [aria-current=page]{color:#e9c479}
 .page{max-width:1440px;margin:auto;padding:40px 40px 72px;color:#f0f2f4;min-height:calc(100dvh - 76px);letter-spacing:0}.page h1{font:38px/1.15 Georgia,serif;margin:0 0 12px}.lead{color:#aeb8c2;font-size:16px;line-height:1.7;max-width:720px}.libraryGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:32px}.libraryCard{border:1px solid #ffffff20;border-radius:8px;background:#111922;overflow:hidden;display:flex;flex-direction:column;color:inherit;text-decoration:none}.libraryCard figure{aspect-ratio:16/9;margin:0;background:#18212b;overflow:hidden}.libraryCard img{width:100%;height:100%;object-fit:cover}.libraryCard div{display:flex;gap:12px;align-items:center;padding:22px;font-size:18px}.libraryCard div svg:last-child{margin-left:auto}.libraryCard:hover{border-color:#cba766}.about{max-width:760px;line-height:1.9;font-size:17px;margin:32px 0}.sectionLinks{display:flex;flex-wrap:wrap;gap:18px;margin-top:32px}.sectionLinks a{color:#e9c479;border-bottom:1px solid #e9c47960;padding:10px 0;text-decoration:none}
 @media(max-width:1000px){.header{padding:0 20px;gap:12px}.primaryNav a{padding:0 12px}.brand{font-size:23px}.page{padding:32px 24px}.libraryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -14,7 +14,7 @@
 /* Shared chrome follows the atlas reference; map rendering is untouched. */
 .header{background:#050f14;border-bottom-color:#b8995a45;padding-inline:28px}
 .brand{font-size:25px}.primaryNav a{font-size:13px;padding-inline:20px}.primaryNav a[aria-current=page]{background:#dab3630a;color:#f1ce8b}
-.actions select{border:1px solid #b5c1c329;border-radius:6px;height:36px}.menuToggle{border-color:transparent}
+.menuToggle{border-color:transparent}
 .menu{background:#061117;border-left-color:#b8995a55}.menu a{padding-block:8px}
 .page{max-width:1280px;background:#071116;padding:36px 36px 60px}.page h1{font-size:34px;color:#f5eee2}.lead{font-size:14px;color:#b5bfc4;margin-top:10px}
 .libraryGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:1120px;margin-top:28px}

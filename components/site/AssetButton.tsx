@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { useLocaleHref } from './LanguageProvider';
 import { SvgIcon } from './SvgIcon';
 
+/** A link that already names its language (e.g. an untranslated item opening in Ukrainian) keeps it. */
+const LOCALIZED = /^\/(uk|ru|en)(\/|$|\?|#)/;
+
 type AssetButtonProps = {
   children: ReactNode;
   href?: string;
@@ -53,7 +56,7 @@ export function AssetButton({ children, href, download, icon, variant = 'light',
 
   if (href) {
     return (
-      <Button nativeButton={false} variant={variant} size="asset" className={className} render={<Link href={localeHref(href)} aria-label={ariaLabel} />}>
+      <Button nativeButton={false} variant={variant} size="asset" className={className} render={<Link href={LOCALIZED.test(href) ? href : localeHref(href)} aria-label={ariaLabel} />}>
         {content}
       </Button>
     );

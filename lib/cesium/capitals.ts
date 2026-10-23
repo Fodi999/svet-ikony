@@ -1,5 +1,5 @@
 import * as C from '@cesium/engine';
-import {createLayerHandler} from './handlers';
+import {createLayerHandler,interactiveHit} from './handlers';
 import {atlasLabel,cityRankAtHeight,styleCluster} from './atlas-style';
 import type {CapitalCity} from '@/lib/visualizer/capital-cities';
 import type {KnowledgeLayer} from './knowledge';
@@ -36,12 +36,12 @@ export async function createCesiumCapitals(widget:C.CesiumWidget,options:{locale
   if(options.signal.aborted){if(!widget.isDestroyed())widget.dataSources.remove(source,true);throw options.signal.reason;}
   const input=createLayerHandler(widget),handler=input.handler;
   handler.setInputAction((movement:{position:C.Cartesian2})=>{
-    const picked=widget.scene.pick(movement.position)?.id;
+    const picked=interactiveHit(widget,movement.position);
     if(isCity&&Array.isArray(picked)&&picked.every(entity=>entity.properties?.cityId)){
       const positions=picked.map(entity=>entity.position?.getValue(widget.clock.currentTime)).filter((point):point is C.Cartesian3=>!!point);
       if(positions.length)widget.camera.flyToBoundingSphere(C.BoundingSphere.fromPoints(positions),{duration:1});return;
     }
-    const id=picked?.properties?.[property]?.getValue(),city=id?capitals.find(city=>city.id===id):null;if(city)options.onSelect(city);
+    const id=picked instanceof C.Entity?picked.properties?.[property]?.getValue():undefined,city=id?capitals.find(city=>city.id===id):null;if(city)options.onSelect(city);
   },C.ScreenSpaceEventType.LEFT_CLICK);
   const normal=new C.Cartesian3(),view=new C.Cartesian3(),lastPosition=new C.Cartesian3(),lastDirection=new C.Cartesian3();
   let dirty=true,lastLocale='',lastWidth=0,lastHeight=0,lastReserved='';

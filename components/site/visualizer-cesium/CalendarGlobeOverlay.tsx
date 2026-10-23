@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {ArrowRight,BookOpen,CalendarDays,ChevronLeft,ChevronRight,Church,Compass,Globe2,Layers,Map,MapPin,Minus,Plus,Search,UserRound,X} from 'lucide-react';
+import {ArrowRight,Navigation2,Box,CalendarDays,ChevronLeft,ChevronRight,Compass,Globe2,Layers,Map as MapIcon,MapPin,Minus,Plus,Search,X} from 'lucide-react';
 import * as C from '@cesium/engine';
 import {useI18n} from '@/components/site/LanguageProvider';
 import {siteShellCopy} from '@/components/site/site-shell-copy';
@@ -15,7 +15,7 @@ import {sacredDemo} from '@/lib/cesium/sacred-demo';
 import {christianPlaces,christianCopy,chessIcon,chessModel,sacredPlaceItem} from '@/lib/cesium/christian-places';
 import {countryMetadata} from '@/lib/visualizer/countries';
 import {EarthSourceControl} from './EarthSourceControl';
-import {BarbaraPanel} from './BarbaraPanel';
+import {SaintExtras} from './SaintExtras';
 import {useMarkerImages} from './useMarkerImages';
 import {markerPublication} from '@/lib/cesium/marker-publication';
 import {markerFallback} from '@/lib/cesium/photo-marker';
@@ -24,20 +24,61 @@ import {createSacredPlacesLayer,type TerritoryFeature} from '@/lib/cesium/sacred
 import type {SacredPlaceMarker,PlaceProfile} from '@/lib/d1/repositories/calendarGeoPlaces';
 import {SacredPlacePanel} from './SacredPlacePanel';
 import {SacredPlotPanel} from './SacredPlotPanel';
+import {CalendarTimeline,nextEventDay} from './CalendarTimeline';
+import {RoutePlanner} from './RoutePlanner';
+import {createRouteLayer} from '@/lib/cesium/route-layer';
+import {createOrbit} from '@/lib/cesium/orbit';
+import {journeys,journeySchedule} from '@/lib/cesium/journeys';
+import {createJourneyLayer,type JourneyTick} from '@/lib/cesium/journey-layer';
+import {JourneyPlayer} from './JourneyPlayer';
+import {Select} from '@/components/ui/select';
+import {CalendarIcon,ChurchIcon,GlobeIcon,JourneyIcon,SaintIcon,ScrollIcon} from '@/components/site/icons/OrthodoxIcons';
+import {flyToResult,geocodePlaces,type GeocodeResult} from '@/lib/cesium/geocode';
+import type {Basemap} from '@/lib/cesium/earth-streaming';
+import type {Route} from '@/lib/routes/osrm';
+import type {CalendarGeoYearDay} from '@/lib/d1/repositories/calendarGeo';
 import type {SacredPlot} from '@/lib/cesium/sacred-plots';
 // Sacred Plots pilot scope (ТЗ п.1): only Kyiv-Pechersk Lavra gets a hex
 // grid for now -- see lib/cesium/sacred-plots-layer.ts's setTerritory().
+const PLOTS_PILOT_PLACE='place-kyiv-pechersk-lavra';
+/** Time on each day while the timeline plays, including the camera flight. */
+const PLAY_DWELL=4800;
 
 type Details={id:string;title:string;summary:string;biography?:string;entityType:string;matchStatus:string;wikipedia:string|null;places:CalendarGeoItem[];
   image:{url:string;author:string;license:string;commonsPage:string}|null;
-  sources:{url:string;type:string}[];relatedContent:{type:string;slug:string;title:string;language:string}[]};
+  sources:{url:string;type:string}[];relatedContent:{type:string;slug:string;title:string;language:string;groupId?:string}[];commemorations?:{date:string}[]};
 const today=()=>new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const validDate=(date:string)=>/^\d{4}-\d{2}-\d{2}$/.test(date)&&Number.isFinite(Date.parse(date+'T12:00:00Z'))&&new Date(date+'T12:00:00Z').toISOString().slice(0,10)===date;
 const offsetDate=(date:string,offset:number)=>{const value=new Date(date+'T12:00:00Z');value.setUTCDate(value.getUTCDate()+offset);return value.toISOString().slice(0,10);};
 const external=(url:string|null)=>url?.startsWith('https://')?url:undefined;
 const imageSource=(url:string)=>external(url)||(url.startsWith('/')&&!url.startsWith('//')?url:undefined);
-const contentHref=(link:Details['relatedContent'][number])=>`/${link.language}/${link.type==='life'?'saints':link.type==='prayer'?'prayers':link.type==='icon'?'church/icons':'church/articles'}/${encodeURIComponent(link.slug)}`;
+const contentHref=(link:Details['relatedContent'][number])=>`/${link.language}/${link.type==='life'?'saints':link.type==='prayer'?'prayers':link.type==='icon'?'icons':'church/articles'}/${encodeURIComponent(link.slug)}`;
 
+// Turn the globe to the day's events: one point is approached closely, several are framed together.
+/** How much of the globe the open panels cover (fractions of the canvas): side panels on desktop, sheets and the timeline at the bottom. */
+function panelInsets(widget:C.CesiumWidget){
+  const canvas=widget.canvas.getBoundingClientRect(),insets={left:0,right:0,top:0,bottom:0};
+  if(!canvas.width||!canvas.height)return insets;
+  for(const panel of widget.container.parentElement?.querySelectorAll('[data-sacred-place-panel],[data-testid="calendar-card"],[data-calendar-timeline]')??[]){
+    const rect=panel.getBoundingClientRect();
+    if(!rect.width||!rect.height)continue;
+    if(rect.width>canvas.width*.6)insets.bottom=Math.max(insets.bottom,(canvas.bottom-rect.top)/canvas.height);
+    else if(rect.left+rect.width/2>canvas.left+canvas.width/2)insets.right=Math.max(insets.right,(canvas.right-rect.left)/canvas.width);
+    else insets.left=Math.max(insets.left,(rect.right-canvas.left)/canvas.width);
+  }
+  return insets;
+}
+function flyToDay(widget:C.CesiumWidget,dayItems:CalendarGeoItem[]){
+  const positions=dayItems.filter(item=>Number.isFinite(item.lat)&&Number.isFinite(item.lon)).map(item=>C.Cartesian3.fromDegrees(item.lon,item.lat));
+  if(!positions.length||widget.isDestroyed())return false;
+  const sphere=C.BoundingSphere.fromPoints(positions),center=C.Cartographic.fromCartesian(sphere.center);
+  if(!center)return false;
+  const height=Math.min(9_000_000,Math.max(window.innerWidth<768?2_600_000:1_800_000,sphere.radius*3.5));
+  widget.camera.cancelFlight();
+  widget.camera.flyTo({destination:C.Cartesian3.fromRadians(center.longitude,center.latitude,height),
+    duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:2.4,easingFunction:C.EasingFunction.QUADRATIC_IN_OUT});
+  return true;
+}
 export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;earth?:EarthStreaming|null}) {
   const markerImages=useMarkerImages();
   const {locale}=useI18n(),text=calendarCopy[locale],shell=siteShellCopy[locale];
@@ -47,7 +88,7 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
   const [date,setDate]=useState(()=>{const params=new URLSearchParams(window.location.search),value=params.get('date')??params.get('calendarDate');return value&&validDate(value)?value:today();});
   const [items,setItems]=useState<CalendarGeoItem[]>(()=>demo?.items??[]),[entries,setEntries]=useState<CalendarEntry[]>([]);
   const [selected,setSelected]=useState<string|null>(()=>new URLSearchParams(window.location.search).get('entity')),[loadedDetails,setDetails]=useState<Details|null>(null);
-  const [drawer,setDrawer]=useState(()=>!['globe','map'].includes(mode)),[menu,setMenu]=useState(false),[query,setQuery]=useState('');
+  const [drawer,setDrawer]=useState(()=>!['globe','map','journeys'].includes(mode)),[menu,setMenu]=useState(false),[query,setQuery]=useState('');
   const [placeId,setPlaceId]=useState<string|null>(()=>placeFromParams(new URLSearchParams(window.location.search)));
   const unified=useUnifiedLayers(widget,locale,visibility,selected,id=>{setSelected(id);setDetails(null);setDrawer(false);setPlaceId(null);}),labels={...layerCopy[locale],...christianCopy[locale]};
   const sacred=christianPlaces.find(place=>`place:${place.id}`===selected);
@@ -55,7 +96,55 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
   const fixture=demo?.items.find(item=>item.entityId===selected);
   const details:Details|null=sacred?{id:`place:${sacred.id}`,title:sacred.name[locale],summary:sacred.description[locale],entityType:sacred.type,matchStatus:sacred.verifiedAnchor?'reviewed_verified':'editorial_demo',wikipedia:sacred.source,places:[sacredPlaceItem(sacred,locale)],image:sacred.imageUrl?{url:sacred.imageUrl,author:'',license:'',commonsPage:''}:null,sources:[{type:'editorial_source',url:sacred.source},...(sacred.coordinateSource?[{type:'coordinates',url:sacred.coordinateSource}]:[])],relatedContent:sacred.prayerSlug?[{type:'prayer',slug:sacred.prayerSlug,title:locale==='ru'?'Молитва и аудио':locale==='uk'?'Молитва й аудіо':'Prayer and audio',language:locale}]:[]}:fixture?{id:fixture.entityId,title:fixture.title,summary:'Local visual test fixture. Not a calendar record.',entityType:fixture.entityType,matchStatus:'local_fixture',wikipedia:null,places:[fixture],image:null,sources:[],relatedContent:[]}:baseSelection?unified.selectionDetails():loadedDetails;
   const [status,setStatus]=useState(demo?'ready':'loading'),[detailError,setDetailError]=useState(false),[retry,setRetry]=useState(0);
-  const [mapMode,setMapMode]=useState(false),[sun,setSun]=useState(true);
+  const [mapMode,setMapMode]=useState(false),[sun,setSun]=useState(false),[relief,setRelief]=useState(false),[reliefBusy,setReliefBusy]=useState(false);
+  useEffect(()=>earth?.subscribe(state=>setRelief(state.terrain&&state.buildings)),[earth]);
+  const [playing,setPlaying]=useState(false),[yearDays,setYearDays]=useState<CalendarGeoYearDay[]>([]);
+  // "How to get there": one route at a time, shown over the plain road map; the previous basemap returns when it is cleared.
+  const routeLayer=useRef<ReturnType<typeof createRouteLayer>|null>(null),basemapBeforeRoute=useRef<Basemap|null>(null);
+  useEffect(()=>{const layer=createRouteLayer(widget);routeLayer.current=layer;return()=>{layer.dispose();routeLayer.current=null;};},[widget]);
+  const orbit=useRef<ReturnType<typeof createOrbit>|null>(null);
+  useEffect(()=>{const instance=createOrbit(widget);orbit.current=instance;return()=>{instance.dispose();orbit.current=null;};},[widget]);
+  // Journeys ("Подорожі"): the route of one journey and its animated traveller; only in the journeys mode.
+  const [journeyId,setJourneyId]=useState(journeys[0].id),[journeyTick,setJourneyTick]=useState<JourneyTick>({time:0,total:0,stop:0,moving:false,playing:false});
+  const journeyLayer=useRef<ReturnType<typeof createJourneyLayer>|null>(null),localeRef=useRef(locale);
+  useEffect(()=>{localeRef.current=locale;journeyLayer.current?.redraw();},[locale]);
+  useEffect(()=>{
+    let lastTick=0;
+    const layer=createJourneyLayer(widget,{icon:'/journeys/apostle-paul.jpg',locale:()=>localeRef.current,onTick:tick=>{
+      // The caption and scrubber need ~10 updates a second, not one per animation frame.
+      const now=performance.now();if(tick.playing&&now-lastTick<100)return;lastTick=now;setJourneyTick(tick);
+    }});
+    journeyLayer.current=layer;return()=>{layer.dispose();journeyLayer.current=null;};
+  },[widget]);
+  const journey=journeys.find(item=>item.id===journeyId)??journeys[0];
+  const [journeySchedules]=useState(()=>new Map(journeys.map(item=>[item.id,journeySchedule(item)])));
+  useEffect(()=>{
+    if(mode!=='journeys'){journeyLayer.current?.select(null);return;}
+    orbit.current?.stop();
+    // Let the mode's panels settle before measuring what they cover.
+    const timer=setTimeout(()=>journeyLayer.current?.select(journey,panelInsets(widget)),60);
+    return()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- re-frame only when the journey or mode changes
+  },[mode,journeyId,widget]);
+  // World place search: only where the globe streams Cesium ion (its geocoder shares that token).
+  const [worldResults,setWorldResults]=useState<GeocodeResult[]>([]);
+  const showRoute=(route:(Route&{from:{lat:number;lon:number}})|null)=>{
+    if(route){
+      setPlaying(false);orbit.current?.stop();
+      routeLayer.current?.show({coordinates:route.coordinates,from:route.from},panelInsets(widget));
+      if(earth&&earth.state.basemap!=='road'&&basemapBeforeRoute.current===null){basemapBeforeRoute.current=earth.state.basemap;void earth.setBasemap('road');}
+      return;
+    }
+    routeLayer.current?.clear();
+    if(earth&&basemapBeforeRoute.current){void earth.setBasemap(basemapBeforeRoute.current);}
+    basemapBeforeRoute.current=null;
+  };
+  const showRouteRef=useRef(showRoute);
+  useEffect(()=>{showRouteRef.current=showRoute;});
+  const playingRef=useRef(playing),modeRef=useRef(mode);
+  useEffect(()=>{playingRef.current=playing;modeRef.current=mode;},[playing,mode]);
+  // The date whose events the camera should turn to once they load: today's on first open, then every timeline step.
+  const flyRequest=useRef<string|null>((()=>{const params=new URLSearchParams(window.location.search);return params.has('entity')||params.has('place')?null:date;})());
   const layer=useRef<ReturnType<typeof createOrthodoxCalendarLayer>|null>(null);
   const placesLayer=useRef<ReturnType<typeof createOrthodoxCalendarLayer>|null>(null);
   const [placeError,setPlaceError]=useState('');
@@ -116,7 +205,7 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
       // own "clear entity selection" step above, in the other direction.
       setPlaceId(null);setSelected(null);setDetails(null);setDrawer(false);setMenu(false);
       setSelectedPlot(plot);
-    },error=>console.error('[sacred-places]',error));
+    },error=>console.error('[sacred-places]',error),{legacyPlots:true});
     sacredLayer.current=instance;
     return()=>{instance.dispose();sacredLayer.current=null;};
   },[widget]);
@@ -142,6 +231,11 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
         }))).filter((feature):feature is TerritoryFeature=>feature!==null);
         if(!current.signal.aborted){
           void sacredLayer.current?.setTerritories(features);
+          // Sacred Plots (honeycomb cells) -- pilot territory: Kyiv-Pechersk
+          // Lavra; cells are shown only when the camera is close (see the
+          // LOD in sacred-plots-layer.ts) and are clickable/hoverable.
+          const pilot=features.find(feature=>feature.placeId===PLOTS_PILOT_PLACE);
+          if(pilot)sacredLayer.current?.setPlotTerritory(pilot,{candidatePlaces:data.filter(item=>item.id!==PLOTS_PILOT_PLACE).map(item=>({id:item.id,lat:item.lat,lon:item.lon}))});
         }
       })
       .catch(()=>{});
@@ -150,17 +244,19 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
     window.addEventListener('focus',refresh);
     return()=>{controller.abort();window.removeEventListener('focus',refresh);};
   },[locale]);
-  // Retired pilot grid: a selected object now owns a single visual footprint.
-  useEffect(()=>{sacredLayer.current?.setPlotsVisible(false);},[widget]);
+  useEffect(()=>{sacredLayer.current?.setPlotsVisible(visibility.sacredPlots);},[widget,visibility.sacredPlots]);
   useEffect(()=>{sacredLayer.current?.update(sacredPlaces,placeId,markerImages);},[sacredPlaces,placeId,markerImages]);
+  // A place with its own 3D model replaces the generic OSM building box at that spot.
+  useEffect(()=>{earth?.hideBuildingsAt(sacredPlaces.filter(place=>place.model).map(place=>({lat:place.lat,lon:place.lon,radius:15})));},[earth,sacredPlaces]);
   useEffect(()=>{sacredLayer.current?.setVisible(visibility.christianPlaces||visibility.churches||visibility.monasteries);},[visibility.christianPlaces,visibility.churches,visibility.monasteries]);
   useEffect(()=>{
-    if(!placeId){focusedSacredPlace.current=null;return;}
+    if(!placeId){focusedSacredPlace.current=null;orbit.current?.stop();return;}
     if(focusedSacredPlace.current===placeId)return;
     const target=sacredPlaces.find(item=>item.id===placeId);
     if(!target)return;
     focusedSacredPlace.current=placeId;
-    sacredLayer.current?.focus(target);
+    // Fly in at an angle and circle the shrine until the visitor takes over.
+    orbit.current?.start(target);
   },[placeId,sacredPlaces]);
   const entityVisibility=useRef<Record<string,boolean>>({});
   const refreshEntities=useRef(()=>{});
@@ -187,10 +283,17 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
         const response=await fetch('/api/calendar/geo?'+new URLSearchParams({date,locale,calendarSystem:'julian',tradition:'orthodox'}),{signal:controller.signal});
         if(!response.ok)throw new Error('day');const payload=await response.json() as {items:CalendarGeoItem[];entries:CalendarEntry[]};
         if(!Array.isArray(payload.items)||!Array.isArray(payload.entries))throw new Error('day payload');
-        if(!controller.signal.aborted){setItems(payload.items);setEntries(payload.entries);setStatus('ready');}
+        if(!controller.signal.aborted){
+          setItems(payload.items);setEntries(payload.entries);setStatus('ready');
+          if(flyRequest.current===date){
+            flyRequest.current=null;
+            // On a wide screen the main commemoration's card opens beside the map; on a phone it would cover it.
+            if(flyToDay(widget,payload.items)&&window.innerWidth>=768&&(playingRef.current||modeRef.current==='calendar')){setDetails(null);setDetailError(false);setSelected(payload.items[0].entityId);}
+          }
+        }
       }catch{if(!controller.signal.aborted)setStatus('error');}
     };void load();return()=>controller.abort();
-  },[date,locale,retry,demo]);
+  },[date,locale,retry,demo,widget]);
   const selectedId=baseSelection?null:selected?.startsWith('entry:')?entries.find(entry=>entry.id===selected.slice(6))?.entityId:selected;
   const publishedImage=markerPublication(markerImages,selectedId,sacred?.id);
   useEffect(()=>{
@@ -205,7 +308,7 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
     };refreshEntities.current();
   },[items,selectedId,unified.catalog.items,demo,visibility.sacredModels,markerImages]);
   useEffect(()=>{
-    if(!selected||baseSelection||selected.startsWith('place:'))return;const controller=new AbortController(),isEntry=selected.startsWith('entry:');
+    if(!selected||baseSelection||christianPlaces.some(place=>`place:${place.id}`===selected))return;const controller=new AbortController(),isEntry=selected.startsWith('entry:');
     if(demo?.items.some(item=>item.entityId===selected))return;
     void fetch(`/api/calendar/${isEntry?'entry':'entity'}/${encodeURIComponent(isEntry?selected.slice(6):selected)}?locale=${locale}`,{signal:controller.signal}).then(async response=>{
       if(!response.ok)throw new Error('card');const data=await response.json() as Details;
@@ -213,6 +316,17 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
       if(!controller.signal.aborted)setDetails(data);
     }).catch(()=>{if(!controller.signal.aborted)setDetailError(true);});return()=>controller.abort();
   },[selected,locale,baseSelection,demo]);
+  // A route belongs to the open place or card; it goes when they change.
+  useEffect(()=>()=>showRouteRef.current(null),[placeId,selected]);
+  const year=date.slice(0,4);
+  useEffect(()=>{
+    const controller=new AbortController();
+    void fetch('/api/calendar/geo/year?'+new URLSearchParams({year,locale,calendarSystem:'julian',tradition:'orthodox'}),{signal:controller.signal})
+      .then(response=>{if(!response.ok)throw new Error('year');return response.json() as Promise<{days:CalendarGeoYearDay[]}>;})
+      .then(payload=>{if(!controller.signal.aborted)setYearDays(Array.isArray(payload.days)?payload.days:[]);})
+      .catch(()=>{if(!controller.signal.aborted)setYearDays([]);});
+    return()=>controller.abort();
+  },[year,locale]);
   useEffect(()=>{
     const url=new URL(window.location.href);url.searchParams.delete('view');url.searchParams.delete('engine');url.searchParams.delete('calendarDate');url.searchParams.set('mode',mode);url.searchParams.set('date',date);
     url.searchParams.set('layers',Object.entries(visibility).filter(([,value])=>value).map(([key])=>key).join(','));
@@ -223,30 +337,49 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
   },[date,mode,visibility,selected,selectedPlot,placeId,placeTab]);
   useEffect(()=>{const restore=()=>{const params=new URLSearchParams(window.location.search);setMode(modeFromParams(params));setVisibility(readLayers(params));setSelected(params.get('entity'));const day=params.get('date')??params.get('calendarDate');if(day&&validDate(day))setDate(day);setPlaceId(placeFromParams(params));setPlaceTab(tabFromParams(params));setSelectedPlot(null);sacredLayer.current?.selectPlot(null);};window.addEventListener('popstate',restore);return()=>window.removeEventListener('popstate',restore);},[]);
   useEffect(()=>{
-    const close=(event:KeyboardEvent)=>{if(event.key==='Escape'){setSelected(null);setDetails(null);setDrawer(false);setLayerPanel(false);setMenu(false);setPlaceId(null);setSelectedPlot(null);sacredLayer.current?.selectPlot(null);}};
+    const close=(event:KeyboardEvent)=>{if(event.key==='Escape'){setPlaying(false);setSelected(null);setDetails(null);setDrawer(false);setLayerPanel(false);setMenu(false);setPlaceId(null);setSelectedPlot(null);sacredLayer.current?.selectPlot(null);}};
     document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close);
   },[]);
   const format=(value:string,options:Intl.DateTimeFormatOptions={dateStyle:'long'})=>new Intl.DateTimeFormat(locale,{...options,timeZone:'UTC'}).format(new Date(value+'T12:00:00Z'));
-  const switchMode=(next:GlobeMode)=>{setMode(next);setVisibility(current=>layersForMode(current,next));setDrawer(next!=='globe'&&next!=='map');setMenu(false);setLayerPanel(false);setSelected(null);setDetails(null);setPlaceId(null);setSelectedPlot(null);sacredLayer.current?.selectPlot(null);};
-  const changeDate=(value:string)=>{if(validDate(value)){setDate(value);setMode('calendar');setDrawer(true);setMenu(false);setLayerPanel(false);setSelected(null);setDetails(null);setPlaceId(null);setSelectedPlot(null);sacredLayer.current?.selectPlot(null);}};
+  const switchMode=(next:GlobeMode)=>{setPlaying(false);setMode(next);setVisibility(current=>layersForMode(current,next));setDrawer(next!=='globe'&&next!=='map'&&next!=='journeys');setMenu(false);setLayerPanel(false);setSelected(null);setDetails(null);setPlaceId(null);setSelectedPlot(null);sacredLayer.current?.selectPlot(null);};
+  const changeDate=(value:string)=>{if(validDate(value)){flyRequest.current=value;setDate(value);setMode('calendar');setDrawer(true);setMenu(false);setLayerPanel(false);setSelected(null);setDetails(null);setPlaceId(null);setSelectedPlot(null);sacredLayer.current?.selectPlot(null);}};
+  useEffect(()=>{
+    if(!earth||query.trim().length<3)return;
+    let cancelled=false;
+    const timer=setTimeout(()=>{void geocodePlaces(widget,query).then(results=>{if(!cancelled)setWorldResults(results);}).catch(()=>{if(!cancelled)setWorldResults([]);});},450);
+    return()=>{cancelled=true;clearTimeout(timer);};
+  },[query,earth,widget]);
+  const shownWorldResults=earth&&query.trim().length>=3?worldResults:[];
+  const openWorldResult=(result:GeocodeResult)=>{setPlaying(false);orbit.current?.stop();setDrawer(false);flyToResult(widget,result);};
+  const worldSection=shownWorldResults.length?<section className={styles.placeResults} data-testid="world-results"><h3>{shell.worldPlaces}</h3><ul>{shownWorldResults.map(result=><li key={result.name}><button onClick={()=>openWorldResult(result)}><span>{result.name}</span><Navigation2 size={14}/></button></li>)}</ul></section>:null;
+  /** Timeline navigation: shows the day's events on the globe without opening the day list. */
+  const goToDate=(value:string)=>{
+    if(!validDate(value))return;
+    orbit.current?.stop();
+    flyRequest.current=value;setDate(value);
+    if(mode!=='calendar'){setMode('calendar');setVisibility(current=>layersForMode(current,'calendar'));}
+    setDrawer(false);setMenu(false);setLayerPanel(false);setSelected(null);setDetails(null);setPlaceId(null);setSelectedPlot(null);sacredLayer.current?.selectPlot(null);
+  };
+  const togglePlay=()=>{
+    if(playing){setPlaying(false);return;}
+    // Start on the current day when it has events, otherwise on the next day that does (wrapping to the first).
+    const start=yearDays.some(day=>day.date===date)?date:nextEventDay(yearDays,date)??yearDays[0]?.date;
+    if(!start)return;
+    setPlaying(true);
+    if(start!==date)goToDate(start);
+    else if(status==='ready'&&flyToDay(widget,items)&&window.innerWidth>=768&&items[0]){setDetails(null);setSelected(items[0].entityId);}
+  };
+  useEffect(()=>{
+    if(!playing||status!=='ready')return;
+    const timer=setTimeout(()=>{const next=nextEventDay(yearDays,date);if(next)goToDate(next);else setPlaying(false);},items.length?PLAY_DWELL:300);
+    return()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- goToDate is a plain function recreated each render
+  },[playing,status,date,items,yearDays]);
   const openEntry=(entry:CalendarEntry)=>{
     const key='entry:'+entry.id;if(selected!==key){setDetails(null);setDetailError(false);setSelected(key);}setDrawer(false);
     if(entry.hasGeo)layer.current?.focus(items.filter(item=>item.entityId===entry.entityId));else widget.camera.cancelFlight();
   };
   const closeCard=()=>{setSelected(null);setDetails(null);};
-  useEffect(()=>{
-    if(selected!=='place:barbara-kyiv')return;
-    const frame=requestAnimationFrame(()=>{
-      if(widget.isDestroyed())return;
-      const point=C.SceneTransforms.worldToWindowCoordinates(widget.scene,C.Cartesian3.fromDegrees(30.508719,50.444939));
-      if(!point)return;
-      const width=widget.canvas.clientWidth,height=widget.canvas.clientHeight;
-      const fov=(widget.camera.frustum instanceof C.PerspectiveFrustum?widget.camera.frustum.fov:undefined)??Math.PI/3;
-      if(window.innerWidth>=768&&point.x>width-440)widget.camera.lookRight(Math.min(.35,(point.x-(width-470))/width*fov));
-      else if(window.innerWidth<768&&point.y>height*.48)widget.camera.lookDown(Math.min(.35,(point.y-height*.42)/height*fov));
-      widget.scene.requestRender();
-    });return()=>cancelAnimationFrame(frame);
-  },[selected,widget]);
   const closePlot=()=>{setSelectedPlot(null);sacredLayer.current?.selectPlot(null);};
   // Place-to-place hierarchy navigation (SacredPlacePanel's parent/child
   // links, calendar_geo_place_relations). Pushes a new history entry (unlike
@@ -254,7 +387,23 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
   // current entry via replaceState) so Back can step from child to parent.
   const navigateToPlace=(nextPlaceId:string)=>selectPlace.current(nextPlaceId,{push:true});
   const openDrawer=()=>{if(mode!=='calendar')switchMode('calendar');else setDrawer(value=>!value);setSelected(null);setDetails(null);setMenu(false);};
-  const overview=()=>{widget.camera.cancelFlight();if(widget.scene.mode!==C.SceneMode.SCENE3D)widget.scene.morphTo3D(0);setMapMode(false);widget.camera.flyTo({destination:C.Cartesian3.fromDegrees(16,28,window.innerWidth<768?24000000:14000000),duration:1.5});};
+  const overview=()=>{widget.camera.cancelFlight();if(widget.scene.mode!==C.SceneMode.SCENE3D)widget.scene.morphTo3D(0);setMapMode(false);widget.camera.flyTo({destination:C.Cartesian3.fromDegrees(16,28,window.innerWidth<768?18000000:14000000),duration:1.5});};
+  const toggleFlat=()=>{widget.camera.cancelFlight();if(mapMode)widget.scene.morphTo3D(1);else widget.scene.morphTo2D(1);setMapMode(!mapMode);};
+  const toggleRelief=async()=>{
+    if(!earth||reliefBusy)return;
+    const next=!relief;setReliefBusy(true);
+    try{
+      if(next&&mapMode){widget.scene.morphTo3D(0);setMapMode(false);}
+      await earth.setRelief3D(next);
+      if(next){
+        // Tilt towards the horizon so the relief and buildings are actually visible.
+        const center=widget.camera.getPickRay(new C.Cartesian2(widget.canvas.clientWidth/2,widget.canvas.clientHeight/2));
+        const target=center?widget.scene.globe.pick(center,widget.scene):undefined;
+        const height=widget.camera.positionCartographic.height;
+        if(target)widget.camera.flyToBoundingSphere(new C.BoundingSphere(target,0),{duration:1.4,offset:new C.HeadingPitchRange(widget.camera.heading,C.Math.toRadians(-32),height>80000?4500:Math.max(900,height*1.1))});
+      }
+    }finally{setReliefBusy(false);}
+  };
   const zoom=(direction:number)=>{widget.camera.cancelFlight();const amount=Math.max(25,widget.camera.positionCartographic.height*.35);if(direction>0)widget.camera.zoomIn(amount);else widget.camera.zoomOut(amount);widget.scene.requestRender();};
   const firstPlace=details?.places[0],more=details?.relatedContent[0];
   const moreExternal=external(details?.wikipedia??null)||external(details?.sources.find(source=>source.type==='church_source')?.url??null);
@@ -264,14 +413,15 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
   const matchingPlaces=sacredPlaces.filter(place=>place.title.toLocaleLowerCase(locale).includes(query.toLocaleLowerCase(locale)));
   const activeSacredPlace=placeId?sacredPlaces.find(item=>item.id===placeId)??null:null;
   return <div className={styles.overlay} data-calendar-overlay data-mode={mode} data-selected={!!selected} data-sacred-place-open={!!activeSacredPlace}>
-    <label className={styles.mapSearch}><Search size={17}/><input aria-label={shell.searchMap} placeholder={shell.searchMap} value={query} onChange={event=>setQuery(event.target.value)} onFocus={()=>{setDrawer(true);setLayerPanel(false);setMenu(false);closeCard();}}/></label>
+    <label className={styles.mapSearch}><Search size={17}/><input aria-label={shell.searchMap} placeholder={shell.searchMap} value={query} onChange={event=>setQuery(event.target.value)}
+      onKeyDown={event=>{if(event.key!=='Enter')return;const place=matchingPlaces[0];if(place&&query.trim())selectPlace.current(place.id,{push:true});else if(shownWorldResults[0])openWorldResult(shownWorldResults[0]);}} onFocus={()=>{setDrawer(true);setLayerPanel(false);setMenu(false);closeCard();}}/></label>
     <nav className={`${styles.navigation} ${menu?styles.menuOpen:''}`} aria-label={text.menu}>
-      <button data-mode-button="globe" aria-label={text.globe} title={text.globe} aria-current={mode==='globe'?'page':undefined} onClick={()=>switchMode('globe')}><Globe2/><span>{text.globe}</span></button>
-      <button data-mode-button="calendar" aria-label={text.calendar} title={text.calendar} aria-current={mode==='calendar'?'page':undefined} onClick={()=>switchMode('calendar')}><CalendarDays/><span>{text.calendar}</span></button>
-      <button data-mode-button="saints" aria-label={text.saints} title={text.saints} aria-current={mode==='saints'?'page':undefined} onClick={()=>switchMode('saints')}><UserRound/><span>{text.saints}</span></button>
-      <button data-mode-button="churches" aria-label={text.churches} title={text.churches} aria-current={mode==='churches'?'page':undefined} onClick={()=>switchMode('churches')}><Church/><span>{text.churches}</span></button>
-      <button data-mode-button="history" aria-label={text.history} title={text.history} aria-current={mode==='history'?'page':undefined} onClick={()=>switchMode('history')}><BookOpen/><span>{text.history}</span></button>
-      <button data-mode-button="map" aria-label={text.map} title={text.map} aria-current={mode==='map'?'page':undefined} onClick={()=>switchMode('map')}><Map/><span>{text.map}</span></button>
+      <button data-mode-button="globe" aria-label={text.globe} title={text.globe} aria-current={mode==='globe'?'page':undefined} onClick={()=>switchMode('globe')}><GlobeIcon/><span>{text.globe}</span></button>
+      <button data-mode-button="calendar" aria-label={text.calendar} title={text.calendar} aria-current={mode==='calendar'?'page':undefined} aria-expanded={mode==='calendar'?drawer:undefined} onClick={openDrawer}><CalendarIcon/><span>{text.calendar}</span></button>
+      <button data-mode-button="saints" aria-label={text.saints} title={text.saints} aria-current={mode==='saints'?'page':undefined} onClick={()=>switchMode('saints')}><SaintIcon/><span>{text.saints}</span></button>
+      <button data-mode-button="churches" aria-label={text.churches} title={text.churches} aria-current={mode==='churches'?'page':undefined} onClick={()=>switchMode('churches')}><ChurchIcon/><span>{text.churches}</span></button>
+      <button data-mode-button="history" aria-label={text.history} title={text.history} aria-current={mode==='history'?'page':undefined} onClick={()=>switchMode('history')}><ScrollIcon/><span>{text.history}</span></button>
+      <button data-mode-button="journeys" aria-label={text.journeys} title={text.journeys} aria-current={mode==='journeys'?'page':undefined} onClick={()=>switchMode('journeys')}><JourneyIcon/><span>{text.journeys}</span></button>
     </nav>
     <div className={styles.dateBar}>
       <button className={styles.iconButton} aria-label={text.previous} title={text.previous} onClick={()=>changeDate(offsetDate(date,-1))}><ChevronLeft size={20}/></button>
@@ -282,29 +432,27 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
     <div className={styles.topActions}>
       <button className={`${styles.iconButton} ${styles.layersButton}`} title={labels.layers} aria-label={labels.layers} aria-expanded={layerPanel} onClick={()=>{setLayerPanel(value=>!value);setDrawer(false);closeCard();setPlaceId(null);closePlot();}}><Layers size={19}/></button>
     </div>
-    <button className={styles.dayToggle} aria-expanded={drawer} onClick={openDrawer}><CalendarDays size={16}/><span>{status==='ready'?`${entries.length} ${text.count}`:status==='error'?text.error:text.loading}</span><ChevronRight size={14}/></button>
     {layerPanel?<aside className={styles.layerPanel} aria-label={labels.layers}>
       <header><strong>{labels.layers}</strong><button className={styles.iconButton} aria-label={text.close} onClick={()=>setLayerPanel(false)}><X size={18}/></button></header>
       <EarthSourceControl earth={earth} sun={sun} onSunChange={()=>{setCalendarLighting(widget,!sun);setSun(!sun);}}/>
-      {(Object.keys(visibility) as (keyof GlobeLayers)[]).filter(id=>id!=='sacredPlots').map(id=><label key={id}><input type="checkbox" data-layer={id} checked={visibility[id]} disabled={id==='routes'} onChange={event=>setVisibility(current=>({...current,[id]:event.target.checked}))}/>{labels[id]}</label>)}</aside>:null}
+      {(Object.keys(visibility) as (keyof GlobeLayers)[]).filter(id=>id!=='routes'&&id!=='sacredModels').map(id=><label key={id}><input type="checkbox" data-layer={id} checked={visibility[id]} onChange={event=>setVisibility(current=>({...current,[id]:event.target.checked}))}/>{labels[id]}</label>)}</aside>:null}
     {unified.error?<output className={styles.layerError} role="alert">{unified.error}</output>:null}
     {placeError?<output className={styles.layerError} role="alert">{placeError}</output>:null}
     {drawer&&mode!=='calendar'?<aside className={styles.drawer} data-testid="mode-panel">
       <header><h2>{text[mode==='map'?'map':mode==='globe'?'globe':mode]}</h2><button className={styles.iconButton} aria-label={text.close} onClick={()=>setDrawer(false)}><X size={18}/></button></header>
-      <label className={styles.search}><Search size={17}/><input aria-label={text.search} value={query} onChange={event=>setQuery(event.target.value)}/></label>
+      {worldSection}
       <section className={styles.placeResults}><h3>{labels.christianPlaces}</h3><ul>{matchingPlaces.map(place=><li key={place.id}><button data-place={place.id} onClick={()=>selectPlace.current(place.id,{push:true})}><span>{place.title}</span><small>{place.countryCode?countryMetadata[place.countryCode]?.name[locale]??place.countryCode:''}</small><MapPin size={14}/></button></li>)}</ul></section>
       <div className={styles.scrollArea}><ul>{mode==='history'?unified.events.filter(event=>event.title.toLocaleLowerCase(locale).includes(query.toLocaleLowerCase(locale))).map(event=><li key={event.id}><button onClick={()=>{setSelected('event:'+event.id);setDrawer(false);}}>{event.title}<small>{event.displayDate}</small></button></li>):catalogEntries.map(entry=><li key={entry.id}><button onClick={()=>{setDetails(null);setSelected(entry.id);setDrawer(false);}}>{entry.title}{entry.hasGeo?<MapPin size={14}/>:null}</button></li>)}</ul>{(mode==='history'?!unified.events.length:!catalogEntries.length)?<p>{labels.empty}</p>:null}</div>
     </aside>:null}
     {drawer&&mode==='calendar'?<aside className={styles.drawer} aria-label={text.day} data-testid="calendar-day">
       <header><div><small>{text.day}</small><h2>{format(date)}</h2><span>{entries.length} {text.count}</span></div><button className={styles.iconButton} aria-label={text.close} onClick={()=>setDrawer(false)}><X size={18}/></button></header>
-      <label className={styles.search}><Search size={17}/><input aria-label={text.search} placeholder={text.search} value={query} onChange={event=>setQuery(event.target.value)}/></label>
+      {worldSection}
       <div className={styles.scrollArea}>
         {status==='loading'?<p role="status">{text.loading}</p>:status==='error'?<p role="alert">{text.error} <button onClick={()=>setRetry(value=>value+1)}>{text.retry}</button></p>:!filtered.length?<p>{text.empty}</p>:null}
         {categories.map(category=>{const group=filtered.filter(entry=>entry.entityType===category);return group.length?<section key={category}><h3>{text[category]} <small>{group.length}</small></h3><ul>{group.map(entry=><li key={entry.id}><button onClick={()=>openEntry(entry)}><span>{entry.title}</span>{entry.hasGeo?<MapPin size={14} aria-label={text.places}/>:null}<ChevronRight size={14}/></button></li>)}</ul></section>:null;})}
       </div>
     </aside>:null}
-    {selected==='place:barbara-kyiv'&&!selectedPlot?<BarbaraPanel imageUrl={publishedImage?.panelKey?'/'+publishedImage.panelKey:undefined} locale={locale} onClose={closeCard} onCalendar={()=>{setDate(`${date.slice(0,4)}-12-17`);setMode('calendar');setVisibility(current=>({...current,calendar:true}));}} onPlace={()=>{const place=christianPlaces.find(p=>p.id==='barbara-kyiv');if(place)placesLayer.current?.focus([sacredPlaceItem(place,locale)]);}}/>:null}
-    {selected&&selected!=='place:barbara-kyiv'&&!selectedPlot?<aside className={`${styles.detail} ${publishedImage?styles.imageDetail:''}`} aria-label={details?.title??text.loading} data-testid="calendar-card">
+    {selected&&!selectedPlot?<aside className={`${styles.detail} ${publishedImage?styles.imageDetail:''}`} aria-label={details?.title??text.loading} data-testid="calendar-card">
       <header><span>{firstPlace?<><MapPin size={16}/>{firstPlace.placeTitle}</>:baseSelection?<><MapPin size={16}/>{details?.title}</>:<><CalendarDays size={16}/>{text.day}</>}</span><button className={styles.iconButton} aria-label={text.close} title={text.close} onClick={closeCard}><X size={20}/></button></header>
       {!details?<p role="status">{detailError?text.error:text.loading}</p>:<>
         {publishedImage?<figure data-version={publishedImage.versionId??'fallback'}><img key={publishedImage.panelKey??'fallback'} src={publishedImage.panelKey?'/'+publishedImage.panelKey:markerFallback(details.entityType)} alt={details.title} onError={event=>{event.currentTarget.onerror=null;event.currentTarget.src=markerFallback(details.entityType);}}/></figure>:details.image&&imageSource(details.image.url)?<figure><img src={imageSource(details.image.url)} alt={details.title}/>{details.image.license?<figcaption>{details.image.author} · <a href={external(details.image.commonsPage)} target="_blank" rel="noreferrer">{details.image.license}</a></figcaption>:null}</figure>:null}
@@ -314,11 +462,13 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
           <span className={styles.type}>{sacred?`${labels[sacred.type]} · ${labels[sacred.denomination]}`:details.entityType==='country'?labels.countries:details.entityType==='capital'?labels.capitals:details.entityType==='city'?labels.cities:text[details.entityType as 'saint'|'feast'|'icon'|'event']??text.event}</span>
           {sacred?<p className={styles.meta}>{countryMetadata[sacred.country]?.name[locale]??sacred.country}</p>:null}
           {details.summary?<p className={styles.description}>{details.summary}</p>:null}
-          {!baseSelection&&firstPlace?<p className={styles.description}>{locale==='ru'?'Сота — условное выделение связанного места, не историческая граница и не участок собственности. Автоматические географические связи требуют проверки.':locale==='uk'?'Комірка — умовне виділення пов’язаного місця, не історичний кордон і не ділянка власності. Автоматичні географічні зв’язки потребують перевірки.':'The hex marks an associated place, not a historical boundary or property parcel. Automated geographic links require review.'}</p>:null}
+          {!baseSelection&&firstPlace?<small className={styles.footnote}>{locale==='ru'?'Сота — условное выделение связанного места, не историческая граница и не участок собственности. Автоматические географические связи требуют проверки.':locale==='uk'?'Комірка — умовне виділення пов’язаного місця, не історичний кордон і не ділянка власності. Автоматичні географічні зв’язки потребують перевірки.':'The hex marks an associated place, not a historical boundary or property parcel. Automated geographic links require review.'}</small>:null}
           {'locationNotice' in details&&details.locationNotice?<p className={styles.description} data-testid="history-mosaic-notice">{String(details.locationNotice)}</p>:null}
           {sacred?.relatedSaints?.length?<section><h3>{labels.related}</h3>{sacred.relatedSaints.map(saint=><p key={saint.en}>{saint[locale]}</p>)}</section>:null}
           {!firstPlace&&!baseSelection?<small className={styles.noPlace}>{text.noPlace}</small>:null}
           {details.biography?<details className={styles.life}><summary>{text.life}</summary><p>{details.biography}</p></details>:null}
+          {details.entityType==='saint'&&!sacred&&!fixture?<SaintExtras key={details.id+locale} locale={locale} related={details.relatedContent} commemorations={details.commemorations??[]} onCalendar={day=>{setDate(day);setMode('calendar');setVisibility(current=>({...current,calendar:true}));}}/>:null}
+          {firstPlace&&!baseSelection?<RoutePlanner key={firstPlace.placeId} destination={firstPlace} locale={locale} onRoute={showRoute}/>:null}
           {firstPlace?<ul className={styles.places}>{details.places.map(place=><li key={place.placeId+place.relationType}><MapPin size={14}/><span>{place.placeTitle}<small>{text[place.relationType as 'birth'|'death'|'burial'|'residence']??place.relationType}</small></span></li>)}</ul>:null}
           {details.matchStatus==='machine_high'&&firstPlace?<small className={styles.noPlace}>{text.machine}</small>:null}
           <nav className={styles.related}>{details.relatedContent.map(link=><a key={link.type+link.slug} href={contentHref(link)}>{link.type==='life'?text.life:link.type==='prayer'?text.prayer:link.title}<ArrowRight size={15}/></a>)}</nav>
@@ -327,17 +477,27 @@ export function CalendarGlobeOverlay({widget,earth=null}:{widget:C.CesiumWidget;
         </div>
       </>}
     </aside>:null}
-    {activeSacredPlace&&!selectedPlot?<SacredPlacePanel imageUrl={markerPublication(markerImages,null,activeSacredPlace.id)?.panelKey?'/'+markerPublication(markerImages,null,activeSacredPlace.id)!.panelKey:undefined} key={`${activeSacredPlace.id}:${locale}`} place={activeSacredPlace} tab={placeTab} locale={locale} onTabChange={setPlaceTab} onClose={()=>setPlaceId(null)} onNavigate={navigateToPlace}/>:null}
+    {activeSacredPlace&&!selectedPlot?<SacredPlacePanel onRoute={showRoute} imageUrl={markerPublication(markerImages,null,activeSacredPlace.id)?.panelKey?'/'+markerPublication(markerImages,null,activeSacredPlace.id)!.panelKey:undefined} key={`${activeSacredPlace.id}:${locale}`} place={activeSacredPlace} tab={placeTab} locale={locale} onTabChange={setPlaceTab} onClose={()=>setPlaceId(null)} onNavigate={navigateToPlace}/>:null}
     {selectedPlot?<SacredPlotPanel plot={selectedPlot} locale={locale} onClose={closePlot} onNavigate={()=>{selectPlace.current(selectedPlot.associatedSacredPlaceId,{push:true});setPlaceTab('collection');}}
       placeTitle={sacredPlaces.find(item=>item.id===selectedPlot.sacredPlaceId)?.title??selectedPlot.sacredPlaceId}
       associatedTitle={sacredPlaces.find(item=>item.id===selectedPlot.associatedSacredPlaceId)?.title??selectedPlot.associatedSacredPlaceId}/>:null}
-    <div className={styles.cameraControls}>
-      {mode==='map'?<button className={styles.roundButton} aria-label={mapMode?'3D':'2D'} onClick={()=>{if(mapMode)widget.scene.morphTo3D(1);else widget.scene.morphTo2D(1);setMapMode(!mapMode);}}>{mapMode?'3D':'2D'}</button>:null}
-      <button className={styles.roundButton} title={text.north} aria-label={text.north} onClick={()=>widget.camera.flyTo({destination:widget.camera.positionWC.clone(),orientation:{heading:0,pitch:widget.camera.pitch,roll:0},duration:.8})}><Compass size={22}/></button>
-      <button className={styles.roundButton} title={text.zoomIn} aria-label={text.zoomIn} onClick={()=>zoom(1)}><Plus size={24}/></button>
-      <button className={styles.roundButton} title={text.zoomOut} aria-label={text.zoomOut} onClick={()=>zoom(-1)}><Minus size={24}/></button>
+    {mode==='globe'||mode==='calendar'?<CalendarTimeline date={date} today={today()} days={yearDays} locale={locale} playing={playing}
+      labels={{play:text.play,pause:text.pause,timeline:text.timeline,noEvents:text.noEvents,events:text.events}}
+      onChange={value=>{setPlaying(false);goToDate(value);}} onTogglePlay={togglePlay}/>:null}
+    {mode==='journeys'?<JourneyPlayer journeys={journeys} journey={journey} schedule={journeySchedules.get(journey.id)!} tick={journeyTick} locale={locale}
+      labels={{play:text.journeyStart,pause:text.pause,acts:text.acts,journeys:text.journeys,restart:text.journeyStart}}
+      onSelect={id=>setJourneyId(id)} onSeek={time=>journeyLayer.current?.seek(time)}
+      onTogglePlay={()=>{if(journeyTick.playing)journeyLayer.current?.pause();else{setDrawer(false);closeCard();setPlaceId(null);journeyLayer.current?.play();}}}/>:null}
+    <div className={styles.cameraControls} role="toolbar" aria-label={text.view}>
+      {earth?<button className={styles.roundButton} data-view-button="relief" aria-pressed={relief} aria-busy={reliefBusy} disabled={reliefBusy} title={text.relief3d} aria-label={text.relief3d} onClick={()=>void toggleRelief()}><Box size={19}/><b>3D</b></button>:null}
+      <button className={styles.roundButton} data-view-button="flat" aria-pressed={mapMode} title={mapMode?text.globe3d:text.flat} aria-label={mapMode?text.globe3d:text.flat} onClick={toggleFlat}>{mapMode?<Globe2 size={19}/>:<MapIcon size={19}/>}<b>{mapMode?text.globe:'2D'}</b></button>
+      <i aria-hidden className={styles.pointerOnly}/>
+      <button className={`${styles.roundButton} ${styles.pointerOnly}`} title={text.north} aria-label={text.north} onClick={()=>widget.camera.flyTo({destination:widget.camera.positionWC.clone(),orientation:{heading:0,pitch:widget.camera.pitch,roll:0},duration:.8})}><Compass size={20}/></button>
+      <button className={`${styles.roundButton} ${styles.pointerOnly}`} title={text.zoomIn} aria-label={text.zoomIn} onClick={()=>zoom(1)}><Plus size={20}/></button>
+      <button className={`${styles.roundButton} ${styles.pointerOnly}`} title={text.zoomOut} aria-label={text.zoomOut} onClick={()=>zoom(-1)}><Minus size={20}/></button>
+      <i aria-hidden/>
+      <button className={styles.roundButton} title={text.showAll} aria-label={text.showAll} onClick={overview}><Globe2 size={20}/></button>
     </div>
-    <button className={styles.overview} onClick={overview}><Globe2 size={18}/>{text.showAll}</button>
-    {mode==='history'?<nav className={styles.timeline} aria-label={text.history}><label>{labels.year} <select value={unified.year} onChange={event=>unified.setYear(event.target.value)}><option value="">{labels.all}</option>{unified.years.map(year=><option key={year}>{year}</option>)}</select></label><span>{unified.events.length?`${unified.events.length} ${labels.events}`:labels.empty}</span></nav>:<nav className={styles.timeline} aria-label={text.calendar}>{[-2,-1,0,1,2].map(offset=>{const value=offsetDate(date,offset);return <button key={offset} aria-current={offset===0?'date':undefined} aria-label={format(value)} onClick={()=>changeDate(value)}><i/><span>{format(value,offset===0?{day:'numeric',month:'long'}:{day:'numeric',month:'short'})}</span></button>;})}</nav>}
+    {mode==='history'?<nav className={styles.timeline} aria-label={text.history}><Select size="sm" aria-label={labels.year} prefix={labels.year} value={unified.year} onChange={unified.setYear} options={[{value:'',label:labels.all},...unified.years.map(year=>({value:String(year),label:String(year)}))]}/><span>{unified.events.length?`${unified.events.length} ${labels.events}`:labels.empty}</span></nav>:null}
   </div>;
 }

@@ -1,0 +1,315 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Alps A/B: production GLB vs height.bin+Sentinel</title>
+<style>
+  html,body{margin:0;background:#111;color:#ddd;font:12px/1.4 monospace;}
+  #stats{position:fixed;top:0;left:0;right:0;z-index:10;background:#000c;padding:8px 12px;white-space:pre-wrap;max-height:45vh;overflow:auto;}
+  #canvases{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;padding-top:0;}
+  .col{flex:1;position:relative;border-right:1px solid #444;}
+  .col canvas{display:block;width:100%;height:100%;}
+  .label{position:absolute;bottom:6px;left:6px;background:#000a;padding:2px 6px;}
+</style>
+</head>
+<body>
+<div id="stats">booting...</div>
+<div id="canvases">
+  <div class="col"><canvas id="cA"></canvas><div class="label">A: production GLB</div></div>
+  <div class="col"><canvas id="cB"></canvas><div class="label">B: height.bin + Sentinel image</div></div>
+</div>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const statsEl = document.getElementById('stats');
+const lines = [];
+function log(...a){ const s=a.map(x=>typeof x==='object'?JSON.stringify(x):x).join(' '); console.log(s); lines.push(s); statsEl.textContent = lines.join('\n'); }
+window.__abResults = {};
+
+const EARTH_METERS = 6371000, RADIUS = 1.8;
+
+function latLngToVector3(lat,lon,radius){
+  return new THREE.Vector3().setFromSphericalCoords(radius, Math.PI/2 - lat*Math.PI/180, lon*Math.PI/180);
+}
+function terrainRootMatrix(coord, radius, center){
+  const lat = THREE.MathUtils.degToRad(coord.origin.latitude), lon = THREE.MathUtils.degToRad(coord.origin.longitude);
+  const east = new THREE.Vector3(Math.cos(lon), 0, -Math.sin(lon));
+  const up = latLngToVector3(coord.origin.latitude, coord.origin.longitude, 1);
+  const south = new THREE.Vector3(Math.sin(lat)*Math.sin(lon), -Math.cos(lat), Math.sin(lat)*Math.cos(lon));
+  const scale = radius * coord.metersPerUnit / coord.earthRadiusMeters;
+  return new THREE.Matrix4().makeBasis(east.multiplyScalar(scale), up.clone().multiplyScalar(scale), south.multiplyScalar(scale)).setPosition(center.clone().addScaledVector(up, radius));
+}
+function alpsPointFactory(coord, radius){
+  const inverse = terrainRootMatrix(coord, radius, new THREE.Vector3()).invert();
+  return (lat,lon,height) => latLngToVector3(lat, lon, radius*(1+height/EARTH_METERS)).applyMatrix4(inverse);
+}
+
+function bytesFmt(n){ return (n/1024).toFixed(1)+' KiB'; }
+
+async function main(){
+  log('=== Alps L2 tile 0_0 A/B test ===');
+
+  const manifestResp = await fetch('/terrain/alps/L2/manifest.json');
+  const manifest = await manifestResp.json();
+  const coord = manifest.coordinateSystem;
+  const tile = manifest.tiles.find(t=>t.file==='0_0.glb');
+  const point = alpsPointFactory(coord, RADIUS);
+  const [nx, ny] = tile.vertex_resolution;
+  log('tile', tile.tile_id, 'nx,ny', nx, ny, 'skirt_depth_m', tile.skirt_depth_m);
+
+  const demWidth = manifest.grid.countX*252+1, demHeight = manifest.grid.countY*180+1;
+  function alpsDemSampler(native){
+    return (lat,lon)=>{
+      const b=manifest.bounds;
+      if(lat<b.minLat-1e-10||lat>b.maxLat+1e-10||lon<b.minLon-1e-10||lon>b.maxLon+1e-10) return null;
+      const x=THREE.MathUtils.clamp((lon-b.minLon)/(b.maxLon-b.minLon)*(demWidth-1),0,demWidth-1);
+      const y=THREE.MathUtils.clamp((lat-b.minLat)/(b.maxLat-b.minLat)*(demHeight-1),0,demHeight-1);
+      const i=Math.min(demWidth-2,Math.floor(x)), j=Math.min(demHeight-2,Math.floor(y)), u=x-i, v=y-j, a=native;
+      return u+v<=1 ? a[j*demWidth+i]*(1-u-v)+a[j*demWidth+i+1]*u+a[(j+1)*demWidth+i]*v
+                    : a[(j+1)*demWidth+i+1]*(u+v-1)+a[j*demWidth+i+1]*(1-v)+a[(j+1)*demWidth+i]*(1-u);
+    };
+  }
+
+  // ============ OPTION A: real production GLB, exactly as shipped ============
+  const aFetchT0 = performance.now();
+  const glbResp = await fetch('/terrain/alps/L2/0_0.glb');
+  const glbBytes = await glbResp.arrayBuffer();
+  const aFetchT1 = performance.now();
+  const glbDownloadBytes = glbBytes.byteLength;
+
+  const aParseT0 = performance.now();
+  const gltf = await new GLTFLoader().parseAsync(glbBytes, location.origin + '/terrain/alps/L2/0_0.glb');
+  const aParseT1 = performance.now();
+
+  let meshA = null;
+  gltf.scene.traverse(n=>{ if(n.isMesh && !meshA) meshA = n; });
+
+  // heights.bin is fetched once per session in production (shared across the whole L2 grid)
+  const heightsFetchT0 = performance.now();
+  const heightsBuf = await (await fetch('/terrain/alps/L2/heights.bin')).arrayBuffer();
+  const heightsFetchT1 = performance.now();
+  const native = new Float32Array(heightsBuf);
+  const sampleDem = alpsDemSampler(native);
+
+  // rebuildAlpsGeometry, ported verbatim from lib/visualizer/alps-spherical.ts:
+  // production runs this on EVERY tile load, immediately discarding the GLB's baked
+  // POSITION/NORMAL and recomputing them from UV + lat/lon + heights.bin.
+  const aRebuildT0 = performance.now();
+  const gA = meshA.geometry, pA = gA.getAttribute('position'), uvA = gA.getAttribute('uv');
+  const normalsA = new THREE.Float32BufferAttribute(pA.count*3, 3);
+  const postRebuildPositionsA = new Float64Array(pA.count*3);
+  for(let k=0;k<pA.count;k++){
+    const u=uvA.getX(k), v=uvA.getY(k);
+    const i=Math.round(u*(nx-1)), j=Math.round((1-v)*(ny-1));
+    const lat=tile.min_lat+j/(ny-1)*(tile.max_lat-tile.min_lat), lon=tile.min_lon+i/(nx-1)*(tile.max_lon-tile.min_lon);
+    const height=sampleDem(lat,lon);
+    const v3=point(lat,lon,height-(k>=nx*ny?Number(tile.skirt_depth_m):0));
+    pA.setXYZ(k,v3.x,v3.y,v3.z);
+    postRebuildPositionsA[k*3]=v3.x; postRebuildPositionsA[k*3+1]=v3.y; postRebuildPositionsA[k*3+2]=v3.z;
+    const sample=(la,lo)=>point(la,lo,sampleDem(la,lo)??height);
+    const west=Math.max(manifest.bounds.minLon,lon-1/3600), east=Math.min(manifest.bounds.maxLon,lon+1/3600);
+    const south=Math.max(manifest.bounds.minLat,lat-1/3600), north=Math.min(manifest.bounds.maxLat,lat+1/3600);
+    const normal=sample(lat,east).sub(sample(lat,west)).cross(sample(north,lon).sub(sample(south,lon))).normalize();
+    normalsA.setXYZ(k,normal.x,normal.y,normal.z);
+  }
+  gA.setAttribute('normal', normalsA);
+  pA.needsUpdate = true; gA.computeBoundingBox(); gA.computeBoundingSphere();
+  const aRebuildT1 = performance.now();
+
+  const aTextureBytes = { estGPU: 0 };
+  gltf.scene.traverse(n=>{ if(n.isMesh){ const m=n.material; const map=m && m.map; if(map && map.image){ aTextureBytes.estGPU = map.image.width*map.image.height*4; aTextureBytes.w=map.image.width; aTextureBytes.h=map.image.height; } } });
+
+  log('--- OPTION A (production GLB) ---');
+  log('disk/download size:', glbDownloadBytes, 'bytes =', bytesFmt(glbDownloadBytes));
+  log('fetch time:', (aFetchT1-aFetchT0).toFixed(2), 'ms');
+  log('GLTFLoader parse time:', (aParseT1-aParseT0).toFixed(2), 'ms');
+  log('heights.bin fetch time (shared, amortized across 154 tiles):', (heightsFetchT1-heightsFetchT0).toFixed(2), 'ms for', heightsBuf.byteLength, 'bytes');
+  log('rebuildAlpsGeometry time (runs on every load today regardless of format):', (aRebuildT1-aRebuildT0).toFixed(2), 'ms');
+  log('mesh build time total (fetch+parse+rebuild):', (aRebuildT1-aFetchT0).toFixed(2), 'ms');
+  log('mesh build time excl. shared heights.bin (parse+rebuild only):', ((aParseT1-aParseT0)+(aRebuildT1-aRebuildT0)).toFixed(2), 'ms');
+  log('vertices:', pA.count, 'triangles:', gA.getIndex().count/3);
+  log('texture:', aTextureBytes.w+'x'+aTextureBytes.h, 'est. GPU RGBA8 bytes:', aTextureBytes.estGPU, '=', bytesFmt(aTextureBytes.estGPU));
+
+  // ============ OPTION B: height.bin + Sentinel(-derived) image, built client-side ============
+  const bFetchT0 = performance.now();
+  const [heightBuf, imgBlob] = await Promise.all([
+    fetch('/ab-test/0_0-height-f32.bin').then(r=>r.arrayBuffer()),
+    fetch('/ab-test/0_0-image.png').then(r=>r.blob()),
+  ]);
+  const bFetchT1 = performance.now();
+  const heightGrid = new Float32Array(heightBuf);
+  const bDownloadBytes = heightBuf.byteLength + imgBlob.size;
+
+  const bDecodeT0 = performance.now();
+  const bitmap = await createImageBitmap(imgBlob);
+  const bDecodeT1 = performance.now();
+
+  const bBuildT0 = performance.now();
+  const posB = new Float32Array(nx*ny*3);
+  const uvB = new Float32Array(nx*ny*2);
+  const postPositionsB = new Float64Array(nx*ny*3);
+  const heightAtGrid = (i,j)=> heightGrid[j*nx+i];
+  const hStep = 1/3600;
+  for(let j=0;j<ny;j++){
+    const lat = tile.min_lat + j/(ny-1)*(tile.max_lat-tile.min_lat);
+    for(let i=0;i<nx;i++){
+      const lon = tile.min_lon + i/(nx-1)*(tile.max_lon-tile.min_lon);
+      const h = heightAtGrid(i,j);
+      const v3 = point(lat,lon,h);
+      const k = j*nx+i;
+      posB[k*3]=v3.x; posB[k*3+1]=v3.y; posB[k*3+2]=v3.z;
+      postPositionsB[k*3]=v3.x; postPositionsB[k*3+1]=v3.y; postPositionsB[k*3+2]=v3.z;
+      uvB[k*2]=i/(nx-1); uvB[k*2+1]=1-j/(ny-1);
+    }
+  }
+  // procedurally generated index (regular grid, 2 tris/cell) -- NOT downloaded, matches
+  // manifest.tiles[].surface_triangles (the non-skirt count) exactly.
+  const idxB = new Uint32Array((nx-1)*(ny-1)*6);
+  { let p=0;
+    for(let j=0;j<ny-1;j++) for(let i=0;i<nx-1;i++){
+      const a=j*nx+i, b=a+1, c=a+nx, d=c+1;
+      idxB[p++]=a; idxB[p++]=c; idxB[p++]=b;
+      idxB[p++]=b; idxB[p++]=c; idxB[p++]=d;
+    }
+  }
+  // normals via the same finite-difference scheme as rebuildAlpsGeometry
+  const normalsB = new Float32Array(nx*ny*3);
+  for(let j=0;j<ny;j++){
+    const lat = tile.min_lat + j/(ny-1)*(tile.max_lat-tile.min_lat);
+    for(let i=0;i<nx;i++){
+      const lon = tile.min_lon + i/(nx-1)*(tile.max_lon-tile.min_lon);
+      const west=Math.max(manifest.bounds.minLon,lon-hStep), east=Math.min(manifest.bounds.maxLon,lon+hStep);
+      const south=Math.max(manifest.bounds.minLat,lat-hStep), north=Math.min(manifest.bounds.maxLat,lat+hStep);
+      const hc = heightAtGrid(i,j);
+      const sample=(la,lo)=>{
+        // reuse the grid when in-bounds, else fall back to the center height (edge clamp)
+        const ii=Math.round((lo-tile.min_lon)/(tile.max_lon-tile.min_lon)*(nx-1));
+        const jj=Math.round((la-tile.min_lat)/(tile.max_lat-tile.min_lat)*(ny-1));
+        const hh=(ii>=0&&ii<nx&&jj>=0&&jj<ny)?heightAtGrid(ii,jj):hc;
+        return point(la,lo,hh);
+      };
+      const normal=sample(lat,east).sub(sample(lat,west)).cross(sample(north,lon).sub(sample(south,lon))).normalize();
+      const k=j*nx+i;
+      normalsB[k*3]=normal.x; normalsB[k*3+1]=normal.y; normalsB[k*3+2]=normal.z;
+    }
+  }
+  const geomB = new THREE.BufferGeometry();
+  geomB.setAttribute('position', new THREE.BufferAttribute(posB,3));
+  geomB.setAttribute('normal', new THREE.BufferAttribute(normalsB,3));
+  geomB.setAttribute('uv', new THREE.BufferAttribute(uvB,2));
+  geomB.setIndex(new THREE.BufferAttribute(idxB,1));
+  geomB.computeBoundingBox(); geomB.computeBoundingSphere();
+
+  const texB = new THREE.Texture(bitmap);
+  texB.colorSpace = THREE.SRGBColorSpace;
+  texB.needsUpdate = true;
+  const matB = new THREE.MeshStandardMaterial({ map: texB, metalness:0, roughness:1 });
+  const meshB = new THREE.Mesh(geomB, matB);
+  const bBuildT1 = performance.now();
+
+  log('--- OPTION B (height.bin + Sentinel-derived image, core lattice only) ---');
+  log('disk/download size: height.bin', heightBuf.byteLength, '+ image', imgBlob.size, '=', bDownloadBytes, 'bytes =', bytesFmt(bDownloadBytes));
+  log('reduction vs GLB:', (100*(1-bDownloadBytes/glbDownloadBytes)).toFixed(1)+'%');
+  log('fetch time:', (bFetchT1-bFetchT0).toFixed(2), 'ms');
+  log('image decode time:', (bDecodeT1-bDecodeT0).toFixed(2), 'ms');
+  log('client-side build time (positions+normals+index+geometry):', (bBuildT1-bBuildT0).toFixed(2), 'ms');
+  log('mesh build time total (fetch+decode+build):', (bBuildT1-bFetchT0).toFixed(2), 'ms');
+  log('vertices:', nx*ny, 'triangles:', idxB.length/3, '(manifest surface_triangles =', tile.surface_triangles, ')');
+
+  // ============ Relief match: A's ACTUALLY-RENDERED (post-rebuild) core lattice vs B ============
+  let sum=0,max=0,n=0; const diffs=[];
+  for(let k=0;k<pA.count;k++){
+    const u=uvA.getX(k), v=uvA.getY(k);
+    const i=Math.round(u*(nx-1)), j=Math.round((1-v)*(ny-1));
+    if(k>=nx*ny) continue; // skip skirt (B has no skirt in this POC)
+    const bk=j*nx+i;
+    const dx=postRebuildPositionsA[k*3]-postPositionsB[bk*3], dy=postRebuildPositionsA[k*3+1]-postPositionsB[bk*3+1], dz=postRebuildPositionsA[k*3+2]-postPositionsB[bk*3+2];
+    const distUnits=Math.sqrt(dx*dx+dy*dy+dz*dz);
+    const distMeters=distUnits*coord.metersPerUnit;
+    diffs.push(distMeters); sum+=distMeters; if(distMeters>max)max=distMeters; n++;
+  }
+  diffs.sort((a,b)=>a-b);
+  log('--- RELIEF MATCH: A (as actually RENDERED today, post-rebuildAlpsGeometry) vs B (height.bin reconstruction) ---');
+  log('n=',n,'mean=',(sum/n).toFixed(6),'m  median=',diffs[Math.floor(n/2)].toFixed(6),'m  p95=',diffs[Math.floor(n*0.95)].toFixed(6),'m  max=',max.toFixed(6),'m');
+  log('(this compares against what users ACTUALLY see today, since rebuildAlpsGeometry already overwrites the shipped GLB positions every load)');
+
+  window.__abResults = {
+    A: { downloadBytes: glbDownloadBytes, fetchMs: aFetchT1-aFetchT0, parseMs: aParseT1-aParseT0, rebuildMs: aRebuildT1-aRebuildT0, totalMs: aRebuildT1-aFetchT0, totalExclHeightsMs: (aParseT1-aParseT0)+(aRebuildT1-aRebuildT0), vertices: pA.count, triangles: gA.getIndex().count/3, texW: aTextureBytes.w, texH: aTextureBytes.h },
+    B: { downloadBytes: bDownloadBytes, heightBytes: heightBuf.byteLength, imageBytes: imgBlob.size, fetchMs: bFetchT1-bFetchT0, decodeMs: bDecodeT1-bDecodeT0, buildMs: bBuildT1-bBuildT0, totalMs: bBuildT1-bFetchT0, vertices: nx*ny, triangles: idxB.length/3 },
+    reliefMatch: { n, meanM: sum/n, medianM: diffs[Math.floor(n/2)], p95M: diffs[Math.floor(n*0.95)], maxM: max },
+    heightsSharedFetchMs: heightsFetchT1-heightsFetchT0,
+    heightsSharedBytes: heightsBuf.byteLength,
+  };
+
+  // ============ render both, side by side, measure FPS + renderer.info ============
+  // Fixed backing-buffer size (NOT canvas.clientWidth/clientHeight): when the Browser
+  // pane is not the visible foreground surface, the page has no layout box and
+  // clientWidth/clientHeight read 0, which silently degenerates rendering to a 0x0
+  // framebuffer (near-instant "renders" and blank screenshots). A fixed size makes the
+  // measurement independent of whether anyone is looking at the pane right now.
+  const RENDER_W = 960, RENDER_H = 720;
+  function makeScene(mesh, canvas){
+    const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+    renderer.setPixelRatio(1);
+    renderer.setSize(RENDER_W, RENDER_H, false);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
+    scene.add(mesh);
+    const box = new THREE.Box3().setFromObject(mesh);
+    const size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+    const camera = new THREE.PerspectiveCamera(50, RENDER_W/RENDER_H, 0.0001, 10);
+    const dist = size.length()*0.9;
+    camera.position.set(center.x+dist*0.5, center.y+dist*0.6, center.z+dist*0.5);
+    camera.lookAt(center);
+    scene.add(new THREE.AmbientLight(0xffffff,0.55));
+    const sun = new THREE.DirectionalLight(0xffffff,1.2); sun.position.set(1,1,0.5); scene.add(sun);
+    return {renderer, scene, camera};
+  }
+
+  const sceneA = makeScene(gltf.scene, document.getElementById('cA'));
+  const sceneB = makeScene(meshB, document.getElementById('cB'));
+
+  // Direct render loop (not requestAnimationFrame): rAF is throttled/paused when the
+  // tab/pane is not the visible foreground surface, which would hang this measurement
+  // indefinitely in a background/hidden preview pane. Rendering back-to-back as fast as
+  // possible also removes any display-refresh (vsync) cap, which is the more informative
+  // number for comparing the two formats' raw per-frame cost.
+  async function measureFps(s, label, frames=300){
+    // warmup (first frames include shader compile / GPU upload, exclude from the timed window)
+    for(let i=0;i<20;i++) s.renderer.render(s.scene, s.camera);
+    const t0=performance.now();
+    for(let i=0;i<frames;i++){
+      s.renderer.render(s.scene, s.camera);
+      if(i%40===0) await new Promise(r=>setTimeout(r,0)); // yield to avoid blocking the event loop entirely
+    }
+    const t1=performance.now();
+    const fps = frames/((t1-t0)/1000);
+    const info = s.renderer.info;
+    log(`--- FPS/GPU (${label}) ---`);
+    log('avg FPS over', frames, 'frames (uncapped, no vsync):', fps.toFixed(1), '  avg frame time:', ((t1-t0)/frames).toFixed(3), 'ms');
+    log('renderer.info.memory:', JSON.stringify(info.memory));
+    log('renderer.info.render:', JSON.stringify(info.render));
+    return { fps, frameTimeMs: (t1-t0)/frames, memory: {...info.memory}, render: {...info.render} };
+  }
+
+  window.__scenes = { sceneA, sceneB, gltf, meshB };
+
+  const fpsA = await measureFps(sceneA, 'A production GLB');
+  const fpsB = await measureFps(sceneB, 'B height.bin+image');
+  window.__abResults.fpsA = fpsA;
+  window.__abResults.fpsB = fpsB;
+
+  log('=== DONE. window.__abResults has the full machine-readable result. ===');
+  window.__abDone = true;
+}
+main().catch(e=>{ log('ERROR', e.message, e.stack); console.error(e); window.__abError = String(e); });
+</script>
+</body>
+</html>

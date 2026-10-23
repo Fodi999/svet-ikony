@@ -5,7 +5,6 @@ interface __BaseEnv_Env {
 	MEDIA_BUCKET: R2Bucket;
 	DB: D1Database;
 	ASSETS: Fetcher;
-	NEXT_PUBLIC_API_URL: "https://ministerial-yetta-fodi999-c58d8823.koyeb.app";
 	NEXT_PUBLIC_SITE_URL: "https://svetikony.com";
 	ADMIN_JWT_SECRET: string;
 	SITE_URL: string;
@@ -32,7 +31,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "NEXT_PUBLIC_API_URL" | "NEXT_PUBLIC_SITE_URL" | "ADMIN_JWT_SECRET" | "SITE_URL" | "TELEGRAM_BOT_TOKEN" | "TELEGRAM_WEBHOOK_SECRET" | "TELEGRAM_CHANNEL" | "OPENAI_API_KEY" | "OPENAI_MODEL" | "OPENAI_IMAGE_MODEL" | "AUTOPOST_TICK_SECRET" | "ADMIN_TELEGRAM_BOT_TOKEN" | "ADMIN_TELEGRAM_WEBHOOK_SECRET" | "ADMIN_PANEL_URL">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "NEXT_PUBLIC_SITE_URL" | "ADMIN_JWT_SECRET" | "SITE_URL" | "TELEGRAM_BOT_TOKEN" | "TELEGRAM_WEBHOOK_SECRET" | "TELEGRAM_CHANNEL" | "OPENAI_API_KEY" | "OPENAI_MODEL" | "OPENAI_IMAGE_MODEL" | "AUTOPOST_TICK_SECRET" | "ADMIN_TELEGRAM_BOT_TOKEN" | "ADMIN_TELEGRAM_WEBHOOK_SECRET" | "ADMIN_PANEL_URL">> {}
 }
 
 // Begin runtime types

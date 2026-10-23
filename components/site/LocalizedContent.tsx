@@ -10,7 +10,7 @@ import { AssetButton } from './AssetButton';
 import { BackLink, Breadcrumbs } from './Breadcrumbs';
 import { BrandLogo } from './BrandLogo';
 import { IconOrderLink } from './IconOrderLink';
-import { useI18n, useLocaleHref } from './LanguageProvider';
+import { useContentHref, useI18n, useLocaleHref } from './LanguageProvider';
 import {
   DetailActions,
   DetailHero,
@@ -343,6 +343,7 @@ function IconStory({ text, images }: { text?: string; images: string[] }) {
 export function LocalizedBackendPrayersList({ prayers }: { prayers: Prayer[] }) {
   const { locale } = useI18n();
   const localeHref = useLocaleHref();
+  const contentHref = useContentHref();
   const orderedPrayers = [...prayers].sort((a, b) => Number(Boolean(b.imageUrl)) - Number(Boolean(a.imageUrl)));
   return (
     <div className="grid grid-cols-3 items-start gap-[clamp(14px,2vw,28px)] mt-[clamp(28px,4vw,58px)] max-[900px]:grid-cols-1 max-[900px]:gap-3 max-[900px]:mt-6">
@@ -355,7 +356,7 @@ export function LocalizedBackendPrayersList({ prayers }: { prayers: Prayer[] }) 
             key={prayer.id}
           >
             {image ? (
-              <Link className="relative block aspect-square border-0 border-b border-gold/28 p-[clamp(16px,2.4vw,34px)] overflow-hidden" href={localeHref(`/prayers/${prayer.slug}`)}>
+              <Link className="relative block aspect-square border-0 border-b border-gold/28 p-[clamp(16px,2.4vw,34px)] overflow-hidden" href={contentHref(`/prayers/${prayer.slug}`, prayer)}>
                 <StableImage
                   src={image}
                   alt={title}
@@ -368,14 +369,14 @@ export function LocalizedBackendPrayersList({ prayers }: { prayers: Prayer[] }) 
             <div className="relative z-[1] min-w-0 grid content-start gap-3 p-[clamp(18px,2vw,28px)] max-[430px]:p-4">
               <span className="text-sm font-medium tracking-wide text-gold-light">{prayer.category || ui(locale, 'prayerCategory')}</span>
               {prayer.translated === false ? <UntranslatedBadge /> : null}
-              <Link className="text-foreground no-underline" href={localeHref(`/prayers/${prayer.slug}`)}>
+              <Link className="text-foreground no-underline" href={contentHref(`/prayers/${prayer.slug}`, prayer)}>
                 <strong className="text-foreground font-black">{title}</strong>
               </Link>
               <p className="text-muted-foreground">{textPreview(prayer.text, 190)}</p>
               {prayer.audioUrl ? <audio controls preload="none" src={prayer.audioUrl} aria-label={title} className="w-full min-w-0" /> : null}
-              {image ? <PrayerQr url={clientAbsoluteUrl(localeHref(`/prayers/${prayer.slug}`))} label={ui(locale, 'qrCode')} downloadLabel={ui(locale, 'downloadQr')} downloadName={`${prayer.slug}-qr.png`} /> : null}
+              {image ? <PrayerQr url={clientAbsoluteUrl(contentHref(`/prayers/${prayer.slug}`, prayer))} label={ui(locale, 'qrCode')} downloadLabel={ui(locale, 'downloadQr')} downloadName={`${prayer.slug}-qr.png`} /> : null}
               <div className="grid grid-cols-1 gap-2.5 items-center mt-1.5">
-                <AssetButton href={localeHref(`/prayers/${prayer.slug}`)}>{ui(locale, 'readPrayer')}</AssetButton>
+                <AssetButton href={contentHref(`/prayers/${prayer.slug}`, prayer)}>{ui(locale, 'readPrayer')}</AssetButton>
               </div>
             </div>
           </article>

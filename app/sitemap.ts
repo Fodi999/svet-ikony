@@ -4,6 +4,9 @@ import { locales, withLocale } from '@/lib/i18n';
 import { localesWithNonEmpty } from '@/lib/seo';
 import { siteUrl } from '@/lib/site';
 
+// Built per request from D1; prerendered at build time it held only the static pages.
+export const dynamic = 'force-dynamic';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [saintsByLocale, churches, churchItems, iconsAndPrayersByLocale, alphabetByLocale, products] = await Promise.all([
     // PHASE MULTILINGUAL-1 / P0.7: fetched per locale (like icons/prayers
@@ -28,8 +31,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
   const staticPages = ['', '/explore', '/about', '/icons', '/shop', '/prayers', '/saints', '/gospel', '/churches', '/staroslavyanskaya-azbuka'];
   const localized = (path: string) => locales.map((locale) => ({ url: `${siteUrl}${withLocale(path || '/', locale)}`, lastModified: new Date(), alternates: {languages: Object.fromEntries(locales.map(language=>[language,`${siteUrl}${withLocale(path || '/',language)}`]))} }));
-  const churchPath = (kind: string, slug: string) => {
-    if (kind === 'calendar') return `/church/calendar/${slug}`;
+  // A calendar day lives at its civil date (app/church/calendar/[date]); its row id is not a URL.
+  const churchPath = (kind: string, slug: string, date?: string | null) => {
+    if (kind === 'calendar') return date ? `/church/calendar/${date}` : null;
     if (kind === 'gospel') return `/church/gospel/${slug}`;
     if (kind === 'saint') return `/saints/${slug}`;
     return `/church/articles/${slug}`;
@@ -101,10 +105,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // just removed.
     ...churchItems
       .filter((item) => item.kind !== 'prayer' && item.kind !== 'icon' && item.kind !== 'saint')
-      .map((item) => ({
-        url: `${siteUrl}${withLocale(churchPath(item.kind, item.slug), item.language)}`,
-        lastModified: new Date(item.updatedAt)
-      })),
+      .flatMap((item) => {
+        const path = churchPath(item.kind, item.slug, item.date);
+        return path ? [{ url: `${siteUrl}${withLocale(path, item.language)}`, lastModified: new Date(item.updatedAt) }] : [];
+      })
+      // Two calendar rows of one language on the same date share a URL.
+      .filter((entry, index, all) => all.findIndex((other) => other.url === entry.url) === index),
     // PHASE MULTILINGUAL-1 / P0.7 -- POLICY: products (physically the
     // `icon_order_options` table -- see lib/d1/repositories/products.ts).
     // Single row per product, multi-column per language (`nameUk`/

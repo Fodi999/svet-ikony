@@ -20,6 +20,8 @@ import {CalendarGlobeOverlay} from './CalendarGlobeOverlay';
 import {createEarthStreaming,earthStreamingEnabled,parseBasemap,type EarthStreaming} from '@/lib/cesium/earth-streaming';
 import {installDevProbe} from '@/lib/cesium/dev-probe';
 import {installRenderQuality} from '@/lib/cesium/render-quality';
+import {installPointerFeedback} from '@/lib/cesium/handlers';
+import {installTrackpadZoom} from '@/lib/cesium/trackpad';
 let nextInstanceId=0;
 const liveInstances=new Set<number>();
 
@@ -66,8 +68,11 @@ export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initia
       // The calendar globe renders every credit (Cesium ion / Bing, CesiumJS, data attribution) in its own bottom strip
       // instead of the default overlay inside the canvas; the attribution lightbox still opens over the whole frame.
       const creditOptions=calendarExperience&&credits.current?{creditContainer:credits.current,creditViewport:frame.current??undefined}:{};
+      // Retina pixels already smooth edges; 4x MSAA there would multiply a ~7M-pixel framebuffer for little gain.
       const instance=new C.CesiumWidget(root.current,{baseLayer:false,terrainProvider:new C.EllipsoidTerrainProvider(),
-        requestRenderMode:true,maximumRenderTimeChange:Infinity,showRenderLoopErrors:false,...creditOptions});
+        requestRenderMode:true,maximumRenderTimeChange:Infinity,showRenderLoopErrors:false,msaaSamples:window.devicePixelRatio>=2?1:2,
+        // OIT keeps extra screen-sized buffers and, on the wrapped 2D map, washes out pins composed across its two passes.
+        orderIndependentTranslucency:false,...creditOptions});
       widget.current=instance;
       const instanceId=++nextInstanceId;liveInstances.add(instanceId);
       instance.canvas.dataset.instanceId=String(instanceId);
@@ -92,12 +97,25 @@ export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initia
       if(!calendarExperience)void import('@/lib/cesium/capitals').then(({createCesiumCapitals})=>createCesiumCapitals(instance,{signal:abort.signal,locale:()=>props.current.locale,reserved:()=>countries.current?.labelBoxes()??[],onSelect:city=>props.current.onSelectCapital?.(city)})).then(layer=>{
         if(disposed){layer.dispose();return;}capitals.current=layer;layer.setVisible(props.current.capitalsVisible);
       }).catch(e=>{if(!disposed)setError(String(e));});
-      disposeQuality=installRenderQuality(instance);
+      const disposeRender=installRenderQuality(instance),disposePointer=installPointerFeedback(instance),disposeTrackpad=installTrackpadZoom(instance);
+      disposeQuality=()=>{disposeRender();disposePointer();disposeTrackpad();};
       instance.scene.postProcessStages.fxaa.enabled=false;
-      instance.scene.globe.enableLighting=true;
+      // The calendar globe starts in even daylight so the whole planet reads
+      // clearly at any hour; the real-time sun is a toggle in the Layers panel.
+      instance.scene.globe.enableLighting=!calendarExperience;
+      instance.scene.globe.baseColor=C.Color.fromCssColorString('#0b2233');
+      instance.scene.globe.showGroundAtmosphere=true;
       instance.scene.globe.depthTestAgainstTerrain=true;
+      // Terrain depth only matters on the 3D globe; on the flat map it lets the surface wash out pins and clusters.
+      instance.scene.morphComplete.addEventListener(()=>{
+        instance.scene.globe.depthTestAgainstTerrain=instance.scene.mode===C.SceneMode.SCENE3D;
+        // Raised inside a render, where a render request is consumed by that same frame.
+        requestAnimationFrame(()=>{if(!instance.isDestroyed())instance.scene.requestRender();});
+      });
       instance.scene.screenSpaceCameraController.enableCollisionDetection=true;
       instance.scene.screenSpaceCameraController.minimumZoomDistance=10;
+      // Fewer resident terrain/imagery tiles: the globe is mostly viewed from orbit.
+      instance.scene.globe.tileCacheSize=60;
       // Streamed real Earth (Cesium ion imagery/terrain/buildings) only for the unified calendar globe; the
       // self-hosted NASA layer stays underneath as the low-resolution fallback and the legacy path is untouched.
       const streaming=calendarExperience&&earthStreamingEnabled(window.location.search);
@@ -124,7 +142,7 @@ export function CesiumEarthCanvas({calendarExperience=false,cameraCommand,initia
         if(params.get('buildings')==='1')void earthController.setBuildings(true);
       }
       if(calendarExperience&&process.env.NODE_ENV==='development')(window as Window&{__earth?:unknown}).__earth={widget:instance,earth:earthController,C};
-      instance.camera.setView({destination:C.Cartesian3.fromDegrees(calendarExperience?16:initialAlpsPreview?6.86:12,calendarExperience?28:initialAlpsPreview?45.83:46,calendarExperience?(window.innerWidth<768?24000000:14000000):initialAlpsPreview?150000:12000000)});
+      instance.camera.setView({destination:C.Cartesian3.fromDegrees(calendarExperience?16:initialAlpsPreview?6.86:12,calendarExperience?28:initialAlpsPreview?45.83:46,calendarExperience?(window.innerWidth<768?18000000:14000000):initialAlpsPreview?150000:12000000)});
       if(process.env.NODE_ENV==='development'){
         const view=new URLSearchParams(window.location.search).get('atlasView');
         const preset=view==='europe'?[12,48,4500000]:view==='egypt'?[31,27,2400000]:view==='city'?[11.34,44.5,80000]:view==='sacred'?[12.5,41.9,350000]:view==='sacred-close'?[11.86,41.4,12000]:null;

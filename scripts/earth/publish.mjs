@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * earth:publish -- Phase D (+ Phase F additions). Publishes a locally
- * Blender-exported Earth GLB (see EARTH_ASSET_CONTRACT.md) using the
+ * Blender-exported Earth GLB (see docs/EARTH_ASSET_CONTRACT.md) using the
  * EXISTING media/visualizer_models architecture -- no separate R2
  * versioning system, no latest.json/manifest.json:
  *
@@ -107,7 +107,7 @@ function validateGlbLocally(buffer) {
 }
 
 /**
- * EARTH_ASSET_CONTRACT.md compliance, on top of raw GLB validity: a node
+ * docs/EARTH_ASSET_CONTRACT.md compliance, on top of raw GLB validity: a node
  * literally named "Earth" must exist, and it must carry one of the two
  * allowed orientation-calibration conventions (a `gltf_axes` extras string
  * on the Earth node itself, or a descendant node carrying a legacy
@@ -206,7 +206,7 @@ async function main() {
     fileBuffer = await readFile(filePath);
   } catch (error) {
     if (error.code === 'ENOENT') {
-      const message = `GLB не знайдено: ${filePath}\nЕкспортуйте Earth з Blender у цей шлях (див. EARTH_ASSET_CONTRACT.md).`;
+      const message = `GLB не знайдено: ${filePath}\nЕкспортуйте Earth з Blender у цей шлях (див. docs/EARTH_ASSET_CONTRACT.md).`;
       partial.error = message;
       if (!args.json) console.error(message);
       emitAndExit(partial, 1);
@@ -262,7 +262,7 @@ async function main() {
 
   if (contractResult !== 'PASS') {
     partial.ok = false;
-    partial.error = 'EARTH_ASSET_CONTRACT.md: об\'єкт "Earth" відсутній або не має каліброваної орієнтації (gltf_axes / legacy longitude anchor).';
+    partial.error = 'docs/EARTH_ASSET_CONTRACT.md: об\'єкт "Earth" відсутній або не має каліброваної орієнтації (gltf_axes / legacy longitude anchor).';
     if (!args.json) console.error(`\n${partial.error}`);
     emitAndExit(partial, 1);
     return;

@@ -257,7 +257,8 @@ function iconFromChurchDto(item: ChurchIconDto, prayer?: ChurchPrayerDto, articl
     currency: item.currency,
     consecrationAvailable: item.consecrationAvailable,
     translationGroupId: item.translationGroupId,
-    translated: item.translated
+    translated: item.translated,
+    language: item.language
   };
 }
 
@@ -276,7 +277,8 @@ export function prayerFromChurchDto(item: ChurchPrayerDto, icon?: ChurchIconDto)
     seoDescription: compactText(item.text, 180),
     status: item.status === 'published' ? 'published' : 'draft',
     source: 'church',
-    translated: item.translated
+    translated: item.translated,
+    language: item.language
   };
 }
 
@@ -297,7 +299,8 @@ function saintFromChurchDto(item: ChurchSaintDto, icon?: ChurchIconDto): Saint {
     status: item.status === 'published' ? 'published' : 'draft',
     updatedAt: item.updatedAt,
     source: 'church',
-    translated: item.translated
+    translated: item.translated,
+    language: item.language
   };
 }
 

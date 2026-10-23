@@ -5,7 +5,7 @@ vi.mock('@opennextjs/cloudflare', () => ({
   getCloudflareContext: async () => ({ env: mockEnv }),
 }));
 
-const { absoluteSiteUrl, getSiteUrl } = await import('./site');
+const { absoluteSiteUrl, getSiteUrl, resolvePublicSiteUrl } = await import('./site');
 
 describe('getSiteUrl / absoluteSiteUrl (server-side)', () => {
   beforeEach(() => {
@@ -28,12 +28,12 @@ describe('getSiteUrl / absoluteSiteUrl (server-side)', () => {
 
   it('falls back to localhost when SITE_URL is unset (local dev)', async () => {
     mockEnv = {};
-    expect(await getSiteUrl()).toBe('http://localhost:3001');
+    expect(await getSiteUrl()).toBe('http://localhost:3000');
   });
 
   it('falls back to localhost when SITE_URL is blank', async () => {
     mockEnv = { SITE_URL: '   ' };
-    expect(await getSiteUrl()).toBe('http://localhost:3001');
+    expect(await getSiteUrl()).toBe('http://localhost:3000');
   });
 
   it('NEVER resolves to localhost when SITE_URL is set, regardless of what NEXT_PUBLIC_SITE_URL says (the exact bug this replaces)', async () => {
@@ -65,5 +65,18 @@ describe('getSiteUrl / absoluteSiteUrl (server-side)', () => {
     const url = await absoluteSiteUrl('/media/telegram/4/post-image/abc.png');
     expect(url.startsWith('https://svetikony.com/')).toBe(true);
     expect(url).not.toContain('localhost');
+  });
+});
+
+describe('resolvePublicSiteUrl (build-time NEXT_PUBLIC_SITE_URL)', () => {
+  it('never lets a loopback URL from .env.local into a production build', () => {
+    for (const url of ['http://localhost:3000', 'http://127.0.0.1:3001/', 'http://[::1]:3000']) {
+      expect(resolvePublicSiteUrl(url, 'production')).toBe('https://svetikony.com');
+    }
+  });
+  it('keeps localhost for local development and a real domain in production', () => {
+    expect(resolvePublicSiteUrl('http://localhost:3000', 'development')).toBe('http://localhost:3000');
+    expect(resolvePublicSiteUrl('https://staging.svetikony.com/', 'production')).toBe('https://staging.svetikony.com');
+    expect(resolvePublicSiteUrl(undefined, 'production')).toBe('https://svetikony.com');
   });
 });

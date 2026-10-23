@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateGlb } from './glb';
+import { missingTexCoords, validateGlb } from './glb';
 export function testGlb(data: object = { asset: { version: '2.0' } }): ArrayBuffer {
   const json = new TextEncoder().encode(JSON.stringify(data));
   const paddedLength = Math.ceil(json.length / 4) * 4;
@@ -18,5 +18,12 @@ describe('GLB upload validation', () => {
   });
   it('rejects external texture/resource requests', () => {
     expect(() => validateGlb(testGlb({ asset: { version: '2.0' }, images: [{ uri: 'https://other.example/texture.png' }] }))).toThrow(/Validation failed/);
+  });
+  it('flags a textured material on a primitive without UVs (Cesium shader crash)', () => {
+    const data = { materials: [{ name: 'Trim', pbrMetallicRoughness: { baseColorTexture: { index: 0 } } }],
+      meshes: [{ name: 'Fence', primitives: [{ attributes: { POSITION: 0, NORMAL: 1 }, material: 0 }] }] };
+    expect(missingTexCoords(data)).toEqual({ mesh: 'Fence', material: 'Trim', set: 0 });
+    data.meshes[0].primitives[0].attributes = { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2 } as never;
+    expect(missingTexCoords(data)).toBeNull();
   });
 });

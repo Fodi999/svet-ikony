@@ -18,7 +18,7 @@ import type * as Cesium from '@cesium/engine';
  * evaluation token is used so the feature can be evaluated locally.
  */
 type CesiumModule = typeof Cesium;
-export type Basemap = 'satellite' | 'streets';
+export type Basemap = 'satellite' | 'streets' | 'road';
 export type EarthStreamingState = {
   basemap: Basemap;
   provider: string;
@@ -40,7 +40,7 @@ const LEGACY_BASEMAP: Record<string, Basemap> = {
   google: 'satellite', cesium: 'satellite', map: 'streets', 'google-streets': 'streets', hybrid: 'streets', overlay: 'streets',
 };
 export function parseBasemap(value: string | null | undefined): Basemap {
-  if (value === 'satellite' || value === 'streets') return value;
+  if (value === 'satellite' || value === 'streets' || value === 'road') return value;
   if (value && LEGACY_BASEMAP[value]) return LEGACY_BASEMAP[value];
   return 'satellite';
 }
@@ -71,7 +71,9 @@ export function createEarthStreaming(C: CesiumModule, widget: Cesium.CesiumWidge
   };
 
   async function providerFor(mode: Basemap) {
-    const provider = await C.createWorldImageryAsync({ style: mode === 'streets' ? C.IonWorldImageryStyle.AERIAL_WITH_LABELS : C.IonWorldImageryStyle.AERIAL });
+    // 'road' is the plain road map (roads, towns, labels) used for "how to get there".
+    const style = mode === 'road' ? C.IonWorldImageryStyle.ROAD : mode === 'streets' ? C.IonWorldImageryStyle.AERIAL_WITH_LABELS : C.IonWorldImageryStyle.AERIAL;
+    const provider = await C.createWorldImageryAsync({ style });
     return { provider, name: 'cesium-world-imagery' };
   }
   function layerFor(mode: Basemap) {
@@ -123,6 +125,23 @@ export function createEarthStreaming(C: CesiumModule, widget: Cesium.CesiumWidge
       }
     }
   }
+  // Places with their own published 3D model: the generic OSM building box
+  // at the same spot would poke through the model, so it is hidden there.
+  let buildingMask: { lat: number; lon: number; radius: number }[] = [];
+  function applyBuildingMask() {
+    if (!tileset || tileset.isDestroyed()) return;
+    const lat = '${feature["cesium#latitude"]}', lon = '${feature["cesium#longitude"]}';
+    const terms = buildingMask.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon)).map(p => {
+      const dLat = p.radius / 111320, dLon = p.radius / (111320 * Math.max(0.01, Math.cos(p.lat * Math.PI / 180)));
+      return `(abs(${lat} - ${p.lat}) < ${dLat} && abs(${lon} - ${p.lon}) < ${dLon})`;
+    });
+    tileset.style = terms.length ? new C.Cesium3DTileStyle({ show: `!(${terms.join(' || ')})` }) : undefined;
+  }
+  /** Hide OSM buildings whose footprint centre lies within `radius` metres of each point. */
+  function hideBuildingsAt(points: { lat: number; lon: number; radius?: number }[]) {
+    buildingMask = points.map(p => ({ lat: p.lat, lon: p.lon, radius: p.radius ?? 15 }));
+    applyBuildingMask();
+  }
   async function setBuildings(on: boolean) {
     // OSM Buildings are placed relative to World Terrain, so they need it.
     if (on && !state.terrain) void setTerrain(true);
@@ -136,6 +155,11 @@ export function createEarthStreaming(C: CesiumModule, widget: Cesium.CesiumWidge
             throw new Error('disposed');
           }
           tileset = created;
+          // Default tileset cache is 512 MB; buildings are a close-range detail, so keep a smaller, coarser budget.
+          created.cacheBytes = 192 * 1024 * 1024;
+          created.maximumCacheOverflowBytes = 64 * 1024 * 1024;
+          created.maximumScreenSpaceError = 24;
+          applyBuildingMask();
           widget.scene.primitives.add(created);
           return created;
         });
@@ -151,6 +175,12 @@ export function createEarthStreaming(C: CesiumModule, widget: Cesium.CesiumWidge
       }
     }
   }
+  /** The globe's single "3D" button: Cesium World Terrain + Cesium OSM
+   * Buildings together (buildings are placed on that terrain). */
+  async function setRelief3D(on: boolean) {
+    if (on) { await setTerrain(true); await setBuildings(true); }
+    else { await setBuildings(false); await setTerrain(false); }
+  }
   function dispose() {
     disposed = true;
     if (widget.isDestroyed()) return;
@@ -164,5 +194,5 @@ export function createEarthStreaming(C: CesiumModule, widget: Cesium.CesiumWidge
     listeners.add(listener);
     return () => { listeners.delete(listener); };
   };
-  return { state, subscribe, setBasemap, setTerrain, setBuildings, dispose, tileset: () => tileset };
+  return { state, subscribe, setBasemap, setTerrain, setBuildings, setRelief3D, hideBuildingsAt, dispose, tileset: () => tileset };
 }

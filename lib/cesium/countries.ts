@@ -1,5 +1,6 @@
 import * as C from '@cesium/engine';
-import {createLayerHandler,pickCalendarMarker} from './handlers';
+import {markerAnchors} from './marker-groups';
+import {createLayerHandler,interactiveHit} from './handlers';
 import {getCountryAtLatLng,prepareCountryIndex} from '@/lib/visualizer/countries';
 import type {CountryData} from '@/lib/visualizer/country-borders';
 import {atlasLabel} from './atlas-style';
@@ -9,13 +10,25 @@ export async function createCesiumCountries(widget:C.CesiumWidget,options:{local
   if(!response.ok)throw new Error('Country data unavailable');
   const data=await response.json() as CountryData,index=prepareCountryIndex(data);
   options.signal.throwIfAborted();
-  const instances:C.GeometryInstance[]=[];
+  const instances:C.GeometryInstance[]=[],rings:C.Cartesian3[][]=[];
+  const borderColor=C.ColorGeometryInstanceAttribute.fromColor(C.Color.fromCssColorString('#d9dce0').withAlpha(.48));
   for(const country of index.countries)for(const polygon of country.polygons)for(const ring of polygon.rings){
     if(ring.length<2)continue;
-    instances.push(new C.GeometryInstance({geometry:new C.GroundPolylineGeometry({positions:C.Cartesian3.fromDegreesArray(ring.flat()),width:1}),
-      attributes:{color:C.ColorGeometryInstanceAttribute.fromColor(C.Color.fromCssColorString('#d9dce0').withAlpha(.48))}}));
+    const positions=C.Cartesian3.fromDegreesArray(ring.flat());rings.push(positions);
+    instances.push(new C.GeometryInstance({geometry:new C.GroundPolylineGeometry({positions,width:1}),attributes:{color:borderColor}}));
   }
   const borders=widget.scene.groundPrimitives.add(new C.GroundPolylinePrimitive({geometryInstances:instances,appearance:new C.PolylineColorAppearance(),allowPicking:false}));
+  // On the flat map ground polylines are drawn after billboards and cut through every pin; there is no terrain
+  // to clamp to, so plain polylines (built on first use) stand in for them.
+  let flatBorders:C.Primitive|undefined;
+  const flatMap=()=>widget.scene.mode===C.SceneMode.SCENE2D||widget.scene.mode===C.SceneMode.COLUMBUS_VIEW;
+  const showBorders=(value:boolean)=>{
+    const flat=flatMap();
+    borders.show=value&&!flat;
+    if(flat&&value&&!flatBorders)flatBorders=widget.scene.primitives.add(new C.Primitive({allowPicking:false,asynchronous:true,appearance:new C.PolylineColorAppearance(),
+      geometryInstances:rings.map(positions=>new C.GeometryInstance({geometry:new C.PolylineGeometry({positions,width:1,arcType:C.ArcType.RHUMB}),attributes:{color:borderColor}}))})) as C.Primitive;
+    if(flatBorders)flatBorders.show=value&&flat;
+  };
   const labels=widget.scene.primitives.add(new C.LabelCollection({scene:widget.scene})) as C.LabelCollection;
   const countryLabels=[...index.countries].sort((a,b)=>b.angularExtent-a.angularExtent).map(country=>({country,label:labels.add({position:C.Cartesian3.fromDegrees(country.point.longitude,country.point.latitude),
     text:country.info.name[options.locale()],...atlasLabel('country'),disableDepthTestDistance:Number.POSITIVE_INFINITY})}));
@@ -77,15 +90,13 @@ export async function createCesiumCountries(widget:C.CesiumWidget,options:{local
   },C.ScreenSpaceEventType.MOUSE_MOVE);
   handler.setInputAction((movement:{position:C.Cartesian2})=>{
     if(!enabled)return;
-    if(pickCalendarMarker(widget,movement.position))return;
-    if(widget.scene.drillPick(movement.position).some(hit=>Array.isArray(hit.id)||hit.id?.properties?.calendarEntityId||hit.id?.properties?.sacredPlaceId))return;
-    const picked=widget.scene.pick(movement.position);
-    if(Array.isArray(picked?.id))return;
+    // Any pin, cluster, hex cell, capital, city or event under the pointer
+    // wins over the country polygon underneath it.
+    if(interactiveHit(widget,movement.position))return;
     /* Sacred Place markers/territory (properties.sacredPlaceId) and Sacred
        Plot hexes (a plain {sacredPlotId} pick id, see lib/cesium/sacred-plots-layer.ts
        -- not an Entity, so no .properties) must win over the country polygon
        underneath them, same as the existing capital/city/event/entity guards below. */
-    if(picked?.id?.properties?.capitalId || picked?.id?.properties?.cityId || picked?.id?.properties?.eventId || picked?.id?.properties?.calendarEntityId || picked?.id?.properties?.sacredPlaceId || picked?.id?.sacredPlotId)return;
     const country=countryAt(movement.position);if(country)options.onSelect(country.info.code);
   },C.ScreenSpaceEventType.LEFT_CLICK);
   let labelBoxes:{x:number;y:number;w:number}[]=[];
@@ -95,16 +106,20 @@ export async function createCesiumCountries(widget:C.CesiumWidget,options:{local
     const camera=widget.camera.positionCartographic,lon=C.Math.toDegrees(camera.longitude),lat=C.Math.toDegrees(camera.latitude);
     const localCoast=!!coast&&altitude<90000&&lon>28.65&&lon<29.3&&lat>40.9&&lat<41.25;
     if(coast)coast.show=bordersEnabled&&localCoast;
-    borders.show=bordersEnabled&&!localCoast;
+    showBorders(bordersEnabled&&!localCoast);
     if(highlight)highlight.show=enabled&&!localCoast;
     const selectedCard=!!widget.container.parentElement?.querySelector('[data-selected="true"]'),canvasWidth=widget.canvas.clientWidth,canvasHeight=widget.canvas.clientHeight;
     const budget=Math.max(3,Math.min(altitude>8000000?10:18,Math.floor(widget.canvas.clientWidth*widget.canvas.clientHeight/55000)));
+    // Pins stand on their anchor (bottom origin) and reach ~56px up; a country caption under a pin is unreadable.
+    const pins=markerAnchors(widget).filter(position=>C.Cartesian3.dot(C.Ellipsoid.WGS84.geodeticSurfaceNormal(position),C.Cartesian3.subtract(widget.camera.positionWC,position,new C.Cartesian3()))>0)
+      .map(position=>C.SceneTransforms.worldToWindowCoordinates(widget.scene,position)).filter((point):point is C.Cartesian2=>!!point);
     for(const {country,label} of countryLabels){
       label.text=country.info.name[options.locale()];
       const point=C.SceneTransforms.worldToWindowCoordinates(widget.scene,label.position);
       const width=label.text.length*10;
-      const front=C.Cartesian3.dot(C.Ellipsoid.WGS84.geodeticSurfaceNormal(label.position),C.Cartesian3.subtract(widget.camera.positionWC,label.position,new C.Cartesian3()))>0;
-      label.show=enabled && altitude>=200000 && front && !!point && country.angularExtent>(altitude>8000000?5:altitude>2000000?1:.15) && occupied.length<budget && point.x-width/2>(canvasWidth>=1200?200:12) && point.x+width/2<canvasWidth-(selectedCard&&canvasWidth>=768?390:16) && point.y>130 && point.y<canvasHeight-(selectedCard&&canvasWidth<768?canvasHeight*.52:110) && !occupied.some(p=>Math.abs(p.x-point.x)<(p.w+width)/2+24 && Math.abs(p.y-point.y)<50);
+      // Skip captions close to the limb: there they hang half outside the globe's silhouette.
+      const front=C.Cartesian3.dot(C.Ellipsoid.WGS84.geodeticSurfaceNormal(label.position),C.Cartesian3.normalize(C.Cartesian3.subtract(widget.camera.positionWC,label.position,new C.Cartesian3()),new C.Cartesian3()))>.3;
+      label.show=enabled && altitude>=200000 && front && !!point && country.angularExtent>(altitude>8000000?5:altitude>2000000?1:.15) && occupied.length<budget && point.x-width/2>(canvasWidth>=1200?200:12) && point.x+width/2<canvasWidth-(selectedCard&&canvasWidth>=768?390:16) && point.y>130 && point.y<canvasHeight-(selectedCard&&canvasWidth<768?canvasHeight*.52:110) && !occupied.some(p=>Math.abs(p.x-point.x)<(p.w+width)/2+24 && Math.abs(p.y-point.y)<50) && !pins.some(p=>Math.abs(p.x-point.x)<width/2+30 && point.y>p.y-66 && point.y<p.y+16);
       if(label.show && point)occupied.push({x:point.x,y:point.y,w:width});
     }
     labelBoxes=occupied.map(b=>({...b,x:b.x-b.w/2}));
@@ -112,9 +127,9 @@ export async function createCesiumCountries(widget:C.CesiumWidget,options:{local
   return {
     labelBoxes:()=>labelBoxes,
     setVisible(value:boolean){enabled=value;if(!value)void highlightCountry(null);widget.scene.requestRender();},
-    setBorders(value:boolean){bordersEnabled=value;borders.show=value;widget.scene.requestRender();},
+    setBorders(value:boolean){bordersEnabled=value;showBorders(value);widget.scene.requestRender();},
     select(code:string|null,fly=true){selected=code;void highlightCountry(code).catch(console.warn);const country=code?index.byCode.get(code):null;
       if(country && fly)widget.camera.flyTo({destination:C.Cartesian3.fromDegrees(country.point.longitude,country.point.latitude,Math.max(100000,country.angularExtent*130000))});},
-    dispose(){disposed=true;generation++;clearHover();widget.canvas.removeEventListener('pointerleave',leave);input.dispose();remove();if(widget.isDestroyed())return;if(coast)widget.dataSources.remove(coast,true);if(highlight)widget.dataSources.remove(highlight,true);widget.scene.groundPrimitives.remove(borders);widget.scene.primitives.remove(labels);}
+    dispose(){disposed=true;generation++;clearHover();widget.canvas.removeEventListener('pointerleave',leave);input.dispose();remove();if(widget.isDestroyed())return;if(coast)widget.dataSources.remove(coast,true);if(highlight)widget.dataSources.remove(highlight,true);widget.scene.groundPrimitives.remove(borders);if(flatBorders)widget.scene.primitives.remove(flatBorders);widget.scene.primitives.remove(labels);}
   };
 }

@@ -1,0 +1,130 @@
+// scripts/calendar-geo/generate-production-geo-seed-2026-09-20.mjs
+//
+// Scoped production geo seed for exactly the 2026-09-20 (Julian 09-07)
+// enrichment batch -- NOT the full machine_high set (see
+// generate-production-geo-seed.mjs for that). Only the 7 entities
+// confirmed in this batch, their places/relations/translations/provenance,
+// and the sources they reference.
+//
+// Read-only against the local D1 sqlite; no Cloudflare credentials; never
+// writes to any database itself, only emits a .sql file.
+//
+// Usage: node scripts/calendar-geo/generate-production-geo-seed-2026-09-20.mjs [--out=PATH]
+
+import {readFileSync, writeFileSync, readdirSync, realpathSync} from 'node:fs';
+import {resolve, dirname, join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
+import {DatabaseSync} from 'node:sqlite';
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+
+const args = process.argv.slice(2);
+for (const arg of args) {
+  if (arg !== '--apply' && !/^--out=.+$/.test(arg)) throw new Error(`Unrecognized argument: ${arg}`);
+  if (arg === '--apply') throw new Error('This script never applies anything itself.');
+}
+const outPath = args.find(a => a.startsWith('--out='))?.slice(6) ?? '/tmp/calendar-geo-production-geo-2026-09-20.sql';
+
+const state = realpathSync(join(root, '.wrangler/state/v3/d1/miniflare-D1DatabaseObject'));
+if (!state.startsWith(`${realpathSync(root)}/.wrangler/`)) throw new Error('Local database path escaped project');
+const candidates = readdirSync(state).filter(name => /^[a-f0-9]{64}\.sqlite$/.test(name)).filter(name => {
+  const path = realpathSync(join(state, name));
+  if (dirname(path) !== state) throw new Error('Database symlink rejected');
+  const db = new DatabaseSync(path, {readOnly: true});
+  try { return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='church_calendar_days'").get()); }
+  finally { db.close(); }
+});
+if (candidates.length !== 1) throw new Error(`Expected one local DB, found ${candidates.length}`);
+const db = new DatabaseSync(join(state, candidates[0]), {readOnly: true});
+
+// Exact scope: only the 7 entities from the 2026-09-20 batch.
+const entityIds = [
+  'wd:Q263592', 'wd:Q16214729', 'wd:Q709251',
+  'internal:saint:john-ii-novgorod-09-07', 'internal:saint:serapion-spaso-eleazar-09-07',
+  'internal:saint:luke-batheos-ryako-09-07', 'internal:saint:macarius-optina-09-07',
+];
+const ruleIds = [
+  'oca-fixed:09-07:100454', 'oca-fixed:09-07:102532', 'oca-fixed:09-07:102533',
+  'oca-fixed:09-07:102534', 'oca-fixed:09-07:102536', 'oca-fixed:09-07:102539', 'oca-fixed:09-07:148999',
+];
+
+function inClause(ids) { return ids.length ? ids.map(() => '?').join(',') : 'NULL'; }
+
+const entityRows = db.prepare(`SELECT * FROM calendar_geo_entities WHERE id IN (${inClause(entityIds)})`).all(...entityIds);
+if (entityRows.length !== entityIds.length) throw new Error(`Expected ${entityIds.length} entities, found ${entityRows.length} -- local enrichment incomplete`);
+
+const relationRows = db.prepare(`SELECT * FROM calendar_geo_relations WHERE entity_id IN (${inClause(entityIds)})`).all(...entityIds);
+const placeIds = [...new Set(relationRows.map(r => r.place_id))];
+const placeRows = db.prepare(`SELECT * FROM calendar_geo_places WHERE id IN (${inClause(placeIds)})`).all(...placeIds);
+
+const translationRows = db.prepare(`SELECT * FROM calendar_geo_translations WHERE entity_id IN (${inClause(entityIds)}) OR place_id IN (${inClause(placeIds)})`).all(...entityIds, ...placeIds);
+const provenanceRows = db.prepare(`SELECT * FROM calendar_geo_provenance WHERE entity_id IN (${inClause(entityIds)}) OR place_id IN (${inClause(placeIds)})`).all(...entityIds, ...placeIds);
+
+const neededSourceIds = [...new Set([
+  ...relationRows.map(r => r.source_id),
+  ...translationRows.map(r => r.source_id),
+  ...provenanceRows.map(r => r.source_id),
+].filter(Boolean))];
+const sourceRows = db.prepare(`SELECT * FROM calendar_geo_sources WHERE id IN (${inClause(neededSourceIds)})`).all(...neededSourceIds);
+
+const ruleLinks = db.prepare(`SELECT id, entity_id FROM calendar_geo_rules WHERE id IN (${inClause(ruleIds)}) AND entity_id IN (${inClause(entityIds)})`).all(...ruleIds, ...entityIds);
+if (ruleLinks.length !== ruleIds.length) throw new Error(`Expected ${ruleIds.length} linked rules, found ${ruleLinks.length}`);
+
+db.close();
+
+function sqlValue(value) {
+  if (value === null || value === undefined) return 'NULL';
+  if (typeof value === 'number') return String(value);
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+function insertStatement(table, row, conflictCols) {
+  const cols = Object.keys(row);
+  const values = cols.map(c => sqlValue(row[c]));
+  const conflict = conflictCols ? `ON CONFLICT(${conflictCols}) DO NOTHING` : 'ON CONFLICT DO NOTHING';
+  return `INSERT INTO ${table}(${cols.join(',')}) VALUES (${values.join(',')}) ${conflict};`;
+}
+
+const lines = [];
+lines.push('-- Generated by scripts/calendar-geo/generate-production-geo-seed-2026-09-20.mjs');
+lines.push(`-- generatedAt=${new Date().toISOString()}`);
+lines.push('-- Scope: ONLY the 7 confirmed entities from the 2026-09-20 (Julian 09-07) enrichment');
+lines.push('-- batch and their dependencies -- not the full machine_high set.');
+lines.push('-- All statements are INSERT ... ON CONFLICT DO NOTHING or a guarded UPDATE that');
+lines.push('-- only ever moves entity_id from NULL to a value. No DELETE/DROP/ALTER present.');
+lines.push('');
+
+lines.push(`-- calendar_geo_sources (${sourceRows.length})`);
+for (const row of sourceRows) lines.push(insertStatement('calendar_geo_sources', row, 'id'));
+lines.push('');
+lines.push(`-- calendar_geo_entities (${entityRows.length})`);
+for (const row of entityRows) lines.push(insertStatement('calendar_geo_entities', row, 'id'));
+lines.push('');
+lines.push(`-- calendar_geo_places (${placeRows.length})`);
+for (const row of placeRows) lines.push(insertStatement('calendar_geo_places', row, 'id'));
+lines.push('');
+lines.push(`-- calendar_geo_relations (${relationRows.length})`);
+for (const row of relationRows) lines.push(insertStatement('calendar_geo_relations', row, null));
+lines.push('');
+lines.push(`-- calendar_geo_translations (${translationRows.length})`);
+for (const row of translationRows) lines.push(insertStatement('calendar_geo_translations', row, 'id'));
+lines.push('');
+lines.push(`-- calendar_geo_provenance (${provenanceRows.length})`);
+for (const row of provenanceRows) lines.push(insertStatement('calendar_geo_provenance', row, 'id'));
+lines.push('');
+lines.push(`-- calendar_geo_rules.entity_id links (${ruleLinks.length}) -- only NULL -> value`);
+for (const link of ruleLinks) lines.push(`UPDATE calendar_geo_rules SET entity_id=${sqlValue(link.entity_id)} WHERE id=${sqlValue(link.id)} AND entity_id IS NULL;`);
+lines.push('');
+
+const sql = lines.join('\n');
+writeFileSync(outPath, sql, 'utf8');
+const sqlBytes = readFileSync(outPath);
+const sqlHash = createHash('sha256').update(sqlBytes).digest('hex');
+const statementLines = sql.split('\n').filter(l => /^\s*(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b/i.test(l));
+const statementTypes = new Set(statementLines.map(l => l.trim().split(/\s+/)[0].toUpperCase()));
+
+console.log(JSON.stringify({
+  outPath, sqlFileBytes: sqlBytes.length, sqlFileSha256: sqlHash,
+  counts: {sources: sourceRows.length, entities: entityRows.length, places: placeRows.length, relations: relationRows.length, translations: translationRows.length, provenance: provenanceRows.length, ruleLinks: ruleLinks.length},
+  statementTypesPresent: [...statementTypes], statementCount: statementLines.length,
+}, null, 2));

@@ -20,3 +20,16 @@ it('opens unmatched rule cards without external calls or fabricated content',asy
   try{const card=await calendarEntry('r1','ru');expect(card).toMatchObject({title:'Martyr A',places:[],summary:'',image:null,relatedContent:[]});expect(network).not.toHaveBeenCalled();expect(all).not.toHaveBeenCalled();}finally{network.mockRestore();}
 });
 it('rejects unknown rules instead of inventing a calendar card',async()=>{first.mockResolvedValue(null);await expect(calendarEntry('missing','en')).rejects.toMatchObject({status:404});});
+it('groups a year into days with distinct mappable commemorations, calendar rules and site saints alike',async()=>{
+  const {calendarGeoYear}=await import('./calendarGeo');
+  all.mockResolvedValueOnce([
+    {date:'2026-09-20',entityId:'a',title:'Feast',lat:31.78,lon:35.24,priority:90},
+    {date:'2026-09-20',entityId:'a',title:'Feast',lat:31.78,lon:35.24,priority:90},
+    {date:'2026-09-20',entityId:'b',title:'B',lat:58.5,lon:31.3,priority:70},
+    {date:'2026-09-29',entityId:'internal:saint:e',title:'Euphemia',lat:40.99,lon:29.03,priority:70}]);
+  const days=await calendarGeoYear({year:2026,locale:'uk',calendarSystem:'julian',tradition:'orthodox'});
+  expect(days).toEqual([{date:'2026-09-20',count:2,titles:['Feast','B'],lat:31.78,lon:35.24},{date:'2026-09-29',count:1,titles:['Euphemia'],lat:40.99,lon:29.03}]);
+  const [sql,...binds]=all.mock.calls[0];
+  expect(sql).toContain('church_calendar_days');expect(sql).toContain('calendar_geo_occurrences');
+  expect(binds).toEqual(['uk','uk','2026-01-01','2026-12-31','julian','orthodox','uk','uk','2026-01-01','2026-12-31']);
+});

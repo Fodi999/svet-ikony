@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useSyncExternalStore } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { defaultLocale, localeFromPathname, localeNames, locales, translate, type Locale, type TranslationKey, withLocale } from '@/lib/i18n';
+import { defaultLocale, isLocale, localeFromPathname, localeNames, locales, translate, type Locale, type TranslationKey, withLocale } from '@/lib/i18n';
 
 type LanguageContextValue = {
   locale: Locale;
@@ -56,6 +56,14 @@ export function LanguageProvider({ children, initialLocale = defaultLocale }: { 
 export function useLocaleHref() {
   const { locale } = useI18n();
   return (href: string) => withLocale(href, locale);
+}
+
+/** Link to a catalog item: an untranslated fallback opens in the language it exists in, never at a
+ * same-slug URL of the page locale (that is only a "not translated yet" page, kept out of the index). */
+export function useContentHref() {
+  const { locale } = useI18n();
+  return (href: string, item: { translated?: boolean; language?: string }) =>
+    withLocale(href, item.translated === false && item.language && isLocale(item.language) ? item.language : locale);
 }
 
 export function useI18n() {

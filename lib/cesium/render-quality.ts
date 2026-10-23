@@ -1,8 +1,10 @@
 import type {CesiumWidget} from '@cesium/engine';
 
+/** Drawing-buffer pixel budgets: in motion, and at rest (large Retina screens would otherwise exceed 7M pixels). */
+export const MOVING_PIXELS=1_500_000,RESTING_PIXELS=4_500_000;
 export function resolutionForMotion(dpr:number,width:number,height:number,moving:boolean) {
   const native=Math.max(1,dpr||1),maximum=Math.min(native,2);
-  const effective=moving?Math.min(maximum,Math.max(1,Math.sqrt(1_500_000/Math.max(1,width*height)))):maximum;
+  const effective=Math.min(maximum,Math.max(1,Math.sqrt((moving?MOVING_PIXELS:RESTING_PIXELS)/Math.max(1,width*height))));
   return effective/native;
 }
 

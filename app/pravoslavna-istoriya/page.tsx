@@ -28,7 +28,7 @@ export default async function PravoslavnaIstoriyaPage({ searchParams }: { search
   // Default production/dev experience: the unified Cesium calendar globe.
   // ?engine=three (temporary rollback) or ?view=legacy keeps the previous
   // Three.js HistoryVisualizer reachable without deleting it, per
-  // EARTH_ASSET_CONTRACT.md-style additive migration.
+  // docs/EARTH_ASSET_CONTRACT.md-style additive migration.
   if(resolveHistoryExperience(params)==='cesium-calendar') {
     return (
       <>
@@ -59,7 +59,7 @@ export default async function PravoslavnaIstoriyaPage({ searchParams }: { search
   // previewed without touching R2/D1 -- gated on NODE_ENV so a stray env
   // var can never divert production away from the real Base Earth Model
   // (the /api/dev/earth-preview route independently re-checks this too).
-  // See EARTH_ASSET_CONTRACT.md.
+  // See docs/EARTH_ASSET_CONTRACT.md.
   const baseEarthModelUrl = useLocalEarthPreview ? '/api/dev/earth-preview' : resolveMediaUrl(baseEarthModel?.r2Key) ?? null;
 
   return (

@@ -1,6 +1,6 @@
 'use client';
 import {useEffect, useState} from 'react';
-import {ChevronDown, ExternalLink, MapPin, Grid2X2, Layers, X} from 'lucide-react';
+import {ChevronDown, ExternalLink, MapPin, Grid2X2, Layers, Navigation, X} from 'lucide-react';
 import {siteShellCopy} from '@/components/site/site-shell-copy';
 import type {PlaceCollectionItem, PlaceProfile, SacredPlaceMarker} from '@/lib/d1/repositories/calendarGeoPlaces';
 import {placeTabs, type PlaceTab} from '@/lib/cesium/unified';
@@ -9,6 +9,8 @@ import {calendarCopy, placeTypeCopy, sacredPlaceCopy} from './calendar-copy';
 import {PlaceCollectionCarousel} from './PlaceCollectionCarousel';
 import {markerFallback} from '@/lib/cesium/photo-marker';
 import styles from './sacred-place-panel.module.css';
+import {RoutePlanner,routeCopy} from './RoutePlanner';
+import type {Route} from '@/lib/routes/osrm';
 
 type Props = {
   imageUrl?: string;
@@ -25,6 +27,8 @@ type Props = {
    * or renders their own full profile/collection. */
   onNavigate: (placeId: string) => void;
   onShowPlots?: () => void;
+  /** Draws a "how to get there" route on the globe; null clears it. */
+  onRoute?: (route: (Route & {from: {lat: number; lon: number}}) | null) => void;
 };
 
 const formatCoordinate = (lat: number, lon: number) =>
@@ -38,7 +42,7 @@ const formatCoordinate = (lat: number, lon: number) =>
  * Keyed entirely by `place` (a calendar_geo_places.id-based marker), never
  * by the calendar entity id used elsewhere in CalendarGlobeOverlay.
  */
-export function SacredPlacePanel({place, tab, locale, onTabChange, onClose, onNavigate, onShowPlots,imageUrl}: Props) {
+export function SacredPlacePanel({place, tab, locale, onTabChange, onClose, onNavigate, onShowPlots, onRoute, imageUrl}: Props) {
   const text = {...calendarCopy[locale], ...sacredPlaceCopy[locale]};
   const shell=siteShellCopy[locale];
   const [profile, setProfile] = useState<PlaceProfile | null>(null);
@@ -135,7 +139,7 @@ export function SacredPlacePanel({place, tab, locale, onTabChange, onClose, onNa
         </div>
       ) : null}
       <nav className={styles.tabs} aria-label={place.title}>
-        {placeTabs.filter(id=>id!=='directions').map((id) => (
+        {placeTabs.map((id) => (
           <button key={id} type="button" data-tab={id} aria-current={tab === id ? 'page' : undefined} onClick={() => onTabChange(id)}>{text[id]}</button>
         ))}
       </nav>
@@ -178,6 +182,7 @@ export function SacredPlacePanel({place, tab, locale, onTabChange, onClose, onNa
           </div>
         ) : null}
 
+        {tab === 'directions' && onRoute ? <RoutePlanner destination={place} locale={locale} onRoute={onRoute}/> : null}
         {tab === 'directions' && profileStatus === 'ready' ? (
           <div className={styles.about}>
             {profile?.address ? <p><b>{text.address}:</b> {profile.address}</p> : null}
@@ -196,6 +201,7 @@ export function SacredPlacePanel({place, tab, locale, onTabChange, onClose, onNa
       <div className={styles.placeActions}>
         {onShowPlots?<button onClick={()=>{onShowPlots();setExpanded(false);}}><Grid2X2 size={17}/>{shell.showPlots}</button>:null}
         <button onClick={()=>{onTabChange('collection');setExpanded(true);}}><Layers size={17}/>{shell.seeCollection}</button>
+        {onRoute?<button onClick={()=>{onTabChange('directions');setExpanded(true);}}><Navigation size={17}/>{routeCopy[locale].title}</button>:null}
       </div>
     </aside>
   );

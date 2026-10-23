@@ -1,7 +1,8 @@
-export const globeModes=['globe','calendar','saints','churches','history','map'] as const;
+export const globeModes=['globe','calendar','saints','churches','history','journeys','map'] as const;
 export type GlobeMode=typeof globeModes[number];
 export function modeFromParams(params:URLSearchParams):GlobeMode {
   const mode=params.get('mode');
+  if(mode==='map')return 'globe';
   return globeModes.includes(mode as GlobeMode)?mode as GlobeMode:params.get('view')==='history'?'history':params.has('calendarDate')||params.has('date')?'calendar':'globe';
 }
 // Sacred Place pilot URL state -- independent of `mode`/`entity`: marker,
@@ -42,7 +43,7 @@ export function readLayers(params:URLSearchParams):GlobeLayers {
   catch{return initialLayers(params);}
 }
 export const layerCopy={
-  ru:{layers:'Слои',countries:'Страны',borders:'Границы',capitals:'Столицы',cities:'Города',saints:'Святые',churches:'Храмы',monasteries:'Монастыри',calendar:'Святые дня',events:'Исторические события',territories:'Исторические территории',routes:'Маршруты',sacredPlots:'Sacred Plots',empty:'Нет записей',year:'Год',all:'Все годы'},
-  uk:{layers:'Шари',countries:'Країни',borders:'Кордони',capitals:'Столиці',cities:'Міста',saints:'Святі',churches:'Храми',monasteries:'Монастирі',calendar:'Святі дня',events:'Історичні події',territories:'Історичні території',routes:'Маршрути',sacredPlots:'Sacred Plots',empty:'Немає записів',year:'Рік',all:'Усі роки'},
+  ru:{layers:'Слои',countries:'Страны',borders:'Границы',capitals:'Столицы',cities:'Города',saints:'Святые',churches:'Храмы',monasteries:'Монастыри',calendar:'Святые дня',events:'Исторические события',territories:'Исторические территории',routes:'Маршруты',sacredPlots:'Участки-соты',empty:'Нет записей',year:'Год',all:'Все годы'},
+  uk:{layers:'Шари',countries:'Країни',borders:'Кордони',capitals:'Столиці',cities:'Міста',saints:'Святі',churches:'Храми',monasteries:'Монастирі',calendar:'Святі дня',events:'Історичні події',territories:'Історичні території',routes:'Маршрути',sacredPlots:'Ділянки-соти',empty:'Немає записів',year:'Рік',all:'Усі роки'},
   en:{layers:'Layers',countries:'Countries',borders:'Borders',capitals:'Capitals',cities:'Cities',saints:'Saints',churches:'Churches',monasteries:'Monasteries',calendar:'Saints of the day',events:'Historical events',territories:'Historical territories',routes:'Routes',sacredPlots:'Sacred Plots',empty:'No records',year:'Year',all:'All years'},
 };

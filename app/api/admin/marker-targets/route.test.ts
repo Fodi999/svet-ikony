@@ -12,4 +12,5 @@ describe('marker target assignment',()=>{
  it('does not invent a place from an arbitrary supplied ID',async()=>{m.first.mockResolvedValue(null);expect((await POST(request({kind:'place',id:'not-in-catalog'}))).status).toBe(404);expect(m.run).not.toHaveBeenCalled();});
  it('preserves an existing place record',async()=>{m.first.mockResolvedValue({id:'existing'});expect((await POST(request({kind:'place',id:'existing'}))).status).toBe(200);expect(m.run).not.toHaveBeenCalled();});
  it('refuses to overwrite another saint association',async()=>{m.first.mockResolvedValueOnce({id:'cms'}).mockResolvedValueOnce({id:'entity'}).mockResolvedValueOnce({translation_group_id:'other'});expect((await POST(request({kind:'saint',id:'entity',groupId:'group'}))).status).toBe(409);expect(m.batch).not.toHaveBeenCalled();});
+ it('never creates a saint entity from the static christianPlaces catalog',async()=>{m.first.mockResolvedValueOnce({id:'cms'}).mockResolvedValueOnce(null);expect((await POST(request({kind:'saint',id:'place:antioch',groupId:'group'}))).status).toBe(404);expect(m.batch).not.toHaveBeenCalled();});
 });

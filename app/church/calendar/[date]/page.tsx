@@ -127,7 +127,7 @@ export default async function ChurchCalendarDayPage({ params, searchParams }: Pr
       {calendarDay.description ? <Lead>{calendarDay.description}</Lead> : null}
       <DetailActions>
         {icons[0] ? <AssetButton variant="dark" href={`/icons/${icons[0].slug}`}>{translate(locale, 'navIcons')}</AssetButton> : null}
-        {prayers[0] ? <AssetButton href={`/church/prayers/${prayers[0].slug}`}>{translate(locale, 'navPrayers')}</AssetButton> : null}
+        {prayers[0] ? <AssetButton href={`/prayers/${prayers[0].slug}`}>{translate(locale, 'navPrayers')}</AssetButton> : null}
         {gospel[0] ? <AssetButton href={`/church/gospel/${gospel[0].slug}`}>{translate(locale, 'navGospel')}</AssetButton> : null}
       </DetailActions>
     </HeroCopy>

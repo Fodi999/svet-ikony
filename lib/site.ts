@@ -11,7 +11,17 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
  * `http://localhost:3001` into a real production Telegram media_url.
  * Server-side code must use getSiteUrl()/absoluteSiteUrl() below instead.
  */
-export const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://svetikony.com').replace(/\/+$/, '');
+const PRODUCTION_SITE_URL = 'https://svetikony.com';
+const LOOPBACK = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(:\d+)?$/i;
+/** Guard against a production build made on a developer machine: `next
+ * build` inlines NEXT_PUBLIC_SITE_URL from .env.local, which put
+ * `http://localhost:3000` into production canonical/OG links, share links
+ * and robots.txt. A loopback value is only honoured outside production. */
+export function resolvePublicSiteUrl(value: string | undefined, nodeEnv: string | undefined): string {
+  const url = (value || PRODUCTION_SITE_URL).trim().replace(/\/+$/, '');
+  return nodeEnv === 'production' && LOOPBACK.test(url) ? PRODUCTION_SITE_URL : url;
+}
+export const siteUrl = resolvePublicSiteUrl(process.env.NEXT_PUBLIC_SITE_URL, process.env.NODE_ENV);
 
 /** Local dev fallback only -- matches .env.local's NEXT_PUBLIC_SITE_URL
  * convention (adjust the port there to match `npm run dev`). Never used in
@@ -22,7 +32,7 @@ export const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://svetikony.c
  * and this must never leak into local dev (which needs to keep
  * self-referencing its own localhost instance, not production -- see
  * lib/api.ts's internal `/api/church/**` fetches). */
-const LOCAL_DEV_FALLBACK = 'http://localhost:3001';
+const LOCAL_DEV_FALLBACK = 'http://localhost:3000';
 
 /**
  * The canonical public site URL for everything server-side: R2 media links

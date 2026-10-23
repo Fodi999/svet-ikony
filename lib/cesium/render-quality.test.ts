@@ -3,8 +3,13 @@ import type {CesiumWidget} from '@cesium/engine';
 import {installRenderQuality,resolutionForMotion} from './render-quality';
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
 it('restores Retina sharpness and caps high density displays',()=>{
-  expect(resolutionForMotion(2,1440,924,false)).toBe(1);
-  expect(resolutionForMotion(3,1440,924,false)).toBe(2/3);
+  expect(resolutionForMotion(2,1280,800,false)).toBe(1);
+  expect(resolutionForMotion(3,1280,800,false)).toBe(2/3);
+});
+it('caps the resting pixel count on large Retina screens',()=>{
+  const scale=resolutionForMotion(2,1653,995,false);
+  expect(1653*995*(2*scale)**2).toBeCloseTo(4_500_000);
+  expect(resolutionForMotion(1,1653,995,false)).toBe(1);
 });
 it('limits moving pixel count without dropping below CSS resolution',()=>{
   const scale=resolutionForMotion(2,1440,924,true);
@@ -26,7 +31,7 @@ it('restores quality after motion, cancels pending restoration and removes liste
   const addEventListener=vi.fn(),removeEventListener=vi.fn();
   vi.stubGlobal('window',{devicePixelRatio:2,addEventListener,removeEventListener});
   const viewMatrix=Array(16).fill(0);
-  const widget={resolutionScale:1,useBrowserRecommendedResolution:true,isDestroyed:()=>false,canvas:{clientWidth:1440,clientHeight:924},camera:{moveStart,moveEnd,viewMatrix},scene:{requestRender},resize};
+  const widget={resolutionScale:1,useBrowserRecommendedResolution:true,isDestroyed:()=>false,canvas:{clientWidth:1280,clientHeight:800},camera:{moveStart,moveEnd,viewMatrix},scene:{requestRender},resize};
   const dispose=installRenderQuality(widget as unknown as CesiumWidget);
   viewMatrix[12]=10;moveStart.raise();expect(widget.resolutionScale).toBeLessThan(1);
   moveEnd.raise();vi.advanceTimersByTime(100);moveStart.raise();vi.advanceTimersByTime(300);

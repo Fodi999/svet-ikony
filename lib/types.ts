@@ -57,6 +57,8 @@ export type Icon = {
    * "untranslated" marker, never as if it were genuinely localized.
    * Absent/true on the detail page and everywhere else. */
   translated?: boolean;
+  /** The row's own language; for an untranslated fallback it differs from the page locale. */
+  language?: string;
 };
 
 export type Saint = {
@@ -77,6 +79,8 @@ export type Saint = {
   source?: 'church';
   /** PHASE MULTILINGUAL-1 / P0.2 -- see Icon.translated. */
   translated?: boolean;
+  /** The row's own language; for an untranslated fallback it differs from the page locale. */
+  language?: string;
   /** The calendar day this saint's commemoration belongs to, if any --
    * mirrors the calendar-day cross-link already shown on icon/prayer/
    * Gospel detail pages (app/icons/[slug]/page.tsx, LocalizedContent.tsx's
@@ -104,6 +108,8 @@ export type Prayer = {
   source?: 'church';
   /** PHASE MULTILINGUAL-1 / P0.2 -- see Icon.translated. */
   translated?: boolean;
+  /** The row's own language; for an untranslated fallback it differs from the page locale. */
+  language?: string;
 };
 
 export type GospelReading = {

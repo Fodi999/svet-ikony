@@ -232,6 +232,21 @@ describe('app/sitemap.ts (PHASE MULTILINGUAL-1 / P0.7)', () => {
     expect(urls).not.toContain('https://svetikony.com/uk/church/gospel/gospel-reading');
   });
 
+  it('churchItems: a calendar day is listed at its civil date (the [date] route), once per language, and skipped without a date', async () => {
+    setDefaults();
+    mockPublicApi.churchSitemap.mockResolvedValue([
+      sitemapItem({ kind: 'calendar', slug: '0ba817b4-3081-4f8c-a3b9-37fdebc36067', date: '2026-09-02', language: 'uk' }),
+      sitemapItem({ kind: 'calendar', slug: 'second-row-same-day', date: '2026-09-02', language: 'uk' }),
+      sitemapItem({ kind: 'calendar', slug: 'undated-row', date: null, language: 'uk' })
+    ]);
+
+    const urls = (await runSitemap()).map((entry) => entry.url);
+    const calendar = urls.filter((url) => url.includes('/church/calendar/'));
+
+    expect(calendar).toEqual(['https://svetikony.com/uk/church/calendar/2026-09-02']);
+    expect(urls.some((url) => url.includes('0ba817b4') || url.includes('undated-row'))).toBe(false);
+  });
+
   it('churchItems: icon/prayer/saint kinds are excluded entirely (icons/prayers/saints are each handled by their own dedicated, translation-aware branch -- keeping them here would duplicate URLs and reintroduce the unconditional fan-out bug)', async () => {
     setDefaults();
     mockPublicApi.churchSitemap.mockResolvedValue([

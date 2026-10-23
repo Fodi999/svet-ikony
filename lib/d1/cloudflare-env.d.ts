@@ -19,7 +19,7 @@ declare global {
      * wrangler.jsonc's `vars`: `vars` is shared with local `--local` runs,
      * and this must never leak into local dev, which needs to keep
      * self-referencing its own localhost instance. Unset locally ->
-     * lib/site.ts falls back to http://localhost:3001. */
+     * lib/site.ts falls back to http://localhost:3000. */
     SITE_URL?: string;
     /** Declared in wrangler.jsonc's `r2_buckets` (Stage 2D). Production
      * binds the real `svetikony-media` bucket; local `next dev` gets

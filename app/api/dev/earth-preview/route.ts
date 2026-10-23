@@ -6,7 +6,7 @@ import { ApiError, withErrors } from '@/lib/d1/errors';
 /**
  * Dev-only: serves the locally Blender-exported Earth GLB straight from
  * disk, for `EARTH_ASSET_MODE=local` preview (Phase C, see
- * EARTH_ASSET_CONTRACT.md). Reuses the exact same dev+localhost gate the
+ * docs/EARTH_ASSET_CONTRACT.md). Reuses the exact same dev+localhost gate the
  * terrain local API already relies on (`requireTerrainLocal` -- a runtime
  * check on NODE_ENV and request hostname, not just an env flag), so this
  * route is unreachable in any deployed/production build regardless of what

@@ -1,13 +1,16 @@
 import * as C from '@cesium/engine';
 import {markerBillboard,markerFallback,photoMarker,verifiedMarkerImage} from './photo-marker';
-import {createLayerHandler,pickCalendarMarker} from './handlers';
+import {createLayerHandler,interactiveHit} from './handlers';
 import {createSelectionHexController,selectionHex} from './selection-hex';
 import type {CalendarGeoItem} from '@/lib/d1/repositories/calendarGeo';
-import {atlasLabel,atlasVariant,saintIcon,styleCluster,approximateSaintIcon} from './atlas-style';
+import {atlasLabel,atlasVariant,saintIcon,approximateSaintIcon} from './atlas-style';
+import {createMarkerGroup} from './marker-groups';
+import {setNightLights} from './night-lights';
 import {createSacredModelController,markerModel,MODEL_MAX_DISTANCE,type SacredCandidate} from './sacred-markers';
 export {markerModel,calendarModelGraphics,MODEL_MAX_DISTANCE,MODEL_SCALE,MODEL_MIN_PIXEL_SIZE,MODEL_MAX_SCALE,MODEL_SELECTED_FACTOR} from './sacred-markers';
+/** Real-time sun: the night side darkens and shows city lights. */
 export function setCalendarLighting(widget:C.CesiumWidget,enabled:boolean) {
-  widget.scene.globe.enableLighting=enabled;widget.scene.requestRender();
+  widget.scene.globe.enableLighting=enabled;setNightLights(widget,enabled);widget.scene.requestRender();
 }
 export function calendarCategory(type:string) {
   return ['church','monastery','shrine'].includes(type)?'holy_place':type==='saint'||type==='feast'||type==='icon'?type:'event';
@@ -54,24 +57,21 @@ function markerCanvas(selected:boolean,image?:HTMLImageElement) {
   return canvas;
 }
 export function createOrthodoxCalendarLayer(widget:C.CesiumWidget,onSelect:(id:string)=>void,onError:(error:unknown)=>void,options:{name?:string;model?:(item:CalendarGeoItem)=>string|undefined;icon?:(item:CalendarGeoItem,selected:boolean)=>string;farDistance?:number}={}) {
-  const source=new C.CustomDataSource(options.name??'OrthodoxCalendarLayer');
+  let lastSignature='',activeEntityId:string|null=null;
+  const source=createMarkerGroup(widget,options.name??'OrthodoxCalendarLayer',{onError,
+    open:entity=>{const id=entity.properties?.calendarEntityId?.getValue();if(typeof id==='string')onSelect(id);},
+    decorate:(entities,cluster)=>{
+      const active=entities.find(entity=>source.contains(entity)&&entity.properties?.calendarEntityId?.getValue()===activeEntityId);
+      if(active?.billboard){
+        cluster.label.show=false;cluster.billboard.image=active.billboard.image?.getValue(widget.clock.currentTime);
+        cluster.billboard.width=64;cluster.billboard.height=72;cluster.billboard.show=true;
+      }
+    }});
   const selectionHexes=createSelectionHexController(widget,source);
-  let allowClustering=true,lastSignature='',activeEntityId:string|null=null;
-  const models=createSacredModelController(widget,()=>source.show,active=>{source.clustering.enabled=allowClustering&&!active;});
+  const models=createSacredModelController(widget,()=>source.show,active=>source.pauseClustering(active));
   let disposed=false,generation=0;
   const thumbnails=new Map<string,Promise<HTMLImageElement|null>>();
   const variant=atlasVariant(),pin=variant==='pin'&&typeof document!=='undefined'?new C.PinBuilder().fromText('\u2626',C.Color.fromCssColorString('#d9b66a'),128):undefined;
-  source.clustering.enabled=true;source.clustering.pixelRange=2;source.clustering.minimumClusterSize=2;
-  source.clustering.clusterLabels=false;
-  const removeCluster=source.clustering.clusterEvent.addEventListener((entities:C.Entity[],cluster:{label:C.Label;point:C.PointPrimitive;billboard:C.Billboard})=>{
-    cluster.label.text=String(entities.length);styleCluster(cluster);cluster.label.id=entities;cluster.point.id=entities;cluster.billboard.id=entities;
-    const active=entities.find(entity=>entity.properties?.calendarEntityId?.getValue()===activeEntityId);
-    if(active?.billboard){
-      cluster.label.show=false;cluster.billboard.image=active.billboard.image?.getValue(widget.clock.currentTime);
-      cluster.billboard.width=64;cluster.billboard.height=72;cluster.billboard.show=true;
-    }
-  });
-  void widget.dataSources.add(source).then(()=>{if(disposed&&!widget.isDestroyed())widget.dataSources.remove(source,true);}).catch(onError);
   const input=createLayerHandler(widget),handler=input.handler;
   let hoverTimer:ReturnType<typeof setTimeout>|undefined;
   let hoverPosition:C.Cartesian2|undefined;
@@ -79,7 +79,7 @@ export function createOrthodoxCalendarLayer(widget:C.CesiumWidget,onSelect:(id:s
   let hovered:C.Entity|undefined;
   const clearHover=()=>{
     if(hovered?.billboard){hovered.billboard.scale=new C.ConstantProperty(1);widget.scene.requestRender();}hovered=undefined;
-    if(hoverTitle!==null&&widget.canvas.title===hoverTitle){widget.canvas.removeAttribute('title');widget.canvas.style.cursor='';}
+    if(hoverTitle!==null&&widget.canvas.title===hoverTitle)widget.canvas.removeAttribute('title');
     hoverTitle=null;
   };
   const leave=()=>{if(hoverTimer)clearTimeout(hoverTimer);hoverTimer=undefined;clearHover();};
@@ -90,10 +90,10 @@ export function createOrthodoxCalendarLayer(widget:C.CesiumWidget,onSelect:(id:s
     hoverTimer=setTimeout(()=>{
       hoverTimer=undefined;
       if(disposed||widget.isDestroyed())return;
-      const picked=hoverPosition?widget.scene.pick(hoverPosition)?.id:null;
-      if(picked instanceof C.Entity&&source.entities.contains(picked)&&picked.name){
+      const picked=hoverPosition?interactiveHit(widget,hoverPosition):null;
+      if(picked instanceof C.Entity&&source.contains(picked)&&picked.name){
         if(hovered!==picked){clearHover();hovered=picked;if(picked.billboard)picked.billboard.scale=new C.ConstantProperty(1.05);widget.scene.requestRender();}
-        hoverTitle=picked.name;widget.canvas.title=hoverTitle;widget.canvas.style.cursor='pointer';
+        hoverTitle=picked.name;widget.canvas.title=hoverTitle;
       }else clearHover();
     },100);
   },C.ScreenSpaceEventType.MOUSE_MOVE);
@@ -106,14 +106,11 @@ export function createOrthodoxCalendarLayer(widget:C.CesiumWidget,onSelect:(id:s
     });
   };
   handler.setInputAction((event:{position:C.Cartesian2})=>{
-    const picked=pickCalendarMarker(widget,event.position)??widget.scene.drillPick(event.position).map(hit=>hit.id).find(id=>id instanceof C.Entity&&source.entities.contains(id))??widget.scene.pick(event.position)?.id;
-    if(Array.isArray(picked)){
-      if(!picked.every(entity=>source.entities.contains(entity)))return;
-      const points=picked.map(entity=>entity.position?.getValue(widget.clock.currentTime)).filter((point):point is C.Cartesian3=>!!point);
-      if(points.length){const sphere=C.BoundingSphere.fromPoints(points);widget.camera.flyToBoundingSphere(sphere,{duration:1,offset:new C.HeadingPitchRange(0,-Math.PI/3,Math.max(1500,sphere.radius*3))});}
-      return;
-    }
-    if(!picked||!source.entities.contains(picked))return;
+    // The one shared topmost hit (see handlers.ts): act only when it is ours.
+    const picked=interactiveHit(widget,event.position);
+    if(!picked||'sacredPlotId' in picked)return;
+    // Clusters are resolved by the shared marker source (marker-groups.ts).
+    if(Array.isArray(picked)||!source.contains(picked))return;
     const id=picked?.properties?.calendarEntityId?.getValue();
     if(typeof id==='string'){
       const position=picked.position?.getValue(widget.clock.currentTime);
@@ -130,8 +127,7 @@ export function createOrthodoxCalendarLayer(widget:C.CesiumWidget,onSelect:(id:s
       const signature=JSON.stringify([items,filter,selectedId,modelsEnabled]);if(signature===lastSignature)return;lastSignature=signature;
       const version=++generation;
       activeEntityId=selectedId;
-      allowClustering=true;source.clustering.enabled=allowClustering;
-      source.entities.removeAll();
+      source.removeAll();
       const candidates:SacredCandidate[]=[];
       let labeledSelected=false;
       for(const item of calendarMarkers(items,filter)){
@@ -146,7 +142,7 @@ export function createOrthodoxCalendarLayer(widget:C.CesiumWidget,onSelect:(id:s
         // The 30 m lift is for flat billboards; a model stands on the ground and its label/billboard sit with it.
         // Generation IDs prevent an old async ModelVisualizer load from attaching
         // itself to a newly created entity with the same ID. Picking uses properties.
-        const entity=source.entities.add({id:`${options.name??'calendar'}:${item.entityId}:${item.placeId}:${version}`,name:item.title,
+        const entity=source.add({id:`${options.name??'calendar'}:${item.entityId}:${item.placeId}:${version}`,name:item.title,
         properties:{calendarEntityId:item.entityId,approximateLocation:approximate},position:C.Cartesian3.fromDegrees(item.lon,item.lat,modelUri?0:30),
         orientation:modelUri?C.Transforms.headingPitchRollQuaternion(C.Cartesian3.fromDegrees(item.lon,item.lat),new C.HeadingPitchRoll()):undefined,
         point:billboard?undefined:{show:true,pixelSize:selected?12:8,color:C.Color.fromCssColorString('#efcc86'),outlineColor:C.Color.fromCssColorString('#15212b'),outlineWidth:2,heightReference:C.HeightReference.RELATIVE_TO_GROUND,disableDepthTestDistance:0,distanceDisplayCondition:range,scaleByDistance:new C.NearFarScalar(100000,1,9000000,.8)},
@@ -154,7 +150,7 @@ export function createOrthodoxCalendarLayer(widget:C.CesiumWidget,onSelect:(id:s
         label:{text:labelText,...atlasLabel('saint',selected),heightReference:C.HeightReference.RELATIVE_TO_GROUND}});
         if(billboard)entity.billboard=new C.BillboardGraphics(markerBillboard(markerFallback(item.entityType,selected),selected));
         if(selected){
-          source.entities.add({id:`history-cell:${item.entityId}:${item.placeId}:${version}`,name:labelText,
+          source.add({id:`history-cell:${options.name??'calendar'}:${item.entityId}:${item.placeId}:${version}`,name:labelText,
             ...selectionHex(item.lon,item.lat,{calendarEntityId:item.entityId,placeId:item.placeId,relationType:item.relationType,approximateLocation:approximate}),
           });
         }
@@ -168,6 +164,7 @@ export function createOrthodoxCalendarLayer(widget:C.CesiumWidget,onSelect:(id:s
             const thumbnail=photoMarker(image,selected);if(!thumbnail)return;
             entity.point=undefined;
             entity.billboard=new C.BillboardGraphics(markerBillboard(thumbnail,selected));
+            source.recluster();
             widget.scene.requestRender();
           }).catch(()=>{/* Keep the gold point when a remote image cannot be used. */});
         }
@@ -183,6 +180,6 @@ export function createOrthodoxCalendarLayer(widget:C.CesiumWidget,onSelect:(id:s
       if(points.length){widget.camera.cancelFlight();widget.camera.flyToBoundingSphere(C.BoundingSphere.fromPoints(points),{duration:1.2,offset:new C.HeadingPitchRange(0,-Math.PI/2,Math.max(8000,C.BoundingSphere.fromPoints(points).radius*3))});}
     },
     setVisible(visible:boolean){if(!disposed&&!widget.isDestroyed()){source.show=visible;models.invalidate();}},
-    dispose(){if(disposed)return;disposed=true;leave();widget.canvas.removeEventListener('mouseleave',leave);selectionHexes.dispose();models.dispose();removeCluster();input.dispose();if(!widget.isDestroyed())widget.dataSources.remove(source,true);},
+    dispose(){if(disposed)return;disposed=true;leave();widget.canvas.removeEventListener('mouseleave',leave);selectionHexes.dispose();models.dispose();input.dispose();source.dispose();},
   };
 }

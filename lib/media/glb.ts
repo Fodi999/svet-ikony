@@ -1,5 +1,35 @@
 import { ApiError } from '@/lib/d1/errors';
 
+type TextureRef = { index?: number; texCoord?: number };
+type GltfJson = {
+  asset?: { version?: string }; buffers?: { uri?: string }[]; images?: { uri?: string }[];
+  materials?: { name?: string; pbrMetallicRoughness?: { baseColorTexture?: TextureRef; metallicRoughnessTexture?: TextureRef }; normalTexture?: TextureRef; occlusionTexture?: TextureRef; emissiveTexture?: TextureRef }[];
+  meshes?: { name?: string; primitives?: { attributes?: Record<string, number>; material?: number }[] }[];
+};
+
+/** A textured material on a primitive without the matching TEXCOORD_n
+ * attribute makes CesiumJS generate `v_texCoord_-1` and the WebGL shader
+ * fails to compile -- which blacks out the whole globe, not just the model. */
+export function missingTexCoords(data: GltfJson): { mesh: string; material: string; set: number } | null {
+  const materials = Array.isArray(data.materials) ? data.materials : [];
+  for (const mesh of Array.isArray(data.meshes) ? data.meshes : []) {
+    for (const primitive of Array.isArray(mesh?.primitives) ? mesh.primitives : []) {
+      const material = typeof primitive?.material === 'number' ? materials[primitive.material] : undefined;
+      if (!material) continue;
+      const refs = [material.pbrMetallicRoughness?.baseColorTexture, material.pbrMetallicRoughness?.metallicRoughnessTexture,
+        material.normalTexture, material.occlusionTexture, material.emissiveTexture];
+      for (const ref of refs) {
+        if (!ref) continue;
+        const set = Number.isInteger(ref.texCoord) ? ref.texCoord as number : 0;
+        if (!primitive.attributes || typeof primitive.attributes[`TEXCOORD_${set}`] !== 'number') {
+          return { mesh: mesh.name || 'mesh', material: material.name || 'material', set };
+        }
+      }
+    }
+  }
+  return null;
+}
+
 /** GLB v2 only. External resources would bypass our authenticated media proxy. */
 export function validateGlb(buffer: ArrayBuffer): void {
   const view = new DataView(buffer);
@@ -11,7 +41,7 @@ export function validateGlb(buffer: ArrayBuffer): void {
   if (view.getUint32(16, true) !== 0x4e4f534a || jsonLength % 4 || 20 + jsonLength > buffer.byteLength) {
     throw ApiError.validation('Некоректний JSON-блок GLB');
   }
-  let data: { asset?: { version?: string }; buffers?: { uri?: string }[]; images?: { uri?: string }[] };
+  let data: GltfJson;
   try {
     data = JSON.parse(new TextDecoder().decode(buffer.slice(20, 20 + jsonLength)));
   } catch { throw ApiError.validation('Некоректний JSON у GLB'); }
@@ -22,6 +52,10 @@ export function validateGlb(buffer: ArrayBuffer): void {
     if (resource.uri && !resource.uri.startsWith('data:')) {
       throw ApiError.validation('Експортуйте GLB з вбудованими текстурами та ресурсами');
     }
+  }
+  const missing = missingTexCoords(data);
+  if (missing) {
+    throw ApiError.validation(`Матеріал «${missing.material}» має текстуру, але об'єкт «${missing.mesh}» не має UV (TEXCOORD_${missing.set}). Додайте UV-розгортку в Blender і експортуйте знову`);
   }
   let offset = 20 + jsonLength;
   while (offset < buffer.byteLength) {

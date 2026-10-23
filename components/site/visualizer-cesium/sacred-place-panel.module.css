@@ -6,16 +6,16 @@
 
 .panel {
   position: absolute;
-  top: 74px;
-  right: 24px;
+  top: 76px;
+  right: 16px;
   bottom: auto;
   width: 452px;
-  max-height: calc(100% - 238px);
+  max-height: calc(100% - 110px);
   display: flex;
   flex-direction: column;
   background: rgba(5, 16, 21, .96);
   border: 1px solid rgba(233, 196, 121, 0.35);
-  border-radius: 8px;
+  border-radius: 12px;
   backdrop-filter: blur(24px);
   box-shadow: 0 24px 70px #000a, 0 2px 0 #fff1 inset;
   overflow: hidden;

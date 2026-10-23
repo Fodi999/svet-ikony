@@ -6,33 +6,40 @@ import {getSacredFlagsForPlaceIds} from './calendarGeoPlaces';
 // Published, explicitly linked internal content takes precedence over external translations.
 const internalName=`(SELECT s.name FROM church_saints s JOIN calendar_geo_content_links l ON l.translation_group_id=s.translation_group_id AND l.content_type='saint' WHERE l.entity_id=e.id AND s.status='published' AND s.language=? ORDER BY s.id LIMIT 1)`;
 export type CalendarGeoItem={entityId:string;entityType:string;title:string;placeId:string;placeTitle:string;relationType:string;lat:number;lon:number;markerPriority:number;thumbnail:string|null;matchStatus:string;geoStatus?:string;hasProfile?:boolean;hasCollection?:boolean};
-const mapSelect=`SELECT DISTINCT e.id AS entityId,e.entity_type AS entityType,
- COALESCE(t.name,te.name,e.canonical_name) AS title,
- p.id AS placeId,COALESCE(pt.name,pte.name,p.canonical_name) AS placeTitle,
- rel.relation_type AS relationType,p.lat,p.lon,CASE e.entity_type WHEN 'feast' THEN 90 WHEN 'church' THEN 80 WHEN 'monastery' THEN 80 WHEN 'shrine' THEN 80 ELSE 70 END AS markerPriority,
- (SELECT image_url FROM calendar_geo_images im WHERE im.entity_id=e.id AND im.status='usable' LIMIT 1) AS thumbnail,
- e.match_status AS matchStatus,CASE WHEN rel.geo_status='reviewed_verified' AND p.geo_status='reviewed_verified' THEN 'reviewed_verified' ELSE 'machine_high' END AS geoStatus
- FROM calendar_geo_entities e
+const mapJoins=` FROM calendar_geo_entities e
  JOIN calendar_geo_relations rel ON rel.entity_id=e.id
  JOIN calendar_geo_places p ON p.id=rel.place_id
  LEFT JOIN calendar_geo_translations t ON t.entity_id=e.id AND t.locale=?
  LEFT JOIN calendar_geo_translations te ON te.entity_id=e.id AND te.locale='en'
  LEFT JOIN calendar_geo_translations pt ON pt.place_id=p.id AND pt.locale=?
  LEFT JOIN calendar_geo_translations pte ON pte.place_id=p.id AND pte.locale='en'`;
+const mapSelect=`SELECT DISTINCT e.id AS entityId,e.entity_type AS entityType,
+ COALESCE(t.name,te.name,e.canonical_name) AS title,
+ p.id AS placeId,COALESCE(pt.name,pte.name,p.canonical_name) AS placeTitle,
+ rel.relation_type AS relationType,p.lat,p.lon,CASE e.entity_type WHEN 'feast' THEN 90 WHEN 'church' THEN 80 WHEN 'monastery' THEN 80 WHEN 'shrine' THEN 80 ELSE 70 END AS markerPriority,
+ (SELECT image_url FROM calendar_geo_images im WHERE im.entity_id=e.id AND im.status='usable' LIMIT 1) AS thumbnail,
+ e.match_status AS matchStatus,CASE WHEN rel.geo_status='reviewed_verified' AND p.geo_status='reviewed_verified' THEN 'reviewed_verified' ELSE 'machine_high' END AS geoStatus
+ ${mapJoins}`;
+
 const credible=`e.match_status IN ('machine_high','reviewed_verified')
  AND rel.match_status IN ('machine_high','reviewed_verified')
  AND p.match_status IN ('machine_high','reviewed_verified')
  AND rel.geo_status IN ('machine_high','reviewed_verified')
  AND p.geo_status IN ('machine_high','reviewed_verified')
  AND p.lat BETWEEN -90 AND 90 AND p.lon BETWEEN -180 AND 180`;
+/** A published site saint (church_saints) is commemorated on its calendar day's civil (new-style) date. */
+const siteSaintOn=(dateCondition:string)=>`EXISTS (SELECT 1 FROM calendar_geo_content_links l
+    JOIN church_saints s ON s.translation_group_id=l.translation_group_id AND s.status='published'
+    JOIN church_calendar_days d ON d.id=s.calendar_day_id
+    WHERE l.entity_id=e.id AND l.content_type='saint' AND d.date_new_style${dateCondition})`;
 export async function calendarGeoDay(query:{date:string;locale:string;calendarSystem:string;tradition:string}) {
   const {date,locale,calendarSystem,tradition}=query;
   const day=await d1First('SELECT civil_date FROM calendar_geo_days WHERE civil_date=? AND calendar_system=? AND tradition=? AND jurisdiction=\'\'',date,calendarSystem,tradition);
   if(!day)throw ApiError.notFound('Date has not been resolved for this calendar policy');
-  const items=await d1All<CalendarGeoItem>(`${mapSelect} WHERE ${credible} AND EXISTS (
+  const items=await d1All<CalendarGeoItem>(`${mapSelect} WHERE ${credible} AND (EXISTS (
     SELECT 1 FROM calendar_geo_rules r JOIN calendar_geo_occurrences o ON o.rule_id=r.id
-    WHERE r.entity_id=e.id AND o.civil_date=? AND o.calendar_system=? AND o.tradition=? AND o.jurisdiction='')
-    ORDER BY markerPriority DESC,entityId,placeId,relationType`,locale,locale,date,calendarSystem,tradition);
+    WHERE r.entity_id=e.id AND o.civil_date=? AND o.calendar_system=? AND o.tradition=? AND o.jurisdiction='') OR ${siteSaintOn('=?')})
+    ORDER BY markerPriority DESC,entityId,placeId,relationType`,locale,locale,date,calendarSystem,tradition,date);
   const counts=await d1First<{commemorations:number}>('SELECT count(*) AS commemorations FROM calendar_geo_occurrences WHERE civil_date=? AND calendar_system=? AND tradition=? AND jurisdiction=\'\'',date,calendarSystem,tradition);
   const rows=await d1All<{id:string;entityId:string|null;title:string;summary:string;entityType:string|null;sourceTitle:string}>(`SELECT r.id,r.entity_id AS entityId,
     COALESCE(${internalName},NULLIF(t.name,''),NULLIF(te.name,''),e.canonical_name,r.source_title) AS title,
@@ -46,6 +53,31 @@ export async function calendarGeoDay(query:{date:string;locale:string;calendarSy
   const geographic=new Set(items.map(item=>item.entityId));
   const entries=rows.map(({sourceTitle,...entry})=>({...entry,entityType:entryCategory(entry.entityType,sourceTitle),hasGeo:entry.entityId!==null&&geographic.has(entry.entityId)}));
   return {...query,commemorations:counts?.commemorations??0,entries,items};
+}
+export type CalendarGeoYearDay={date:string;count:number;titles:string[];lat:number;lon:number};
+/** Days of a year that have mappable commemorations (calendar rules or site saints), for the timeline. */
+export async function calendarGeoYear(query:{year:number;locale:string;calendarSystem:string;tradition:string}):Promise<CalendarGeoYearDay[]> {
+  const {year,locale,calendarSystem,tradition}=query,from=`${year}-01-01`,to=`${year}-12-31`;
+  const title='COALESCE(t.name,te.name,e.canonical_name)';
+  const rows=await d1All<{date:string;entityId:string;title:string;lat:number;lon:number;priority:number}>(
+    `SELECT o.civil_date AS date,e.id AS entityId,${title} AS title,p.lat,p.lon,CASE e.entity_type WHEN 'feast' THEN 90 ELSE 70 END AS priority ${mapJoins}
+      JOIN calendar_geo_rules r ON r.entity_id=e.id JOIN calendar_geo_occurrences o ON o.rule_id=r.id
+      WHERE ${credible} AND o.civil_date BETWEEN ? AND ? AND o.calendar_system=? AND o.tradition=? AND o.jurisdiction=''
+    UNION
+    SELECT d.date_new_style AS date,e.id AS entityId,${title} AS title,p.lat,p.lon,CASE e.entity_type WHEN 'feast' THEN 90 ELSE 70 END AS priority ${mapJoins}
+      JOIN calendar_geo_content_links l ON l.entity_id=e.id AND l.content_type='saint'
+      JOIN church_saints s ON s.translation_group_id=l.translation_group_id AND s.status='published'
+      JOIN church_calendar_days d ON d.id=s.calendar_day_id
+      WHERE ${credible} AND d.date_new_style BETWEEN ? AND ?
+    ORDER BY date,priority DESC,entityId`,
+    locale,locale,from,to,calendarSystem,tradition,locale,locale,from,to);
+  const days=new Map<string,CalendarGeoYearDay&{entities:Set<string>}>();
+  for(const row of rows){
+    const day=days.get(row.date)??{date:row.date,count:0,titles:[],lat:row.lat,lon:row.lon,entities:new Set<string>()};
+    if(!day.entities.has(row.entityId)){day.entities.add(row.entityId);day.count++;if(day.titles.length<3)day.titles.push(row.title);}
+    days.set(row.date,day);
+  }
+  return [...days.values()].map(({entities:_entities,...day})=>day);
 }
 /** Local, read-only catalog. Coordinates retain the same provenance gates as the day API. */
 export async function calendarGeoCatalog(locale:string) {

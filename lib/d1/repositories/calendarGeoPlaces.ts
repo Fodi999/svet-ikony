@@ -75,7 +75,51 @@ export type SacredPlaceMarker = {
    * same table the globe's own country layer already uses). */
   region: string | null;
   countryCode: string | null;
+  /** Published Cesium 3D model (calendar_geo_place_models, 0037); absent
+   * for every place without one, which keeps its 2D pin exactly as before. */
+  model?: PublicPlaceModel | null;
 };
+
+export type PublicPlaceModel = {
+  /** Same-origin URL: /media/... (R2) or /markers/... (bundled). */
+  url: string; scale: number; heading: number; pitch: number; roll: number;
+  heightOffset: number;
+  /** calendar_geo_places.altitude in metres (WGS84); null = sit on terrain. */
+  altitude: number | null;
+};
+
+export function publicModelUrl(modelUrl: string) {
+  return modelUrl.startsWith('/') ? modelUrl : `/${modelUrl}`;
+}
+
+/** Published models keyed by place id. Tolerates a database where migration
+ * 0037 is not applied yet (returns no models), so the public places API
+ * keeps working through a staged rollout. */
+export async function listPublishedPlaceModels(): Promise<Record<string, PublicPlaceModel>> {
+  try {
+    const rows = await d1All<{placeId: string; modelUrl: string; scale: number; heading: number; pitch: number; roll: number; heightOffset: number; altitude: number | null}>(
+      `SELECT m.place_id AS placeId, m.model_url AS modelUrl, m.scale, m.heading, m.pitch, m.roll, m.height_offset AS heightOffset, p.altitude
+       FROM calendar_geo_place_models m JOIN calendar_geo_places p ON p.id = m.place_id WHERE m.status = 'published'`);
+    return Object.fromEntries(rows.map(({placeId, modelUrl, ...rest}) => [placeId, {url: publicModelUrl(modelUrl), ...rest}]));
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * calendar_geo_place_profiles.public_visible (migration 0037) hides a place
+ * from the public globe without deleting anything. Until that migration is
+ * applied the column does not exist, so each public read tries the filtered
+ * query first and falls back to the pre-0037 query (every profile visible).
+ */
+const VISIBLE_PROFILE = ' AND prof.public_visible = 1';
+async function withVisibility<T>(query: (visibleSql: string) => Promise<T>): Promise<T> {
+  try {
+    return await query(VISIBLE_PROFILE);
+  } catch {
+    return query('');
+  }
+}
 
 async function placeExists(placeId: string): Promise<boolean> {
   const row = await d1First<{found: number}>('SELECT EXISTS(SELECT 1 FROM calendar_geo_places WHERE id = ?) AS found', placeId);
@@ -90,13 +134,13 @@ export async function getSacredFlagsForPlaceIds(placeIds: string[]): Promise<Rec
   const unique = [...new Set(placeIds)];
   if (!unique.length) return {};
   const placeholders = unique.map(() => '?').join(',');
-  const rows = await d1All<{placeId: string; hasProfile: number; hasCollection: number}>(
+  const rows = await withVisibility((visibleSql) => d1All<{placeId: string; hasProfile: number; hasCollection: number}>(
     `SELECT pl.id AS placeId,
-      EXISTS(SELECT 1 FROM calendar_geo_place_profiles prof WHERE prof.place_id = pl.id) AS hasProfile,
+      EXISTS(SELECT 1 FROM calendar_geo_place_profiles prof WHERE prof.place_id = pl.id${visibleSql}) AS hasProfile,
       EXISTS(SELECT 1 FROM calendar_geo_place_products pp JOIN icon_order_options o ON o.id = pp.product_id AND o.is_active = 1 WHERE pp.place_id = pl.id) AS hasCollection
      FROM calendar_geo_places pl WHERE pl.id IN (${placeholders})`,
     ...unique
-  );
+  ));
   return Object.fromEntries(rows.map((row) => [row.placeId, {hasProfile: fromD1Bool(row.hasProfile), hasCollection: fromD1Bool(row.hasCollection)}]));
 }
 
@@ -158,7 +202,7 @@ export async function getPlaceProfile(placeId: string, locale: Locale): Promise<
     getRelatedPlaces(placeId, locale, 'child')
   ]);
 
-  const profile = await d1First<{
+  const profile = await withVisibility((visibleSql) => d1First<{
     websiteUrl: string | null;
     mapUrl: string | null;
     openingHoursJson: string;
@@ -166,16 +210,16 @@ export async function getPlaceProfile(placeId: string, locale: Locale): Promise<
     address: string;
     directions: string;
   }>(
-    `SELECT p.website_url AS websiteUrl, p.map_url AS mapUrl, p.opening_hours_json AS openingHoursJson,
-      COALESCE(NULLIF(t.history_text,''), NULLIF(te.history_text,''), (SELECT history_text FROM calendar_geo_place_profile_translations WHERE place_id=p.place_id AND history_text!='' ORDER BY locale LIMIT 1), '') AS historyText,
-      COALESCE(NULLIF(t.address,''), NULLIF(te.address,''), (SELECT address FROM calendar_geo_place_profile_translations WHERE place_id=p.place_id AND address!='' ORDER BY locale LIMIT 1), '') AS address,
+    `SELECT prof.website_url AS websiteUrl, prof.map_url AS mapUrl, prof.opening_hours_json AS openingHoursJson,
+      COALESCE(NULLIF(t.history_text,''), NULLIF(te.history_text,''), (SELECT history_text FROM calendar_geo_place_profile_translations WHERE place_id=prof.place_id AND history_text!='' ORDER BY locale LIMIT 1), '') AS historyText,
+      COALESCE(NULLIF(t.address,''), NULLIF(te.address,''), (SELECT address FROM calendar_geo_place_profile_translations WHERE place_id=prof.place_id AND address!='' ORDER BY locale LIMIT 1), '') AS address,
       COALESCE(NULLIF(t.directions,''), te.directions, '') AS directions
-     FROM calendar_geo_place_profiles p
-     LEFT JOIN calendar_geo_place_profile_translations t ON t.place_id = p.place_id AND t.locale = ?
-     LEFT JOIN calendar_geo_place_profile_translations te ON te.place_id = p.place_id AND te.locale = 'en'
-     WHERE p.place_id = ?`,
+     FROM calendar_geo_place_profiles prof
+     LEFT JOIN calendar_geo_place_profile_translations t ON t.place_id = prof.place_id AND t.locale = ?
+     LEFT JOIN calendar_geo_place_profile_translations te ON te.place_id = prof.place_id AND te.locale = 'en'
+     WHERE prof.place_id = ?${visibleSql}`,
     locale, placeId
-  );
+  ));
 
   if (!profile) {
     return {id: placeId, hasProfile: false, history: '', address: '', directions: '', openingHours: {}, websiteUrl: null, mapUrl: null, territory: null, parentPlaces, childPlaces};
@@ -268,7 +312,7 @@ export type PlacesBbox = {west: number; south: number; east: number; north: numb
  */
 export async function listSacredPlaces(bbox: PlacesBbox, zoom: number | null, locale: Locale): Promise<SacredPlaceMarker[]> {
   const lowZoom = zoom !== null && zoom < 6 ? 1 : 0;
-  const rows = await d1All<{
+  const rows = await withVisibility((visibleSql) => d1All<{
     id: string; lat: number; lon: number; type: string; importance: number; title: string;
     hasTerritory: number; hasCollection: number; region: string | null; countryCode: string | null;
   }>(
@@ -280,13 +324,13 @@ export async function listSacredPlaces(bbox: PlacesBbox, zoom: number | null, lo
         EXISTS(SELECT 1 FROM calendar_geo_place_products pp JOIN icon_order_options o ON o.id = pp.product_id AND o.is_active = 1 WHERE pp.place_id = pl.id) AS hasCollection,
         pl.region AS region, pl.country_code AS countryCode
        FROM calendar_geo_places pl
-       JOIN calendar_geo_place_profiles prof ON prof.place_id = pl.id
+       JOIN calendar_geo_place_profiles prof ON prof.place_id = pl.id${visibleSql}
        LEFT JOIN calendar_geo_translations t ON t.place_id = pl.id AND t.locale = ?
        LEFT JOIN calendar_geo_translations te ON te.place_id = pl.id AND te.locale = 'en'
        WHERE pl.lat BETWEEN ? AND ? AND pl.lon BETWEEN ? AND ?
      ) WHERE ? = 0 OR importance >= 80
      ORDER BY importance DESC, id`,
     locale, bbox.south, bbox.north, bbox.west, bbox.east, lowZoom
-  );
+  ));
   return rows.map((row) => ({...row, hasTerritory: fromD1Bool(row.hasTerritory), hasCollection: fromD1Bool(row.hasCollection)}));
 }

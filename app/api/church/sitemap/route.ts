@@ -11,6 +11,9 @@ import { listSaints } from '@/lib/d1/repositories/saints';
  * `GET /api/church/sitemap`, composing `PublicChurchSitemapItem[]` — only
  * published items, matching what a sitemap should ever list.
  */
+// Read D1 on every request: prerendered at build time it froze the build machine's local data.
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   return withErrors(async () => {
     const [days, icons, prayers, articles, gospel, saints] = await Promise.all([

@@ -1,0 +1,33 @@
+/* Calendar timeline — one civil year along the bottom of the globe. Shares the overlay's glass tokens. */
+.timeline {
+  position:absolute; left:calc(var(--gap) + 80px); right:calc(var(--gap) + 64px); bottom:30px; z-index:4; pointer-events:auto;
+  display:flex; align-items:center; gap:12px; max-width:980px; margin:0 auto; padding:10px 16px 8px 10px;
+  background:var(--glass); border:1px solid var(--line); border-radius:var(--radius);
+  backdrop-filter:blur(18px) saturate(1.2); -webkit-backdrop-filter:blur(18px) saturate(1.2); box-shadow:var(--shadow);
+}
+.play { flex:none; display:grid; place-items:center; width:42px; height:42px; padding:0; border:1px solid var(--line); border-radius:50%; background:var(--gold-soft); color:var(--gold)!important; }
+.play:hover { background:rgba(232,193,123,.24); }
+.timeline[data-playing=true] .play { background:var(--gold); color:#14110b!important; }
+.body { flex:1; min-width:0; }
+.caption { display:flex; align-items:baseline; gap:10px; min-width:0; margin:0 0 6px; font-size:12px; color:var(--muted); }
+.caption strong { flex:none; font:15px/1.2 Georgia,serif; color:var(--text); }
+.caption span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.track { position:relative; height:34px; cursor:pointer; touch-action:none; border-radius:6px; outline-offset:3px; }
+.track::before { content:''; position:absolute; left:0; right:0; bottom:9px; height:1px; background:var(--line-soft); }
+.month { position:absolute; bottom:0; padding-left:3px; border-left:1px solid var(--line-soft); font-size:9.5px; line-height:1; letter-spacing:.04em; text-transform:uppercase; color:#7f878f; pointer-events:none; }
+.day { position:absolute; bottom:10px; width:3px; margin-left:-1.5px; border-radius:2px; background:var(--gold); opacity:.7; pointer-events:none; }
+.day[data-active] { opacity:1; box-shadow:0 0 0 2px rgba(232,193,123,.35); }
+.today { position:absolute; bottom:8px; top:0; width:1px; background:rgba(242,240,234,.55); pointer-events:none; }
+.today::after { content:''; position:absolute; top:-2px; left:-2px; width:5px; height:5px; border-radius:50%; background:var(--text); }
+.cursor { position:absolute; bottom:4px; width:12px; height:12px; margin-left:-6px; border:2px solid var(--gold); border-radius:50%; background:#0b1820; box-shadow:0 0 0 3px rgba(232,193,123,.2); pointer-events:none; transition:left .25s ease; }
+.track:active .cursor { transition:none; }
+
+@media(max-width:767px) {
+  .timeline { left:8px; right:8px; bottom:26px; gap:8px; padding:8px 10px 6px 8px; }
+  .play { width:38px; height:38px; }
+  .caption strong { font-size:14px; }
+  .month { font-size:8.5px; }
+  /* Twelve labels do not fit a phone: keep every month's tick, name every other one. */
+  .month:nth-of-type(even) { color:transparent; }
+}
+@media(prefers-reduced-motion:reduce) { .cursor { transition:none; } }

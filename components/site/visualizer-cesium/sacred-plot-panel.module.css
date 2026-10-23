@@ -7,15 +7,15 @@
 
 .panel {
   position: absolute;
-  top: 74px;
-  right: 24px;
+  top: 76px;
+  right: 16px;
   width: 380px;
-  max-height: calc(100% - 238px);
+  max-height: calc(100% - 110px);
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #111820 0%, #0f151b 100%);
   border: 1px solid rgba(233, 196, 121, 0.45);
-  border-radius: 8px;
+  border-radius: 12px;
   backdrop-filter: blur(24px);
   box-shadow: 0 24px 70px #000a, 0 0 0 1px rgba(233, 196, 121, 0.08), 0 2px 0 #fff1 inset;
   overflow: hidden;

@@ -13,7 +13,7 @@ export function selectionHex(lon:number,lat:number,properties:Record<string,unkn
     polyline:{positions:mosaicHex(lon,lat),width:3,clampToGround:true,classificationType:C.ClassificationType.BOTH,material:new C.PolylineOutlineMaterialProperty({color:C.Color.fromCssColorString('#e9c479'),outlineColor:C.Color.fromCssColorString('#182026'),outlineWidth:1})},
   };
 }
-export function createSelectionHexController(widget:C.CesiumWidget,source:C.CustomDataSource){
+export function createSelectionHexController(widget:C.CesiumWidget,source:{entities:{values:C.Entity[]}}){
   const radii=new WeakMap<C.Entity,number>();
   const refresh=()=>{
     if(widget.isDestroyed())return;

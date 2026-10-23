@@ -21,7 +21,7 @@ export const ALLOWED_MODULE_PURPOSES: Record<string, readonly string[]> = {
   articles: ['cover'],
   icons: ['main', 'portfolio'], // 'portfolio' -- AI-generated lifestyle/portfolio variants of the icon's own main photo (see lib/church/icon-portfolio-actions.ts), stored separately, never overwriting 'main'
   calendar: ['main'], // church_calendar_days.imageId — admin's Calendar Day "Медіа" tab
-  church: ['gallery'],
+  church: ['gallery', 'model'], // 'model' -- calendar_geo_place_models.model_url (GLB for the Cesium globe, admin "Глобус" tab)
   categories: ['main'],
   products: ['photo', 'gallery'],
   telegram: ['post-image', 'post-audio'], // telegram_posts.media_url/audio_url, picked via the Content Plan media picker
